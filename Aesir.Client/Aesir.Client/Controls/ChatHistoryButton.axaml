@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+             mc:Ignorable="d"
+             x:DataType="vm:ChatHistoryButtonViewModel"
+             x:Class="Aesir.Client.Controls.ChatHistoryButton">
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="ToggleButtonDefaultBackground" Color="Transparent" />
+        <SolidColorBrush x:Key="ToggleButtonDefaultPointeroverBackground" Opacity="0.16" Color="#54A9FF" />
+        <SolidColorBrush x:Key="ToggleButtonDefaultPressedBackground" Opacity="0.16" Color="#54A9FF" />
+        <SolidColorBrush x:Key="ToggleButtonTertiaryCheckedBackground" Opacity="0.16" Color="#54A9FF" />
+        <SolidColorBrush x:Key="ToggleButtonTertiaryCheckedPointeroverBackground" Opacity="0.16" Color="#54A9FF" />
+        <SolidColorBrush x:Key="ToggleButtonTertiaryCheckedPressedBackground" Opacity="0.16" Color="#54A9FF" />
+    </UserControl.Resources>
+    <ToggleButton
+        Classes="Tertiary"
+        HorizontalAlignment="Stretch"
+        HorizontalContentAlignment="Left"
+        IsChecked="{Binding IsChecked, Mode=TwoWay}"
+        PointerPressed="InputElement_OnPointerPressed">
+        
+        <ToggleButton.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="Rename" Command="{Binding RenameCommand}"/>
+                <MenuItem Header="Delete" Command="{Binding DeleteCommand}"/>
+                <!-- <Separator/> -->
+                <!-- <MenuItem Header="Copy Chat ID" Command="{Binding CopyChatIdCommand}"/> -->
+            </ContextMenu>
+        </ToggleButton.ContextMenu>
+        
+        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"></TextBlock>
+    </ToggleButton>
+
+</UserControl>

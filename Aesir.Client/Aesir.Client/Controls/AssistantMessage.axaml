@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:html="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
+             xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+             mc:Ignorable="d"
+             x:Class="Aesir.Client.Controls.AssistantMessage"
+             x:DataType="vm:AssistantMessageViewModel"
+             >
+    <UserControl.Styles>
+        <Style Selector="avalonia|MaterialIcon.progress">
+            <Style.Animations>
+                <Animation Duration="0:0:1" Easing="BounceEaseIn" 
+                           IterationCount="INFINITE" PlaybackDirection="AlternateReverse"> 
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Width" Value="16"/>
+                        <Setter Property="Height" Value="16"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Width" Value="22"/>
+                        <Setter Property="Height" Value="22"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </UserControl.Styles>
+    <DockPanel 
+        HorizontalAlignment="Left" 
+        Margin="0,0,0,24">
+        <Border DockPanel.Dock="Left">
+            <Image Margin="0" Height="40" Width="40" VerticalAlignment="Top">
+                <Image.Source>
+                    <SvgImage Source="/Assets/assistant.svg" />
+                </Image.Source>
+            </Image>
+        </Border>
+        <avalonia:MaterialIcon
+            IsVisible="{Binding !IsLoaded}"
+            Classes="progress" Kind="Circle" Foreground="{DynamicResource SemiColorTertiary}" />
+        <html:HtmlLabel
+            IsVisible="{Binding IsLoaded}"
+            DockPanel.Dock="Right"
+                Name="HtmlLabel"
+                Text="{Binding Message}" 
+                AutoSizeHeightOnly="True"
+                BaseStylesheet="* { color: #F9F9F9; line-height: 1.6;} li { margin-bottom: 1em; line-height: 24px; }"
+                Margin="0 0 0 0"
+                Padding="0"
+            />
+    </DockPanel>
+</UserControl>

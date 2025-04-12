@@ -1,0 +1,53 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E8B96769-8098-40AB-9700-4496845D2F99}"
+	ProjectSection(SolutionItems) = preProject
+		docker-compose-api-dev.yml = docker-compose-api-dev.yml
+		docker-compose-client-dev.yml = docker-compose-client-dev.yml
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Client", "Aesir.Client\Aesir.Client\Aesir.Client.csproj", "{24F47E61-DBDC-4A68-99A8-6DE2AB3B4332}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Client.Desktop", "Aesir.Client\Aesir.Client.Desktop\Aesir.Client.Desktop.csproj", "{1507A2A3-14FC-459D-AAFD-2CB18BDA2CB6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Client.Browser", "Aesir.Client\Aesir.Client.Browser\Aesir.Client.Browser.csproj", "{DF5BEC46-EDDC-4938-A317-DD4654716BE3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Client.Tests", "Aesir.Client.Tests\Aesir.Client.Tests.csproj", "{DA961BD3-9DE6-433D-A71D-AAB0EB8E7042}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Api.Server", "Aesir.Api.Server\Aesir.Api.Server.csproj", "{21B98FF9-994B-4FBC-B6BF-AE48535BD295}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Api.Server.Tests", "Aesir.Api.Server.Tests\Aesir.Api.Server.Tests.csproj", "{3D3330DA-4D80-4BDE-8955-B32FD744B515}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{24F47E61-DBDC-4A68-99A8-6DE2AB3B4332}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24F47E61-DBDC-4A68-99A8-6DE2AB3B4332}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24F47E61-DBDC-4A68-99A8-6DE2AB3B4332}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24F47E61-DBDC-4A68-99A8-6DE2AB3B4332}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1507A2A3-14FC-459D-AAFD-2CB18BDA2CB6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1507A2A3-14FC-459D-AAFD-2CB18BDA2CB6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1507A2A3-14FC-459D-AAFD-2CB18BDA2CB6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1507A2A3-14FC-459D-AAFD-2CB18BDA2CB6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF5BEC46-EDDC-4938-A317-DD4654716BE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF5BEC46-EDDC-4938-A317-DD4654716BE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF5BEC46-EDDC-4938-A317-DD4654716BE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF5BEC46-EDDC-4938-A317-DD4654716BE3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA961BD3-9DE6-433D-A71D-AAB0EB8E7042}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA961BD3-9DE6-433D-A71D-AAB0EB8E7042}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA961BD3-9DE6-433D-A71D-AAB0EB8E7042}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA961BD3-9DE6-433D-A71D-AAB0EB8E7042}.Release|Any CPU.Build.0 = Release|Any CPU
+		{21B98FF9-994B-4FBC-B6BF-AE48535BD295}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21B98FF9-994B-4FBC-B6BF-AE48535BD295}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{21B98FF9-994B-4FBC-B6BF-AE48535BD295}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21B98FF9-994B-4FBC-B6BF-AE48535BD295}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D3330DA-4D80-4BDE-8955-B32FD744B515}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D3330DA-4D80-4BDE-8955-B32FD744B515}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D3330DA-4D80-4BDE-8955-B32FD744B515}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D3330DA-4D80-4BDE-8955-B32FD744B515}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

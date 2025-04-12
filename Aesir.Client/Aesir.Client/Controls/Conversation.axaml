@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:Aesir.Client.Controls"
+             xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             mc:Ignorable="d"
+             x:Class="Aesir.Client.Controls.Conversation"
+             x:DataType="vm:MainViewModel"
+             >
+    <RelativePanel>
+        <ScrollViewer IsVisible="True" Name="ScrollViewer" Focusable="False"
+                     RelativePanel.AlignLeftWithPanel="True"
+                      RelativePanel.AlignRightWithPanel="True"
+                      RelativePanel.AlignTopWithPanel="True"
+                      RelativePanel.AlignBottomWithPanel="True"
+                      ScrollChanged="ScrollViewer_OnScrollChanged">
+            <StackPanel Width="768" VerticalAlignment="Top" HorizontalAlignment="Center">
+                <ItemsControl ItemsSource="{Binding ConversationMessages}">
+                    <ItemsControl.DataTemplates>
+                        <DataTemplate DataType="{x:Type vm:SystemMessageViewModel}">
+                        </DataTemplate>
+                        <DataTemplate DataType="{x:Type vm:AssistantMessageViewModel}">
+                            <controls:AssistantMessage />
+                        </DataTemplate>
+                        <DataTemplate DataType="{x:Type vm:UserMessageViewModel}">
+                            <controls:UserMessage />
+                        </DataTemplate>
+                    </ItemsControl.DataTemplates>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+        <Button Name="ScrollToEndButton"
+                IsVisible="False"
+                RelativePanel.Above="ScrollViewer" 
+                RelativePanel.AlignBottomWithPanel="True"
+                RelativePanel.AlignHorizontalCenterWithPanel="True"
+                VerticalAlignment="Bottom"
+                Classes="Primary"
+                Theme="{DynamicResource SolidButton}"
+                Margin="0,0,0,24"
+                Click="ScrollToEndButton_OnClick"
+        >
+            <avalonia:MaterialIcon Kind="ArrowDownThick" Width="20" Height="20" />
+        </Button>
+        <Image IsVisible="{Binding !ConversationStarted}" 
+               RelativePanel.AlignHorizontalCenterWithPanel="True" 
+               RelativePanel.AlignVerticalCenterWithPanel="True" Margin="0" VerticalAlignment="Center">
+            <Image.Source>
+                <SvgImage Source="/Assets/logo.svg" />
+            </Image.Source>
+        </Image>
+    </RelativePanel>
+</UserControl>

@@ -1,0 +1,43 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:material="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:local="using:Aesir.Client"
+             xmlns:semi="https://irihi.tech/semi"
+             x:Class="Aesir.Client.App"
+             RequestedThemeVariant="Dark">
+    <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.DataTemplates>
+        <local:ViewLocator />
+    </Application.DataTemplates>
+    
+    <Application.Styles>
+        <semi:SemiTheme Locale="en-US" />
+        <material:MaterialIconStyles />
+        <StyleInclude Source="avares://Semi.Avalonia.ColorPicker/Index.axaml" />
+        <StyleInclude Source="avares://Semi.Avalonia.DataGrid/Index.axaml" />
+        <StyleInclude Source="avares://Semi.Avalonia.TreeDataGrid/Index.axaml" />
+        <Style Selector="Border">
+            <Setter Property="BorderBrush" Value="Black"></Setter>
+        </Style>
+        <!-- <Style Selector=":is(TextElement)"> -->
+        <!--     <Setter Property="Foreground" Value="GreenYellow" /> -->
+        <!-- </Style> -->
+        <!-- <Style Selector=":is(TextBlock)"> -->
+        <!--     <Setter Property="Foreground" Value="GreenYellow" /> -->
+        <!-- </Style> -->
+        <!-- <Style Selector=":is(TextBox)"> -->
+        <!--     <Setter Property="Foreground" Value="GreenYellow" /> -->
+        <!-- </Style> -->
+        <!-- <Style Selector=":is(ToolTip)"> -->
+        <!--     <Setter Property="Background" Value="DarkOliveGreen" /> -->
+        <!-- </Style> -->
+        <!-- <Style Selector=":is(Thumb)"> -->
+        <!--     <Setter Property="Background" Value="DarkOliveGreen" /> -->
+        <!-- </Style> -->
+        <!-- <Style Selector=":is(RepeatButton)"> -->
+        <!--     <Setter Property="Background" Value="DarkOliveGreen" /> -->
+        <!-- </Style> -->
+        <!-- -->
+    </Application.Styles>
+</Application>

@@ -1,0 +1,70 @@
+﻿volumes:
+  dbdata:
+  letsencryptdata:
+services:
+  aesir:
+    image: aesir.api.server
+    build:
+      context: .
+      dockerfile: Aesir.Api.Server/Dockerfile
+    depends_on:
+      pgdb:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+    healthcheck:
+      test: [ "CMD", "curl", "--fail", "http://aesir/healthz" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.aesir.rule=Host(`aesir.localhost`)"
+      - "traefik.http.routers.aesir.entrypoints=web"
+      - "traefik.http.routers.aesir.entrypoints=websecure"
+      - "traefik.http.routers.aesir.tls=true"
+      - "traefik.http.routers.aesir.tls.certresolver=letsencryptresolver"
+      - "traefik.http.services.aesir.loadbalancer.server.port=80"
+  pgdb:
+    environment:
+      POSTGRES_PASSWORD: RaGn4r0k!!
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      - "traefik.enable=false"
+  reverse-proxy:
+    image: traefik:latest
+    restart: unless-stopped
+    depends_on:
+      pgdb:
+        condition: service_healthy
+    command:
+      - "--log.level=DEBUG"
+      - "--accesslog=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--api.insecure=true"
+      - "--api.debug=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencryptresolver.acme.email=postmaster@www.localhost"
+      - "--certificatesresolvers.letsencryptresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge.entrypoint=web"
+    ports:
+      - "443:443"
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - letsencryptdata:/letsencrypt

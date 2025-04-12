@@ -1,0 +1,133 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+    xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+    xmlns:controls="clr-namespace:Aesir.Client.Controls"
+    xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+    mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+    x:Class="Aesir.Client.Views.MainView"
+    x:DataType="vm:MainViewModel">
+    <UserControl.Styles>
+        <Style Selector="FlyoutPresenter.modelSelection">
+            <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}" />
+            <Setter Property="Height" Value="28" />
+        </Style>
+    </UserControl.Styles>
+    <RelativePanel>
+        <DockPanel
+            RelativePanel.AlignTopWithPanel="True"
+            RelativePanel.AlignRightWithPanel="True"
+            RelativePanel.AlignLeftWithPanel="True"
+            ZIndex="100">
+            <DockPanel Width="450" Margin="14, 10, 10, 10">
+                <Button DockPanel.Dock="Left" ToolTip.Tip="Toggle Sidebar" Command="{Binding ToggleChatHistory}">
+                    <avalonia:MaterialIcon Kind="QuestionAnswer" Width="20" Height="20" />
+                </Button>
+                <Panel />
+            </DockPanel>
+            <DockPanel
+                Margin="10, 10, 14, 10"
+                LastChildFill="True">
+                <Button DockPanel.Dock="Right" ToolTip.Tip="New Chat" Command="{Binding ToggleNewChat}">
+                    <avalonia:MaterialIcon Kind="CommentAdd" Width="20" Height="20"/>
+                </Button>
+                <Panel />
+            </DockPanel>
+        </DockPanel>
+        <SplitView IsPaneOpen="{Binding PanelOpen}"
+                   DisplayMode="CompactInline"
+                   PanePlacement="Left"
+                   CompactPaneLength="-1"
+                   RelativePanel.AlignTopWithPanel="True"
+                   RelativePanel.AlignRightWithPanel="True"
+                   RelativePanel.AlignLeftWithPanel="True"
+                   RelativePanel.AlignBottomWithPanel="True"
+                   ZIndex="1"
+                   PaneOpening="SplitView_OnPaneOpening"
+                   PaneClosing="SplitView_OnPaneClosing">
+            <SplitView.Pane>
+                <controls:ChatHistory />
+            </SplitView.Pane>
+            <Border
+                BorderThickness="1,0,0,0">
+                <DockPanel>
+                    <Panel DockPanel.Dock="Top" Height="58">
+                        <TextBlock Name="TitleTextBlock" DockPanel.Dock="Top" HorizontalAlignment="Left"
+                                   VerticalAlignment="Center"
+                                   Classes="H4" Theme="{StaticResource TitleTextBlock}">
+                            <Run>AESIR AI</Run>
+                            <InlineUIContainer>
+                                <Button Margin="0" Padding="2,0,2,0" Theme="{DynamicResource BorderlessButton}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontSize="14" Foreground="{DynamicResource SemiColorTertiaryPointerover}" Text="{Binding SelectedModelName}"></TextBlock>
+                                        <avalonia:MaterialIcon 
+                                            Foreground="{DynamicResource SemiColorTertiaryPointerover}" 
+                                            Kind="ChevronRight"
+                                            Margin="0" 
+                                            Padding="0" />
+                                    </StackPanel>
+                                    <Button.Flyout>
+                                        <Flyout Placement="RightEdgeAlignedTop" FlyoutPresenterClasses="modelSelection">
+                                            <CheckBox Content="{Binding SelectedModelName}" IsThreeState="False" IsChecked="True" IsEnabled="False" />
+                                        </Flyout>
+                                    </Button.Flyout>
+                                </Button>
+                            </InlineUIContainer>
+                        </TextBlock>
+                    </Panel>
+                    <Border
+                        BorderThickness="0,1,0,0"
+                        DockPanel.Dock="Bottom">
+                        <DockPanel Margin="10">
+                            <DockPanel DockPanel.Dock="Bottom">
+                                <Button Classes="Tertiary" DockPanel.Dock="Left" Margin="0,0,6,0"
+                                        Theme="{DynamicResource OutlineButton}">
+                                    <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="20" />
+                                </Button>
+                                <Button Name="SendMessageButton" IsVisible="{Binding HasChatMessage}" DockPanel.Dock="Right" Margin="6,0,0,0"
+                                        Theme="{DynamicResource OutlineButton}" Command="{Binding SendMessage}">
+                                    <avalonia:MaterialIcon Kind="Send" Width="20" Height="20" />
+                                </Button>
+                                <TextBox
+                                    Name="MessageAiTextBox"
+                                    PropertyChanged="MessageAiTextBox_OnPropertyChanged"
+                                        Focusable="True"
+                                        Classes="Bordered TextArea" 
+                                         MinHeight="32" MaxHeight="64" LineHeight="24" TextWrapping="Wrap" AcceptsReturn="True"
+                                         KeyUp="InputElement_OnKey"
+                                         NewLine="{Binding Source={x:Static sys:String.Empty}}"
+                                         IsEnabled="{Binding !SendingChat}"
+                                         Watermark="Message AI" Text="{Binding ChatMessage, Mode=TwoWay}">
+                                    <TextBox.InnerRightContent>
+                                        <Button Classes="Small" Classes.Primary="{Binding MicOn}"
+                                                Classes.Tertiary="{Binding !MicOn}"
+                                                Padding="0"
+                                                Margin="0"
+                                                Theme="{DynamicResource BorderlessButton}"
+                                                Command="{Binding ToggleMicrophone}">
+                                            <Panel>
+                                                <avalonia:MaterialIcon
+                                                    IsVisible="{Binding MicOn, Converter={x:Static BoolConverters.Not}}"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    Kind="MicrophoneOff" Width="20" Height="20" />
+                                                <avalonia:MaterialIcon IsVisible="{Binding MicOn}"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center"
+                                                                       Kind="Microphone" Width="20" Height="20" />
+                                            </Panel>
+                                        </Button>
+                                    </TextBox.InnerRightContent>
+                                </TextBox>
+                            </DockPanel>
+                            <controls:Conversation />
+                        </DockPanel>
+                    </Border>
+                </DockPanel>
+            </Border>
+        </SplitView>
+    </RelativePanel>
+</UserControl>

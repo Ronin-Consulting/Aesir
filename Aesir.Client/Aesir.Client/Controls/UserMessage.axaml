@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             x:Class="Aesir.Client.Controls.UserMessage"
+             xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+             xmlns:avalonia="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
+             x:DataType="vm:UserMessageViewModel">
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="AesirBackground" Opacity="0.16" Color="#54A9FF" />
+    </UserControl.Resources>
+    <Panel HorizontalAlignment="Right" Margin="0,0,0,24">
+        <Border Background="{DynamicResource AesirBackground}"
+                BorderBrush="Black"
+                BorderThickness="1"
+                CornerRadius="20"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+        >
+            <avalonia:HtmlLabel
+                Name="HtmlLabel"
+                Text="{Binding Message}" 
+                AutoSize="True"
+                Background="{DynamicResource SemiColorBackground1}"
+                BaseStylesheet="* { color: #F9F9F9; } p { padding: 0; margin: 0; }"
+                Margin="10"
+                Padding="0"
+            />
+        </Border>
+    </Panel>
+</UserControl>

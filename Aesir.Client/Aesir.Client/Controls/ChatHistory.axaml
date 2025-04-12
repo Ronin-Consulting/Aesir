@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+             xmlns:cl="clr-namespace:CommunityToolkit.Mvvm.Collections;assembly=CommunityToolkit.Mvvm"
+             xmlns:controls="clr-namespace:Aesir.Client.Controls"
+             mc:Ignorable="d"
+             x:DataType="vm:ChatHistoryViewModel"
+             x:Class="Aesir.Client.Controls.ChatHistory">
+    <DockPanel Background="{DynamicResource BackgroundBrush}">
+        <TextBox DockPanel.Dock="Top"
+                 Classes="Bordered"
+                 BorderThickness="1"
+                 Watermark="Search"
+                 Text="{Binding SearchText, Mode=TwoWay}"
+                 Margin="8,60,8,8">
+            <TextBox.InnerLeftContent>
+                <Border Height="{Binding $parent[TextBox].Height}"
+                        Width="{Binding $self.Bounds.Height}">
+                    <avalonia:MaterialIcon
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Kind="Magnify" Width="20" Height="20" />
+                </Border>
+            </TextBox.InnerLeftContent>
+        </TextBox>
+        <ScrollViewer Margin="0,0,0,0" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding ChatHistoryByDate}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel>
+                            <TextBlock Classes="Quaternary" Padding="10,0,0,0" Text="{Binding DataType=cl:IReadOnlyObservableGroup, Path=Key}" />
+                            <ItemsRepeater ItemsSource="{Binding }">
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ChatHistoryButtonViewModel" >
+                                        <controls:ChatHistoryButton />
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>
