@@ -6,6 +6,7 @@ using Aesir.Api.Server.Services.Implementations.Standard;
 using FluentMigrator.Runner;
 using OllamaSharp;
 using AesirOllama = Aesir.Api.Server.Services.Implementations.Ollama;
+using AesirOpenAI = Aesir.Api.Server.Services.Implementations.OpenAI;
 
 namespace Aesir.Api.Server;
 
@@ -41,6 +42,19 @@ public class Program
             var httpClient = httpClientFactory.CreateClient(ollamaClientName);
             
             return new OllamaApiClient(httpClient);
+        });
+        
+        builder.Services.AddSingleton<OpenAI.OpenAIClient>(p => 
+        {
+            var apiKey = builder.Configuration["OpenAI:ApiKey"] ?? 
+                         throw new InvalidOperationException("OpenAI:ApiKey is not configured");
+            var organization = builder.Configuration["OpenAI:Organization"];
+            
+            var options = new OpenAI.OpenAIClientOptions { ApiKey = apiKey };
+            if (!string.IsNullOrEmpty(organization))
+                options.Organization = organization;
+                
+            return new OpenAI.OpenAIClient(options);
         });
 
         builder.Services.SetupSemanticKernel(builder.Configuration);
