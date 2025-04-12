@@ -6,6 +6,7 @@ using Aesir.Api.Server.Services.Implementations.Standard;
 using FluentMigrator.Runner;
 using OllamaSharp;
 using AesirOllama = Aesir.Api.Server.Services.Implementations.Ollama;
+using AesirOpenAI = Aesir.Api.Server.Services.Implementations.OpenAI;
 
 namespace Aesir.Api.Server;
 
@@ -17,10 +18,10 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
-        // builder.Services.AddSingleton<IModelsService,AesirOpenAI.ModelsService>();
-        // builder.Services.AddSingleton<IChatService,AesirOpenAI.ChatService>();
-        builder.Services.AddSingleton<IModelsService, AesirOllama.ModelsService>();
-        builder.Services.AddSingleton<IChatService, AesirOllama.ChatService>();
+        builder.Services.AddSingleton<IModelsService,AesirOpenAI.ModelsService>();
+        builder.Services.AddSingleton<IChatService,AesirOpenAI.ChatService>();
+        // builder.Services.AddSingleton<IModelsService, AesirOllama.ModelsService>();
+        // builder.Services.AddSingleton<IChatService, AesirOllama.ChatService>();
         builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
         builder.Services.AddSingleton<IDbContext,PgDbContext>(p => 
             new PgDbContext(builder.Configuration.GetConnectionString("DefaultConnection")!)
