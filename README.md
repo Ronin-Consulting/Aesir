@@ -1,5 +1,6 @@
 ![AESIR](Transparent%20Logo.png)
 # How to run
+<!-- This is a dummy change for testing PR creation -->
   
 1. #### API Server
    1. **IF** Rider IDE then right click the file "docker-compose-api.dev.yml" and select "Debug ..." or "Run..." from menu that's it,
