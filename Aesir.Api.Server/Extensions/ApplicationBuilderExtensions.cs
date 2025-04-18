@@ -1,5 +1,5 @@
+using Aesir.Api.Server.Services;
 using FluentMigrator.Runner;
-using Ollama;
 
 namespace Aesir.Api.Server.Extensions;
 
@@ -18,11 +18,11 @@ public static class ApplicationBuilderExtensions
     public static IApplicationBuilder InitializeOllamaBackend(this IApplicationBuilder app)
     {
         using var scope = app.ApplicationServices.CreateScope();
-        var ollama = scope.ServiceProvider.GetService<OllamaApiClient>();
+        var modelsService = scope.ServiceProvider.GetService<IModelsService>();
 
         try
         {
-            _ = ollama!.Models.ListModelsAsync().Result;
+            _ = modelsService!.GetModelsAsync().Result;
         }
         catch (Exception)
         {
