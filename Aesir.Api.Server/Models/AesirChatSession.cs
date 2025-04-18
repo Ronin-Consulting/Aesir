@@ -26,8 +26,8 @@ public class AesirChatSessionItem
     public Guid Id { get; set; }
     
     [JsonPropertyName("user_id")]
-    public string UserId { get; set; }
-    
+    public string UserId { get; set; } = null!;
+
     [JsonPropertyName("title")]
     public string Title { get; set; } = "Chat Session (Server)";
     

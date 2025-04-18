@@ -22,9 +22,9 @@ public static class ApplicationBuilderExtensions
 
         try
         {
-            var modelsResponse = ollama.Models.ListModelsAsync().Result;
+            _ = ollama!.Models.ListModelsAsync().Result;
         }
-        catch (Exception e)
+        catch (Exception)
         {
             // ignore
         }

@@ -19,10 +19,10 @@
         <PackageReference Include="LangChain.Providers.Ollama" Version="0.17.0" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.4" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.4" />
-        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.46.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.41.0-alpha" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Postgres" Version="1.41.0-alpha" />
-        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.46.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.47.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.47.0-alpha" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Postgres" Version="1.47.0-preview" />
+        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.47.0" />
         <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="Npgsql" Version="9.0.3" />

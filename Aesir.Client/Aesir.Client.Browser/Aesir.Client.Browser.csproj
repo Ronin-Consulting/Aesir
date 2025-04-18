@@ -25,15 +25,12 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Content Include="wwwroot\bower_components\.DS_Store" />
       <Content Include="wwwroot\bower_components\polymer\bower.json" />
-      <Content Include="wwwroot\bower_components\polymer\build.log" />
       <Content Include="wwwroot\bower_components\polymer\LICENSE.txt" />
       <Content Include="wwwroot\bower_components\polymer\polymer-micro.html" />
       <Content Include="wwwroot\bower_components\polymer\polymer-mini.html" />
       <Content Include="wwwroot\bower_components\polymer\polymer.html" />
       <Content Include="wwwroot\bower_components\webcomponentsjs\bower.json" />
-      <Content Include="wwwroot\bower_components\webcomponentsjs\build.log" />
       <Content Include="wwwroot\bower_components\webcomponentsjs\CustomElements.js" />
       <Content Include="wwwroot\bower_components\webcomponentsjs\CustomElements.min.js" />
       <Content Include="wwwroot\bower_components\webcomponentsjs\HTMLImports.js" />
