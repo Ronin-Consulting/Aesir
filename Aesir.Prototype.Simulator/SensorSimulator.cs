@@ -73,7 +73,7 @@ public class SensorSimulator
         Console.WriteLine("All sensors reset to normal operation");
     }
     
-    public void TriggerSensorFailure(string sensorId, SensorStatus severity = SensorStatus.Critical)
+    public void TriggerSensorFailure(string sensorId, SensorStatus severity)
     {
         if (!_currentValues.ContainsKey(sensorId))
         {
