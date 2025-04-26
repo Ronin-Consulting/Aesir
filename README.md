@@ -7,10 +7,10 @@
    3. **ELSE** change directory to "~/Aesir" folder and run the following command "docker compose -f docker-compose-api-dev.yml up".
    4. **NOTE:** To use OpenAI instead of Ollama, set `"Inference:UseOpenAICompatible": true` in appsettings.Development.json and add your API key to `"Inference:OpenAI:ApiKey"`.
 2. #### Client
-   1. **IF** Rider IDE right click the Aesir.Client.Desktop project and select "Debug ..." or "Run..." from menu
-   2. **ELSE** while in the "~Aesir/Aesir.Client/Aesir.Client.Desktop" folder run the following command "dotnet build && dotnet run".
-   3. **NOTE:** the client will eventually be moved to a container but not yet.
-      ASPNETCORE_ENVIRONMENT
+   1. **IF** Rider IDE from the run menu edit the run configuration and add "ASPNETCORE_ENVIRONMENT=Development" to environment variables.
+   2. **THEN** from the menu "Debug ..." or "Run..." the Aesir.Client.Desktop project.
+   3. **ELSE** while in the "~Aesir/Aesir.Client/Aesir.Client.Desktop" folder run the following command "dotnet build && dotnet run".
+   4. **NOTE:** the client will eventually be moved to a container but not yet.
 
 ## AESIR client things left to do
 
