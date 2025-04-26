@@ -22,8 +22,8 @@ public class ModelsService(
         var embeddingModel = configuration.GetValue<string>("Inference:OpenAI:EmbeddingModel") ?? "text-embedding-3-small";
         
         // Getting chat models from configuration
-        var configuredChatModels = configuration.GetValue<IList<string>>("Inference:OpenAI:ChatModels") ?? 
-            new List<string> { "gpt-4o", "gpt-4-turbo" };
+        var configuredChatModels = configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>() ?? 
+            [ "gpt-4o", "gpt-4-turbo" ];
         
         // Get available models from API
         try

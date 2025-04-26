@@ -37,7 +37,7 @@ public class Program
             var apiCreds = new ApiKeyCredential(apiKey);
             var endPoint = builder.Configuration["Inference:OpenAI:Endpoint"];
             
-            if(endPoint == null)
+            if(string.IsNullOrEmpty(endPoint))
                 builder.Services.AddSingleton(new OpenAIClient(apiCreds));
             else
             {

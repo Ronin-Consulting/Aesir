@@ -19,7 +19,7 @@ public class ModelsService(
         var embeddingModelName = configuration.GetValue<string>("Inference:Ollama:EmbeddingModel") 
                              ?? throw new InvalidOperationException("No embedding model configured");
         
-        var allowedModelNames = (configuration.GetValue<IEnumerable<string>>("Inference:Ollama:ChatModels") 
+        var allowedModelNames = (configuration.GetSection("Inference:Ollama:ChatModels").Get<string[]>() 
                       ?? throw new InvalidOperationException("No chat models configured")).ToList();
 
         // get ollama models loaded

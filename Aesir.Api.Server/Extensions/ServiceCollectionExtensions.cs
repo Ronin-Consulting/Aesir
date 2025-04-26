@@ -19,7 +19,7 @@ public static class ServiceCollectionExtensions
         AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiagnosticsSensitive", true);
         
         // Choose the appropriate embedding model based on configuration
-        var useOpenAi = configuration.GetValue<bool>("Inference:UseOpenAI");
+        var useOpenAi = configuration.GetValue<bool>("Inference:UseOpenAICompatible");
         var embeddingModelId = useOpenAi
             ? configuration.GetSection("Inference:OpenAI:EmbeddingModel").Value
             : configuration.GetSection("Inference:Ollama:EmbeddingModel").Value;
