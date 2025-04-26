@@ -4,10 +4,12 @@
 1. #### API Server
    1. **IF** Rider IDE then right click the file "docker-compose-api.dev.yml" and select "Debug ..." or "Run..." from menu that's it,
    2. **ELSE** change directory to "~/Aesir" folder and run the following command "docker compose -f docker-compose-api-dev.yml up".
+   3. **NOTE:** To use OpenAI instead of Ollama, set `"Inference:UseOpenAI": true` in appsettings.Development.json and add your API key to `"Inference:OpenAI:ApiKey"`.
 2. #### Client
    1. **IF** Rider IDE right click the Aesir.Client.Desktop project and select "Debug ..." or "Run..." from menu
    2. **ELSE** while in the "~Aesir/Aesir.Client/Aesir.Client.Desktop" folder run the following command "dotnet build && dotnet run".
    3. **NOTE:** the client will eventually be moved to a container but not yet.
+   4. 
 
 
 ## AESIR client things left to do
@@ -40,3 +42,14 @@
   - [ ] Register
   - [ ] Logout
 - [ ] Implement Model Switching
+
+## Supported AI Backends
+
+### Ollama (Default)
+Ollama is the default backend used by AESIR. No additional configuration is required beyond installing Ollama locally.
+
+### OpenAI
+To use OpenAI as the backend:
+1. Set `"Inference:UseOpenAI": true` in appsettings.Development.json
+2. Add your API key to `"Inference:OpenAI:ApiKey"`
+3. Optionally configure organization ID and preferred models

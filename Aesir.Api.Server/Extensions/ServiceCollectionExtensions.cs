@@ -3,6 +3,7 @@ using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services;
 using Aesir.Api.Server.Services.Implementations.Standard;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Data;
 using Npgsql;
 using OllamaSharp;
@@ -17,7 +18,12 @@ public static class ServiceCollectionExtensions
         // Enable model diagnostics with sensitive data.
         AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiagnosticsSensitive", true);
         
-        var embeddingModelId = configuration.GetSection("Inference:EmbeddingModel").Value;
+        // Choose the appropriate embedding model based on configuration
+        var useOpenAi = configuration.GetValue<bool>("Inference:UseOpenAI");
+        var embeddingModelId = useOpenAi
+            ? configuration.GetSection("Inference:OpenAI:EmbeddingModel").Value
+            : configuration.GetSection("Inference:Ollama:EmbeddingModel").Value;
+        
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
@@ -45,16 +51,39 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(new UniqueKeyGenerator<Guid>(Guid.NewGuid));
         services.AddSingleton<IPdfDataLoader, PdfDataLoader<Guid>>();
 
-        var ollamaClient = services.BuildServiceProvider().GetRequiredService<OllamaApiClient>();
-        ollamaClient.SelectedModel = embeddingModelId!;
+        // Configure kernel based on backend
+        var kernelBuilder = services.AddKernel();
         
-        var kernelBuilder = services.AddKernel()
-            .AddOllamaChatCompletion()
-            .AddOllamaTextEmbeddingGeneration(ollamaClient)
-            .AddVectorStoreTextSearch<AesirTextData<Guid>>();
+        if (useOpenAi)
+        {
+            var apiKey = configuration["Inference:OpenAI:ApiKey"] ?? 
+                         throw new InvalidOperationException("OpenAI API key not configured");
+            
+            // Configure OpenAI for embeddings and chat
+            kernelBuilder
+                .AddOpenAIChatCompletion(
+                    modelId: configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>()?.FirstOrDefault() ?? "gpt-4o", 
+                    apiKey: apiKey)
+                .AddOpenAITextEmbeddingGeneration(
+                    modelId: embeddingModelId ?? "text-embedding-3-small",
+                    apiKey: apiKey);
+        }
+        else
+        {
+            // Configure Ollama for embeddings and chat
+            var ollamaClient = services.BuildServiceProvider().GetRequiredService<OllamaApiClient>();
+            ollamaClient.SelectedModel = embeddingModelId!;
+            
+            kernelBuilder
+                .AddOllamaChatCompletion()
+                .AddOllamaTextEmbeddingGeneration(ollamaClient);
+        }
+        
+        // Add vector search
+        kernelBuilder.AddVectorStoreTextSearch<AesirTextData<Guid>>();
 
         var vectorStoreTextSearch = services.BuildServiceProvider().GetRequiredService<VectorStoreTextSearch<AesirTextData<Guid>>>();
-        var missionPlanRagPlugin =  vectorStoreTextSearch.CreateWithGetTextSearchResults(
+        var missionPlanRagPlugin = vectorStoreTextSearch.CreateWithGetTextSearchResults(
             "SearchMissionPlanDetails",
             "A natural language search returning details about mission plans."
         );
