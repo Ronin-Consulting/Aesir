@@ -62,11 +62,10 @@ public static class ServiceCollectionExtensions
             // Configure OpenAI for embeddings and chat
             kernelBuilder
                 .AddOpenAIChatCompletion(
-                    modelId: configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>()?.FirstOrDefault() ?? "gpt-4o", 
-                    apiKey: apiKey)
+                    modelId: configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>()?.FirstOrDefault() ?? "gpt-4o"
+                )
                 .AddOpenAITextEmbeddingGeneration(
-                    modelId: embeddingModelId ?? "text-embedding-3-small",
-                    apiKey: apiKey);
+                    modelId: embeddingModelId ?? "text-embedding-3-small");
         }
         else
         {
