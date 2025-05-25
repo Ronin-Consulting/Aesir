@@ -37,7 +37,7 @@ namespace Aesir.Api.Server.Controllers
 
             return results;
         }
-        
+
         [HttpGet("user/{userId}/search/{searchTerm:required}")]
         public async Task<IEnumerable<AesirChatSessionItem>> SearchChatSessionsAsync(
             [FromRoute] string userId, [FromRoute] string searchTerm)
@@ -57,18 +57,18 @@ namespace Aesir.Api.Server.Controllers
 
             return results;
         }
-        
+
         [HttpGet("{id:guid}")]
         [ProducesResponseType(typeof(AesirChatSession), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetChatSessionAsync([FromRoute] Guid id)
         {
             var found = await _chatHistoryService.GetChatSessionAsync(id);
-            
+
             if (found is null)
             {
                 return NoContent();
             }
-            
+
             return Ok(found);
         }
 
@@ -76,16 +76,16 @@ namespace Aesir.Api.Server.Controllers
         public async Task<IActionResult> GetChatSessionAsync([FromRoute] Guid id, [FromRoute] string title)
         {
             var found = await _chatHistoryService.GetChatSessionAsync(id);
-            
+
             if (found is null)
             {
                 return NoContent();
             }
-            
+
             found.Title = title;
 
             await _chatHistoryService.UpsertChatSessionAsync(found);
-            
+
             return Ok();
         }
 

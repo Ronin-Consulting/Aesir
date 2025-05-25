@@ -17,25 +17,25 @@ public class ModelsService(
     public async Task<IEnumerable<AesirModelInfo>> GetModelsAsync()
     {
         var result = new List<AesirModelInfo>();
-        
+
         // Getting embedding model from configuration
         var embeddingModel = configuration.GetValue<string>("Inference:OpenAI:EmbeddingModel") ?? "text-embedding-3-small";
-        
+
         // Getting chat models from configuration
-        var configuredChatModels = configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>() ?? 
-            [ "gpt-4o", "gpt-4-turbo" ];
-        
+        var configuredChatModels = configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>() ??
+            ["gpt-4o", "gpt-4-turbo"];
+
         // Get available models from API
         try
         {
             var response = await client.GetOpenAIModelClient().GetModelsAsync();
-            
+
             foreach (var model in response.Value)
             {
                 // Check if this is one of our configured models
                 var isChatModel = configuredChatModels.Contains(model.Id);
                 var isEmbeddingModel = embeddingModel == model.Id;
-                
+
                 // Only include models that are configured for use
                 if (isChatModel || isEmbeddingModel)
                 {
@@ -56,7 +56,7 @@ public class ModelsService(
 
             throw;
         }
-        
+
         return result;
     }
 }

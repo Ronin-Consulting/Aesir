@@ -14,7 +14,7 @@ public class AesirTextData<TKey>
     [TextSearchResultValue]
     [VectorStoreData]
     public string? Text { get; set; }
-    
+
     [TextSearchResultName]
     [VectorStoreData]
     public string? ReferenceDescription { get; set; }

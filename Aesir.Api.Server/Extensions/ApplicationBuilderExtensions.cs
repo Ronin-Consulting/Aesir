@@ -9,9 +9,9 @@ public static class ApplicationBuilderExtensions
     {
         using var scope = app.ApplicationServices.CreateScope();
         var runner = scope.ServiceProvider.GetService<IMigrationRunner>();
-        
+
         runner!.MigrateUp();
-        
+
         return app;
     }
 

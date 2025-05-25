@@ -11,7 +11,7 @@ public class ChatHistoryService : IChatHistoryService
         SqlMapper.AddTypeHandler(new JsonTypeHandler<AesirConversation>());
         SqlMapper.AddTypeHandler(new JsonTypeHandler<AesirChatMessage>());
     }
-    
+
     private readonly ILogger<ChatHistoryService> _logger;
     private readonly IDbContext _dbContext;
 
@@ -38,7 +38,7 @@ public class ChatHistoryService : IChatHistoryService
             await connection.ExecuteAsync(sql, chatSession);
         }, withTransaction: true);
     }
-    
+
     public async Task<AesirChatSession?> GetChatSessionAsync(Guid id)
     {
         var sql = @"
@@ -47,10 +47,10 @@ public class ChatHistoryService : IChatHistoryService
             WHERE id = @Id::uuid
         ";
 
-        return await _dbContext.UnitOfWorkAsync(async connection => 
+        return await _dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryFirstOrDefaultAsync<AesirChatSession>(sql, new { Id = id }));
     }
-    
+
     public async Task<IEnumerable<AesirChatSession>> GetChatSessionsAsync(string userId)
     {
         var sql = @"
@@ -60,10 +60,10 @@ public class ChatHistoryService : IChatHistoryService
             ORDER BY updated_at DESC
         ";
 
-        return await _dbContext.UnitOfWorkAsync(async connection => 
+        return await _dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryAsync<AesirChatSession>(sql, new { UserId = userId }));
     }
-    
+
     public async Task<IEnumerable<AesirChatSession>> GetChatSessionsAsync(string userId, DateTimeOffset from, DateTimeOffset to)
     {
         var sql = @"
@@ -75,10 +75,10 @@ public class ChatHistoryService : IChatHistoryService
             ORDER BY updated_at DESC
         ";
 
-        return await _dbContext.UnitOfWorkAsync(async connection => 
+        return await _dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryAsync<AesirChatSession>(sql, new { UserId = userId, From = from, To = to }));
     }
-    
+
     public async Task DeleteChatSessionAsync(Guid id)
     {
         var sql = @"
@@ -86,7 +86,7 @@ public class ChatHistoryService : IChatHistoryService
             WHERE id = @Id::uuid
         ";
 
-        await _dbContext.UnitOfWorkAsync(async connection => 
+        await _dbContext.UnitOfWorkAsync(async connection =>
             await connection.ExecuteAsync(sql, new { Id = id }), withTransaction: true);
     }
 
@@ -94,7 +94,7 @@ public class ChatHistoryService : IChatHistoryService
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
             return Array.Empty<AesirChatSession>();
-        
+
         var normalizedSearchTerm = searchTerm.Trim().Replace("'", "''");
 
         var sql = @"
@@ -111,7 +111,7 @@ public class ChatHistoryService : IChatHistoryService
 
         var searchQuery = string.Join(" & ", normalizedSearchTerm.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-        return await _dbContext.UnitOfWorkAsync(async connection => 
-            await connection.QueryAsync<AesirChatSession>(sql,  new { userId, searchQuery }));
+        return await _dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QueryAsync<AesirChatSession>(sql, new { userId, searchQuery }));
     }
 }

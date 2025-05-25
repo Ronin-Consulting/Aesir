@@ -12,7 +12,7 @@ public class Migration20240903091001 : Migration
         Execute.Sql(@"alter schema aesir owner to pg_database_owner");
         Execute.Sql(@"grant usage on schema aesir to public");
         Execute.Sql(@"CREATE EXTENSION IF NOT EXISTS ""uuid-ossp""");
-        
+
         Create.Table("aesir_chat_session")
             .InSchema("aesir")
             .WithColumn("id").AsGuid().NotNullable().PrimaryKey()

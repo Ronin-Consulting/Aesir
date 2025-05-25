@@ -6,7 +6,7 @@ namespace Aesir.Api.Server.Data;
 public class PgDbContext : IDbContext
 {
     private readonly string _connectionString;
-    
+
     public PgDbContext(string connectionString)
     {
         _connectionString = connectionString;
