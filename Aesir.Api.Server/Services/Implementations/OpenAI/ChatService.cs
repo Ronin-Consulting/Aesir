@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
+using Aesir.Api.Server.Services.Implementations.Standard;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -8,89 +9,44 @@ using OpenAI.Chat;
 
 namespace Aesir.Api.Server.Services.Implementations.OpenAI;
 
+/// <summary>
+/// Provides chat completion services using the OpenAI backend.
+/// Handles both synchronous and streaming chat completions.
+/// </summary>
+/// <remarks>
+/// This service requires OpenAI API credentials configured via the application settings.
+/// It integrates with the chat history service to persist conversations.
+/// </remarks>
 [Experimental("SKEXP0070")]
-public class ChatService(
-    ILogger<ChatService> logger,
-    VectorStoreTextSearch<AesirTextData<Guid>> vectorStoreTextSearch,
-    Kernel kernel,
-    IChatCompletionService chatCompletionService,
-    IChatHistoryService chatHistoryService)
-    : IChatService
+public class ChatService : BaseChatService
 {
-    public async Task<AesirChatResult> ChatCompletionsAsync(AesirChatRequest request)
+    private readonly IChatCompletionService _chatCompletionService;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ChatService"/> class.
+    /// </summary>
+    /// <param name="logger">Logger for diagnostic information.</param>
+    /// <param name="vectorStoreTextSearch">Vector store for semantic search.</param>
+    /// <param name="kernel">Semantic Kernel instance for AI operations.</param>
+    /// <param name="chatCompletionService">Service for chat completions.</param>
+    /// <param name="chatHistoryService">Service for persisting and retrieving chat history.</param>
+    public ChatService(
+        ILogger<ChatService> logger,
+        VectorStoreTextSearch<AesirTextData<Guid>> vectorStoreTextSearch,
+        Kernel kernel,
+        IChatCompletionService chatCompletionService,
+        IChatHistoryService chatHistoryService)
+        : base(logger, chatHistoryService, kernel)
     {
-        request = request ?? throw new ArgumentNullException(nameof(request));
-        request.SetClientDateTimeInSystemMessage();
-
-        var chatHistory = CreateChatHistory(request.Conversation.Messages);
-        
-        var settings = new OpenAIPromptExecutionSettings
-        {
-            ModelId = request.Model,
-            Temperature = request.Temperature ?? 0.7f,
-            TopP = request.TopP,
-            MaxTokens = request.MaxTokens
-        };
-
-        var response = new AesirChatResult()
-        {
-            AesirConversation = request.Conversation,
-            CompletionTokens = 0,
-            PromptTokens = 0,
-            TotalTokens = 0
-        };
-        
-        var messageToSave = AesirChatMessage.NewAssistantMessage("");
-        
-        try
-        {
-            var completionResults = await chatCompletionService.GetChatMessageContentsAsync(
-                chatHistory,
-                settings,
-                kernel);
-            
-            if (completionResults.Count > 0)
-            {
-                messageToSave.Content = completionResults[0].Content ?? string.Empty;
-                
-                response.AesirConversation.Messages.Add(messageToSave);
-                
-                if (completionResults[0].Metadata != null && 
-                    completionResults[0].Metadata!.TryGetValue("Usage", out var usageObj) && 
-                    usageObj is ChatTokenUsage usage)
-                {
-                    response.CompletionTokens = usage.OutputTokenCount;
-                    response.PromptTokens = usage.InputTokenCount;
-                    response.TotalTokens = usage.TotalTokenCount;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error getting chat completion from Semantic Kernel IChatCompletionService");
-            messageToSave.Content = "I apologize, but I encountered an error processing your request.";
-            response.AesirConversation.Messages.Add(messageToSave);
-        }
-
-        var title = request.Title;
-        if (request.Conversation.Messages.Count == 2)
-        {
-            title = await GetTitleForUserMessageAsync(request);
-        }
-        
-        await chatHistoryService.UpsertChatSessionAsync(new AesirChatSession()
-        {
-            Id = request.ChatSessionId ?? throw new InvalidOperationException("ChatSessionId is null"),
-            Title = title,
-            Conversation = response.AesirConversation,
-            UpdatedAt = request.ChatSessionUpdatedAt.ToUniversalTime(),
-            UserId = request.User 
-        });
-        
-        return response;
+        _chatCompletionService = chatCompletionService;
     }
-    
-    private async Task<string> GetTitleForUserMessageAsync(AesirChatRequest request)
+
+    /// <summary>
+    /// Generates a title for a chat session based on the user's first message.
+    /// </summary>
+    /// <param name="request">The chat request containing the user's message.</param>
+    /// <returns>A concise title summarizing the user's message.</returns>
+    protected override async Task<string> GetTitleForUserMessageAsync(AesirChatRequest request)
     {
         var titleSystemPrompt = "You are an AI designed to summarize user messages for display as concise list items. Your task is to take a user's chat message and shorten it into a brief, clear summary that retains the original meaning. Focus on capturing the key idea or intent, omitting unnecessary details, filler words, or repetition. The output should be succinct, natural, and suitable for a list format, ideally no longer than 5-10 words. If the message is already short, adjust it minimally to fit a list-item style.\nInput: A user's chat message\n\nOutput: A shortened version of the message as a list item\nExample:\nInput: \"I'm really excited about the new project launch happening next week, it's going to be amazing!\"\nOutput: \"Excited for next week's amazing project launch!\"";
         
@@ -106,10 +62,10 @@ public class ChatService(
 
         try
         {
-            var completionResults = await chatCompletionService.GetChatMessageContentsAsync(
+            var completionResults = await _chatCompletionService.GetChatMessageContentsAsync(
                 chatHistory,
                 settings,
-                kernel);
+                _kernel);
             
             if (completionResults.Count > 0)
             {
@@ -119,18 +75,20 @@ public class ChatService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error generating title using Semantic Kernel IChatCompletionService");
+            _logger.LogError(ex, "Error generating title using Semantic Kernel IChatCompletionService");
         }
         
         return request.Conversation.Messages.Last().Content.Substring(0, 
             Math.Min(50, request.Conversation.Messages.Last().Content.Length)) + "...";
     }
 
-    public async IAsyncEnumerable<AesirChatStreamedResult> ChatCompletionsStreamedAsync(AesirChatRequest request)
+    /// <summary>
+    /// Executes a chat completion request and returns the content and token usage.
+    /// </summary>
+    /// <param name="request">The chat request to process.</param>
+    /// <returns>A tuple containing the response content, prompt tokens, and completion tokens.</returns>
+    protected override async Task<(string content, int promptTokens, int completionTokens)> ExecuteChatCompletionAsync(AesirChatRequest request)
     {
-        request = request ?? throw new ArgumentNullException(nameof(request));
-        request.SetClientDateTimeInSystemMessage();
-
         var chatHistory = CreateChatHistory(request.Conversation.Messages);
         
         var settings = new OpenAIPromptExecutionSettings
@@ -141,77 +99,68 @@ public class ChatService(
             MaxTokens = request.MaxTokens
         };
 
-        var completionId = Guid.NewGuid().ToString();
-        var messageToSave = AesirChatMessage.NewAssistantMessage("");
+        var completionResults = await _chatCompletionService.GetChatMessageContentsAsync(
+            chatHistory,
+            settings,
+            _kernel);
         
-        var title = request.Title;
-        if (request.Conversation.Messages.Count == 2)
+        if (completionResults.Count > 0)
         {
-            title = await GetTitleForUserMessageAsync(request);
-        }
-        
-        IAsyncEnumerable<StreamingChatMessageContent> streamingResults;
-        try
-        {
-            streamingResults = chatCompletionService.GetStreamingChatMessageContentsAsync(
-                chatHistory,
-                settings,
-                kernel);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error streaming chat completion from Semantic Kernel");
+            var content = completionResults[0].Content ?? string.Empty;
+            int promptTokens = 0;
+            int completionTokens = 0;
             
-            var errorMessage = AesirChatMessage.NewAssistantMessage("I apologize, but I encountered an error processing your request.");
-            
-            request.Conversation.Messages.Add(errorMessage);
-            await chatHistoryService.UpsertChatSessionAsync(new AesirChatSession()
+            if (completionResults[0].Metadata != null && 
+                completionResults[0].Metadata!.TryGetValue("Usage", out var usageObj) && 
+                usageObj is ChatTokenUsage usage)
             {
-                Id = request.ChatSessionId ?? throw new InvalidOperationException("ChatSessionId is null"),
-                Title = title,
-                Conversation = request.Conversation,
-                UpdatedAt = request.ChatSessionUpdatedAt.ToUniversalTime(),
-                UserId = request.User 
-            });
-
-            throw;
+                completionTokens = usage.OutputTokenCount;
+                promptTokens = usage.InputTokenCount;
+            }
+            
+            return (content, promptTokens, completionTokens);
         }
+        
+        return (string.Empty, 0, 0);
+    }
+
+    /// <summary>
+    /// Executes a streaming chat completion request and returns content chunks with completion status.
+    /// </summary>
+    /// <param name="request">The chat request to process.</param>
+    /// <returns>An async enumerable of tuples containing content chunks and completion status.</returns>
+    protected override async IAsyncEnumerable<(string content, bool isComplete)> ExecuteStreamingChatCompletionAsync(AesirChatRequest request)
+    {
+        var chatHistory = CreateChatHistory(request.Conversation.Messages);
+        
+        var settings = new OpenAIPromptExecutionSettings
+        {
+            ModelId = request.Model,
+            Temperature = request.Temperature ?? 0.7f,
+            TopP = request.TopP,
+            MaxTokens = request.MaxTokens
+        };
+
+        var streamingResults = _chatCompletionService.GetStreamingChatMessageContentsAsync(
+            chatHistory,
+            settings,
+            _kernel);
         
         await foreach (var streamResult in streamingResults)
         {
-            logger.LogDebug("Received streaming content from Semantic Kernel: {Content}", streamResult.Content);
+            _logger.LogDebug("Received streaming content from Semantic Kernel: {Content}", streamResult.Content);
             
-            if (!string.IsNullOrEmpty(streamResult.Content))
-            {
-                messageToSave.Content += streamResult.Content;
-                
-                var messageToSend = AesirChatMessage.NewAssistantMessage(streamResult.Content);
-                
-                yield return new AesirChatStreamedResult()
-                {
-                    Id = completionId,
-                    ChatSessionId = request.ChatSessionId,
-                    ConversationId = request.Conversation.Id,
-                    Delta = messageToSend,
-                    Title = title
-                };
-            }
+            bool isComplete = streamResult is OpenAIStreamingChatMessageContent { FinishReason: ChatFinishReason.Stop };
             
-            if (streamResult is OpenAIStreamingChatMessageContent { FinishReason: ChatFinishReason.Stop }) 
-            {
-                request.Conversation.Messages.Add(messageToSave);
-                await chatHistoryService.UpsertChatSessionAsync(new AesirChatSession()
-                {
-                    Id = request.ChatSessionId ?? throw new InvalidOperationException("ChatSessionId is null"),
-                    Title = title,
-                    Conversation = request.Conversation,
-                    UpdatedAt = request.ChatSessionUpdatedAt.ToUniversalTime(),
-                    UserId = request.User 
-                });
-            }
+            yield return (streamResult.Content ?? string.Empty, isComplete);
         }
     }
     
+    /// <summary>
+    /// Creates a chat history from Aesir chat messages.
+    /// </summary>
+    /// <param name="messages">The messages to convert.</param>
+    /// <returns>A chat history for use with the Semantic Kernel.</returns>
     private static ChatHistory CreateChatHistory(IEnumerable<AesirChatMessage> messages)
     {
         var chatHistory = new ChatHistory();
