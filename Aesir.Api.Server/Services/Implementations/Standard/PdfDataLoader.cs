@@ -1,28 +1,29 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using Aesir.Api.Server.Models;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Embeddings;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
+using TextContent = Microsoft.SemanticKernel.TextContent;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 [Experimental("SKEXP0001")]
 public class PdfDataLoader<TKey> (
     UniqueKeyGenerator<TKey> uniqueKeyGenerator,
-    IVectorStoreRecordCollection<TKey, AesirTextData<TKey>> vectorStoreRecordCollection,
-    ITextEmbeddingGenerationService textEmbeddingGenerationService,
+    VectorStoreCollection<TKey, AesirTextData<TKey>> vectorStoreRecordCollection,
     IChatCompletionService chatCompletionService,
+    IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     ILogger<PdfDataLoader<TKey>> logger) : IPdfDataLoader where TKey : notnull
 {
     /// <inheritdoc/>
     public async Task LoadPdf(string pdfPath, int batchSize, int betweenBatchDelayInMs, CancellationToken cancellationToken)
     {
         // Create the collection if it doesn't exist.
-        await vectorStoreRecordCollection.CreateCollectionIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
+        await vectorStoreRecordCollection.EnsureCollectionExistsAsync(cancellationToken).ConfigureAwait(false);
 
         // Load the text and images from the PDF file and split them into batches.
         var sections = LoadTextAndImages(pdfPath, cancellationToken);
@@ -53,21 +54,60 @@ public class PdfDataLoader<TKey> (
                 Text = content.Text,
                 ReferenceDescription = $"{new FileInfo(pdfPath).Name}#page={content.PageNumber}",
                 ReferenceLink = $"{new Uri(new FileInfo(pdfPath).FullName).AbsoluteUri}#page={content.PageNumber}",
-                TextEmbedding = await GenerateEmbeddingsWithRetryAsync(content.Text!, cancellationToken: cancellationToken).ConfigureAwait(false)
+                TextEmbedding = await GenerateEmbeddingsWithRetryAsync(content.Text!, cancellationToken)
             });
 
-            // Upsert the records into the vector store.
             var records = await Task.WhenAll(recordTasks).ConfigureAwait(false);
-            var upsertedKeys = vectorStoreRecordCollection.UpsertBatchAsync(records, cancellationToken: cancellationToken);
-            await foreach (var key in upsertedKeys.ConfigureAwait(false))
-            {
-                logger.LogInformation($"Upserted record '{key}' into VectorDB");
-            }
-
+            
+            // Upsert the records into the vector store.
+            await vectorStoreRecordCollection
+                .UpsertAsync(records, cancellationToken: cancellationToken).ConfigureAwait(false);
+            
             await Task.Delay(betweenBatchDelayInMs, cancellationToken).ConfigureAwait(false);
         }
     }
 
+    /// <summary>
+    /// Add a simple retry mechanism to embedding generation.
+    /// </summary>
+    /// <param name="text">The text to generate the embedding for.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
+    /// <returns>The generated embedding.</returns>
+    private async Task<Embedding<float>> GenerateEmbeddingsWithRetryAsync(string text, CancellationToken cancellationToken)
+    {
+        var tries = 0;
+
+        while (true)
+        {
+            try
+            {
+                var options = new EmbeddingGenerationOptions()
+                {
+                    Dimensions = 768
+                };
+                var vector = (await embeddingGenerator
+                    .GenerateAsync(text, options, cancellationToken: cancellationToken).ConfigureAwait(false)).Vector;
+                
+                return new Embedding<float>(vector);
+            }
+            catch (HttpOperationException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                tries++;
+
+                if (tries < 3)
+                {
+                    logger.LogInformation($"Failed to generate embedding. Error: {ex}");
+                    logger.LogInformation("Retrying embedding generation...");
+                    await Task.Delay(10_000, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+    }
+    
     /// <summary>
     /// Read the text and images from each page in the provided PDF file.
     /// </summary>
@@ -110,41 +150,7 @@ public class PdfDataLoader<TKey> (
             }
         }
     }
-
-    /// <summary>
-    /// Add a simple retry mechanism to embedding generation.
-    /// </summary>
-    /// <param name="text">The text to generate the embedding for.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
-    /// <returns>The generated embedding.</returns>
-    private async Task<ReadOnlyMemory<float>> GenerateEmbeddingsWithRetryAsync(string text, CancellationToken cancellationToken)
-    {
-        var tries = 0;
-
-        while (true)
-        {
-            try
-            {
-                return await textEmbeddingGenerationService.GenerateEmbeddingAsync(text, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-            catch (HttpOperationException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                tries++;
-
-                if (tries < 3)
-                {
-                    logger.LogInformation($"Failed to generate embedding. Error: {ex}");
-                    logger.LogInformation("Retrying embedding generation...");
-                    await Task.Delay(10_000, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    throw;
-                }
-            }
-        }
-    }
-
+    
     /// <summary>
     /// Add a simple retry mechanism to image to text.
     /// </summary>
@@ -175,7 +181,7 @@ public class PdfDataLoader<TKey> (
 
                 if (tries < 3)
                 {
-                    logger.LogInformation($"Failed to generate text from image. Error: {ex}");
+                    logger.LogInformation("Failed to generate text from image. Error: {HttpOperationException}", ex);
                     logger.LogInformation("Retrying text to image conversion...");
                     await Task.Delay(10_000, cancellationToken).ConfigureAwait(false);
                 }

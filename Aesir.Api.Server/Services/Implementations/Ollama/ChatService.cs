@@ -27,24 +27,6 @@ public class ChatService(
 
         request.SetClientDateTimeInSystemMessage();
         
-        try
-        {
-            var results = api.PullModelAsync(
-                request.Model, cancellationToken: CancellationToken.None);
-            
-            await foreach (var pullResponse in results)
-            {
-                if(pullResponse!.Status != "success")
-                    continue;
-                
-                logger.LogDebug("Pulling model status: {Status}",  pullResponse.Status);    
-            }
-        }
-        catch (HttpRequestException e)
-        {
-            logger.LogWarning("Failed to pull model {Model}: {Message}", request.Model, e.Message);
-        }
-        
         var requestOptions = new RequestOptions()
         {
             NumPredict = request.MaxTokens
@@ -137,6 +119,8 @@ public class ChatService(
             Messages = messages
         };
         
+        ollamaRequest.CustomHeaders.Add("enable_thinking", "false");
+        
         var message = AesirChatMessage.NewAssistantMessage("");
         await foreach (var completion in api.ChatAsync(ollamaRequest))
         {
@@ -151,24 +135,6 @@ public class ChatService(
         request = request ?? throw new ArgumentNullException(nameof(request));
 
         request.SetClientDateTimeInSystemMessage();
-        
-        try
-        {
-            var pullResults = api.PullModelAsync(
-                request.Model, cancellationToken: CancellationToken.None);
-            
-            await foreach (var pullResponse in pullResults)
-            {
-                if(pullResponse!.Status != "success")
-                    continue;
-                
-                logger.LogDebug("Pulling model status: {Status}",  pullResponse.Status);    
-            }
-        }
-        catch (HttpRequestException e)
-        {
-            logger.LogWarning("Failed to pull model {Model}: {Message}", request.Model, e.Message);
-        }
         
         var settings = new OllamaPromptExecutionSettings
         {
@@ -205,18 +171,13 @@ public class ChatService(
             title = await GetTitleForUserMessageAsync(request);
         }
         
-        // var results = chatCompletionService.GetStreamingChatMessageContentsAsync(
-        //     chatHistory,
-        //     settings,
-        //     kernel
-        // );
-        var results = await chatCompletionService.GetChatMessageContentsAsync(
+        var results = chatCompletionService.GetStreamingChatMessageContentsAsync(
             chatHistory,
             settings,
             kernel
         );
         
-        foreach (var completion in results)
+        await foreach (var completion in results)
         {
             logger.LogDebug("Received Chat Completion Response from Ollama backend: {Json}", JsonConvert.SerializeObject(completion));
             
@@ -253,24 +214,6 @@ public class ChatService(
         request = request ?? throw new ArgumentNullException(nameof(request));
 
         request.SetClientDateTimeInSystemMessage();
-        
-        try
-        {
-            var results = api.PullModelAsync(
-                request.Model, cancellationToken: CancellationToken.None);
-            
-            await foreach (var pullResponse in results)
-            {
-                if(pullResponse!.Status != "success")
-                    continue;
-                
-                logger.LogDebug("Pulling model status: {Status}",  pullResponse.Status);    
-            }
-        }
-        catch (HttpRequestException e)
-        {
-            logger.LogWarning("Failed to pull model {Model}: {Message}", request.Model, e.Message);
-        }
         
         var requestOptions = new RequestOptions()
         {
