@@ -95,7 +95,6 @@ public class ChatHistoryService : IChatHistoryService
         if (string.IsNullOrWhiteSpace(searchTerm))
             return Array.Empty<AesirChatSession>();
         
-        // Normalize search term for PostgreSQL full-text search
         var normalizedSearchTerm = searchTerm.Trim().Replace("'", "''");
 
         var sql = @"
@@ -110,7 +109,6 @@ public class ChatHistoryService : IChatHistoryService
         )
         ORDER BY updated_at DESC";
 
-        // Convert the search term to a tsquery format (words connected by & operators)
         var searchQuery = string.Join(" & ", normalizedSearchTerm.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
         return await _dbContext.UnitOfWorkAsync(async connection => 

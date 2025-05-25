@@ -19,18 +19,14 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Add services to the container.
         
-        // Choose which backend to use based on configuration
         var useOpenAi = builder.Configuration.GetValue<bool>("Inference:UseOpenAICompatible");
         
         if (useOpenAi)
         {
-            // Register OpenAI services
             builder.Services.AddSingleton<IModelsService, AesirOpenAI.ModelsService>();
             builder.Services.AddSingleton<IChatService, AesirOpenAI.ChatService>();
             
-            // Configure OpenAI client
             var apiKey = builder.Configuration["Inference:OpenAI:ApiKey"] ?? 
                 throw new InvalidOperationException("OpenAI API key not configured");
             
@@ -49,11 +45,9 @@ public class Program
         }
         else
         {
-            // Register Ollama services
             builder.Services.AddSingleton<IModelsService, AesirOllama.ModelsService>();
             builder.Services.AddSingleton<IChatService, AesirOllama.ChatService>();
             
-            // Create a named client for the Ollama API
             const string ollamaClientName = "OllamaApiClient";
             builder.Services.AddHttpClient(ollamaClientName, client =>
             {
@@ -94,7 +88,6 @@ public class Program
             });
         
         builder.Services.AddControllers();
-        // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
@@ -104,7 +97,6 @@ public class Program
 
         app.MapHealthChecks("/healthz");
         
-        // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();

@@ -16,11 +16,7 @@ public static class ServiceCollectionExtensions
     [Experimental("SKEXP0070")]
     public static IServiceCollection SetupSemanticKernel(this IServiceCollection services, IConfiguration configuration)
     {
-        //"mistral-small3.1:latest"
-        //"qwen2.5:14b-instruct-q6_K"
-        //qwen3:30b
         
-        // Choose the appropriate embedding model based on configuration
         var useOpenAi = configuration.GetValue<bool>("Inference:UseOpenAICompatible");
         var embeddingModelId = useOpenAi
             ? configuration.GetSection("Inference:OpenAI:EmbeddingModel").Value
@@ -33,12 +29,10 @@ public static class ServiceCollectionExtensions
         
         services.AddSingleton(dataSourceBuilder.Build());
         
-        // Configure kernel based on backend
         var kernelBuilder = services.AddKernel();
         
         if (useOpenAi)
         {
-            // Configure OpenAI for embeddings and chat
             kernelBuilder
                 .AddOpenAIChatCompletion(
                     modelId: configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>()
@@ -49,7 +43,6 @@ public static class ServiceCollectionExtensions
         }
         else
         {
-            // Configure Ollama for embeddings and chat
             var ollamaClient = services.BuildServiceProvider().GetRequiredService<OllamaApiClient>();
             ollamaClient.SelectedModel = embeddingModelId!;
 
@@ -80,7 +73,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPdfDataLoader, PdfDataLoader<Guid>>();
         
         
-        // Add vector search
         kernelBuilder.AddVectorStoreTextSearch<AesirTextData<Guid>>();
 
         var vectorStoreTextSearch = services.BuildServiceProvider().GetRequiredService<VectorStoreTextSearch<AesirTextData<Guid>>>();
