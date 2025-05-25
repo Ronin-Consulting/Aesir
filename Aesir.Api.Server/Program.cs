@@ -19,21 +19,21 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        
+
         var useOpenAi = builder.Configuration.GetValue<bool>("Inference:UseOpenAICompatible");
-        
+
         if (useOpenAi)
         {
             builder.Services.AddSingleton<IModelsService, AesirOpenAI.ModelsService>();
             builder.Services.AddSingleton<IChatService, AesirOpenAI.ChatService>();
-            
-            var apiKey = builder.Configuration["Inference:OpenAI:ApiKey"] ?? 
+
+            var apiKey = builder.Configuration["Inference:OpenAI:ApiKey"] ??
                 throw new InvalidOperationException("OpenAI API key not configured");
-            
+
             var apiCreds = new ApiKeyCredential(apiKey);
             var endPoint = builder.Configuration["Inference:OpenAI:Endpoint"];
-            
-            if(string.IsNullOrEmpty(endPoint))
+
+            if (string.IsNullOrEmpty(endPoint))
                 builder.Services.AddSingleton(new OpenAIClient(apiCreds));
             else
             {
@@ -47,31 +47,31 @@ public class Program
         {
             builder.Services.AddSingleton<IModelsService, AesirOllama.ModelsService>();
             builder.Services.AddSingleton<IChatService, AesirOllama.ChatService>();
-            
+
             const string ollamaClientName = "OllamaApiClient";
             builder.Services.AddHttpClient(ollamaClientName, client =>
             {
-                var endpoint = builder.Configuration["Inference:Ollama:Endpoint"] ?? 
+                var endpoint = builder.Configuration["Inference:Ollama:Endpoint"] ??
                               throw new InvalidOperationException();
                 client.BaseAddress = new Uri($"{endpoint}/api");
             });
             builder.Services.AddTransient<OllamaApiClient>(p =>
             {
                 var httpClientFactory = p.GetRequiredService<IHttpClientFactory>();
-                
+
                 var httpClient = httpClientFactory.CreateClient(ollamaClientName);
-                
+
                 return new OllamaApiClient(httpClient);
             });
         }
-        
+
         builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
-        builder.Services.AddSingleton<IDbContext,PgDbContext>(p => 
+        builder.Services.AddSingleton<IDbContext, PgDbContext>(p =>
             new PgDbContext(builder.Configuration.GetConnectionString("DefaultConnection")!)
         );
 
         builder.Services.SetupSemanticKernel(builder.Configuration);
-        
+
         builder.Services
             .AddFluentMigratorCore()
             .ConfigureRunner(rb => rb
@@ -86,17 +86,17 @@ public class Program
                 lb.AddFluentMigratorConsole();
                 lb.AddConsole().SetMinimumLevel(LogLevel.Trace);
             });
-        
+
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
         builder.Services.AddHealthChecks();
-        
+
         var app = builder.Build();
 
         app.MapHealthChecks("/healthz");
-        
+
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
@@ -116,7 +116,7 @@ public class Program
         {
             app.InitializeOllamaBackend();
         }
-        
+
         app.Run();
     }
 }

@@ -12,7 +12,7 @@ using TextContent = Microsoft.SemanticKernel.TextContent;
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 [Experimental("SKEXP0001")]
-public class PdfDataLoader<TKey> (
+public class PdfDataLoader<TKey>(
     UniqueKeyGenerator<TKey> uniqueKeyGenerator,
     VectorStoreCollection<TKey, AesirTextData<TKey>> vectorStoreRecordCollection,
     IChatCompletionService chatCompletionService,
@@ -58,11 +58,11 @@ public class PdfDataLoader<TKey> (
             });
 
             var records = await Task.WhenAll(recordTasks).ConfigureAwait(false);
-            
+
             // Upsert the records into the vector store.
             await vectorStoreRecordCollection
                 .UpsertAsync(records, cancellationToken: cancellationToken).ConfigureAwait(false);
-            
+
             await Task.Delay(betweenBatchDelayInMs, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -87,7 +87,7 @@ public class PdfDataLoader<TKey> (
                 };
                 var vector = (await embeddingGenerator
                     .GenerateAsync(text, options, cancellationToken: cancellationToken).ConfigureAwait(false)).Vector;
-                
+
                 return new Embedding<float>(vector);
             }
             catch (HttpOperationException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
@@ -107,7 +107,7 @@ public class PdfDataLoader<TKey> (
             }
         }
     }
-    
+
     /// <summary>
     /// Read the text and images from each page in the provided PDF file.
     /// </summary>
@@ -137,7 +137,7 @@ public class PdfDataLoader<TKey> (
             }
 
             var pageSegmenter = DefaultPageSegmenter.Instance;
-            
+
             var blocks = pageSegmenter.GetBlocks(page.GetWords());
             foreach (var block in blocks)
             {
@@ -150,7 +150,7 @@ public class PdfDataLoader<TKey> (
             }
         }
     }
-    
+
     /// <summary>
     /// Add a simple retry mechanism to image to text.
     /// </summary>

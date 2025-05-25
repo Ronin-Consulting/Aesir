@@ -9,12 +9,12 @@ public class Migration20250315000001 : Migration
     {
         // Ensure the pg_trgm extension is enabled (for similarity searches)
         Execute.Sql("CREATE EXTENSION IF NOT EXISTS pg_trgm;");
-        
+
         // Create a GIN index on the title for full-text search
         Execute.Sql(@"CREATE INDEX idx_aesir_chat_session_title_search 
                      ON aesir.aesir_chat_session 
                      USING GIN (to_tsvector('english', title));");
-        
+
         // Optionally, for text search within the Messages array
         Execute.Sql(@"CREATE INDEX idx_aesir_chat_session_messages_text_search 
                      ON aesir.aesir_chat_session 

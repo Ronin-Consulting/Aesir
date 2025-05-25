@@ -16,23 +16,23 @@ public class ModelsService(
     public async Task<IEnumerable<AesirModelInfo>> GetModelsAsync()
     {
         // only ever one embedding model
-        var embeddingModelName = configuration.GetValue<string>("Inference:Ollama:EmbeddingModel") 
+        var embeddingModelName = configuration.GetValue<string>("Inference:Ollama:EmbeddingModel")
                              ?? throw new InvalidOperationException("No embedding model configured");
-        
-        var allowedModelNames = (configuration.GetSection("Inference:Ollama:ChatModels").Get<string[]>() 
+
+        var allowedModelNames = (configuration.GetSection("Inference:Ollama:ChatModels").Get<string[]>()
                       ?? throw new InvalidOperationException("No chat models configured")).ToList();
 
         // get ollama models loaded
         var ollamaModels = (await api.ListLocalModelsAsync()).ToList();
-        
-        if(ollamaModels.Count == 0)
+
+        if (ollamaModels.Count == 0)
             throw new InvalidOperationException("No models found");
-        
-        if(!ollamaModels.Any(m => m.Name.Equals(embeddingModelName, StringComparison.InvariantCultureIgnoreCase)))
+
+        if (!ollamaModels.Any(m => m.Name.Equals(embeddingModelName, StringComparison.InvariantCultureIgnoreCase)))
             throw new InvalidOperationException("Embedding model not found");
-        
+
         var models = new List<AesirModelInfo>();
-        
+
         // add embedding model
         var embeddingModel = ollamaModels.First(m => m.Name.Equals(embeddingModelName, StringComparison.InvariantCultureIgnoreCase));
         models.Add(new AesirModelInfo
@@ -43,13 +43,13 @@ public class ModelsService(
             IsChatModel = false,
             IsEmbeddingModel = true
         });
-        
-        var allowedModels = 
+
+        var allowedModels =
             ollamaModels.Where(m => allowedModelNames.Contains(m.Name)).ToList();
-        
-        if(allowedModels.Count == 0)
+
+        if (allowedModels.Count == 0)
             throw new InvalidOperationException("No chat models not founds");
-        
+
         models.AddRange(allowedModels.Select(m => new AesirModelInfo
         {
             Id = m.Name,
@@ -58,7 +58,7 @@ public class ModelsService(
             IsChatModel = true,
             IsEmbeddingModel = false
         }));
-        
+
         return models;
     }
 }

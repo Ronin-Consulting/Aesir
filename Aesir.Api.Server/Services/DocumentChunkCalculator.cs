@@ -7,21 +7,21 @@ namespace Aesir.Api.Server.Services;
 public partial class DocumentChunkCalculator(IDocumentLoader documentLoader, DataSource dataSource)
 {
     private const int BaseChunkSizeWords = 200; // Base size, adjustable per document
-    
+
     public async Task<int> CalculateChunkSizeAsync(CancellationToken cancellationToken = default)
     {
         var documents = await documentLoader.LoadAsync(dataSource, cancellationToken: cancellationToken);
 
         var stringBuilder = new StringBuilder();
-        
+
         foreach (var document in documents)
         {
             stringBuilder.Append($"{document.PageContent}\n");
         }
-        
+
         return CalculateChunkSize(stringBuilder.ToString());
     }
-    
+
     public async Task<int> CalculateChunkOverlapAsync(int chunkSize, CancellationToken cancellationToken = default)
     {
         // 1.	Small Chunks (50-150 tokens):
@@ -35,7 +35,7 @@ public partial class DocumentChunkCalculator(IDocumentLoader documentLoader, Dat
         //     •	Why: Larger chunks tend to contain substantial context on their own, so less overlap is usually needed to maintain continuity.
 
         await Task.CompletedTask;
-        
+
         if (chunkSize < 50)
         {
             return chunkSize / 5;  // 20% overlap for small chunks
@@ -57,7 +57,7 @@ public partial class DocumentChunkCalculator(IDocumentLoader documentLoader, Dat
             return chunkSize / 5;  // 20% overlap for extra-large chunks
         }
     }
-    
+
     private int CalculateChunkSize(string document)
     {
         // Heuristic 1: Adjust based on document length
@@ -80,14 +80,14 @@ public partial class DocumentChunkCalculator(IDocumentLoader documentLoader, Dat
 
         return BaseChunkSizeWords;  // Default chunk size
     }
-    
+
     private static int AverageSentenceLength(string document)
     {
         var sentences = SentenceRegex().Split(document);
         var totalWords = sentences.Sum(CountWords);
         return totalWords / Math.Max(sentences.Length, 1);
     }
-    
+
     private static int CountWords(string text)
     {
         return text.Split([' ', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length;

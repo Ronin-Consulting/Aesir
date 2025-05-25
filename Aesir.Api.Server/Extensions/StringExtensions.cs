@@ -8,9 +8,9 @@ public static class StringExtensions
         var startIndex = input.IndexOf(startAt, StringComparison.Ordinal);
 
         if (startIndex < 0) return input;
-        
+
         var endIndex = input.IndexOf(endAt, startIndex, StringComparison.Ordinal);
-        
+
         if (endIndex >= 0)
         {
             // Remove everything from start of <think> to end of </think> (including tags)

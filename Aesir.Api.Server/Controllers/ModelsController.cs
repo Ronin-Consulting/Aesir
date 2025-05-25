@@ -15,7 +15,7 @@ public class ModelsController : ControllerBase
     {
         _modelsService = modelsService;
     }
-    
+
     [HttpGet]
     public async Task<IEnumerable<AesirModelInfo>> GetAsync()
     {

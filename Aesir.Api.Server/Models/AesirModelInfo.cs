@@ -9,13 +9,13 @@ public class AesirModelInfo
 
     [JsonPropertyName("owned_by")]
     public string OwnedBy { get; set; } = null!;
-    
+
     [JsonPropertyName("created")]
     public DateTime CreatedAt { get; set; }
-    
+
     [JsonPropertyName("is_chat_model")]
     public bool IsChatModel { get; set; }
-    
+
     [JsonPropertyName("is_embedding_model")]
     public bool IsEmbeddingModel { get; set; }
 }
