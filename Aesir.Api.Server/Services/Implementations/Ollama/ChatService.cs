@@ -60,16 +60,16 @@ public class ChatService : BaseChatService
             NumPredict = 250,
             Temperature = 0.2f
         };
-        
-        if(request.Conversation.Messages.Count > 2)
+
+        if (request.Conversation.Messages.Count > 2)
             throw new InvalidOperationException("This operation should only be used when user first creates completion.");
-        
+
         var messages = new List<Message>
         {
             new Message(ChatRole.System, "You are an AI designed to summarize user messages for display as concise list items. Your task is to take a user's chat message and shorten it into a brief, clear summary that retains the original meaning. Focus on capturing the key idea or intent, omitting unnecessary details, filler words, or repetition. The output should be succinct, natural, and suitable for a list format, ideally no longer than 5-10 words. If the message is already short, adjust it minimally to fit a list-item style.\nInput: A user's chat message\n\nOutput: A shortened version of the message as a list item\nExample:\nInput: \"I'm really excited about the new project launch happening next week, it's going to be amazing!\"\nOutput: \"Excited for next week's amazing project launch!\""),
             new Message(ChatRole.User, request.Conversation.Messages.Last().Content)
         };
-        
+
         var ollamaRequest = new ChatRequest()
         {
             Model = request.Model,
@@ -77,15 +77,15 @@ public class ChatService : BaseChatService
             Options = requestOptions,
             Messages = messages
         };
-        
+
         ollamaRequest.CustomHeaders.Add("enable_thinking", "false");
-        
+
         var message = AesirChatMessage.NewAssistantMessage("");
         await foreach (var completion in _api.ChatAsync(ollamaRequest))
         {
             message.Content += completion!.Message.Content;
         }
-        
+
         return message.Content.Trim('"');
     }
 
@@ -100,17 +100,17 @@ public class ChatService : BaseChatService
         {
             NumPredict = request.MaxTokens
         };
-        if(request.Temperature.HasValue)
+        if (request.Temperature.HasValue)
             requestOptions.Temperature = (float?)request.Temperature;
         else if (request.TopP.HasValue)
             requestOptions.TopP = (float?)request.TopP;
-        
+
         var ollamaRequest = new ChatRequest()
         {
-             Model = request.Model,
-             Stream = false,
-             Options = requestOptions,
-             Messages = request.Conversation.Messages.Select(
+            Model = request.Model,
+            Stream = false,
+            Options = requestOptions,
+            Messages = request.Conversation.Messages.Select(
                  m =>
                  {
                      return m.Role switch
@@ -121,11 +121,11 @@ public class ChatService : BaseChatService
                      };
                  }).ToList()
         };
-        
+
         var content = string.Empty;
         int promptTokens = 0;
         int completionTokens = 0;
-        
+
         await foreach (var completion in _api.ChatAsync(ollamaRequest))
         {
             content += completion!.Message.Content;
@@ -133,11 +133,11 @@ public class ChatService : BaseChatService
             if (!completion.Done) continue;
 
             var doneCompletion = (ChatDoneResponseStream)completion;
-            
+
             completionTokens = doneCompletion.EvalCount;
             promptTokens = doneCompletion.PromptEvalCount;
         }
-        
+
         return (content, promptTokens, completionTokens);
     }
 
@@ -154,14 +154,14 @@ public class ChatService : BaseChatService
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
             Temperature = request.Temperature.HasValue ? (float?)request.Temperature.Value : null
         };
-        
-        if(request.Temperature.HasValue)
+
+        if (request.Temperature.HasValue)
             settings.Temperature = (float?)request.Temperature;
         else if (request.TopP.HasValue)
             settings.TopP = (float?)request.TopP;
-        
+
         var chatHistory = new ChatHistory();
-        
+
         chatHistory.AddRange(request.Conversation.Messages.Select(
         m =>
         {
@@ -172,19 +172,19 @@ public class ChatService : BaseChatService
                 _ => new ChatMessageContent(AuthorRole.User, m.Content)
             };
         }));
-        
+
         var results = _chatCompletionService.GetStreamingChatMessageContentsAsync(
             chatHistory,
             settings,
             _kernel
         );
-        
+
         await foreach (var completion in results)
         {
             _logger.LogDebug("Received Chat Completion Response from Ollama backend: {Json}", JsonConvert.SerializeObject(completion));
-            
+
             bool isComplete = completion.InnerContent is ChatDoneResponseStream { Done: true };
-            
+
             yield return (completion.Content ?? string.Empty, isComplete);
         }
     }

@@ -49,7 +49,7 @@ public class ChatService : BaseChatService
     protected override async Task<string> GetTitleForUserMessageAsync(AesirChatRequest request)
     {
         var titleSystemPrompt = "You are an AI designed to summarize user messages for display as concise list items. Your task is to take a user's chat message and shorten it into a brief, clear summary that retains the original meaning. Focus on capturing the key idea or intent, omitting unnecessary details, filler words, or repetition. The output should be succinct, natural, and suitable for a list format, ideally no longer than 5-10 words. If the message is already short, adjust it minimally to fit a list-item style.\nInput: A user's chat message\n\nOutput: A shortened version of the message as a list item\nExample:\nInput: \"I'm really excited about the new project launch happening next week, it's going to be amazing!\"\nOutput: \"Excited for next week's amazing project launch!\"";
-        
+
         var chatHistory = new ChatHistory();
         chatHistory.AddSystemMessage(titleSystemPrompt);
         chatHistory.AddUserMessage(request.Conversation.Messages.Last().Content);
@@ -66,7 +66,7 @@ public class ChatService : BaseChatService
                 chatHistory,
                 settings,
                 _kernel);
-            
+
             if (completionResults.Count > 0)
             {
                 var content = completionResults[0].Content;
@@ -77,8 +77,8 @@ public class ChatService : BaseChatService
         {
             _logger.LogError(ex, "Error generating title using Semantic Kernel IChatCompletionService");
         }
-        
-        return request.Conversation.Messages.Last().Content.Substring(0, 
+
+        return request.Conversation.Messages.Last().Content.Substring(0,
             Math.Min(50, request.Conversation.Messages.Last().Content.Length)) + "...";
     }
 
@@ -90,7 +90,7 @@ public class ChatService : BaseChatService
     protected override async Task<(string content, int promptTokens, int completionTokens)> ExecuteChatCompletionAsync(AesirChatRequest request)
     {
         var chatHistory = CreateChatHistory(request.Conversation.Messages);
-        
+
         var settings = new OpenAIPromptExecutionSettings
         {
             ModelId = request.Model,
@@ -103,24 +103,24 @@ public class ChatService : BaseChatService
             chatHistory,
             settings,
             _kernel);
-        
+
         if (completionResults.Count > 0)
         {
             var content = completionResults[0].Content ?? string.Empty;
             int promptTokens = 0;
             int completionTokens = 0;
-            
-            if (completionResults[0].Metadata != null && 
-                completionResults[0].Metadata!.TryGetValue("Usage", out var usageObj) && 
+
+            if (completionResults[0].Metadata != null &&
+                completionResults[0].Metadata!.TryGetValue("Usage", out var usageObj) &&
                 usageObj is ChatTokenUsage usage)
             {
                 completionTokens = usage.OutputTokenCount;
                 promptTokens = usage.InputTokenCount;
             }
-            
+
             return (content, promptTokens, completionTokens);
         }
-        
+
         return (string.Empty, 0, 0);
     }
 
@@ -132,7 +132,7 @@ public class ChatService : BaseChatService
     protected override async IAsyncEnumerable<(string content, bool isComplete)> ExecuteStreamingChatCompletionAsync(AesirChatRequest request)
     {
         var chatHistory = CreateChatHistory(request.Conversation.Messages);
-        
+
         var settings = new OpenAIPromptExecutionSettings
         {
             ModelId = request.Model,
@@ -145,17 +145,17 @@ public class ChatService : BaseChatService
             chatHistory,
             settings,
             _kernel);
-        
+
         await foreach (var streamResult in streamingResults)
         {
             _logger.LogDebug("Received streaming content from Semantic Kernel: {Content}", streamResult.Content);
-            
+
             bool isComplete = streamResult is OpenAIStreamingChatMessageContent { FinishReason: ChatFinishReason.Stop };
-            
+
             yield return (streamResult.Content ?? string.Empty, isComplete);
         }
     }
-    
+
     /// <summary>
     /// Creates a chat history from Aesir chat messages.
     /// </summary>
@@ -164,7 +164,7 @@ public class ChatService : BaseChatService
     private static ChatHistory CreateChatHistory(IEnumerable<AesirChatMessage> messages)
     {
         var chatHistory = new ChatHistory();
-        
+
         foreach (var message in messages)
         {
             switch (message.Role)
@@ -180,7 +180,7 @@ public class ChatService : BaseChatService
                     break;
             }
         }
-        
+
         return chatHistory;
     }
 }
