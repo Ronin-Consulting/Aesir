@@ -16,7 +16,7 @@ public class ChatService(
     ILogger<ChatService> logger,
     OllamaApiClient api,
     VectorStoreTextSearch<AesirTextData<Guid>> vectorStoreTextSearch,
-    Kernel  kernel,
+    Kernel kernel,
     IChatCompletionService chatCompletionService,
     IChatHistoryService chatHistoryService)
     : IChatService
@@ -107,7 +107,7 @@ public class ChatService(
         
         var messages = new List<Message>
         {
-            new Message(ChatRole.System, "You are an AI designed to summarize user messages for display as concise list items. Your task is to take a user’s chat message and shorten it into a brief, clear summary that retains the original meaning. Focus on capturing the key idea or intent, omitting unnecessary details, filler words, or repetition. The output should be succinct, natural, and suitable for a list format, ideally no longer than 5-10 words. If the message is already short, adjust it minimally to fit a list-item style.\nInput: A user’s chat message\n\nOutput: A shortened version of the message as a list item\nExample:\nInput: \"I’m really excited about the new project launch happening next week, it’s going to be amazing!\"\nOutput: \"Excited for next week’s amazing project launch!\""),
+            new Message(ChatRole.System, "You are an AI designed to summarize user messages for display as concise list items. Your task is to take a user's chat message and shorten it into a brief, clear summary that retains the original meaning. Focus on capturing the key idea or intent, omitting unnecessary details, filler words, or repetition. The output should be succinct, natural, and suitable for a list format, ideally no longer than 5-10 words. If the message is already short, adjust it minimally to fit a list-item style.\nInput: A user's chat message\n\nOutput: A shortened version of the message as a list item\nExample:\nInput: \"I'm really excited about the new project launch happening next week, it's going to be amazing!\"\nOutput: \"Excited for next week's amazing project launch!\""),
             new Message(ChatRole.User, request.Conversation.Messages.Last().Content)
         };
         

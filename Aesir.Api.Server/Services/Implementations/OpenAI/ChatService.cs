@@ -122,7 +122,6 @@ public class ChatService(
             logger.LogError(ex, "Error generating title using Semantic Kernel IChatCompletionService");
         }
         
-        // Fallback to the basic title
         return request.Conversation.Messages.Last().Content.Substring(0, 
             Math.Min(50, request.Conversation.Messages.Last().Content.Length)) + "...";
     }
@@ -165,7 +164,6 @@ public class ChatService(
             
             var errorMessage = AesirChatMessage.NewAssistantMessage("I apologize, but I encountered an error processing your request.");
             
-            // Save the conversation with the error message
             request.Conversation.Messages.Add(errorMessage);
             await chatHistoryService.UpsertChatSessionAsync(new AesirChatSession()
             {
@@ -183,7 +181,6 @@ public class ChatService(
         {
             logger.LogDebug("Received streaming content from Semantic Kernel: {Content}", streamResult.Content);
             
-            // The content might be null for the initial response or other metadata messages
             if (!string.IsNullOrEmpty(streamResult.Content))
             {
                 messageToSave.Content += streamResult.Content;
@@ -200,7 +197,6 @@ public class ChatService(
                 };
             }
             
-            // Check if this is the last chunk (using IsEnd property if available)
             if (streamResult is OpenAIStreamingChatMessageContent { FinishReason: ChatFinishReason.Stop }) 
             {
                 request.Conversation.Messages.Add(messageToSave);

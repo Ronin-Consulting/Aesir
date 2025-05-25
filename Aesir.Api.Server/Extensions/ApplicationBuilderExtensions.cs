@@ -26,7 +26,6 @@ public static class ApplicationBuilderExtensions
         }
         catch (Exception)
         {
-            // ignore
         }
 
         return app;

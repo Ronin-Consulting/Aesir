@@ -19,7 +19,7 @@ namespace Aesir.Api.Server.Controllers
         }
         
         [HttpPost]
-        public Task<AesirChatResult>  ChatCompletionsAsync([FromBody]AesirChatRequest request)
+        public Task<AesirChatResult> ChatCompletionsAsync([FromBody]AesirChatRequest request)
         {
             return _chatService.ChatCompletionsAsync(request);
         }
@@ -31,9 +31,9 @@ namespace Aesir.Api.Server.Controllers
         }
         
         [HttpGet("load/test/data")]
-        public async Task<IActionResult>  LoadTestDataAsync()
+        public async Task<IActionResult> LoadTestDataAsync()
         {
-            await _pdfDataLoader.LoadPdf("Assets/MissionPlan-OU812.pdf",2, 100, CancellationToken.None);
+            await _pdfDataLoader.LoadPdf("Assets/MissionPlan-OU812.pdf", 2, 100, CancellationToken.None);
             
             return Ok();
         }
