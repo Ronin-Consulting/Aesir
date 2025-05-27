@@ -42,12 +42,12 @@
         <html:HtmlLabel
             IsVisible="{Binding IsLoaded}"
             DockPanel.Dock="Right"
-                Name="HtmlLabel"
-                Text="{Binding Message}" 
-                AutoSizeHeightOnly="True"
-                BaseStylesheet="* { color: #F9F9F9; line-height: 1.6;} li { margin-bottom: 1em; line-height: 24px; }"
-                Margin="0 0 0 0"
-                Padding="0"
+            Name="HtmlLabel"
+            Text="{Binding Message}" 
+            AutoSizeHeightOnly="True"
+            BaseStylesheet="* { color: #F9F9F9; line-height: 1.6;} li { margin-bottom: 1em; line-height: 24px; }"
+            Margin="0 0 0 0"
+            Padding="0"
             />
     </DockPanel>
 </UserControl>

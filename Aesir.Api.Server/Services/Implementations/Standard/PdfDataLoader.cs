@@ -25,6 +25,14 @@ public class PdfDataLoader<TKey>(
         // Create the collection if it doesn't exist.
         await vectorStoreRecordCollection.EnsureCollectionExistsAsync(cancellationToken).ConfigureAwait(false);
 
+        // First delete any existing PDFs with same name
+        var toDelete = await vectorStoreRecordCollection.GetAsync(
+            filter: data => data.ReferenceDescription!.Contains(new FileInfo(pdfPath).Name),
+            10000, // this is dumb but if we get here that is fine we making $$$$$$
+            cancellationToken: cancellationToken).ToListAsync(cancellationToken: cancellationToken);
+
+        await vectorStoreRecordCollection.DeleteAsync(toDelete.Select(td => td.Key), cancellationToken);
+
         // Load the text and images from the PDF file and split them into batches.
         var sections = LoadTextAndImages(pdfPath, cancellationToken);
         var batches = sections.Chunk(batchSize);

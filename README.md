@@ -20,19 +20,18 @@
   - [ ] Edit user message
   - [ ] Play message
 - [ ] Implement RAG
-  - [ ] Upload
+  - [x] Upload
   - [ ] Download
   - [ ] CRUD
-- [ ] Citations
-  - [ ] RAG
+  - [X] Citations
   - [ ] Other?
 - [ ] Implement Microphone
   - [ ] Record
   - [ ] Stop
   - [ ] Play
-- [ ] Implement Chat History
-  - [ ] CRUD
-  - [ ] Search
+- [x] Implement Chat History
+  - [x] CRUD
+  - [x] Search
 - [ ] Implement User Settings
   - [ ] Change name
   - [ ] Change profile picture
@@ -41,7 +40,7 @@
   - [ ] Login
   - [ ] Register
   - [ ] Logout
-- [ ] Implement Model Switching
+- [ ] Implement Model Switching - WIP
 
 ## Supported AI Backends
 
@@ -53,3 +52,6 @@ To use OpenAI as the backend:
 1. Set `"Inference:UseOpenAICompatible": true` in appsettings.Development.json
 2. Add your API key to `"Inference:OpenAI:ApiKey"`
 3. Optionally configure organization ID and preferred models
+
+### Models Test
+1. qwen2.5:14b-instruct-q6_K

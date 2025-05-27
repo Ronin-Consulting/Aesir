@@ -48,7 +48,7 @@ public class ModelsService(
             ollamaModels.Where(m => allowedModelNames.Contains(m.Name)).ToList();
 
         if (allowedModels.Count == 0)
-            throw new InvalidOperationException("No chat models not founds");
+            throw new InvalidOperationException("No chat models founds");
 
         models.AddRange(allowedModels.Select(m => new AesirModelInfo
         {
