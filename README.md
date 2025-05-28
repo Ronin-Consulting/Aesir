@@ -53,5 +53,6 @@ To use OpenAI as the backend:
 2. Add your API key to `"Inference:OpenAI:ApiKey"`
 3. Optionally configure organization ID and preferred models
 
-### Models Test
+### Models Tested
 1. qwen2.5:14b-instruct-q6_K
+2. qwen2.5:32b
