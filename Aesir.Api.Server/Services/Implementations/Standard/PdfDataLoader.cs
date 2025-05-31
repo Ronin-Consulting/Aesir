@@ -20,18 +20,23 @@ public class PdfDataLoader<TKey>(
     ILogger<PdfDataLoader<TKey>> logger) : IPdfDataLoader where TKey : notnull
 {
     /// <inheritdoc/>
-    public async Task LoadPdf(string pdfPath, int batchSize, int betweenBatchDelayInMs, CancellationToken cancellationToken)
+    public async Task LoadPdfAsync(string pdfPath, int batchSize, int betweenBatchDelayInMs, CancellationToken cancellationToken)
     {
         // Create the collection if it doesn't exist.
         await vectorStoreRecordCollection.EnsureCollectionExistsAsync(cancellationToken).ConfigureAwait(false);
 
         // First delete any existing PDFs with same name
         var toDelete = await vectorStoreRecordCollection.GetAsync(
-            filter: data => data.ReferenceDescription!.Contains(new FileInfo(pdfPath).Name),
+            filter: data => true,
             10000, // this is dumb but if we get here that is fine we making $$$$$$
-            cancellationToken: cancellationToken).ToListAsync(cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken)
+            .ToListAsync(cancellationToken: cancellationToken);
 
-        await vectorStoreRecordCollection.DeleteAsync(toDelete.Select(td => td.Key), cancellationToken);
+        toDelete = toDelete.Where(data => data.ReferenceDescription!.Contains(Path.GetFileName(pdfPath))).ToList();
+        
+        if(toDelete.Count > 0)
+            await vectorStoreRecordCollection.DeleteAsync(
+                toDelete.Select(td => td.Key), cancellationToken);
 
         // Load the text and images from the PDF file and split them into batches.
         var sections = LoadTextAndImages(pdfPath, cancellationToken);

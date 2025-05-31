@@ -13,5 +13,5 @@ public interface IPdfDataLoader
     /// <param name="betweenBatchDelayInMs">The number of milliseconds to delay between batches to avoid throttling.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
     /// <returns>An async task that completes when the loading is complete.</returns>
-    Task LoadPdf(string pdfPath, int batchSize, int betweenBatchDelayInMs, CancellationToken cancellationToken);
+    Task LoadPdfAsync(string pdfPath, int batchSize, int betweenBatchDelayInMs, CancellationToken cancellationToken);
 }

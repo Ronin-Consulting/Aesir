@@ -152,7 +152,11 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
     private async Task SendMessageAsync()
     {
         if (string.IsNullOrWhiteSpace(ChatMessage))
+        {
             await Task.CompletedTask;
+            
+            return;
+        }
         
         ConversationStarted = true;
         

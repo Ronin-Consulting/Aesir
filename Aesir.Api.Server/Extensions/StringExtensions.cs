@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.StaticFiles;
+
 namespace Aesir.Api.Server.Extensions;
 
 public static class StringExtensions
@@ -23,5 +25,17 @@ public static class StringExtensions
         }
 
         return input;
+    }
+
+    public static string GetContentType(this string filePath)
+    {
+        var provider = new FileExtensionContentTypeProvider();
+        if (!provider.TryGetContentType(filePath, out var contentType))
+        {
+            // If the content type cannot be determined, you can default to a generic one
+            contentType = "application/octet-stream";
+        }
+        
+        return contentType;
     }
 }

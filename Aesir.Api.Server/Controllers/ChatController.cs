@@ -10,12 +10,10 @@ namespace Aesir.Api.Server.Controllers
     public class ChatController : ControllerBase
     {
         private readonly IChatService _chatService;
-        private readonly IPdfDataLoader _pdfDataLoader;
-
-        public ChatController(IChatService chatService, IPdfDataLoader pdfDataLoader)
+        
+        public ChatController(IChatService chatService)
         {
             _chatService = chatService;
-            _pdfDataLoader = pdfDataLoader;
         }
 
         [HttpPost]
@@ -28,14 +26,6 @@ namespace Aesir.Api.Server.Controllers
         public IAsyncEnumerable<AesirChatStreamedResult> ChatCompletionsStreamedAsync([FromBody] AesirChatRequest request)
         {
             return _chatService.ChatCompletionsStreamedAsync(request);
-        }
-
-        [HttpGet("load/test/data")]
-        public async Task<IActionResult> LoadTestDataAsync()
-        {
-            await _pdfDataLoader.LoadPdf("Assets/MissionPlan-OU812.pdf", 2, 100, CancellationToken.None);
-
-            return Ok();
         }
     }
 }

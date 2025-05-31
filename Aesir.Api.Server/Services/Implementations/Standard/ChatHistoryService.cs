@@ -23,7 +23,7 @@ public class ChatHistoryService : IChatHistoryService
 
     public async Task UpsertChatSessionAsync(AesirChatSession chatSession)
     {
-        var sql = @"
+        const string sql = @"
             INSERT INTO aesir.aesir_chat_session (id, user_id, updated_at, conversation, title)
             VALUES (@Id, @UserId, @UpdatedAt, @Conversation::jsonb, @Title)
             ON CONFLICT (id) DO UPDATE SET
@@ -41,8 +41,8 @@ public class ChatHistoryService : IChatHistoryService
 
     public async Task<AesirChatSession?> GetChatSessionAsync(Guid id)
     {
-        var sql = @"
-            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb AS Conversation, title as Title
+        const string sql = @"
+            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title
             FROM aesir.aesir_chat_session
             WHERE id = @Id::uuid
         ";
@@ -53,8 +53,8 @@ public class ChatHistoryService : IChatHistoryService
 
     public async Task<IEnumerable<AesirChatSession>> GetChatSessionsAsync(string userId)
     {
-        var sql = @"
-            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb AS Conversation, title as Title
+        const string sql = @"
+            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title
             FROM aesir.aesir_chat_session
             WHERE user_id = @UserId
             ORDER BY updated_at DESC
@@ -66,8 +66,8 @@ public class ChatHistoryService : IChatHistoryService
 
     public async Task<IEnumerable<AesirChatSession>> GetChatSessionsAsync(string userId, DateTimeOffset from, DateTimeOffset to)
     {
-        var sql = @"
-            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb AS Conversation, title as Title
+        const string sql = @"
+            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title
             FROM aesir.aesir_chat_session
             WHERE user_id = @UserId
             AND updated_at >= @From
@@ -81,7 +81,7 @@ public class ChatHistoryService : IChatHistoryService
 
     public async Task DeleteChatSessionAsync(Guid id)
     {
-        var sql = @"
+        const string sql = @"
             DELETE FROM aesir.aesir_chat_session
             WHERE id = @Id::uuid
         ";
@@ -97,8 +97,8 @@ public class ChatHistoryService : IChatHistoryService
 
         var normalizedSearchTerm = searchTerm.Trim().Replace("'", "''");
 
-        var sql = @"
-        SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb AS Conversation, title as Title
+        const string sql = @"
+        SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title
         FROM aesir.aesir_chat_session
         WHERE user_id = @userId AND (
             -- Search in title

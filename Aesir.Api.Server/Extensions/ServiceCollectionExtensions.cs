@@ -67,12 +67,11 @@ public static class ServiceCollectionExtensions
             EmbeddingGenerator = embeddingGenerator
         };
 
-        services.AddPostgresCollection<Guid, AesirTextData<Guid>>("aesir-documents", rcOptions);
+        services.AddPostgresCollection<Guid, AesirTextData<Guid>>("aesir_documents", rcOptions);
 
         services.AddSingleton(new UniqueKeyGenerator<Guid>(Guid.NewGuid));
         services.AddSingleton<IPdfDataLoader, PdfDataLoader<Guid>>();
-
-
+        
         kernelBuilder.AddVectorStoreTextSearch<AesirTextData<Guid>>();
 
         var vectorStoreTextSearch = services.BuildServiceProvider().GetRequiredService<VectorStoreTextSearch<AesirTextData<Guid>>>();

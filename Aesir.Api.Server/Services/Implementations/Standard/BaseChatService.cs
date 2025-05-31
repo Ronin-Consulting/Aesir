@@ -66,28 +66,7 @@ public abstract class BaseChatService : IChatService
         return response;
     }
 
-    public IAsyncEnumerable<AesirChatStreamedResult> ChatCompletionsStreamedAsync(AesirChatRequest request)
-    {
-        return ProcessStreamingChatCompletionAsync(request);
-    }
-
-    private static AesirChatStreamedResult CreateErrorResult(
-        string completionId,
-        AesirChatRequest request,
-        AesirChatMessage errorMessage,
-        string title)
-    {
-        return new AesirChatStreamedResult()
-        {
-            Id = completionId,
-            ChatSessionId = request.ChatSessionId,
-            ConversationId = request.Conversation.Id,
-            Delta = errorMessage,
-            Title = title
-        };
-    }
-
-    private async IAsyncEnumerable<AesirChatStreamedResult> ProcessStreamingChatCompletionAsync(AesirChatRequest request)
+    public async IAsyncEnumerable<AesirChatStreamedResult> ChatCompletionsStreamedAsync(AesirChatRequest request)
     {
         request = request ?? throw new ArgumentNullException(nameof(request));
         request.SetClientDateTimeInSystemMessage();
@@ -130,7 +109,7 @@ public abstract class BaseChatService : IChatService
         // Process streaming results - only execute if no initialization error occurred
         if (streamingResults != null)
         {
-            await foreach (var (content, isComplete) in streamingResults)
+            await foreach (var (content, _) in streamingResults)
             {
                 _logger.LogDebug("Received streaming content: {Content}", content);
 
@@ -149,16 +128,29 @@ public abstract class BaseChatService : IChatService
                         Title = title
                     };
                 }
-
-                if (isComplete)
-                {
-                    request.Conversation.Messages.Add(messageToSave);
-                    await PersistChatSessionAsync(request, request.Conversation, title);
-                }
             }
+            
+            request.Conversation.Messages.Add(messageToSave);
+            await PersistChatSessionAsync(request, request.Conversation, title);
         }
     }
 
+    private static AesirChatStreamedResult CreateErrorResult(
+        string completionId,
+        AesirChatRequest request,
+        AesirChatMessage errorMessage,
+        string title)
+    {
+        return new AesirChatStreamedResult()
+        {
+            Id = completionId,
+            ChatSessionId = request.ChatSessionId,
+            ConversationId = request.Conversation.Id,
+            Delta = errorMessage,
+            Title = title
+        };
+    }
+    
     protected abstract Task<string> GetTitleForUserMessageAsync(AesirChatRequest request);
 
     protected abstract Task<(string content, int promptTokens, int completionTokens)> ExecuteChatCompletionAsync(AesirChatRequest request);

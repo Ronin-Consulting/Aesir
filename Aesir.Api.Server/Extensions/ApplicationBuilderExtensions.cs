@@ -15,7 +15,7 @@ public static class ApplicationBuilderExtensions
         return app;
     }
 
-    public static IApplicationBuilder InitializeOllamaBackend(this IApplicationBuilder app)
+    public static IApplicationBuilder EnsureOllamaBackend(this IApplicationBuilder app)
     {
         using var scope = app.ApplicationServices.CreateScope();
         var modelsService = scope.ServiceProvider.GetService<IModelsService>();
@@ -26,6 +26,7 @@ public static class ApplicationBuilderExtensions
         }
         catch (Exception)
         {
+            // ignored
         }
 
         return app;

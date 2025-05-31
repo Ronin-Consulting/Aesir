@@ -18,8 +18,7 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-
-
+        
         var useOpenAi = builder.Configuration.GetValue<bool>("Inference:UseOpenAICompatible");
 
         if (useOpenAi)
@@ -69,7 +68,8 @@ public class Program
         builder.Services.AddSingleton<IDbContext, PgDbContext>(p =>
             new PgDbContext(builder.Configuration.GetConnectionString("DefaultConnection")!)
         );
-
+        builder.Services.AddSingleton<IFileStorageService, FileStorageService>();
+        
         builder.Services.SetupSemanticKernel(builder.Configuration);
 
         builder.Services
@@ -114,7 +114,7 @@ public class Program
 
         if (!useOpenAi)
         {
-            app.InitializeOllamaBackend();
+            app.EnsureOllamaBackend();
         }
 
         app.Run();
