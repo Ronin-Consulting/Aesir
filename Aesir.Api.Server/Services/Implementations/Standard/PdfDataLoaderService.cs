@@ -12,12 +12,12 @@ using TextContent = Microsoft.SemanticKernel.TextContent;
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 [Experimental("SKEXP0001")]
-public class PdfDataLoader<TKey>(
+public class PdfDataLoaderService<TKey>(
     UniqueKeyGenerator<TKey> uniqueKeyGenerator,
     VectorStoreCollection<TKey, AesirTextData<TKey>> vectorStoreRecordCollection,
     IChatCompletionService chatCompletionService,
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
-    ILogger<PdfDataLoader<TKey>> logger) : IPdfDataLoader where TKey : notnull
+    ILogger<PdfDataLoaderService<TKey>> logger) : IPdfDataLoaderService where TKey : notnull
 {
     /// <inheritdoc/>
     public async Task LoadPdfAsync(string pdfPath, int batchSize, int betweenBatchDelayInMs, CancellationToken cancellationToken)

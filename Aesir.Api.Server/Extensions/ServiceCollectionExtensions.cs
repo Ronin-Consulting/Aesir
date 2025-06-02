@@ -70,7 +70,7 @@ public static class ServiceCollectionExtensions
         services.AddPostgresCollection<Guid, AesirTextData<Guid>>("aesir_documents", rcOptions);
 
         services.AddSingleton(new UniqueKeyGenerator<Guid>(Guid.NewGuid));
-        services.AddSingleton<IPdfDataLoader, PdfDataLoader<Guid>>();
+        services.AddSingleton<IPdfDataLoaderService, PdfDataLoaderService<Guid>>();
         
         kernelBuilder.AddVectorStoreTextSearch<AesirTextData<Guid>>();
 

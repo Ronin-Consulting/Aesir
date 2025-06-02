@@ -15,7 +15,7 @@
 ## AESIR client things left to do
 
 - [ ] Add message controls like chatgpt
-  - [ ] Copy message
+  - [x] Copy message
   - [ ] Regenerate assistant message
   - [ ] Edit user message
   - [ ] Play message

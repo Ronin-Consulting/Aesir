@@ -40,12 +40,7 @@
         <PackageReference Include="Semi.Avalonia.TreeDataGrid" Version="11.0.10.3" />
         <PackageReference Include="System.Net.Http.Json" Version="9.0.5" />
     </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Converters\" />
-      <Folder Include="Messages\" />
-    </ItemGroup>
-
+    
     <ItemGroup>
       <Compile Update="Controls\ChatHistoryButton.axaml.cs">
         <DependentUpon>ChatHistoryButton.axaml</DependentUpon>

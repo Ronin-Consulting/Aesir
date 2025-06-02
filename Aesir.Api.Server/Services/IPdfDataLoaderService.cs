@@ -3,7 +3,7 @@ namespace Aesir.Api.Server.Services;
 
 // This interface defines functionality for loading text content from a PDF file into a data store,
 // allowing parallel processing and batching to support efficient and controlled uploads.
-public interface IPdfDataLoader
+public interface IPdfDataLoaderService
 {
     /// <summary>
     /// Load the text from a PDF file into the data store.

@@ -11,16 +11,16 @@ public class DocumentCollectionController : ControllerBase
 {
     private readonly ILogger<DocumentCollectionController> _logger;
     private readonly IFileStorageService _fileStorageService;
-    private readonly IPdfDataLoader _pdfDataLoader;
+    private readonly IPdfDataLoaderService _pdfDataLoaderService;
     
     public DocumentCollectionController(
         ILogger<DocumentCollectionController> logger,
         IFileStorageService fileStorageService, 
-        IPdfDataLoader pdfDataLoader)
+        IPdfDataLoaderService pdfDataLoaderService)
     {
         _logger = logger;
         _fileStorageService = fileStorageService;
-        _pdfDataLoader = pdfDataLoader;
+        _pdfDataLoaderService = pdfDataLoaderService;
     }
     
     [HttpGet("file/{filename}/content")]
@@ -45,7 +45,7 @@ public class DocumentCollectionController : ControllerBase
     {
         const string filePath = "Assets/MissionPlan-OU812.pdf";
         
-        await _pdfDataLoader.LoadPdfAsync(filePath, 2, 100, CancellationToken.None);
+        await _pdfDataLoaderService.LoadPdfAsync(filePath, 2, 100, CancellationToken.None);
 
         var bytes = await System.IO.File.ReadAllBytesAsync(filePath);
         var filename = Path.GetFileName(filePath);
