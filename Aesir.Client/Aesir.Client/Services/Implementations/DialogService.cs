@@ -14,7 +14,7 @@ namespace Aesir.Client.Services.Implementations
     {
         public async Task<string> ShowInputDialogAsync(string title, string message, string defaultValue = "")
         {
-            var window = GetMainWindow();
+            var window = GetMainView();
             if (window == null) return string.Empty;
             
             var parameters = new MessageBoxCustomParams
@@ -47,7 +47,7 @@ namespace Aesir.Client.Services.Implementations
         
         public async Task<bool> ShowConfirmationDialogAsync(string title, string message)
         {
-            var window = GetMainWindow();
+            var window = GetMainView();
             if (window == null) return false;
             
             var parameters = new MessageBoxCustomParams
@@ -74,13 +74,17 @@ namespace Aesir.Client.Services.Implementations
             return result == "Yes";
         }
 
-        private Window? GetMainWindow()
+        private ContentControl? GetMainView()
         {
-            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            switch (Application.Current?.ApplicationLifetime)
             {
-                return desktop.MainWindow;
+                case IClassicDesktopStyleApplicationLifetime desktop:
+                    return desktop.MainWindow;
+                case ISingleViewApplicationLifetime singleView:
+                    return singleView.MainView as ContentControl;
+                default:
+                    throw new System.NotImplementedException();
             }
-            return null;
         }
     }
 }
