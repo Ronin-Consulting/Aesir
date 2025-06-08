@@ -1,12 +1,89 @@
+using System;
+using System.IO;
 using System.Threading.Tasks;
+using Aesir.Client.Desktop.Controls;
+using Aesir.Client.Desktop.ViewModels;
 using Aesir.Client.Services;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using MsBox.Avalonia;
+using SkiaSharp;
 
 namespace Aesir.Client.Desktop.Services;
 
-public class PdfViewerService : IPdfViewerService
+public class PdfViewerService(
+    IDocumentCollectionService documentCollectionService,
+    IDialogService dialogService
+) : IPdfViewerService
 {
-    public Task ShowPdfAsync(string fileUri)
+    public async Task ShowPdfAsync(string fileUri)
     {
-        throw new System.NotImplementedException();
+        if (Application.Current != null &&
+            Application.Current.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            var image = await GetPdfImageAsync(fileUri);
+            // if the image is null, then show dialog indicating bad file uri
+            if (image == null)
+            {
+                await dialogService.ShowErrorDialogAsync("Invalid", "The file path is invalid.");
+                return;
+            }
+            
+            var viewModel = new PdfViewerControlViewModel();
+            viewModel.SetPdfImageSource(image);
+            
+            var view = new PdfViewerControl()
+            {
+                DataContext = viewModel
+            };
+            
+            viewModel.SetZoomApi(new ZoomApiImpl(view.PdfZoomBorder));
+            
+            var mainWindow = desktop.MainWindow!;
+            
+            view.Width = mainWindow.Width * 0.9;
+            view.Height = mainWindow.Height * 0.9;
+            
+            var viewer = new MsBox<PdfViewerControl, PdfViewerControlViewModel, string>(view,viewModel);
+            
+            await viewer.ShowAsPopupAsync(mainWindow);
+        }
+    }
+    
+    private async Task<IImage?> GetPdfImageAsync(string fileUri)
+    {
+        // fileUri should be like file:///C:/Users/ooart/Downloads/Aesir.pdf#page=1
+        try
+        {
+            var uri = new Uri(fileUri);
+            var filename = Path.GetFileName(uri.LocalPath);
+            
+            if(string.IsNullOrEmpty(filename))
+                return null;
+            
+            if (!int.TryParse(uri.Fragment.TrimStart('#', 'p', 'a', 'g', 'e', '='), out var pageNumber))
+                return null;
+
+            await using var pdfStream = await documentCollectionService.GetStreamAsync(filename);
+            
+            // Render the first page (pageIndex: 0) to a SKBitmap
+#pragma warning disable CA1416
+            var skBitmap = PDFtoImage.Conversion.ToImage(pdfStream, pageNumber - 1);
+#pragma warning restore CA1416
+
+            // Convert SKBitmap to an Avalonia Bitmap
+            using var memoryStream = new MemoryStream();
+            
+            skBitmap.Encode(SKEncodedImageFormat.Png, 100).SaveTo(memoryStream);
+            memoryStream.Seek(0, SeekOrigin.Begin);
+            
+            return new Bitmap(memoryStream);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

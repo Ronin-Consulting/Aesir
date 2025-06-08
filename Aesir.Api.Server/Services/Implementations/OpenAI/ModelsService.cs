@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
 using OpenAI;
-using OpenAI.Models;
 
 namespace Aesir.Api.Server.Services.Implementations.OpenAI;
 

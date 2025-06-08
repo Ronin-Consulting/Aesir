@@ -2,7 +2,74 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:Aesir.Client.Desktop.ViewModels"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:paz="using:Avalonia.Controls.PanAndZoom"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Aesir.Client.Desktop.Controls.PdfViewerControl">
-    Welcome to Avalonia!
+             x:Class="Aesir.Client.Desktop.Controls.PdfViewerControl"
+             x:DataType="vm:PdfViewerControlViewModel"
+             Padding="0"
+             Margin="0"
+             >
+    <DockPanel Margin="0" HorizontalSpacing="0" VerticalSpacing="2" >
+        <DockPanel
+            HorizontalAlignment="Stretch"
+            DockPanel.Dock="Top"
+            Background="{DynamicResource SemiColorBackground1}"
+            >
+            <Button Command="{Binding ButtonClickCommand}"
+                    IsDefault="True"
+                    HorizontalAlignment="Right"
+                    Background="Transparent"
+                    DockPanel.Dock="Right"
+                    >
+                <avalonia:MaterialIcon Kind="WindowClose" Width="20" Height="20" />
+            </Button>
+            <TextBlock Margin="10 0 0 0" VerticalAlignment="Center" HorizontalAlignment="Left" DockPanel.Dock="Left">Citation Viewer</TextBlock>
+        </DockPanel>
+        <Panel DockPanel.Dock="Bottom">
+            <RelativePanel HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <ScrollViewer Name="ScrollViewer" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Auto"
+                              RelativePanel.AlignLeftWithPanel="True"
+                              RelativePanel.AlignRightWithPanel="True"
+                              RelativePanel.AlignTopWithPanel="True"
+                              RelativePanel.AlignBottomWithPanel="True"
+                >
+                    <paz:ZoomBorder Name="PdfZoomBorder"
+                                    Stretch="Uniform"
+                                    ZoomSpeed="1.5"
+                                    EnableConstrains="False"
+                                    Background="{DynamicResource SemiColorBackground0}" 
+                                    ClipToBounds="True" 
+                                    Focusable="True"
+                                    VerticalAlignment="Stretch" 
+                                    HorizontalAlignment="Stretch"
+                                    PanButton="Left"
+                                    EnableZoom="False"
+                    >
+                        <Image Name="PdfImage" Source="{Binding PdfImageSource}" />
+                    </paz:ZoomBorder>
+                </ScrollViewer>
+                <StackPanel Orientation="Horizontal" 
+                            RelativePanel.Above="ScrollViewer" 
+                            RelativePanel.AlignRightWithPanel="True"
+                            RelativePanel.AlignTopWithPanel="True"
+                            VerticalAlignment="Top"
+                            Spacing="2"
+                            Margin="0 10 10 0"
+                            Background="{DynamicResource SemiColorBackground2}"
+                >
+                    <TextBlock Margin="16 0 8 0" VerticalAlignment="Center" FontSize="12">Zoom</TextBlock>
+                    <Button Background="Transparent" Theme="{DynamicResource Borderless}" Command="{Binding DecrementZoomButtonClickCommand}">
+                        <avalonia:MaterialIcon Kind="MinusThick" Width="20" Height="20" />
+                    </Button>
+                    <TextBlock Margin="2 0 2 0" VerticalAlignment="Center" FontSize="12" Text="{Binding ZoomPercentage}"></TextBlock>
+                    <Button Background="Transparent" Theme="{DynamicResource Borderless}" Command="{Binding IncrementZoomButtonClickCommand}">
+                        <avalonia:MaterialIcon Kind="AddThick" Width="20" Height="20" />
+                    </Button>
+                </StackPanel>
+            </RelativePanel>
+        </Panel>
+    </DockPanel>
 </UserControl>

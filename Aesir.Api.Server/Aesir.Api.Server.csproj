@@ -17,11 +17,11 @@
         <PackageReference Include="LangChain.DocumentLoaders.Word" Version="0.17.0" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.5" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.5" />
-        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.54.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.54.0-alpha" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.54.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.PgVector" Version="1.54.0-preview" />
-        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.54.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.55.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.55.0-alpha" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.55.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.PgVector" Version="1.55.0-preview" />
+        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.55.0" />
         <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="Npgsql" Version="9.0.3" />
@@ -30,8 +30,8 @@
         <PackageReference Include="PdfPig" Version="0.1.10" />
         <PackageReference Include="Pgvector" Version="0.3.2" />
         <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.2" />
-        <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="8.1.2" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.4" />
+        <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="8.1.4" />
         <PackageReference Include="System.Linq.Async" Version="6.0.1" />
         <PackageReference Include="Whisper.net" Version="1.8.1" />
         <PackageReference Include="Whisper.net.Runtime.CoreML" Version="1.8.1" />

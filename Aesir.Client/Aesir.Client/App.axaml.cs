@@ -3,7 +3,6 @@ using System.Net.Http;
 using Aesir.Client.Controls;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
-using Aesir.Client.Services.Implementations;
 using Aesir.Client.Services.Implementations.MarkdigMarkdown;
 using Aesir.Client.Services.Implementations.NoOp;
 using Aesir.Client.Services.Implementations.Standard;
@@ -83,6 +82,7 @@ public partial class App : Application
         AppServices.AddSingleton<IChatService,ChatService>();
         AppServices.AddSingleton<IChatHistoryService, ChatHistoryService>();
         AppServices.AddSingleton<IModelService, ModelService>();
+        AppServices.AddTransient<IDocumentCollectionService, DocumentCollectionService>();
         
         AppServices.AddTransient<SystemMessageViewModel>();
         AppServices.AddTransient<UserMessageViewModel>();

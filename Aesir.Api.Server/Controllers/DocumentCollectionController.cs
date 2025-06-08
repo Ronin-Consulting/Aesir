@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Aesir.Api.Server.Controllers;
 
 [ApiController]
-[Route("documents")]
+[Route("document/collections")]
 [Produces("application/json")]
 public class DocumentCollectionController : ControllerBase
 {
@@ -36,7 +36,8 @@ public class DocumentCollectionController : ControllerBase
 
         return new FileStreamResult(fileStream, contentType)
         {
-            FileDownloadName = filename
+            FileDownloadName = filename,
+            EnableRangeProcessing = true
         };
     }
     

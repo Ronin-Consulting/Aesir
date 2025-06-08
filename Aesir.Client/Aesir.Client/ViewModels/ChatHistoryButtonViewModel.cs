@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using Aesir.Client.Controls;
 using Aesir.Client.Messages;
 using Aesir.Client.Models;
 using Aesir.Client.Services;

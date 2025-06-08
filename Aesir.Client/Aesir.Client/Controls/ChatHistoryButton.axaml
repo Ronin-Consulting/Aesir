@@ -7,12 +7,14 @@
              x:DataType="vm:ChatHistoryButtonViewModel"
              x:Class="Aesir.Client.Controls.ChatHistoryButton">
     <UserControl.Resources>
-        <SolidColorBrush x:Key="ToggleButtonDefaultBackground" Color="Transparent" />
-        <SolidColorBrush x:Key="ToggleButtonDefaultPointeroverBackground" Opacity="0.16" Color="#54A9FF" />
-        <SolidColorBrush x:Key="ToggleButtonDefaultPressedBackground" Opacity="0.16" Color="#54A9FF" />
-        <SolidColorBrush x:Key="ToggleButtonTertiaryCheckedBackground" Opacity="0.16" Color="#54A9FF" />
-        <SolidColorBrush x:Key="ToggleButtonTertiaryCheckedPointeroverBackground" Opacity="0.16" Color="#54A9FF" />
-        <SolidColorBrush x:Key="ToggleButtonTertiaryCheckedPressedBackground" Opacity="0.16" Color="#54A9FF" />
+        <SolidColorBrush x:Key="ButtonSolidTertiaryBackground" Opacity="0.16" Color="#54A9FF" />
+        <SolidColorBrush x:Key="ButtonSolidTertiaryBorderBrush" Opacity="0.16" Color="#54A9FF" />
+        
+        <SolidColorBrush x:Key="ButtonSolidTertiaryPointeroverBackground" Opacity="0.16" Color="#54A9FF" />
+        <SolidColorBrush x:Key="ButtonSolidTertiaryPointeroverBorderBrush" Opacity="0.16" Color="#54A9FF" />
+        
+        <SolidColorBrush x:Key="ButtonSolidTertiaryPressedBackground" Opacity="0.16" Color="#54A9FF" />
+        <SolidColorBrush x:Key="ButtonSolidTertiaryPressedBorderBrush" Opacity="0.16" Color="#54A9FF" />
     </UserControl.Resources>
     <ToggleButton
         Classes="Tertiary"

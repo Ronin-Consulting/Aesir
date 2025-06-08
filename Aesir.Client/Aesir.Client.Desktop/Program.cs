@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using Aesir.Client.Desktop.Services;
+using Aesir.Client.Services;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Microsoft.Extensions.Configuration;
@@ -40,15 +42,19 @@ sealed class Program
             var configuration = builder.Build();
         
             // Add the configuration to the service collection of the app
-            App.AddService(services => 
-                services.AddSingleton<IConfiguration>(configuration)
-                    .AddLogging(loggingBuilder =>
-                    {
-                        // configure Logging with NLog
-                        loggingBuilder.ClearProviders();
-                        loggingBuilder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Error);
-                        loggingBuilder.AddNLog(configuration);
-                    })
+            App.AddService(services =>
+                {
+                    services.AddSingleton<IConfiguration>(configuration)
+                        .AddLogging(loggingBuilder =>
+                        {
+                            // configure Logging with NLog
+                            loggingBuilder.ClearProviders();
+                            loggingBuilder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Error);
+                            loggingBuilder.AddNLog(configuration);
+                        });
+
+                    services.AddTransient<IPdfViewerService, PdfViewerService>();
+                }
             );
 
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);

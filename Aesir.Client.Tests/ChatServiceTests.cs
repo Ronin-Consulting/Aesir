@@ -1,5 +1,4 @@
 using Aesir.Client.Models;
-using Aesir.Client.Services;
 using Aesir.Client.Services.Implementations.Standard;
 using FluentAssertions;
 using Flurl.Http;

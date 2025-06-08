@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using Aesir.Client.Services;
-using CommunityToolkit.Mvvm.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
 
-public class AssistantMessageViewModel(ILogger<AssistantMessageViewModel> logger, IMarkdownService markdownService) : MessageViewModel(logger, markdownService)
+public class AssistantMessageViewModel(
+    ILogger<AssistantMessageViewModel> logger, 
+    IMarkdownService markdownService,
+    IPdfViewerService pdfViewerService) : MessageViewModel(logger, markdownService)
 {
     public override string Role => "assistant";
     
@@ -38,8 +40,6 @@ public class AssistantMessageViewModel(ILogger<AssistantMessageViewModel> logger
 
     public void LinkClicked(string link, Dictionary<string, string> attributes)
     {
-        var dialogService = Ioc.Default.GetService<IDialogService>();
-
-        dialogService!.ShowConfirmationDialogAsync("Link Clicked", "Chuck is so dirty.");
+        pdfViewerService.ShowPdfAsync(link);
     }
 }

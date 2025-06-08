@@ -3,10 +3,11 @@
              xmlns:material="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:local="using:Aesir.Client"
              xmlns:semi="https://irihi.tech/semi"
+             xmlns:dialogHostAvalonia="clr-namespace:DialogHostAvalonia;assembly=DialogHost.Avalonia"
              x:Class="Aesir.Client.App"
-             RequestedThemeVariant="Dark">
-    <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
-
+             RequestedThemeVariant="Dark"
+             >
+    
     <Application.DataTemplates>
         <local:ViewLocator />
     </Application.DataTemplates>
@@ -14,11 +15,12 @@
     <Application.Styles>
         <semi:SemiTheme Locale="en-US" />
         <material:MaterialIconStyles />
+        <dialogHostAvalonia:DialogHostStyles />
         <StyleInclude Source="avares://Semi.Avalonia.ColorPicker/Index.axaml" />
         <StyleInclude Source="avares://Semi.Avalonia.DataGrid/Index.axaml" />
         <StyleInclude Source="avares://Semi.Avalonia.TreeDataGrid/Index.axaml" />
         <Style Selector="Border">
-            <Setter Property="BorderBrush" Value="Black"></Setter>
+            <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBlack}"></Setter>
         </Style>
         <!-- <Style Selector=":is(TextElement)"> -->
         <!--     <Setter Property="Foreground" Value="GreenYellow" /> -->

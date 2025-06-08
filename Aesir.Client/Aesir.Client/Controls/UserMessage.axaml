@@ -22,7 +22,7 @@
                 Name="HtmlLabel"
                 Text="{Binding Message}" 
                 AutoSize="True"
-                Background="{DynamicResource SemiColorBackground1}"
+                Background="Transparent"
                 BaseStylesheet="* { color: #F9F9F9; } p { padding: 0; margin: 0; }"
                 Margin="10"
                 Padding="0"

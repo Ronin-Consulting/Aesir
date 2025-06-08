@@ -100,7 +100,7 @@ public class FileStorageService(ILogger<FileStorageService> logger, IDbContext d
         ";
         
         var result = await _dbContext.UnitOfWorkAsync(async (connection) => 
-            await connection.QueryFirstOrDefaultAsync<dynamic>(sql, new { FileName = filename }));
+            await connection.QueryFirstOrDefaultAsync<FileContent>(sql, new { FileName = filename }));
         
         var extension = Path.GetExtension(fileInfo.FileName);
         var tempFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
@@ -124,7 +124,7 @@ public class FileStorageService(ILogger<FileStorageService> logger, IDbContext d
         ";
 
         var result = await _dbContext.UnitOfWorkAsync(async (connection) => 
-            await connection.QueryFirstOrDefaultAsync<dynamic>(sql, new { Id = id }));
+            await connection.QueryFirstOrDefaultAsync<FileContent>(sql, new { Id = id }));
         
         var extension = Path.GetExtension(fileInfo.FileName);
         var tempFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
@@ -133,4 +133,6 @@ public class FileStorageService(ILogger<FileStorageService> logger, IDbContext d
 
         return (tempFilePath, fileInfo);
     }
+    
+    record FileContent(byte[] Content);
 }

@@ -8,7 +8,7 @@ using MsBox.Avalonia.Dto;
 using MsBox.Avalonia.Enums;
 using MsBox.Avalonia.Models;
 
-namespace Aesir.Client.Services.Implementations
+namespace Aesir.Client.Services.Implementations.Standard
 {
     public class DialogService : IDialogService
     {
@@ -74,6 +74,32 @@ namespace Aesir.Client.Services.Implementations
             return result == "Yes";
         }
 
+        public async Task ShowErrorDialogAsync(string title, string message)
+        {
+            var window = GetMainView();
+            if (window == null) return;
+            
+            var parameters = new MessageBoxCustomParams
+            {
+                ButtonDefinitions = new List<ButtonDefinition>
+                {
+                    new() { Name = "OK", IsDefault = true }
+                },
+                ContentTitle = title,
+                ContentMessage = message,
+                Icon = Icon.None,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                CanResize = false,
+                MaxWidth = 400,
+                MaxHeight = 300,
+                SizeToContent = SizeToContent.WidthAndHeight
+            };
+            
+            var msgBox = MessageBoxManager.GetMessageBoxCustom(parameters);
+
+            await msgBox.ShowAsPopupAsync(window);
+        }
+        
         private ContentControl? GetMainView()
         {
             switch (Application.Current?.ApplicationLifetime)
