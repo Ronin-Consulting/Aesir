@@ -3,6 +3,7 @@
              xmlns:material="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:local="using:Aesir.Client"
              xmlns:semi="https://irihi.tech/semi"
+             xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
              xmlns:dialogHostAvalonia="clr-namespace:DialogHostAvalonia;assembly=DialogHost.Avalonia"
              x:Class="Aesir.Client.App"
              RequestedThemeVariant="Dark"
@@ -14,11 +15,13 @@
     
     <Application.Styles>
         <semi:SemiTheme Locale="en-US" />
+        <u-semi:SemiTheme Locale="en-US" />
+        <semi:SemiPopupAnimations />
+        <semi:ColorPickerSemiTheme />
+        <semi:DataGridSemiTheme />
+        <semi:TreeDataGridSemiTheme />
         <material:MaterialIconStyles />
         <dialogHostAvalonia:DialogHostStyles />
-        <StyleInclude Source="avares://Semi.Avalonia.ColorPicker/Index.axaml" />
-        <StyleInclude Source="avares://Semi.Avalonia.DataGrid/Index.axaml" />
-        <StyleInclude Source="avares://Semi.Avalonia.TreeDataGrid/Index.axaml" />
         <Style Selector="Border">
             <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBlack}"></Setter>
         </Style>

@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Aesir.Client.Messages;
 using Aesir.Client.Models;
@@ -18,8 +19,14 @@ public partial class ChatHistoryButtonViewModel : ObservableRecipient, IRecipien
     private readonly ILogger<ChatHistoryButtonViewModel> _logger;
     private readonly ApplicationState _appState;
     
-    [ObservableProperty]
     private string _title = "Chat History";
+    [MinLength(10)]
+    public string Title
+    {
+        get => _title;
+        set => SetProperty(ref _title, value);
+    }
+    
     [ObservableProperty]
     private Guid? _chatSessionId;
     [ObservableProperty]
@@ -68,54 +75,96 @@ public partial class ChatHistoryButtonViewModel : ObservableRecipient, IRecipien
     [RelayCommand]
     private async Task RenameAsync()
     {
-        // You can implement a dialog to get the new name
-        // For now, let's assume you have an IDialogService
-        var dialogService = Ioc.Default.GetService<IDialogService>();
-        if (dialogService == null) return;
-        
-        var newTitle = await dialogService.ShowInputDialogAsync("Rename Chat", "Enter new name:", Title);
-        
-        if (!string.IsNullOrWhiteSpace(newTitle))
+        // // You can implement a dialog to get the new name
+        // // For now, let's assume you have an IDialogService
+        // var dialogService = Ioc.Default.GetService<IDialogService>();
+        // if (dialogService == null) return;
+        //
+        // var newTitle = await dialogService.ShowInputDialogAsync("Rename Chat", "Enter new name:", Title);
+        //
+        // if (!string.IsNullOrWhiteSpace(newTitle))
+        // {
+        //     // Update the title
+        //     Title = newTitle;
+        //     
+        //     // Update the chat session title
+        //     if (_chatSessionItem != null)
+        //     {
+        //         _chatSessionItem.Title = newTitle;
+        //         
+        //         // Save changes to your data store
+        //         var chatHistoryService = Ioc.Default.GetService<IChatHistoryService>();
+        //         await chatHistoryService?.UpdateChatSessionTitleAsync(_chatSessionItem.Id, newTitle)!;
+        //     }
+        // }
+
+        if (!string.IsNullOrWhiteSpace(Title))
         {
-            // Update the title
-            Title = newTitle;
-            
             // Update the chat session title
             if (_chatSessionItem != null)
             {
-                _chatSessionItem.Title = newTitle;
+                _chatSessionItem.Title = Title;
                 
                 // Save changes to your data store
                 var chatHistoryService = Ioc.Default.GetService<IChatHistoryService>();
-                await chatHistoryService?.UpdateChatSessionTitleAsync(_chatSessionItem.Id, newTitle)!;
+                await chatHistoryService?.UpdateChatSessionTitleAsync(_chatSessionItem.Id, Title)!;
+            }
+        }
+        else
+        {
+            if (_chatSessionItem != null)
+            {
+                Title = _chatSessionItem.Title;
             }
         }
     }
 
     [RelayCommand]
+    private async Task CancelRenameAsync()
+    {
+        if (_chatSessionItem != null)
+        {
+            Title = _chatSessionItem.Title;
+        }
+        
+        await Task.CompletedTask;
+    }
+
+    [RelayCommand]
     private async Task DeleteAsync()
     {
-        // Confirm deletion
-        var dialogService = Ioc.Default.GetService<IDialogService>();
-        if (dialogService == null) return;
-        
-        var result = await dialogService.ShowConfirmationDialogAsync(
-            "Delete Chat", 
-            $"Are you sure you want to delete this chat? This action cannot be undone.");
-        
-        if (result)
+        // // Confirm deletion
+        // var dialogService = Ioc.Default.GetService<IDialogService>();
+        // if (dialogService == null) return;
+        //
+        // var result = await dialogService.ShowConfirmationDialogAsync(
+        //     "Delete Chat", 
+        //     $"Are you sure you want to delete this chat? This action cannot be undone.");
+        //
+        // if (result)
+        // {
+        //     // Delete the chat session
+        //     if (ChatSessionId.HasValue)
+        //     {
+        //         var chatHistoryService = Ioc.Default.GetService<IChatHistoryService>();
+        //         await chatHistoryService?.DeleteChatSessionAsync(ChatSessionId.Value)!;
+        //         
+        //         _appState.SelectedChatSessionId = null;
+        //         
+        //         // Update UI
+        //         WeakReferenceMessenger.Default.Send(new ChatHistoryChangedMessage());
+        //     }
+        // }
+        // Delete the chat session
+        if (ChatSessionId.HasValue)
         {
-            // Delete the chat session
-            if (ChatSessionId.HasValue)
-            {
-                var chatHistoryService = Ioc.Default.GetService<IChatHistoryService>();
-                await chatHistoryService?.DeleteChatSessionAsync(ChatSessionId.Value)!;
+            var chatHistoryService = Ioc.Default.GetService<IChatHistoryService>();
+            await chatHistoryService?.DeleteChatSessionAsync(ChatSessionId.Value)!;
                 
-                _appState.SelectedChatSessionId = null;
+            _appState.SelectedChatSessionId = null;
                 
-                // Update UI
-                WeakReferenceMessenger.Default.Send(new ChatHistoryChangedMessage());
-            }
+            // Update UI
+            WeakReferenceMessenger.Default.Send(new ChatHistoryChangedMessage());
         }
     }
     

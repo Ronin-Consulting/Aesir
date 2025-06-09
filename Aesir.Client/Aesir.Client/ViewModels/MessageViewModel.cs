@@ -53,7 +53,7 @@ public abstract partial class MessageViewModel : ObservableRecipient
                     continue;
                 }
                 
-                _logger.LogDebug("Received streamed message: {Result}", JsonSerializer.Serialize(result));
+                //_logger.LogDebug("Received streamed message: {Result}", JsonSerializer.Serialize(result));
 
                 title = result.Title;
                 

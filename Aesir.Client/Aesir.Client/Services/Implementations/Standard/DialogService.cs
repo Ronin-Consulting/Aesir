@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Notifications;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Dto;
 using MsBox.Avalonia.Enums;
@@ -76,28 +77,11 @@ namespace Aesir.Client.Services.Implementations.Standard
 
         public async Task ShowErrorDialogAsync(string title, string message)
         {
-            var window = GetMainView();
-            if (window == null) return;
+            var topLevel = TopLevel.GetTopLevel(GetMainView());
+            var manager = new WindowNotificationManager(topLevel) { MaxItems = 3 };
+            manager.Show(new Notification(title, message, NotificationType.Error));
             
-            var parameters = new MessageBoxCustomParams
-            {
-                ButtonDefinitions = new List<ButtonDefinition>
-                {
-                    new() { Name = "OK", IsDefault = true }
-                },
-                ContentTitle = title,
-                ContentMessage = message,
-                Icon = Icon.None,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                CanResize = false,
-                MaxWidth = 400,
-                MaxHeight = 300,
-                SizeToContent = SizeToContent.WidthAndHeight
-            };
-            
-            var msgBox = MessageBoxManager.GetMessageBoxCustom(parameters);
-
-            await msgBox.ShowAsPopupAsync(window);
+            await Task.CompletedTask;
         }
         
         private ContentControl? GetMainView()
