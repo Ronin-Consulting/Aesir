@@ -58,7 +58,7 @@ namespace Aesir.Client.Services.Implementations.Standard
             var result = await OverlayDialog.ShowModal<ConfirmDialog, ConfirmDialogViewModel>(
                 vm, options: options);
 
-            return result == DialogResult.OK;
+            return result == DialogResult.Yes;
         }
 
         public async Task ShowErrorDialogAsync(string title, string message)

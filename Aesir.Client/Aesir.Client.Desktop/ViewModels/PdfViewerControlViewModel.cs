@@ -27,7 +27,7 @@ public partial class PdfViewerControlViewModel() : ObservableRecipient
     [RelayCommand]
     private void DecrementZoomButtonClick()
     {
-        _zoomLevel -= 10;
+        _zoomLevel -= 25;
         _zoomLevel = Math.Max(_zoomLevel, 0);
         
         _zoomApi?.DecrementZoom();
@@ -38,7 +38,7 @@ public partial class PdfViewerControlViewModel() : ObservableRecipient
     [RelayCommand]
     private void IncrementZoomButtonClick()
     {
-        _zoomLevel += 10;
+        _zoomLevel += 25;
         _zoomLevel = Math.Min(_zoomLevel, 250);
         
         _zoomApi?.IncrementZoom();

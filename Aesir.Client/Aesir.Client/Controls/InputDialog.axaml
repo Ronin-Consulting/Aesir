@@ -8,10 +8,11 @@
              x:Class="Aesir.Client.Controls.InputDialog"
              x:DataType="vm:InputDialogViewModel"
              >
-    <u:Form LabelPosition="Left" LabelWidth="*">
-        <TextBox TextWrapping="NoWrap" Width="200" 
-                 u:FormItem.Label="{Binding LabelText}" 
-                 u:FormItem.IsRequired="{Binding IsInputTextRequired}" 
-                 Text="{Binding InputText}"/>
+    <u:Form HorizontalAlignment="Stretch" LabelPosition="Top">
+        <u:FormItem 
+            Label="{Binding LabelText}" 
+            IsRequired="{Binding IsInputTextRequired}">
+            <TextBox TextWrapping="NoWrap" Width="400" Text="{Binding InputText}"/>
+        </u:FormItem>
     </u:Form>
 </UserControl>

@@ -21,7 +21,9 @@
         HorizontalAlignment="Stretch"
         HorizontalContentAlignment="Left"
         IsChecked="{Binding IsChecked, Mode=TwoWay}"
-        PointerPressed="InputElement_OnPointerPressed">
+        PointerPressed="InputElement_OnPointerPressed"
+        Background="Transparent"
+        >
         <ToggleButton.ContextMenu>
             <ContextMenu>
                 <MenuItem Header="Rename" Command="{Binding RenameCommand}"/>

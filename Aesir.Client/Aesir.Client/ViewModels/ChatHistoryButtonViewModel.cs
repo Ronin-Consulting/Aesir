@@ -78,7 +78,7 @@ public partial class ChatHistoryButtonViewModel : ObservableRecipient, IRecipien
         var dialogService = Ioc.Default.GetService<IDialogService>();
         if (dialogService == null) return;
         var newTitle = await dialogService.ShowInputDialogAsync(
-            "Rename Chat", Title, "Enter new name:"
+            "Rename Chat", Title, "Enter new name"
         );
 
         if (!string.IsNullOrWhiteSpace(newTitle))
