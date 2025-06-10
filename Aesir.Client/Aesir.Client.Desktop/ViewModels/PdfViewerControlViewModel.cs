@@ -1,18 +1,12 @@
 using System;
-using System.Threading.Tasks;
 using Avalonia.Media;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MsBox.Avalonia.Base;
 
 namespace Aesir.Client.Desktop.ViewModels;
 
-public partial class PdfViewerControlViewModel() : ObservableRecipient, ISetFullApi<string>, IInput
+public partial class PdfViewerControlViewModel() : ObservableRecipient
 {
-    public string InputValue { get; set; } = null!;
-    private IFullApi<string>? _fullApi;
-
     [ObservableProperty] private IImage? _pdfImageSource;
 
     [ObservableProperty] private string _zoomPercentage = "100%";
@@ -24,27 +18,12 @@ public partial class PdfViewerControlViewModel() : ObservableRecipient, ISetFull
     {
         PdfImageSource = pdfImageSource;
     }
-
-    public void SetFullApi(IFullApi<string>? fullApi)
-    {
-        _fullApi = fullApi;
-    }
-
+    
     public void SetZoomApi(IZoomApi zoomApi)
     {
         _zoomApi = zoomApi;
     }
-
-    [RelayCommand]
-    private async Task ButtonClickAsync(string parameter)
-    {
-        await Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            _fullApi!.SetButtonResult(parameter);
-            _fullApi.Close();
-        });
-    }
-
+    
     [RelayCommand]
     private void DecrementZoomButtonClick()
     {

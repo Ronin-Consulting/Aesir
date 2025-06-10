@@ -8,8 +8,10 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
-using MsBox.Avalonia;
 using SkiaSharp;
+using Ursa.Common;
+using Ursa.Controls;
+using Ursa.Controls.Options;
 
 namespace Aesir.Client.Desktop.Services;
 
@@ -23,6 +25,18 @@ public class PdfViewerService(
         if (Application.Current != null &&
             Application.Current.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            var mainWindow = desktop.MainWindow!;
+            
+            var options = new DrawerOptions()
+            {
+                Position = Position.Right,
+                Buttons = DialogButton.None,
+                CanLightDismiss = true,
+                IsCloseButtonVisible = true,
+                Title = "Citation Viewer",
+                CanResize = false
+            };
+            
             var image = await GetPdfImageAsync(fileUri);
             // if the image is null, then show dialog indicating bad file uri
             if (image == null)
@@ -30,25 +44,14 @@ public class PdfViewerService(
                 await dialogService.ShowErrorDialogAsync("Invalid", "The file path is invalid.");
                 return;
             }
-            
             var viewModel = new PdfViewerControlViewModel();
             viewModel.SetPdfImageSource(image);
             
-            var view = new PdfViewerControl()
-            {
-                DataContext = viewModel
-            };
-            
-            viewModel.SetZoomApi(new ZoomApiImpl(view.PdfZoomBorder));
-            
-            var mainWindow = desktop.MainWindow!;
-            
-            view.Width = mainWindow.Width * 0.9;
-            view.Height = mainWindow.Height * 0.9;
-            
-            var viewer = new MsBox<PdfViewerControl, PdfViewerControlViewModel, string>(view,viewModel);
-            
-            await viewer.ShowAsPopupAsync(mainWindow);
+            var result = await Drawer.ShowModal<PdfViewerControl, PdfViewerControlViewModel>(
+                viewModel, options: options);
+
+            if (result == DialogResult.None)
+                throw new ApplicationException("PdfViewerService.ShowPdfAsync failed.");
         }
     }
     

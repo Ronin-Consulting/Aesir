@@ -5,6 +5,7 @@
              xmlns:controls="clr-namespace:Aesir.Client.Controls"
              xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
              xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:u="https://irihi.tech/ursa"
              mc:Ignorable="d"
              x:Class="Aesir.Client.Controls.Conversation"
              x:DataType="vm:MainViewModel"

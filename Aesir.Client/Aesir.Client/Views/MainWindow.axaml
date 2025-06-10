@@ -1,9 +1,9 @@
-<Window xmlns="https://github.com/avaloniaui"
+<u:UrsaWindow xmlns="https://github.com/avaloniaui"
               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
               xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
               xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+              xmlns:u="https://irihi.tech/ursa"
               xmlns:views="clr-namespace:Aesir.Client.Views"
-              xmlns:dialogHostAvalonia="clr-namespace:DialogHostAvalonia;assembly=DialogHost.Avalonia"
               mc:Ignorable="d"
               x:Class="Aesir.Client.Views.MainWindow"
               Icon="/Assets/logo.ico"
@@ -12,27 +12,13 @@
               Height="800"
               MinWidth="1280"
               Width="1280"
-              >
-    <Window.Styles>
-        <Style Selector="dialogHostAvalonia|DialogHost">
-            <Setter Property="Background" Value="{DynamicResource SemiColorBackground0}"></Setter>
-            <Setter Property="PopupTemplate">
-                <ControlTemplate>
-                    <Border Name="PART_ContentBackground"
-                            BorderBrush="{Binding Path=(dialogHostAvalonia:DialogHostStyle.BorderBrush), RelativeSource={RelativeSource FindAncestor, AncestorType=dialogHostAvalonia:DialogHost}}"
-                            BorderThickness="{Binding Path=(dialogHostAvalonia:DialogHostStyle.BorderThickness), RelativeSource={RelativeSource FindAncestor, AncestorType=dialogHostAvalonia:DialogHost}}"
-                            CornerRadius="{Binding Path=(dialogHostAvalonia:DialogHostStyle.CornerRadius), RelativeSource={RelativeSource FindAncestor, AncestorType=dialogHostAvalonia:DialogHost}}"
-                            BoxShadow="1.5 1.5 8 #4c000000"
-                            ClipToBounds="{Binding Path=(dialogHostAvalonia:DialogHostStyle.ClipToBounds), RelativeSource={RelativeSource FindAncestor, AncestorType=dialogHostAvalonia:DialogHost}}"
-                            Background="{Binding Path=Background, RelativeSource={RelativeSource FindAncestor, AncestorType=dialogHostAvalonia:DialogHost}}">
-                        <ContentPresenter Name="PART_ContentPresenter"
-                                          ContentTemplate="{TemplateBinding ContentTemplate}"
-                                          Content="{TemplateBinding Content}"
-                                          Padding="2" />
-                    </Border>
-                </ControlTemplate>
-            </Setter>
-        </Style>
-    </Window.Styles>
-    <views:MainView />
-</Window>
+              WindowStartupLocation="CenterScreen"
+>
+    <u:UrsaWindow.RightContent>
+    </u:UrsaWindow.RightContent>
+    <u:UrsaWindow.LeftContent>
+    </u:UrsaWindow.LeftContent>
+    <Grid ColumnDefinitions="Auto, *" Margin="0 16 0 0">
+        <views:MainView Grid.Column="0"/>
+    </Grid>
+</u:UrsaWindow>

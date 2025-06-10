@@ -1,58 +1,23 @@
-using System;
 using Avalonia.Controls;
-using System.Threading.Tasks;
 using Aesir.Client.Desktop.ViewModels;
+using Avalonia;
 using Avalonia.Controls.PanAndZoom;
-using MsBox.Avalonia.Base;
 
 namespace Aesir.Client.Desktop.Controls;
 
-public partial class PdfViewerControl : UserControl, IFullApi<string>, ISetCloseAction
+public partial class PdfViewerControl : UserControl
 {
-    private string? _buttonResult;
-    private Action? _closeAction;
-    
     public PdfViewerControl()
     {
         InitializeComponent();
     }
-    
-    public void SetButtonResult(string bdName)
-    {
-        _buttonResult = bdName;
-    }
 
-    public string GetButtonResult()
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        return _buttonResult ??  string.Empty;
-    }
-
-    public Task Copy()
-    {
-        // var clipboard = TopLevel.GetTopLevel(this).Clipboard;
-        // var text = ContentTextBox.SelectedText;
-        // if (string.IsNullOrEmpty(text))
-        // {
-        //     text = (DataContext as AbstractMsBoxViewModel)?.ContentMessage;
-        // }
-        // return clipboard?.SetTextAsync(text);
+        var viewModel = DataContext as PdfViewerControlViewModel;
+        viewModel!.SetZoomApi(new ZoomApiImpl(PdfZoomBorder));
         
-        return Task.CompletedTask;
-    }
-
-    public void Close()
-    {
-        _closeAction?.Invoke();
-    }
-
-    public void CloseWindow(object sender, EventArgs eventArgs)
-    {
-        ((IClose)this).Close();
-    }
-    
-    public void SetCloseAction(Action closeAction)
-    {
-        _closeAction = closeAction;
+        base.OnAttachedToVisualTree(e);
     }
 }
 

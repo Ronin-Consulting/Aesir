@@ -1,78 +1,64 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Aesir.Client.Controls;
+using Aesir.Client.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
-using MsBox.Avalonia;
-using MsBox.Avalonia.Dto;
-using MsBox.Avalonia.Enums;
-using MsBox.Avalonia.Models;
+using Ursa.Controls;
+using Notification = Avalonia.Controls.Notifications.Notification;
+using WindowNotificationManager = Avalonia.Controls.Notifications.WindowNotificationManager;
 
 namespace Aesir.Client.Services.Implementations.Standard
 {
     public class DialogService : IDialogService
     {
-        public async Task<string> ShowInputDialogAsync(string title, string message, string defaultValue = "")
+        public async Task<string> ShowInputDialogAsync(string title, string inputValue, string label = "Value", string defaultValue = "")
         {
-            var window = GetMainView();
-            if (window == null) return string.Empty;
-            
-            var parameters = new MessageBoxCustomParams
+            var options = new OverlayDialogOptions()
             {
-                ButtonDefinitions = new List<ButtonDefinition>
-                {
-                    new() { Name = "Ok", IsDefault = true },
-                    new() { Name = "Cancel", IsCancel = true }
-                },
-                ContentTitle = title,
-                ContentMessage = message,
-                Icon = Icon.None,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                CanResize = false,
-                MaxWidth = 400,
-                MaxHeight = 300,
-                SizeToContent = SizeToContent.WidthAndHeight,
-                InputParams = new InputParams()
-                {
-                    DefaultValue =  defaultValue
-                }
+                Mode = DialogMode.Info,
+                Buttons = DialogButton.OKCancel,
+                Title = title,
+                CanLightDismiss = true,
+                CanDragMove = true,
+                IsCloseButtonVisible = true,
+                CanResize = false
             };
+            var vm = new InputDialogViewModel
+            {
+                InputText = inputValue,
+                IsInputTextRequired = true,
+                LabelText = label
+            };
+            var result = await OverlayDialog.ShowModal<InputDialog, InputDialogViewModel>(
+                vm, options: options);
 
-            var msgBox = MessageBoxManager.GetMessageBoxCustom(parameters);
-
-            var result = await msgBox.ShowAsPopupAsync(window);
-            
-            return result == "Ok" ? msgBox.InputValue : string.Empty;
+            return result == DialogResult.OK ? vm.InputText : defaultValue;
         }
         
         public async Task<bool> ShowConfirmationDialogAsync(string title, string message)
         {
-            var window = GetMainView();
-            if (window == null) return false;
-            
-            var parameters = new MessageBoxCustomParams
+            var options = new OverlayDialogOptions()
             {
-                ButtonDefinitions = new List<ButtonDefinition>
-                {
-                    new() { Name = "Yes", IsDefault = true },
-                    new() { Name = "No", IsCancel = true }
-                },
-                ContentTitle = title,
-                ContentMessage = message,
-                Icon = Icon.None,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                CanResize = false,
-                MaxWidth = 400,
-                MaxHeight = 300,
-                SizeToContent = SizeToContent.WidthAndHeight
+                Mode = DialogMode.Info,
+                Buttons = DialogButton.YesNo,
+                Title = title,
+                CanLightDismiss = true,
+                CanDragMove = true,
+                IsCloseButtonVisible = true,
+                CanResize = false
             };
-            
-            var msgBox = MessageBoxManager.GetMessageBoxCustom(parameters);
 
-            var result = await msgBox.ShowAsPopupAsync(window);
-            
-            return result == "Yes";
+            var vm = new ConfirmDialogViewModel
+            {
+                MessageText = message
+            };
+            var result = await OverlayDialog.ShowModal<ConfirmDialog, ConfirmDialogViewModel>(
+                vm, options: options);
+
+            return result == DialogResult.OK;
         }
 
         public async Task ShowErrorDialogAsync(string title, string message)

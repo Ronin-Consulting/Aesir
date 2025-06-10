@@ -5,7 +5,6 @@
              xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:html="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
              xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
-             xmlns:dialogHostAvalonia="clr-namespace:DialogHostAvalonia;assembly=DialogHost.Avalonia"
              mc:Ignorable="d"
              x:Class="Aesir.Client.Controls.AssistantMessage"
              x:DataType="vm:AssistantMessageViewModel"

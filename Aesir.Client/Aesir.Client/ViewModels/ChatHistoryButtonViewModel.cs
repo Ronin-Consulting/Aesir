@@ -75,113 +75,53 @@ public partial class ChatHistoryButtonViewModel : ObservableRecipient, IRecipien
     [RelayCommand]
     private async Task RenameAsync()
     {
-        // // You can implement a dialog to get the new name
-        // // For now, let's assume you have an IDialogService
-        // var dialogService = Ioc.Default.GetService<IDialogService>();
-        // if (dialogService == null) return;
-        //
-        // var newTitle = await dialogService.ShowInputDialogAsync("Rename Chat", "Enter new name:", Title);
-        //
-        // if (!string.IsNullOrWhiteSpace(newTitle))
-        // {
-        //     // Update the title
-        //     Title = newTitle;
-        //     
-        //     // Update the chat session title
-        //     if (_chatSessionItem != null)
-        //     {
-        //         _chatSessionItem.Title = newTitle;
-        //         
-        //         // Save changes to your data store
-        //         var chatHistoryService = Ioc.Default.GetService<IChatHistoryService>();
-        //         await chatHistoryService?.UpdateChatSessionTitleAsync(_chatSessionItem.Id, newTitle)!;
-        //     }
-        // }
+        var dialogService = Ioc.Default.GetService<IDialogService>();
+        if (dialogService == null) return;
+        var newTitle = await dialogService.ShowInputDialogAsync(
+            "Rename Chat", Title, "Enter new name:"
+        );
 
-        if (!string.IsNullOrWhiteSpace(Title))
+        if (!string.IsNullOrWhiteSpace(newTitle))
         {
+            // Update the title
+            Title = newTitle;
+            
             // Update the chat session title
             if (_chatSessionItem != null)
             {
-                _chatSessionItem.Title = Title;
+                _chatSessionItem.Title = newTitle;
                 
                 // Save changes to your data store
                 var chatHistoryService = Ioc.Default.GetService<IChatHistoryService>();
-                await chatHistoryService?.UpdateChatSessionTitleAsync(_chatSessionItem.Id, Title)!;
+                await chatHistoryService?.UpdateChatSessionTitleAsync(_chatSessionItem.Id, newTitle)!;
             }
-        }
-        else
-        {
-            if (_chatSessionItem != null)
-            {
-                Title = _chatSessionItem.Title;
-            }
-        }
-    }
-
-    [RelayCommand]
-    private async Task CancelRenameAsync()
-    {
-        if (_chatSessionItem != null)
-        {
-            Title = _chatSessionItem.Title;
-        }
-        
-        await Task.CompletedTask;
-    }
-
-    [RelayCommand]
-    private async Task DeleteAsync()
-    {
-        // // Confirm deletion
-        // var dialogService = Ioc.Default.GetService<IDialogService>();
-        // if (dialogService == null) return;
-        //
-        // var result = await dialogService.ShowConfirmationDialogAsync(
-        //     "Delete Chat", 
-        //     $"Are you sure you want to delete this chat? This action cannot be undone.");
-        //
-        // if (result)
-        // {
-        //     // Delete the chat session
-        //     if (ChatSessionId.HasValue)
-        //     {
-        //         var chatHistoryService = Ioc.Default.GetService<IChatHistoryService>();
-        //         await chatHistoryService?.DeleteChatSessionAsync(ChatSessionId.Value)!;
-        //         
-        //         _appState.SelectedChatSessionId = null;
-        //         
-        //         // Update UI
-        //         WeakReferenceMessenger.Default.Send(new ChatHistoryChangedMessage());
-        //     }
-        // }
-        // Delete the chat session
-        if (ChatSessionId.HasValue)
-        {
-            var chatHistoryService = Ioc.Default.GetService<IChatHistoryService>();
-            await chatHistoryService?.DeleteChatSessionAsync(ChatSessionId.Value)!;
-                
-            _appState.SelectedChatSessionId = null;
-                
-            // Update UI
-            WeakReferenceMessenger.Default.Send(new ChatHistoryChangedMessage());
         }
     }
     
-    // [RelayCommand]
-    // private void CopyChatId()
-    // {
-    //     if (ChatSessionId.HasValue)
-    //     {
-    //         // Copy to clipboard
-    //         //Application.Current?.Clipboard?.SetTextAsync(ChatSessionId.Value.ToString());
-    //         this.GetClipboard().SetTextAsync(ChatSessionId.Value.ToString());
-    //         
-    //         // Show toast notification
-    //         _logger.LogInformation("Chat ID copied to clipboard");
-    //         // Implement notification if you have a notification service
-    //     }
-    // }
+    [RelayCommand]
+    private async Task DeleteAsync()
+    {   
+        var dialogService = Ioc.Default.GetService<IDialogService>();
+        if (dialogService == null) return;
+        
+        var result = await dialogService.ShowConfirmationDialogAsync(
+            "Delete Chat", 
+            $"Are you sure you want to delete this chat?");
+        if (result)
+        {
+            // Delete the chat session
+            if (ChatSessionId.HasValue)
+            {
+                var chatHistoryService = Ioc.Default.GetService<IChatHistoryService>();
+                await chatHistoryService?.DeleteChatSessionAsync(ChatSessionId.Value)!;
+                
+                _appState.SelectedChatSessionId = null;
+                
+                // Update UI
+                WeakReferenceMessenger.Default.Send(new ChatHistoryChangedMessage());
+            }
+        }
+    }
     
     // This is the handler for right-clicks, which is now simplified
     // since the context menu is defined in XAML
