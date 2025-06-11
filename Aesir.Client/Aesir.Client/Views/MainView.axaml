@@ -9,7 +9,7 @@
     xmlns:sys="clr-namespace:System;assembly=System.Runtime"
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
     x:Class="Aesir.Client.Views.MainView"
-    x:DataType="vm:MainViewModel">
+    x:DataType="vm:MainViewViewModel">
     <UserControl.Styles>
         <Style Selector="FlyoutPresenter.modelSelection">
             <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}" />
@@ -88,6 +88,7 @@
                                 <Button Classes="Tertiary" DockPanel.Dock="Left" Margin="0,0,6,0"
                                         Theme="{DynamicResource OutlineButton}"
                                         Command="{Binding ShowFileSelectionCommand}"
+                                        IsEnabled="{Binding SelectedFileEnabled}"
                                 >
                                     <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="20" />
                                 </Button>
@@ -105,7 +106,7 @@
                                     AcceptsReturn="True"
                                     KeyUp="InputElement_OnKey"
                                     NewLine="{Binding Source={x:Static sys:String.Empty}}"
-                                    IsEnabled="{Binding !SendingChat}"
+                                    IsEnabled="{Binding !SendingChatOrProcessingFile}"
                                     Watermark="Message AI" Text="{Binding ChatMessage, Mode=TwoWay}"
                                     VerticalContentAlignment="Center">
                                     <TextBox.InnerLeftContent>

@@ -4,45 +4,56 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:viewModels="clr-namespace:Aesir.Client.ViewModels"
+             xmlns:u="https://irihi.tech/ursa"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Aesir.Client.Controls.FileToUpload"
              x:DataType="viewModels:FileToUploadViewModel"
              >
-    <Border Theme="{DynamicResource CardBorder}" 
-            IsVisible="{Binding IsVisible}" 
-            Height="70" Width="215" Margin="25 0 0 12">
-        <RelativePanel Height="70" Width="210"
-                       VerticalAlignment="Stretch" 
-                       HorizontalAlignment="Stretch">
-            <Button
-                Margin="0 0 0 0"
-                ToolTip.Tip="Remove"
-                RelativePanel.AlignRightWithPanel="True"
-                RelativePanel.AlignTopWithPanel="True"
-                RelativePanel.Above="FileStackPanel"
-                Classes="Small Tertiary"
-                Theme="{DynamicResource BorderlessButton}">
-                <avalonia:MaterialIcon Kind="Close" />
-            </Button>
-            <StackPanel
-                Name="FileStackPanel"
-                RelativePanel.AlignBottomWithPanel="True"
-                RelativePanel.AlignTopWithPanel="True"
-                Orientation="Horizontal"
-                VerticalAlignment="Stretch">
-                <avalonia:MaterialIcon
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Kind="FileDocument"
-                    Width="40" Height="40" />
-                <TextBlock Text="{Binding FileName}"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           Margin="0 0 0 0" 
-                           TextTrimming="PrefixCharacterEllipsis"
-                           Width="165"
-                />
-            </StackPanel>
-        </RelativePanel>
-    </Border>
+
+        <Border Theme="{DynamicResource CardBorder}" 
+                IsVisible="{Binding IsVisible}" 
+                Height="70" Width="215" Margin="25 0 0 12">
+            <u:LoadingContainer
+                Height="70" Width="210"
+                VerticalAlignment="Stretch" 
+                HorizontalAlignment="Stretch"
+                IsLoading="{Binding IsProcessingFile}"
+                LoadingMessage="Processing...">
+            <RelativePanel Height="70" Width="210"
+                           VerticalAlignment="Stretch" 
+                           HorizontalAlignment="Stretch">
+                <Button
+                    Margin="0 0 0 0"
+                    ToolTip.Tip="Remove"
+                    RelativePanel.AlignRightWithPanel="True"
+                    RelativePanel.AlignTopWithPanel="True"
+                    RelativePanel.Above="FileStackPanel"
+                    Classes="Small Tertiary"
+                    Theme="{DynamicResource BorderlessButton}"
+                    Command="{Binding RemoveFileCommand}"
+                >
+                    <avalonia:MaterialIcon Kind="Close"/>
+                </Button>
+                <StackPanel
+                    Name="FileStackPanel"
+                    RelativePanel.AlignBottomWithPanel="True"
+                    RelativePanel.AlignTopWithPanel="True"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Stretch">
+                    <avalonia:MaterialIcon
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Kind="FileDocument"
+                        Width="40" Height="40" />
+                    <TextBlock Text="{Binding FileName}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Margin="0 0 0 0" 
+                               TextTrimming="PrefixCharacterEllipsis"
+                               Width="165"
+                    />
+                </StackPanel>
+            </RelativePanel>
+                </u:LoadingContainer>
+        </Border>
 </UserControl>

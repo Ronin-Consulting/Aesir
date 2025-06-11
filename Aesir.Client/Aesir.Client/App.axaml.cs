@@ -35,7 +35,7 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         var serviceProvider = ConfigureServices(this);
-        var mainViewModel = serviceProvider.GetService<MainViewModel>();
+        var mainViewModel = serviceProvider.GetService<MainViewViewModel>();
         
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -75,7 +75,7 @@ public partial class App : Application
 
             return appState;
         });
-        AppServices.AddSingleton<MainViewModel>();
+        AppServices.AddSingleton<MainViewViewModel>();
         AppServices.AddSingleton<ChatHistoryViewModel>();
         AppServices.AddSingleton<ISpeechService,NoOpSpeechService>();
         AppServices.AddSingleton<IMarkdownService,MarkdigMarkdownService>();

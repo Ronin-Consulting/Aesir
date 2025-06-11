@@ -12,8 +12,16 @@ public class ViewLocator : IDataTemplate
         if (data is null)
             return null;
 
-        var name = data.GetType().FullName!.Replace("ViewModel", "View", StringComparison.Ordinal);
-        var type = Type.GetType(name);
+        var name = data.GetType().Name!.Replace("ViewModel", "", StringComparison.Ordinal);
+        
+        var type = Type.GetType("Aesir.Client.Controls."+name);
+
+        if (type != null)
+        {
+            return (Control)Activator.CreateInstance(type)!;
+        }
+        
+        type = Type.GetType("Aesir.Client.Views."+name);
 
         if (type != null)
         {

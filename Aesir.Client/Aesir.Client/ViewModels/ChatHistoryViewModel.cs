@@ -130,7 +130,7 @@ public partial class ChatHistoryViewModel : ObservableRecipient, IRecipient<Prop
 
     public void Receive(PropertyChangedMessage<bool> message)
     {
-        if(message is { PropertyName: nameof(MainViewModel.SendingChat), NewValue: false })
+        if(message is { PropertyName: nameof(MainViewViewModel.SendingChatOrProcessingFile), NewValue: false })
         {
             Dispatcher.UIThread.InvokeAsync(LoadChatHistoryAsync);
         }

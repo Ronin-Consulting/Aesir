@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Aesir.Client.Messages;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
 using Avalonia;
@@ -19,7 +19,7 @@ using CommunityToolkit.Mvvm.Messaging.Messages;
 
 namespace Aesir.Client.ViewModels;
 
-public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>, IDisposable
+public partial class MainViewViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>, IRecipient<FileUploadStatusMessage>, IDisposable
 {
     [ObservableProperty] 
     private bool _micOn;
@@ -27,13 +27,17 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
     private bool _panelOpen;
     [ObservableProperty]
     [NotifyPropertyChangedRecipients]
-    private bool _sendingChat;
+    private bool _sendingChatOrProcessingFile;
     [ObservableProperty] 
     private bool _hasChatMessage;
     [ObservableProperty] 
     private bool _conversationStarted;
     [ObservableProperty] 
     private string? _selectedModelName = "Select a model";
+    [ObservableProperty] 
+    private FileToUploadViewModel _selectedFile;
+    [ObservableProperty] 
+    private bool _selectedFileEnabled = true;
     
     private string? _chatMessage;
     public string? ChatMessage
@@ -57,8 +61,8 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
     private readonly IChatService _chatService;
     private readonly IChatHistoryService _chatHistoryService;
     private readonly IModelService _modelService;
-
-    public MainViewModel(
+   
+    public MainViewViewModel(
         ApplicationState appState,
         ISpeechService speechService,
         IChatService chatService,
@@ -81,13 +85,17 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
             //     _speechService?.SpeakAsync("Aesir is listening.");
         });
         
+        SelectedFile = new FileToUploadViewModel
+        {
+            IsActive = true
+        };
     }
 
     protected override void OnActivated()
     {
         base.OnActivated();
         
-        LoadApplicationStateAsync();
+        _ = LoadApplicationStateAsync();
     }
     
     public void Receive(PropertyChangedMessage<Guid?> message)
@@ -98,8 +106,8 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
                 Dispatcher.UIThread.InvokeAsync(LoadChatSessionAsync);
         }
     }
-    
-    public async Task LoadApplicationStateAsync()
+
+    private async Task LoadApplicationStateAsync()
     {
         // load the selected model... for now just 1
         _appState.SelectedModel = 
@@ -154,7 +162,7 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
     }
     
     [RelayCommand]
-    public async Task SendMessageAsync()
+    private async Task SendMessageAsync()
     {
         if (string.IsNullOrWhiteSpace(ChatMessage))
         {
@@ -167,7 +175,7 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
         
         var message = AesirChatMessage.NewUserMessage(ChatMessage!);
         
-        SendingChat = true;
+        SendingChatOrProcessingFile = true;
         
         _appState.ChatSession!.AddMessage(message);
         
@@ -195,11 +203,11 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
         
         _appState.SelectedChatSessionId = _appState.ChatSession.Id;
         
-        SendingChat = false;
+        SendingChatOrProcessingFile = false;
     }
 
     [RelayCommand]
-    public async Task ShowFileSelectionAsync()
+    private async Task ShowFileSelectionAsync()
     {
         var topLevel = TopLevel.GetTopLevel(GetMainView());
 
@@ -209,12 +217,22 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
             Title = "Upload PDF",
             AllowMultiple = false,
             FileTypeFilter = [
-                new FilePickerFileType("*.pdf")
+                new FilePickerFileType("PDF Documents")
+                {
+                    Patterns = ["*.pdf"],
+                    MimeTypes = ["application/pdf"],
+                    AppleUniformTypeIdentifiers = ["com.adobe.pdf"]
+                }
             ]
         });
 
         if (files.Count >= 1)
         {
+            var filePath = files[0].Path.LocalPath;
+            WeakReferenceMessenger.Default.Send(new FileUploadRequestMessage()
+            {
+                FilePath = filePath
+            });
             // // Open reading stream from the first file.
             // await using var stream = await files[0].OpenReadAsync();
             // using var streamReader = new StreamReader(stream);
@@ -248,5 +266,11 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
             default:
                 throw new System.NotImplementedException();
         }
+    }
+
+    public void Receive(FileUploadStatusMessage message)
+    {
+        SelectedFileEnabled = !message.IsProcessing;
+        SendingChatOrProcessingFile = message.IsProcessing;
     }
 }

@@ -7,7 +7,7 @@
              xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              mc:Ignorable="d"
              x:Class="Aesir.Client.Controls.Conversation"
-             x:DataType="vm:MainViewModel"
+             x:DataType="vm:MainViewViewModel"
              >
     <RelativePanel>
         <ScrollViewer IsVisible="True" Name="ScrollViewer" Focusable="False"
@@ -53,11 +53,13 @@
                 <SvgImage Source="/Assets/logo.svg" />
             </Image.Source>
         </Image>
-        <!-- <controls:FileToUpload -->
-        <!--     RelativePanel.Above="ScrollViewer"  -->
-        <!--     RelativePanel.AlignLeftWithPanel="True" -->
-        <!--     RelativePanel.AlignBottomWithPanel="True" -->
-        <!--     VerticalAlignment="Bottom" -->
-        <!--     HorizontalAlignment="Left" /> -->
+        <controls:FileToUpload
+            RelativePanel.Above="ScrollViewer"
+            RelativePanel.AlignLeftWithPanel="True"
+            RelativePanel.AlignBottomWithPanel="True"
+            VerticalAlignment="Bottom"
+            HorizontalAlignment="Left"
+            DataContext="{Binding SelectedFile}"    
+        />
     </RelativePanel>
 </UserControl>
