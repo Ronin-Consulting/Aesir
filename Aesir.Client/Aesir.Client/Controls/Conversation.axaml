@@ -5,7 +5,6 @@
              xmlns:controls="clr-namespace:Aesir.Client.Controls"
              xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
              xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
-             xmlns:u="https://irihi.tech/ursa"
              mc:Ignorable="d"
              x:Class="Aesir.Client.Controls.Conversation"
              x:DataType="vm:MainViewModel"
@@ -16,7 +15,9 @@
                       RelativePanel.AlignRightWithPanel="True"
                       RelativePanel.AlignTopWithPanel="True"
                       RelativePanel.AlignBottomWithPanel="True"
-                      ScrollChanged="ScrollViewer_OnScrollChanged">
+                      ScrollChanged="ScrollViewer_OnScrollChanged"
+                     VerticalAlignment="Stretch"
+        >
             <StackPanel Width="768" VerticalAlignment="Top" HorizontalAlignment="Center">
                 <ItemsControl ItemsSource="{Binding ConversationMessages}">
                     <ItemsControl.DataTemplates>
@@ -45,12 +46,18 @@
         >
             <avalonia:MaterialIcon Kind="ArrowDownThick" Width="20" Height="20" />
         </Button>
-        <Image IsVisible="{Binding !ConversationStarted}" 
+        <Image Name="AesirImage" IsVisible="{Binding !ConversationStarted}" 
                RelativePanel.AlignHorizontalCenterWithPanel="True" 
                RelativePanel.AlignVerticalCenterWithPanel="True" Margin="0" VerticalAlignment="Center">
             <Image.Source>
                 <SvgImage Source="/Assets/logo.svg" />
             </Image.Source>
         </Image>
+        <!-- <controls:FileToUpload -->
+        <!--     RelativePanel.Above="ScrollViewer"  -->
+        <!--     RelativePanel.AlignLeftWithPanel="True" -->
+        <!--     RelativePanel.AlignBottomWithPanel="True" -->
+        <!--     VerticalAlignment="Bottom" -->
+        <!--     HorizontalAlignment="Left" /> -->
     </RelativePanel>
 </UserControl>

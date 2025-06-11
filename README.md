@@ -22,8 +22,9 @@
 - [ ] Implement RAG
   - [x] Upload
   - [ ] Download
-  - [ ] CRUD
+  - [x] CRUD
   - [X] Citations
+  - [X] Citation Viewer
   - [ ] Other?
 - [ ] Implement Microphone
   - [ ] Record
@@ -56,3 +57,4 @@ To use OpenAI as the backend:
 ### Models Tested
 1. qwen2.5:14b-instruct-q6_K
 2. qwen2.5:32b
+3. cogito:32b - This one is the best

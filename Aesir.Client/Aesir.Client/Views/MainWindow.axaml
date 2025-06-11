@@ -18,7 +18,5 @@
     </u:UrsaWindow.RightContent>
     <u:UrsaWindow.LeftContent>
     </u:UrsaWindow.LeftContent>
-    <Grid ColumnDefinitions="Auto, *" Margin="0 16 0 0">
-        <views:MainView Grid.Column="0"/>
-    </Grid>
+    <views:MainView Margin="0 16 0 0"/>
 </u:UrsaWindow>

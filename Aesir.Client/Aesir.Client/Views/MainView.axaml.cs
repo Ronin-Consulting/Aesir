@@ -50,7 +50,7 @@ public partial class MainView : UserControl
             e.Handled = true;
             if (sender is TextBox textBox)
             {
-                if (textBox.Text.Length > 0)
+                if (textBox.Text?.Length > 0)
                 {
                     SendMessageButton.Command.Execute(null);
                     

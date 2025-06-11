@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.DependencyInjection;
@@ -46,7 +51,6 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
     public ICommand ToggleChatHistory { get; }
     public ICommand ToggleNewChat { get; }
     public ICommand ToggleMicrophone { get; }
-    public ICommand SendMessage => new AsyncRelayCommand(SendMessageAsync);
     
     private readonly ApplicationState _appState;
     private readonly ISpeechService? _speechService;
@@ -149,7 +153,8 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
         }
     }
     
-    private async Task SendMessageAsync()
+    [RelayCommand]
+    public async Task SendMessageAsync()
     {
         if (string.IsNullOrWhiteSpace(ChatMessage))
         {
@@ -176,7 +181,7 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
         ChatMessage = null;
         
         var chatRequest = AesirChatRequest.NewWithDefaults();
-        chatRequest.Model = SelectedModelName;
+        chatRequest.Model = SelectedModelName!;
         chatRequest.Conversation = _appState.ChatSession.Conversation;
         chatRequest.ChatSessionId = _appState.ChatSession.Id;
         chatRequest.Title = _appState.ChatSession.Title;
@@ -192,7 +197,32 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
         
         SendingChat = false;
     }
-    
+
+    [RelayCommand]
+    public async Task ShowFileSelectionAsync()
+    {
+        var topLevel = TopLevel.GetTopLevel(GetMainView());
+
+        // Start async operation to open the dialog.
+        var files = await topLevel!.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Upload PDF",
+            AllowMultiple = false,
+            FileTypeFilter = [
+                new FilePickerFileType("*.pdf")
+            ]
+        });
+
+        if (files.Count >= 1)
+        {
+            // // Open reading stream from the first file.
+            // await using var stream = await files[0].OpenReadAsync();
+            // using var streamReader = new StreamReader(stream);
+            // // Reads all the content of file as a text.
+            // var fileContent = await streamReader.ReadToEndAsync();
+        }   
+    }
+
     protected virtual void Dispose(bool disposing)
     {
         if (disposing)
@@ -205,5 +235,18 @@ public partial class MainViewModel : ObservableRecipient, IRecipient<PropertyCha
     {
         Dispose(true);
         GC.SuppressFinalize(this);
+    }
+    
+    private ContentControl? GetMainView()
+    {
+        switch (Application.Current?.ApplicationLifetime)
+        {
+            case IClassicDesktopStyleApplicationLifetime desktop:
+                return desktop.MainWindow;
+            case ISingleViewApplicationLifetime singleView:
+                return singleView.MainView as ContentControl;
+            default:
+                throw new System.NotImplementedException();
+        }
     }
 }

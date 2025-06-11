@@ -7,7 +7,6 @@
     xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
     xmlns:controls="clr-namespace:Aesir.Client.Controls"
     xmlns:sys="clr-namespace:System;assembly=System.Runtime"
-    xmlns:u="https://irihi.tech/ursa"
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
     x:Class="Aesir.Client.Views.MainView"
     x:DataType="vm:MainViewModel">
@@ -33,7 +32,7 @@
                 Margin="10, 10, 14, 10"
                 LastChildFill="True">
                 <Button DockPanel.Dock="Right" ToolTip.Tip="New Chat" Command="{Binding ToggleNewChat}">
-                    <avalonia:MaterialIcon Kind="CommentAdd" Width="20" Height="20"/>
+                    <avalonia:MaterialIcon Kind="CommentAdd" Width="20" Height="20" />
                 </Button>
                 <Panel />
             </DockPanel>
@@ -63,45 +62,54 @@
                             <InlineUIContainer>
                                 <Button Margin="0" Padding="2,0,2,0" Theme="{DynamicResource BorderlessButton}">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock FontSize="14" Foreground="{DynamicResource SemiColorTertiaryPointerover}" Text="{Binding SelectedModelName}"></TextBlock>
-                                        <avalonia:MaterialIcon 
-                                            Foreground="{DynamicResource SemiColorTertiaryPointerover}" 
+                                        <TextBlock FontSize="14"
+                                                   Foreground="{DynamicResource SemiColorTertiaryPointerover}"
+                                                   Text="{Binding SelectedModelName}">
+                                        </TextBlock>
+                                        <avalonia:MaterialIcon
+                                            Foreground="{DynamicResource SemiColorTertiaryPointerover}"
                                             Kind="ChevronRight"
-                                            Margin="0" 
+                                            Margin="0"
                                             Padding="0" />
                                     </StackPanel>
                                     <Button.Flyout>
                                         <Flyout Placement="RightEdgeAlignedTop" FlyoutPresenterClasses="modelSelection">
-                                            <CheckBox Content="{Binding SelectedModelName}" IsThreeState="False" IsChecked="True" IsEnabled="False" />
+                                            <CheckBox Content="{Binding SelectedModelName}" IsThreeState="False"
+                                                      IsChecked="True" IsEnabled="False" />
                                         </Flyout>
                                     </Button.Flyout>
                                 </Button>
                             </InlineUIContainer>
                         </TextBlock>
                     </Panel>
-                    <Border
-                        BorderThickness="0,1,0,0"
-                        DockPanel.Dock="Bottom">
+                    <Border BorderThickness="0,1,0,0" DockPanel.Dock="Bottom">
                         <DockPanel Margin="10">
                             <DockPanel DockPanel.Dock="Bottom">
                                 <Button Classes="Tertiary" DockPanel.Dock="Left" Margin="0,0,6,0"
-                                        Theme="{DynamicResource OutlineButton}">
+                                        Theme="{DynamicResource OutlineButton}"
+                                        Command="{Binding ShowFileSelectionCommand}"
+                                >
                                     <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="20" />
                                 </Button>
-                                <Button Name="SendMessageButton" IsVisible="{Binding HasChatMessage}" DockPanel.Dock="Right" Margin="6,0,0,0"
-                                        Theme="{DynamicResource OutlineButton}" Command="{Binding SendMessage}">
+                                <Button Name="SendMessageButton" IsVisible="{Binding HasChatMessage}"
+                                        DockPanel.Dock="Right" Margin="6,0,0,0"
+                                        Theme="{DynamicResource OutlineButton}" Command="{Binding SendMessageCommand}">
                                     <avalonia:MaterialIcon Kind="Send" Width="20" Height="20" />
                                 </Button>
                                 <TextBox
                                     Name="MessageAiTextBox"
                                     PropertyChanged="MessageAiTextBox_OnPropertyChanged"
-                                        Focusable="True"
-                                        Classes="Bordered TextArea" 
-                                         MinHeight="32" MaxHeight="64" LineHeight="24" TextWrapping="Wrap" AcceptsReturn="True"
-                                         KeyUp="InputElement_OnKey"
-                                         NewLine="{Binding Source={x:Static sys:String.Empty}}"
-                                         IsEnabled="{Binding !SendingChat}"
-                                         Watermark="Message AI" Text="{Binding ChatMessage, Mode=TwoWay}">
+                                    Focusable="True"
+                                    Classes="Bordered TextArea"
+                                    MinHeight="32" MaxHeight="64" LineHeight="24" TextWrapping="Wrap"
+                                    AcceptsReturn="True"
+                                    KeyUp="InputElement_OnKey"
+                                    NewLine="{Binding Source={x:Static sys:String.Empty}}"
+                                    IsEnabled="{Binding !SendingChat}"
+                                    Watermark="Message AI" Text="{Binding ChatMessage, Mode=TwoWay}"
+                                    VerticalContentAlignment="Center">
+                                    <TextBox.InnerLeftContent>
+                                    </TextBox.InnerLeftContent>
                                     <TextBox.InnerRightContent>
                                         <Button Classes="Small" Classes.Primary="{Binding MicOn}"
                                                 Classes.Tertiary="{Binding !MicOn}"
