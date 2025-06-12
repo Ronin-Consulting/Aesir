@@ -16,7 +16,7 @@
 
 - [ ] Add message controls like chatgpt
   - [x] Copy message
-  - [ ] Regenerate assistant message
+  - [x] Regenerate assistant message
   - [ ] Edit user message
   - [ ] Play message
 - [ ] Implement RAG
