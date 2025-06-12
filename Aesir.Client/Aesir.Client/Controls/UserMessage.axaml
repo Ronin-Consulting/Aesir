@@ -5,28 +5,36 @@
              mc:Ignorable="d"
              x:Class="Aesir.Client.Controls.UserMessage"
              xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
-             xmlns:avalonia="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
+             xmlns:htmlRenderer="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
+             xmlns:avaloniaIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:DataType="vm:UserMessageViewModel">
     <UserControl.Resources>
         <SolidColorBrush x:Key="AesirBackground" Opacity="0.16" Color="#54A9FF" />
     </UserControl.Resources>
     <Panel HorizontalAlignment="Right" Margin="0,0,0,24">
-        <Border Background="{DynamicResource AesirBackground}"
-                BorderBrush="Black"
-                BorderThickness="1"
-                CornerRadius="20"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-        >
-            <avalonia:HtmlLabel
-                Name="HtmlLabel"
-                Text="{Binding Message}" 
-                AutoSize="True"
-                Background="Transparent"
-                BaseStylesheet="* { color: #F9F9F9; } p { padding: 0; margin: 0; }"
-                Margin="10"
-                Padding="0"
-            />
-        </Border>
+        <StackPanel Orientation="Vertical" HorizontalAlignment="Right">
+            <Border Background="{DynamicResource AesirBackground}"
+                    BorderBrush="Black"
+                    BorderThickness="1"
+                    CornerRadius="20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+            >
+                <htmlRenderer:HtmlLabel
+                    Name="HtmlLabel"
+                    Text="{Binding Message}" 
+                    AutoSize="True"
+                    Background="Transparent"
+                    BaseStylesheet="* { color: #F9F9F9; } p { padding: 0; margin: 0; }"
+                    Margin="10"
+                    Padding="0"
+                />
+            </Border>
+            <Panel Name="ActionPanel" HorizontalAlignment="Right" Margin="0,5,0,0" Opacity="0.0">
+                <Button Background="Transparent" BorderThickness="0" Padding="5" Click="EditAction_Clicked">
+                    <avaloniaIcons:MaterialIcon Kind="Edit" Width="20" Height="20" />
+                </Button>
+            </Panel>
+        </StackPanel>
     </Panel>
 </UserControl>
