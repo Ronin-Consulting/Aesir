@@ -52,8 +52,6 @@
                 Padding="0"
                 />
         </DockPanel>
-        
-        <!-- Hover panel with regenerate button -->
         <StackPanel 
             Name="HoverPanel"
             Orientation="Horizontal" 

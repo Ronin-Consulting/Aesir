@@ -52,11 +52,14 @@
                     Padding="0"
                 />
             </Border>
-            <Panel Name="ActionPanel" HorizontalAlignment="Right" Margin="0,5,0,0" Opacity="0.0">
-                <Button IsVisible="{Binding !IsEditing}" Background="Transparent" BorderThickness="0" Padding="5" Click="StartEditAction_Clicked">
+            <StackPanel Name="ActionPanel" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0" Opacity="0.0">
+                <Button Background="Transparent" BorderThickness="0" Padding="5" Command="{Binding RegenerateMessageCommand}" >
+                    <avaloniaIcons:MaterialIcon Kind="Refresh" Width="20" Height="20" />
+                </Button>
+                <Button Background="Transparent" BorderThickness="0" Padding="5" Click="StartEditAction_Clicked">
                     <avaloniaIcons:MaterialIcon Kind="Edit" Width="20" Height="20" />
                 </Button>
-            </Panel>
+            </StackPanel>
         </StackPanel>
     </Panel>
 </UserControl>

@@ -51,9 +51,4 @@ public partial class UserMessage : UserControl
         viewModel.SetMessage(AesirChatMessage.NewUserMessage($"<p>{viewModel.RawMessage}</p>"));
         viewModel.IsEditing = false;
     }
-
-    // public void MessageEditor_OnPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
-    // {
-    //     MessageEditor.Focus();
-    // }
 }
