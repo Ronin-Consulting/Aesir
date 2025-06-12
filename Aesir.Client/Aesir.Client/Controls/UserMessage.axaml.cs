@@ -1,3 +1,4 @@
+using Aesir.Client.Models;
 using Aesir.Client.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
@@ -38,6 +39,7 @@ public partial class UserMessage : UserControl
     public void StartEditAction_Clicked(object sender, RoutedEventArgs e)
     {
         if (DataContext is not UserMessageViewModel viewModel) return;
+        viewModel.RawMessage = viewModel.Message.Replace("<p>", "").Replace("</p>", "").TrimEnd('\n');
         viewModel.IsEditing = true;
         MessageEditor.Focus();
 
@@ -46,7 +48,7 @@ public partial class UserMessage : UserControl
     public void EndEditAction_Clicked(object sender, RoutedEventArgs e)
     {
         if (DataContext is not UserMessageViewModel viewModel) return;
-        viewModel.Message = $"<p>{viewModel.RawMessage}</p>";
+        viewModel.SetMessage(AesirChatMessage.NewUserMessage($"<p>{viewModel.RawMessage}</p>"));
         viewModel.IsEditing = false;
     }
 
