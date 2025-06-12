@@ -1,4 +1,5 @@
-using System;
+using Aesir.Client.ViewModels;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -34,8 +35,23 @@ public partial class UserMessage : UserControl
         ActionPanel.Opacity = 0.0;
     }
 
-    public void EditAction_Clicked(object sender, RoutedEventArgs e)
+    public void StartEditAction_Clicked(object sender, RoutedEventArgs e)
     {
-        Console.WriteLine("EDIT ACTION CLICKED!");
+        if (DataContext is not UserMessageViewModel viewModel) return;
+        viewModel.IsEditing = true;
+        MessageEditor.Focus();
+
     }
+
+    public void EndEditAction_Clicked(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not UserMessageViewModel viewModel) return;
+        viewModel.Message = $"<p>{viewModel.RawMessage}</p>";
+        viewModel.IsEditing = false;
+    }
+
+    // public void MessageEditor_OnPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    // {
+    //     MessageEditor.Focus();
+    // }
 }

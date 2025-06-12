@@ -12,7 +12,29 @@
         <SolidColorBrush x:Key="AesirBackground" Opacity="0.16" Color="#54A9FF" />
     </UserControl.Resources>
     <Panel HorizontalAlignment="Right" Margin="0,0,0,24">
-        <StackPanel Orientation="Vertical" HorizontalAlignment="Right">
+        <StackPanel IsVisible="{Binding IsEditing}">
+            <Border Background="{DynamicResource AesirBackground}"
+                    BorderBrush="Black"
+                    BorderThickness="1"
+                    CornerRadius="20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+            >
+                <TextBox
+                    Name="MessageEditor"
+                    Text="{Binding RawMessage}" 
+                    Background="Transparent"
+                    Margin="10"
+                    Padding="0"
+                />
+            </Border>
+            <Panel Name="EditorActionPanel" HorizontalAlignment="Right" Margin="0,5,0,0">
+                <Button IsVisible="{Binding IsEditing}" Background="Transparent" BorderThickness="0" Padding="5" Click="EndEditAction_Clicked">
+                    <avaloniaIcons:MaterialIcon Kind="Check" Width="20" Height="20" />
+                </Button>
+            </Panel>
+        </StackPanel>
+        <StackPanel Orientation="Vertical" HorizontalAlignment="Right" IsVisible="{Binding !IsEditing}">
             <Border Background="{DynamicResource AesirBackground}"
                     BorderBrush="Black"
                     BorderThickness="1"
@@ -31,7 +53,7 @@
                 />
             </Border>
             <Panel Name="ActionPanel" HorizontalAlignment="Right" Margin="0,5,0,0" Opacity="0.0">
-                <Button Background="Transparent" BorderThickness="0" Padding="5" Click="EditAction_Clicked">
+                <Button IsVisible="{Binding !IsEditing}" Background="Transparent" BorderThickness="0" Padding="5" Click="StartEditAction_Clicked">
                     <avaloniaIcons:MaterialIcon Kind="Edit" Width="20" Height="20" />
                 </Button>
             </Panel>

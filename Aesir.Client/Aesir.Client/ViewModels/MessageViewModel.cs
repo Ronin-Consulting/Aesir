@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -23,6 +24,8 @@ public abstract partial class MessageViewModel : ObservableRecipient
     public virtual string Role => "Unknown";
 
     public string Content { get; set; } = string.Empty;
+    
+    public Guid Id { get; set; } = Guid.NewGuid();
 
     protected MessageViewModel(ILogger logger, IMarkdownService markdownService)
     {

@@ -62,7 +62,7 @@ public partial class MainView : UserControl
 
     private void MessageAiTextBox_OnPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
-        if(e.Property.Name == "IsEnabled" && e.NewValue is bool enabled && enabled)
+        if(e.Property.Name == "IsEnabled" && e.NewValue is true)
         {
             MessageAiTextBox.Focus();
         }
