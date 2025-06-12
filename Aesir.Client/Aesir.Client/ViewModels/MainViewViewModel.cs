@@ -19,7 +19,7 @@ using CommunityToolkit.Mvvm.Messaging.Messages;
 
 namespace Aesir.Client.ViewModels;
 
-public partial class MainViewViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>, IRecipient<FileUploadStatusMessage>, IDisposable
+public partial class MainViewViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>, IRecipient<FileUploadStatusMessage>, IRecipient<RegenerateMessageMessage>, IDisposable
 {
     [ObservableProperty] 
     private bool _micOn;
@@ -272,5 +272,64 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     {
         SelectedFileEnabled = !message.IsProcessing;
         SendingChatOrProcessingFile = message.IsProcessing;
+    }
+
+    public void Receive(RegenerateMessageMessage message)
+    {
+        var userMessageViewModel = message.Value;
+        RegenerateMessage(userMessageViewModel);
+    }
+
+    private async void RegenerateMessage(UserMessageViewModel userMessageViewModel)
+    {
+        // Find the index of the user message in the conversation
+        var messageIndex = ConversationMessages.IndexOf(userMessageViewModel);
+        if (messageIndex == -1) return;
+
+        // Remove all messages after this user message (including the assistant response)
+        for (int i = ConversationMessages.Count - 1; i > messageIndex; i--)
+        {
+            ConversationMessages.RemoveAt(i);
+        }
+
+        // Also remove messages from the chat session
+        var messagesToRemove = _appState.ChatSession!.GetMessages().Skip(messageIndex + 1).ToList();
+        foreach (var msg in messagesToRemove)
+        {
+            _appState.ChatSession.RemoveMessage(msg);
+        }
+
+        // Re-send the user message by simulating the send process
+        await ResendUserMessage(userMessageViewModel);
+    }
+
+    private async Task ResendUserMessage(UserMessageViewModel userMessageViewModel)
+    {
+        ConversationStarted = true;
+        SendingChatOrProcessingFile = true;
+
+        // Create new assistant message view model
+        var assistantMessageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
+        ConversationMessages.Add(assistantMessageViewModel);
+
+        // Prepare the chat request
+        var chatRequest = AesirChatRequest.NewWithDefaults();
+        chatRequest.Model = SelectedModelName!;
+        chatRequest.Conversation = _appState.ChatSession!.Conversation;
+        chatRequest.ChatSessionId = _appState.ChatSession.Id;
+        chatRequest.Title = _appState.ChatSession.Title;
+        chatRequest.ChatSessionUpdatedAt = DateTimeOffset.Now;
+
+        // Send the request and stream the response
+        var result = _chatService.ChatCompletionsStreamedAsync(chatRequest);
+        var title = await assistantMessageViewModel!.SetStreamedMessageAsync(result).ConfigureAwait(false);
+
+        // Update the chat session
+        _appState.ChatSession.Title = title;
+        _appState.ChatSession.AddMessage(assistantMessageViewModel.GetAesirChatMessage());
+
+        _appState.SelectedChatSessionId = _appState.ChatSession.Id;
+
+        SendingChatOrProcessingFile = false;
     }
 }

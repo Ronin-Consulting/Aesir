@@ -26,6 +26,11 @@ public class AesirChatSession
         Conversation.Messages.Add(message);
     }
     
+    public void RemoveMessage(AesirChatMessage message)
+    {
+        Conversation.Messages.Remove(message);
+    }
+    
     public IList<AesirChatMessage> GetMessages()
     {
         return Conversation.Messages;

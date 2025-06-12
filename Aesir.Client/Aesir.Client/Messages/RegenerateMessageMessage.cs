@@ -1,0 +1,11 @@
+using Aesir.Client.ViewModels;
+using CommunityToolkit.Mvvm.Messaging.Messages;
+
+namespace Aesir.Client.Messages;
+
+public class RegenerateMessageMessage : ValueChangedMessage<UserMessageViewModel>
+{
+    public RegenerateMessageMessage(UserMessageViewModel value) : base(value)
+    {
+    }
+}

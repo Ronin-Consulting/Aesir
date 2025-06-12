@@ -6,11 +6,12 @@
              x:Class="Aesir.Client.Controls.UserMessage"
              xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
              xmlns:avalonia="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
+             xmlns:avaloniaIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:DataType="vm:UserMessageViewModel">
     <UserControl.Resources>
         <SolidColorBrush x:Key="AesirBackground" Opacity="0.16" Color="#54A9FF" />
     </UserControl.Resources>
-    <Panel HorizontalAlignment="Right" Margin="0,0,0,24">
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,24" Spacing="8">
         <Border Background="{DynamicResource AesirBackground}"
                 BorderBrush="Black"
                 BorderThickness="1"
@@ -28,5 +29,14 @@
                 Padding="0"
             />
         </Border>
-    </Panel>
+        <Button Name="RegenerateMessageButton" 
+                Background="Transparent"
+                BorderThickness="0"
+                Command="{Binding RegenerateMessageCommand}"
+                Padding="8"
+                VerticalAlignment="Center"
+                ToolTip.Tip="Regenerate this message">
+            <avaloniaIcons:MaterialIcon Kind="Refresh" Width="20" Height="20" />
+        </Button>
+    </StackPanel>
 </UserControl>
