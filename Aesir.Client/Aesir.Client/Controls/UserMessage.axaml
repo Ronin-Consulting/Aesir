@@ -29,14 +29,5 @@
                 Padding="0"
             />
         </Border>
-        <Button Name="RegenerateMessageButton" 
-                Background="Transparent"
-                BorderThickness="0"
-                Command="{Binding RegenerateMessageCommand}"
-                Padding="8"
-                VerticalAlignment="Center"
-                ToolTip.Tip="Regenerate this message">
-            <avaloniaIcons:MaterialIcon Kind="Refresh" Width="20" Height="20" />
-        </Button>
     </StackPanel>
 </UserControl>

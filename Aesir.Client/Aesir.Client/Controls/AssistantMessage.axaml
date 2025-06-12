@@ -26,28 +26,50 @@
             </Style.Animations>
         </Style>
     </UserControl.Styles>
-    <DockPanel 
-        HorizontalAlignment="Left" 
+    <StackPanel 
+        Name="MessagePanel"
+        HorizontalAlignment="Left"
         Margin="0,0,0,24">
-        <Border DockPanel.Dock="Left">
-            <Image Margin="0" Height="40" Width="40" VerticalAlignment="Top">
-                <Image.Source>
-                    <SvgImage Source="/Assets/assistant.svg" />
-                </Image.Source>
-            </Image>
-        </Border>
-        <avalonia:MaterialIcon
-            IsVisible="{Binding !IsLoaded}"
-            Classes="progress" Kind="Circle" Foreground="{DynamicResource SemiColorTertiary}" />
-        <html:HtmlLabel
-            IsVisible="{Binding IsLoaded}"
-            DockPanel.Dock="Right"
-            Name="HtmlLabel"
-            Text="{Binding Message}" 
-            AutoSizeHeightOnly="True"
-            BaseStylesheet="* { color: #F9F9F9; line-height: 1.6;} li { margin-bottom: 1em; line-height: 24px; }"
-            Margin="0 0 0 0"
-            Padding="0"
-            />
-    </DockPanel>
+        <DockPanel>
+            <Border DockPanel.Dock="Left">
+                <Image Margin="0" Height="40" Width="40" VerticalAlignment="Top">
+                    <Image.Source>
+                        <SvgImage Source="/Assets/assistant.svg" />
+                    </Image.Source>
+                </Image>
+            </Border>
+            <avalonia:MaterialIcon
+                IsVisible="{Binding !IsLoaded}"
+                Classes="progress" Kind="Circle" Foreground="{DynamicResource SemiColorTertiary}" />
+            <html:HtmlLabel
+                IsVisible="{Binding IsLoaded}"
+                DockPanel.Dock="Right"
+                Name="HtmlLabel"
+                Text="{Binding Message}" 
+                AutoSizeHeightOnly="True"
+                BaseStylesheet="* { color: #F9F9F9; line-height: 1.6;} li { margin-bottom: 1em; line-height: 24px; }"
+                Margin="0 0 0 0"
+                Padding="0"
+                />
+        </DockPanel>
+        
+        <!-- Hover panel with regenerate button -->
+        <StackPanel 
+            Name="HoverPanel"
+            Orientation="Horizontal" 
+            HorizontalAlignment="Left"
+            Margin="40,8,0,0"
+            Opacity="0"
+            IsVisible="{Binding IsLoaded}">
+            <Button Name="RegenerateMessageButton" 
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Command="{Binding RegenerateMessageCommand}"
+                    Padding="8"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="Regenerate">
+                <avalonia:MaterialIcon Kind="Refresh" Width="20" Height="20" />
+            </Button>
+        </StackPanel>
+    </StackPanel>
 </UserControl>

@@ -3,9 +3,9 @@ using CommunityToolkit.Mvvm.Messaging.Messages;
 
 namespace Aesir.Client.Messages;
 
-public class RegenerateMessageMessage : ValueChangedMessage<UserMessageViewModel>
+public class RegenerateMessageMessage : ValueChangedMessage<MessageViewModel>
 {
-    public RegenerateMessageMessage(UserMessageViewModel value) : base(value)
+    public RegenerateMessageMessage(MessageViewModel value) : base(value)
     {
     }
 }

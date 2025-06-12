@@ -1,5 +1,9 @@
+using System;
 using Aesir.Client.ViewModels;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.VisualTree;
 using TheArtOfDev.HtmlRenderer.Avalonia;
 using TheArtOfDev.HtmlRenderer.Core.Entities;
 
@@ -11,6 +15,25 @@ public partial class AssistantMessage : UserControl
     {
         InitializeComponent();
         HtmlLabel.LinkClicked += HtmlLabel_OnLinkClicked;
+
+        MessagePanel.PointerEntered += OnPointerEntered;
+        MessagePanel.PointerCaptureLost += OnPointerCaptureLost;
+        MessagePanel.PointerExited += OnPointerExited;
+    }
+
+    private void OnPointerEntered(object? sender, PointerEventArgs e)
+    {
+        HoverPanel.Opacity = 1.0;
+    }
+
+    private void OnPointerExited(object? sender, PointerEventArgs e)
+    {
+        HoverPanel.Opacity = 0.0;
+    }
+
+    private void OnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        HoverPanel.Opacity = 0.0;
     }
 
     public void HtmlLabel_OnLinkClicked(object? sender, HtmlRendererRoutedEventArgs<HtmlLinkClickedEventArgs> e)

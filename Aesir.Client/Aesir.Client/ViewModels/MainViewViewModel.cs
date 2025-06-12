@@ -276,8 +276,16 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
 
     public void Receive(RegenerateMessageMessage message)
     {
-        var userMessageViewModel = message.Value;
-        RegenerateMessage(userMessageViewModel);
+        var messageViewModel = message.Value;
+        
+        if (messageViewModel is UserMessageViewModel userMessage)
+        {
+            RegenerateMessage(userMessage);
+        }
+        else if (messageViewModel is AssistantMessageViewModel assistantMessage)
+        {
+            RegenerateFromAssistantMessage(assistantMessage);
+        }
     }
 
     private async void RegenerateMessage(UserMessageViewModel userMessageViewModel)
@@ -301,6 +309,42 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
 
         // Re-send the user message by simulating the send process
         await ResendUserMessage(userMessageViewModel);
+    }
+
+    private async void RegenerateFromAssistantMessage(AssistantMessageViewModel assistantMessageViewModel)
+    {
+        // Find the index of the assistant message in the conversation
+        var assistantIndex = ConversationMessages.IndexOf(assistantMessageViewModel);
+        if (assistantIndex == -1 || assistantIndex == 0) return;
+
+        // Find the preceding user message
+        UserMessageViewModel? userMessage = null;
+        for (int i = assistantIndex - 1; i >= 0; i--)
+        {
+            if (ConversationMessages[i] is UserMessageViewModel user)
+            {
+                userMessage = user;
+                break;
+            }
+        }
+
+        if (userMessage == null) return;
+
+        // Remove the assistant message and all messages after it
+        for (int i = ConversationMessages.Count - 1; i >= assistantIndex; i--)
+        {
+            ConversationMessages.RemoveAt(i);
+        }
+
+        // Also remove messages from the chat session (from assistant message onwards)
+        var messagesToRemove = _appState.ChatSession!.GetMessages().Skip(assistantIndex).ToList();
+        foreach (var msg in messagesToRemove)
+        {
+            _appState.ChatSession.RemoveMessage(msg);
+        }
+
+        // Re-send the user message by simulating the send process
+        await ResendUserMessage(userMessage);
     }
 
     private async Task ResendUserMessage(UserMessageViewModel userMessageViewModel)
