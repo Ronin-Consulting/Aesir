@@ -7,6 +7,7 @@
              xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
              xmlns:htmlRenderer="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
              xmlns:avaloniaIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:controls="clr-namespace:Aesir.Client.Controls"
              x:DataType="vm:UserMessageViewModel">
     <UserControl.Resources>
         <SolidColorBrush x:Key="AesirBackground" Opacity="0.16" Color="#54A9FF" />
@@ -20,7 +21,7 @@
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
             >
-                <TextBox
+                <controls:CustomTextBox
                     Name="MessageEditor"
                     Text="{Binding RawMessage}" 
                     Background="Transparent"

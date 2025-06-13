@@ -48,7 +48,7 @@ public abstract partial class MessageViewModel : ObservableRecipient
     {
         Content = message.Content;
         
-        var htmlMessage = _markdownService.RenderMarkdownAsHtmlAsync(NormalizeInput(message.Content)).Result;
+        var htmlMessage = _markdownService.RenderMarkdownAsHtmlAsync(message.Content).Result;
         Message = htmlMessage;
         
         IsLoaded = true;
