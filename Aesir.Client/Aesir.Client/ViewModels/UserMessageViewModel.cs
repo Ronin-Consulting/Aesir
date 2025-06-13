@@ -1,3 +1,4 @@
+using System;
 using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;
@@ -26,6 +27,7 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
 
     private void RegenerateMessage()
     {
+        Console.WriteLine(this.Message);
         WeakReferenceMessenger.Default.Send(new RegenerateMessageMessage(this));
     }
 }
