@@ -192,7 +192,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         
         ConversationStarted = true;
         
-        var message = AesirChatMessage.NewUserMessage(ChatMessage!);
+        var message = AesirChatMessage.NewUserMessage(ChatMessage);
         
         SendingChatOrProcessingFile = true;
         

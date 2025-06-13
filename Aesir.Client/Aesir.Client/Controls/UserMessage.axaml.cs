@@ -39,16 +39,15 @@ public partial class UserMessage : UserControl
     public void StartEditAction_Clicked(object sender, RoutedEventArgs e)
     {
         if (DataContext is not UserMessageViewModel viewModel) return;
-        viewModel.RawMessage = viewModel.Message.Replace("<p>", "").Replace("</p>", "").TrimEnd('\n');
+        viewModel.RawMessage = viewModel.ConvertFromHtml(viewModel.Message);
         viewModel.IsEditing = true;
         MessageEditor.Focus();
-
     }
 
     public void EndEditAction_Clicked(object sender, RoutedEventArgs e)
     {
         if (DataContext is not UserMessageViewModel viewModel) return;
-        viewModel.SetMessage(AesirChatMessage.NewUserMessage($"<p>{viewModel.RawMessage}</p>"));
+        viewModel.SetMessage(AesirChatMessage.NewUserMessage(viewModel.ConvertToHtml(viewModel.RawMessage)));
         viewModel.IsEditing = false;
     }
 }

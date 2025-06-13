@@ -25,9 +25,18 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
         return new RelayCommand(RegenerateMessage);
     }
 
+    public string ConvertFromHtml(string html)
+    {
+        return html.Replace("<p>", "").Replace("</p>", "").TrimEnd('\n');
+    }
+
+    public string ConvertToHtml(string rawMessage)
+    {
+        return $"<p>{rawMessage}</p>";
+    }
+
     private void RegenerateMessage()
     {
-        Console.WriteLine(this.Message);
         WeakReferenceMessenger.Default.Send(new RegenerateMessageMessage(this));
     }
 }

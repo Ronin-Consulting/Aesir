@@ -1,16 +1,18 @@
 using System;
+using Aesir.Client.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using CommunityToolkit.Mvvm.DependencyInjection;
 
 namespace Aesir.Client.Controls;
 
 public partial class CustomTextBox : UserControl
 {
     public static readonly StyledProperty<string> TextProperty =
-        AvaloniaProperty.Register<CustomTextBox, string>(nameof(Text), string.Empty);
+        AvaloniaProperty.Register<CustomTextBox, string>(nameof(Text));
 
     public static readonly StyledProperty<string> WatermarkProperty =
         AvaloniaProperty.Register<CustomTextBox, string>(nameof(Watermark), string.Empty);
@@ -119,6 +121,7 @@ public partial class CustomTextBox : UserControl
 
     public event EventHandler<KeyEventArgs>? KeyUp;
     public event EventHandler<KeyEventArgs>? KeyDown;
+    
     public event EventHandler? SendMessageRequested;
 
     public CustomTextBox()
@@ -131,13 +134,12 @@ public partial class CustomTextBox : UserControl
     {
         InnerTextBox.KeyDown += OnKeyDown;
         InnerTextBox.KeyUp += OnKeyUp;
-        
-        this.GetObservable(TextProperty).Subscribe(value => InnerTextBox.Text = value);
+
         this.GetObservable(WatermarkProperty).Subscribe(value => InnerTextBox.Watermark = value);
         this.GetObservable(IsEnabledProperty).Subscribe(value => InnerTextBox.IsEnabled = value);
         this.GetObservable(InnerLeftContentProperty).Subscribe(value => InnerTextBox.InnerLeftContent = value);
         this.GetObservable(InnerRightContentProperty).Subscribe(value => InnerTextBox.InnerRightContent = value);
-        this.GetObservable(ClassesProperty).Subscribe(value => 
+        this.GetObservable(ClassesProperty).Subscribe(value =>
         {
             if (!string.IsNullOrEmpty(value))
             {
@@ -149,29 +151,30 @@ public partial class CustomTextBox : UserControl
                 }
             }
         });
-        this.GetObservable(MinHeightProperty).Subscribe(value => 
+        this.GetObservable(MinHeightProperty).Subscribe(value =>
         {
             if (!double.IsNaN(value))
                 InnerTextBox.MinHeight = value;
         });
-        this.GetObservable(MaxHeightProperty).Subscribe(value => 
+        this.GetObservable(MaxHeightProperty).Subscribe(value =>
         {
             if (!double.IsNaN(value))
                 InnerTextBox.MaxHeight = value;
         });
-        this.GetObservable(VerticalContentAlignmentProperty).Subscribe(value => InnerTextBox.VerticalContentAlignment = value);
+        this.GetObservable(VerticalContentAlignmentProperty)
+            .Subscribe(value => InnerTextBox.VerticalContentAlignment = value);
         this.GetObservable(TextWrappingProperty).Subscribe(value => InnerTextBox.TextWrapping = value);
-        this.GetObservable(LineHeightProperty).Subscribe(value => 
+        this.GetObservable(LineHeightProperty).Subscribe(value =>
         {
             if (!double.IsNaN(value))
                 InnerTextBox.LineHeight = value;
         });
-        this.GetObservable(NewLineProperty).Subscribe(value => 
+        this.GetObservable(NewLineProperty).Subscribe(value =>
         {
             if (!string.IsNullOrEmpty(value))
                 InnerTextBox.NewLine = value;
         });
-        
+
         InnerTextBox.GetObservable(TextBox.TextProperty).Subscribe(value => Text = value ?? string.Empty);
     }
 
@@ -189,27 +192,31 @@ public partial class CustomTextBox : UserControl
 
     private void OnKeyUp(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Return)
+        switch (e.Key)
         {
-            e.Handled = true;
-            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            case Key.Return:
             {
-                HandleShiftEnter();
-            }
-            else
-            {
-                if (Text?.Length > 0)
+                e.Handled = true;
+                if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
                 {
-                    SendMessageRequested?.Invoke(this, EventArgs.Empty);
-                    Focus();
+                    HandleShiftEnter();
                 }
+                else
+                {
+                    if (Text?.Length > 0)
+                    {
+                        SendMessageRequested?.Invoke(this, EventArgs.Empty);
+                        Focus();
+                    }
+                }
+
+                break;
             }
+            case Key.Space:
+                HandleSpaceKey();
+                break;
         }
-        else if (e.Key == Key.Space)
-        {
-            HandleSpaceKey();
-        }
-        
+
         KeyUp?.Invoke(sender, e);
     }
 
@@ -228,14 +235,14 @@ public partial class CustomTextBox : UserControl
     {
         var currentText = Text ?? "";
         var caretIndex = CaretIndex;
-        
+
         var currentLineStart = GetLineStart(currentText, caretIndex);
         var currentLineEnd = GetLineEnd(currentText, caretIndex);
         var currentLine = currentText.Substring(currentLineStart, currentLineEnd - currentLineStart);
-        
+
         string newLinePrefix = "";
         bool isEmptyListItem = false;
-        
+
         if (currentLine.TrimStart().StartsWith("- "))
         {
             var contentAfterDash = currentLine.TrimStart().Substring(2);
@@ -264,12 +271,12 @@ public partial class CustomTextBox : UserControl
                 newLinePrefix = indent + nextNumber + ". ";
             }
         }
-        
+
         if (isEmptyListItem)
         {
             var indent = GetIndentation(currentLine);
             var newText = currentText.Remove(currentLineStart, currentLineEnd - currentLineStart)
-                                    .Insert(currentLineStart, indent + Environment.NewLine);
+                .Insert(currentLineStart, indent + Environment.NewLine);
             Text = newText;
             CaretIndex = currentLineStart + indent.Length + Environment.NewLine.Length;
         }
@@ -285,12 +292,12 @@ public partial class CustomTextBox : UserControl
     {
         var currentText = Text ?? "";
         var caretIndex = CaretIndex;
-        
+
         if (caretIndex >= 2 && currentText.Substring(caretIndex - 2, 2) == "* ")
         {
             var lineStart = GetLineStart(currentText, caretIndex);
             var beforeAsterisk = currentText.Substring(lineStart, caretIndex - lineStart - 2);
-            
+
             if (string.IsNullOrWhiteSpace(beforeAsterisk))
             {
                 var newText = currentText.Remove(caretIndex - 2, 2).Insert(caretIndex - 2, "- ");
@@ -323,16 +330,17 @@ public partial class CustomTextBox : UserControl
             else
                 break;
         }
+
         return indent;
     }
 
     private bool IsNumberedListItem(string line)
     {
         if (string.IsNullOrEmpty(line)) return false;
-        
+
         var parts = line.Split(new[] { ". " }, 2, StringSplitOptions.None);
         if (parts.Length != 2) return false;
-        
+
         return int.TryParse(parts[0], out _);
     }
 
@@ -343,6 +351,7 @@ public partial class CustomTextBox : UserControl
         {
             return currentNumber + 1;
         }
+
         return 1;
     }
 }
