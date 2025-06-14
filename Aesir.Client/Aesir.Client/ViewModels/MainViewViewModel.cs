@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -56,12 +57,15 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     public ICommand ToggleNewChat { get; }
     public ICommand ToggleMicrophone { get; }
     
+    // Services
     private readonly ApplicationState _appState;
     private readonly ISpeechService? _speechService;
     private readonly IChatService _chatService;
     private readonly IChatHistoryService _chatHistoryService;
     private readonly IModelService _modelService;
    
+    private readonly ChatSessionManager _chatSessionManager;
+
     public MainViewViewModel(
         ApplicationState appState,
         ISpeechService speechService,
@@ -74,6 +78,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         _chatService = chatService;
         _chatHistoryService = chatHistoryService;
         _modelService = modelService;
+        _chatSessionManager = new ChatSessionManager(chatHistoryService, chatService, appState);
 
         ToggleChatHistory = new RelayCommand(() => PanelOpen = !PanelOpen);
         ToggleNewChat = new RelayCommand(() => _appState.SelectedChatSessionId = null);
@@ -107,58 +112,72 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
+    public void Receive(FileUploadStatusMessage message)
+    {
+        SelectedFileEnabled = !message.IsProcessing;
+        SendingChatOrProcessingFile = message.IsProcessing;
+    }
+
     private async Task LoadApplicationStateAsync()
     {
-        // load the selected model... for now just 1
-        _appState.SelectedModel = 
-            (await _modelService.GetModelsAsync()).FirstOrDefault(m => m.IsChatModel);
-        SelectedModelName = _appState.SelectedModel?.Id!;
-        
-        // load chat session
+        await LoadSelectedModelAsync();
         await LoadChatSessionAsync();
+    }
+
+    private async Task LoadSelectedModelAsync()
+    {
+        var models = await _modelService.GetModelsAsync();
+        _appState.SelectedModel = models.FirstOrDefault(m => m.IsChatModel);
+        SelectedModelName = _appState.SelectedModel?.Id!;
     }
 
     private async Task LoadChatSessionAsync()
     {
-        var currentId = _appState.SelectedChatSessionId;
-        if (currentId == null)
-        {
-            ConversationStarted = false;
-            _appState.ChatSession = new AesirChatSession();
-        }
-        else
-        {
-            ConversationStarted = true;
-            _appState.ChatSession = await _chatHistoryService.GetChatSessionAsync(currentId.Value);
-        }
-        
+        await _chatSessionManager.LoadChatSessionAsync();
+        ConversationStarted = _appState.SelectedChatSessionId != null;
+
+        await RefreshConversationMessagesAsync();
+    }
+
+    private async Task RefreshConversationMessagesAsync()
+    {
         ConversationMessages.Clear();
+
         foreach(var message in _appState.ChatSession!.GetMessages())
         {
-            MessageViewModel? messageViewModel = null;
-            switch (message.Role)
-            {
-                case "user":
-                    messageViewModel = Ioc.Default.GetService<UserMessageViewModel>();
-                
-                    messageViewModel!.SetMessage(message);
-                    ConversationMessages.Add(messageViewModel);
-                    break;
-                case "assistant":
-                    messageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
-                
-                    messageViewModel!.SetMessage(message);
-                    ConversationMessages.Add(messageViewModel);
-                    break;
-                case "system":
-                    messageViewModel = Ioc.Default.GetService<SystemMessageViewModel>();
-                
-                    // always reset the system message
-                    messageViewModel!.SetMessage(AesirChatMessage.NewSystemMessage());
-                    ConversationMessages.Add(messageViewModel);
-                    break;
-            }
+            await AddMessageToConversationAsync(message);
         }
+    }
+
+    private Task AddMessageToConversationAsync(AesirChatMessage message)
+    {
+        MessageViewModel? messageViewModel = null;
+
+        switch (message.Role)
+        {
+            case "user":
+                messageViewModel = Ioc.Default.GetService<UserMessageViewModel>();
+                messageViewModel!.SetMessage(message);
+                break;
+
+            case "assistant":
+                messageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
+                messageViewModel!.SetMessage(message);
+                break;
+
+            case "system":
+                messageViewModel = Ioc.Default.GetService<SystemMessageViewModel>();
+                // always reset the system message
+                messageViewModel!.SetMessage(AesirChatMessage.NewSystemMessage());
+                break;
+        }
+
+        if (messageViewModel != null)
+        {
+            ConversationMessages.Add(messageViewModel);
+        }
+
+        return Task.CompletedTask;
     }
     
     [RelayCommand]
@@ -166,53 +185,56 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     {
         if (string.IsNullOrWhiteSpace(ChatMessage))
         {
-            await Task.CompletedTask;
-            
             return;
         }
-        
-        ConversationStarted = true;
-        
-        var message = AesirChatMessage.NewUserMessage(ChatMessage!);
-        
-        SendingChatOrProcessingFile = true;
-        
-        _appState.ChatSession!.AddMessage(message);
-        
-        var userMessageViewModel = Ioc.Default.GetService<UserMessageViewModel>();
-        userMessageViewModel!.SetMessage(message);
-        ConversationMessages.Add(userMessageViewModel);
-        
-        var assistantMessageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
-        ConversationMessages.Add(assistantMessageViewModel);
-        
-        ChatMessage = null;
-        
-        var chatRequest = AesirChatRequest.NewWithDefaults();
-        chatRequest.Model = SelectedModelName!;
-        chatRequest.Conversation = _appState.ChatSession.Conversation;
-        chatRequest.ChatSessionId = _appState.ChatSession.Id;
-        chatRequest.Title = _appState.ChatSession.Title;
-        chatRequest.ChatSessionUpdatedAt = DateTimeOffset.Now;
-        
-        var result = _chatService.ChatCompletionsStreamedAsync(chatRequest);
-        var title = await assistantMessageViewModel!.SetStreamedMessageAsync(result).ConfigureAwait(false);
-        
-        _appState.ChatSession.Title = title;
-        _appState.ChatSession.AddMessage(assistantMessageViewModel.GetAesirChatMessage());
-        
-        _appState.SelectedChatSessionId = _appState.ChatSession.Id;
-        
-        SendingChatOrProcessingFile = false;
+
+        try
+        {
+            ConversationStarted = true;
+            SendingChatOrProcessingFile = true;
+
+            // Add user message to UI
+            var userMessage = AesirChatMessage.NewUserMessage(ChatMessage!);
+            await AddMessageToConversationAsync(userMessage);
+
+            // Add placeholder for assistant response
+            var assistantMessageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
+            ConversationMessages.Add(assistantMessageViewModel);
+
+            // Clear input field
+            ChatMessage = null;
+
+            // Process the chat request
+            await _chatSessionManager.ProcessChatRequestAsync(SelectedModelName!, ConversationMessages);
+        }
+        catch (Exception ex)
+        {
+            // Handle exceptions - in a real app, you'd want to log this and show a user-friendly message
+            System.Diagnostics.Debug.WriteLine($"Error sending message: {ex.Message}");
+        }
+        finally
+        {
+            SendingChatOrProcessingFile = false;
+        }
     }
 
     [RelayCommand]
     private async Task ShowFileSelectionAsync()
     {
-        var topLevel = TopLevel.GetTopLevel(GetMainView());
+        var files = await OpenPdfFilePickerAsync();
 
-        // Start async operation to open the dialog.
-        var files = await topLevel!.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        if (files.Count >= 1)
+        {
+            RequestFileUpload(files[0].Path.LocalPath);
+        }   
+    }
+
+    private async Task<IReadOnlyList<IStorageFile>> OpenPdfFilePickerAsync()
+    {
+        var topLevel = TopLevel.GetTopLevel(GetMainView());
+        if (topLevel == null) return Array.Empty<IStorageFile>();
+
+        return await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Upload PDF",
             AllowMultiple = false,
@@ -225,27 +247,25 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
                 }
             ]
         });
+    }
 
-        if (files.Count >= 1)
+    private void RequestFileUpload(string filePath)
+    {
+        WeakReferenceMessenger.Default.Send(new FileUploadRequestMessage()
         {
-            var filePath = files[0].Path.LocalPath;
-            WeakReferenceMessenger.Default.Send(new FileUploadRequestMessage()
-            {
-                FilePath = filePath
-            });
-            // // Open reading stream from the first file.
-            // await using var stream = await files[0].OpenReadAsync();
-            // using var streamReader = new StreamReader(stream);
-            // // Reads all the content of file as a text.
-            // var fileContent = await streamReader.ReadToEndAsync();
-        }   
+            FilePath = filePath
+        });
     }
 
     protected virtual void Dispose(bool disposing)
     {
         if (disposing)
         {
-            // clean up stuff here
+            // Unregister messaging
+            IsActive = false;
+
+            // Dispose any managed resources if needed
+            (_speechService as IDisposable)?.Dispose();
         }
     }
 
@@ -267,10 +287,48 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
                 throw new System.NotImplementedException();
         }
     }
+}
 
-    public void Receive(FileUploadStatusMessage message)
+// ChatSessionManager class to handle chat session operations.
+// For now, keeping it in same file to keep close to usage.
+internal class ChatSessionManager(
+    IChatHistoryService chatHistoryService,
+    IChatService chatService,
+    ApplicationState appState)
+{
+    public async Task LoadChatSessionAsync()
     {
-        SelectedFileEnabled = !message.IsProcessing;
-        SendingChatOrProcessingFile = message.IsProcessing;
+        var currentId = appState.SelectedChatSessionId;
+        if (currentId == null)
+        {
+            appState.ChatSession = new AesirChatSession();
+            return;
+        }
+
+        appState.ChatSession = await chatHistoryService.GetChatSessionAsync(currentId.Value);
+    }
+
+    public async Task<string> ProcessChatRequestAsync(string modelName, ObservableCollection<MessageViewModel?> conversationMessages)
+    {
+        var message = AesirChatMessage.NewUserMessage(conversationMessages.Last(m => m is UserMessageViewModel)?.GetAesirChatMessage().Content!);
+        appState.ChatSession!.AddMessage(message);
+
+        var chatRequest = AesirChatRequest.NewWithDefaults();
+        chatRequest.Model = modelName;
+        chatRequest.Conversation = appState.ChatSession.Conversation;
+        chatRequest.ChatSessionId = appState.ChatSession.Id;
+        chatRequest.Title = appState.ChatSession.Title;
+        chatRequest.ChatSessionUpdatedAt = DateTimeOffset.Now;
+
+        var result = chatService.ChatCompletionsStreamedAsync(chatRequest);
+        var assistantMessageViewModel = conversationMessages.Last(m => m is AssistantMessageViewModel) as AssistantMessageViewModel;
+        var title = await assistantMessageViewModel!.SetStreamedMessageAsync(result).ConfigureAwait(false);
+
+        appState.ChatSession.Title = title;
+        appState.ChatSession.AddMessage(assistantMessageViewModel.GetAesirChatMessage());
+
+        appState.SelectedChatSessionId = appState.ChatSession.Id;
+
+        return title;
     }
 }
