@@ -117,7 +117,6 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
 
     public string ConvertToHtml(string rawMessage)
     {
-        Console.WriteLine(RawMessage);
         return markdownService.RenderMarkdownAsHtmlAsync(rawMessage).Result;
     }
 
