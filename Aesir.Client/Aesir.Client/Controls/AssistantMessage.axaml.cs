@@ -23,17 +23,27 @@ public partial class AssistantMessage : UserControl
 
     private void OnPointerEntered(object? sender, PointerEventArgs e)
     {
-        HoverPanel.Opacity = 1.0;
+        ShowPanel();
     }
 
     private void OnPointerExited(object? sender, PointerEventArgs e)
     {
-        HoverPanel.Opacity = 0.0;
+        HidePanel();
     }
 
     private void OnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
+        HidePanel();
+    }
+
+    private void HidePanel()
+    {
         HoverPanel.Opacity = 0.0;
+    }
+
+    private void ShowPanel()
+    {
+        HoverPanel.Opacity = 1.0;
     }
 
     public void HtmlLabel_OnLinkClicked(object? sender, HtmlRendererRoutedEventArgs<HtmlLinkClickedEventArgs> e)
@@ -42,7 +52,7 @@ public partial class AssistantMessage : UserControl
         {
             viewModel.LinkClicked(e.Event.Link, e.Event.Attributes);
         }
-        
+
         e.Handled = true;
     }
 }

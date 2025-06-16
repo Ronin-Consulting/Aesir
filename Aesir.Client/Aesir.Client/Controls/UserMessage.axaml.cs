@@ -21,19 +21,29 @@ public partial class UserMessage : UserControl
     private void OnPointerEntered(object? sender, PointerEventArgs e)
     {
         if (ActionPanel == null) return;
-        ActionPanel.Opacity = 1.0;
+        ShowPanel();
     }
 
     private void OnPointerExited(object? sender, PointerEventArgs e)
     {
         if (ActionPanel == null) return;
-        ActionPanel.Opacity = 0.0;
+        HidePanel();
     }
 
     private void OnPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
         if (ActionPanel == null) return;
+        HidePanel();
+    }
+
+    private void HidePanel()
+    {
         ActionPanel.Opacity = 0.0;
+    }
+
+    private void ShowPanel()
+    {
+        ActionPanel.Opacity = 1.0;
     }
 
     public void StartEditAction_Clicked(object sender, RoutedEventArgs e)
