@@ -97,21 +97,18 @@
                                         Theme="{DynamicResource OutlineButton}" Command="{Binding SendMessageCommand}">
                                     <avalonia:MaterialIcon Kind="Send" Width="20" Height="20" />
                                 </Button>
-                                <TextBox
+                                <controls:CustomTextBox
                                     Name="MessageAiTextBox"
                                     PropertyChanged="MessageAiTextBox_OnPropertyChanged"
-                                    Focusable="True"
                                     Classes="Bordered TextArea"
-                                    MinHeight="32" MaxHeight="64" LineHeight="24" TextWrapping="Wrap"
-                                    AcceptsReturn="True"
-                                    KeyUp="InputElement_OnKey"
+                                    MinHeight="32" MaxHeight="256" LineHeight="24" TextWrapping="Wrap"
                                     NewLine="{Binding Source={x:Static sys:String.Empty}}"
                                     IsEnabled="{Binding !SendingChatOrProcessingFile}"
                                     Watermark="Message AI" Text="{Binding ChatMessage, Mode=TwoWay}"
                                     VerticalContentAlignment="Center">
-                                    <TextBox.InnerLeftContent>
-                                    </TextBox.InnerLeftContent>
-                                    <TextBox.InnerRightContent>
+                                    <controls:CustomTextBox.InnerLeftContent>
+                                    </controls:CustomTextBox.InnerLeftContent>
+                                    <controls:CustomTextBox.InnerRightContent>
                                         <Button Classes="Small" Classes.Primary="{Binding MicOn}"
                                                 Classes.Tertiary="{Binding !MicOn}"
                                                 Padding="0"
@@ -130,8 +127,8 @@
                                                                        Kind="Microphone" Width="20" Height="20" />
                                             </Panel>
                                         </Button>
-                                    </TextBox.InnerRightContent>
-                                </TextBox>
+                                    </controls:CustomTextBox.InnerRightContent>
+                                </controls:CustomTextBox>
                             </DockPanel>
                             <controls:Conversation />
                         </DockPanel>

@@ -5,28 +5,62 @@
              mc:Ignorable="d"
              x:Class="Aesir.Client.Controls.UserMessage"
              xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
-             xmlns:avalonia="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
+             xmlns:htmlRenderer="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
+             xmlns:avaloniaIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:controls="clr-namespace:Aesir.Client.Controls"
              x:DataType="vm:UserMessageViewModel">
     <UserControl.Resources>
         <SolidColorBrush x:Key="AesirBackground" Opacity="0.16" Color="#54A9FF" />
     </UserControl.Resources>
     <Panel HorizontalAlignment="Right" Margin="0,0,0,24">
-        <Border Background="{DynamicResource AesirBackground}"
-                BorderBrush="Black"
-                BorderThickness="1"
-                CornerRadius="20"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-        >
-            <avalonia:HtmlLabel
-                Name="HtmlLabel"
-                Text="{Binding Message}" 
-                AutoSize="True"
-                Background="Transparent"
-                BaseStylesheet="* { color: #F9F9F9; } p { padding: 0; margin: 0; }"
-                Margin="10"
-                Padding="0"
-            />
-        </Border>
+        <StackPanel IsVisible="{Binding IsEditing}">
+            <Border Background="{DynamicResource AesirBackground}"
+                    BorderBrush="Black"
+                    BorderThickness="1"
+                    CornerRadius="20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+            >
+                <controls:CustomTextBox
+                    Name="MessageEditor"
+                    Text="{Binding RawMessage, Mode=TwoWay}" 
+                    Background="Transparent"
+                    Margin="10"
+                    Padding="0"
+                />
+            </Border>
+            <Panel Name="EditorActionPanel" HorizontalAlignment="Right" Margin="0,5,0,0">
+                <Button IsVisible="{Binding IsEditing}" Background="Transparent" BorderThickness="0" Padding="5" Click="EndEditAction_Clicked">
+                    <avaloniaIcons:MaterialIcon Kind="Check" Width="20" Height="20" />
+                </Button>
+            </Panel>
+        </StackPanel>
+        <StackPanel Orientation="Vertical" HorizontalAlignment="Right" IsVisible="{Binding !IsEditing}">
+            <Border Background="{DynamicResource AesirBackground}"
+                    BorderBrush="Black"
+                    BorderThickness="1"
+                    CornerRadius="20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+            >
+                <htmlRenderer:HtmlLabel
+                    Name="HtmlLabel"
+                    Text="{Binding Message}" 
+                    AutoSize="True"
+                    Background="Transparent"
+                    BaseStylesheet="* { color: #F9F9F9; } p { padding: 0; margin: 0; }"
+                    Margin="10"
+                    Padding="0"
+                />
+            </Border>
+            <StackPanel Name="ActionPanel" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0" Opacity="0.0">
+                <Button Background="Transparent" BorderThickness="0" Padding="5" Command="{Binding RegenerateMessageCommand}" >
+                    <avaloniaIcons:MaterialIcon Kind="Refresh" Width="20" Height="20" />
+                </Button>
+                <Button Background="Transparent" BorderThickness="0" Padding="5" Click="StartEditAction_Clicked">
+                    <avaloniaIcons:MaterialIcon Kind="Edit" Width="20" Height="20" />
+                </Button>
+            </StackPanel>
+        </StackPanel>
     </Panel>
 </UserControl>

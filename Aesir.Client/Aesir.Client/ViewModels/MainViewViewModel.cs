@@ -20,7 +20,7 @@ using CommunityToolkit.Mvvm.Messaging.Messages;
 
 namespace Aesir.Client.ViewModels;
 
-public partial class MainViewViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>, IRecipient<FileUploadStatusMessage>, IDisposable
+public partial class MainViewViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>, IRecipient<FileUploadStatusMessage>, IRecipient<RegenerateMessageMessage>, IDisposable
 {
     [ObservableProperty] 
     private bool _micOn;
@@ -118,6 +118,21 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         SendingChatOrProcessingFile = message.IsProcessing;
     }
 
+    public void Receive(RegenerateMessageMessage message)
+    {
+        var messageViewModel = message.Value;
+
+        switch (messageViewModel)
+        {
+            case UserMessageViewModel userMessage:
+                RegenerateMessage(userMessage);
+                break;
+            case AssistantMessageViewModel assistantMessage:
+                RegenerateFromAssistantMessage(assistantMessage);
+                break;
+        }
+    }
+
     private async Task LoadApplicationStateAsync()
     {
         await LoadSelectedModelAsync();
@@ -179,7 +194,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
 
         return Task.CompletedTask;
     }
-    
+
     [RelayCommand]
     private async Task SendMessageAsync()
     {
@@ -257,6 +272,97 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         });
     }
 
+    public async void RegenerateMessage(UserMessageViewModel userMessageViewModel)
+    {
+        // Find the index of the user message in the conversation
+        var messageIndex = ConversationMessages.IndexOf(userMessageViewModel);
+        if (messageIndex == -1) return;
+        
+        // Remove all messages after this user message (including the assistant response)
+        for (int i = ConversationMessages.Count - 1; i > messageIndex; i--)
+        {
+            ConversationMessages.RemoveAt(i);
+        }
+
+        // Also remove messages from the chat session
+        var messagesToRemove = _appState.ChatSession!.GetMessages().Skip(messageIndex).ToList();
+        foreach (var msg in messagesToRemove)
+        {
+            _appState.ChatSession.RemoveMessage(msg);
+        }
+
+        // Re-send the user message by simulating the send process
+        await ResendUserMessage(userMessageViewModel);
+    }
+
+    public async void RegenerateFromAssistantMessage(AssistantMessageViewModel assistantMessageViewModel)
+    {
+        // Find the index of the assistant message in the conversation
+        var assistantIndex = ConversationMessages.IndexOf(assistantMessageViewModel);
+        if (assistantIndex == -1 || assistantIndex == 0) return;
+
+        // Find the preceding user message
+        UserMessageViewModel? userMessage = null;
+        for (int i = assistantIndex - 1; i >= 0; i--)
+        {
+            if (ConversationMessages[i] is UserMessageViewModel user)
+            {
+                userMessage = user;
+                break;
+            }
+        }
+
+        if (userMessage == null) return;
+
+        // Remove the assistant message and all messages after it
+        for (int i = ConversationMessages.Count - 1; i >= assistantIndex; i--)
+        {
+            ConversationMessages.RemoveAt(i);
+        }
+
+        // Also remove messages from the chat session (from assistant message onwards)
+        var messagesToRemove = _appState.ChatSession!.GetMessages().Skip(assistantIndex).ToList();
+        foreach (var msg in messagesToRemove)
+        {
+            _appState.ChatSession.RemoveMessage(msg);
+        }
+
+        // Re-send the user message by simulating the send process
+        await ResendUserMessage(userMessage);
+    }
+
+    private async Task ResendUserMessage(UserMessageViewModel userMessageViewModel)
+    {
+        ConversationStarted = true;
+        SendingChatOrProcessingFile = true;
+
+        // Add the edited chat message to the session
+        _appState.ChatSession!.AddMessage(AesirChatMessage.NewUserMessage(userMessageViewModel.Message));
+        
+        // Create new assistant message view model
+        var assistantMessageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
+        ConversationMessages.Add(assistantMessageViewModel);
+
+        // Prepare the chat request
+        var chatRequest = AesirChatRequest.NewWithDefaults();
+        chatRequest.Model = SelectedModelName!;
+        chatRequest.Conversation = _appState.ChatSession!.Conversation;
+        chatRequest.ChatSessionId = _appState.ChatSession.Id;
+        chatRequest.Title = _appState.ChatSession.Title;
+        chatRequest.ChatSessionUpdatedAt = DateTimeOffset.Now;
+
+        // Send the request and stream the response
+        var result = _chatService.ChatCompletionsStreamedAsync(chatRequest);
+        var title = await assistantMessageViewModel!.SetStreamedMessageAsync(result).ConfigureAwait(false);
+
+        // Update the chat session
+        _appState.ChatSession.Title = title;
+        _appState.ChatSession.AddMessage(assistantMessageViewModel.GetAesirChatMessage());
+
+        _appState.SelectedChatSessionId = _appState.ChatSession.Id;
+
+        SendingChatOrProcessingFile = false;
+    }
     protected virtual void Dispose(bool disposing)
     {
         if (disposing)
@@ -331,4 +437,5 @@ internal class ChatSessionManager(
 
         return title;
     }
+
 }

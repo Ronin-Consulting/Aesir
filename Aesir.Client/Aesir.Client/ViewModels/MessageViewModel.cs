@@ -1,10 +1,13 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
@@ -23,18 +26,29 @@ public abstract partial class MessageViewModel : ObservableRecipient
     public virtual string Role => "Unknown";
 
     public string Content { get; set; } = string.Empty;
+    
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public ICommand RegenerateMessageCommand { get; }
 
     protected MessageViewModel(ILogger logger, IMarkdownService markdownService)
     {
         _logger = logger;
         _markdownService = markdownService;
+        
+        RegenerateMessageCommand = CreateRegenerateMessageCommand();
+    }
+
+    protected virtual ICommand CreateRegenerateMessageCommand()
+    {
+        return new RelayCommand(() => { }); // Default no-op implementation
     }
     
     public void SetMessage(AesirChatMessage message)
     {
         Content = message.Content;
         
-        var htmlMessage = _markdownService.RenderMarkdownAsHtmlAsync(NormalizeInput(message.Content)).Result;
+        var htmlMessage = _markdownService.RenderMarkdownAsHtmlAsync(message.Content).Result;
         Message = htmlMessage;
         
         IsLoaded = true;

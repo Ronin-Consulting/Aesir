@@ -1,7 +1,6 @@
 using Aesir.Client.Models;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
 using CommunityToolkit.Mvvm.DependencyInjection;
 
@@ -22,6 +21,7 @@ public partial class MainView : UserControl
         if (MessageAiTextBox != null)
         {
             MessageAiTextBox.AttachedToVisualTree += (s,e) => MessageAiTextBox.Focus();
+            MessageAiTextBox.SendMessageRequested += (s, e) => SendMessageButton.Command.Execute(null);
             
             _appState.PropertyChanged += (s, e) =>
             {
@@ -43,28 +43,14 @@ public partial class MainView : UserControl
         TitleTextBlock.Margin = new Thickness(85, 0, 0, 0);
     }
 
-    private void InputElement_OnKey(object? sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter)
-        {
-            e.Handled = true;
-            if (sender is TextBox textBox)
-            {
-                if (textBox.Text?.Length > 0)
-                {
-                    SendMessageButton.Command.Execute(null);
-                    
-                    MessageAiTextBox.Focus();
-                }
-            }
-        }
-    }
+
 
     private void MessageAiTextBox_OnPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
-        if(e.Property.Name == "IsEnabled" && e.NewValue is bool enabled && enabled)
+        if(e.Property.Name == "IsEnabled" && e.NewValue is true)
         {
             MessageAiTextBox.Focus();
         }
     }
+
 }
