@@ -23,7 +23,7 @@
             >
                 <controls:CustomTextBox
                     Name="MessageEditor"
-                    Text="{Binding RawMessage}" 
+                    Text="{Binding RawMessage, Mode=TwoWay}" 
                     Background="Transparent"
                     Margin="10"
                     Padding="0"
