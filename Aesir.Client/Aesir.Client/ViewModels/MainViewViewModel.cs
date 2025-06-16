@@ -195,25 +195,6 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         return Task.CompletedTask;
     }
 
-    private async Task SendUpdatedUserMessage(UserMessageViewModel userMessage, AssistantMessageViewModel assistantMessage)
-    {
-        if (string.IsNullOrWhiteSpace(userMessage.Message))
-        {
-            await Task.CompletedTask;
-            return;
-        }
-
-        var messageToSend = AesirChatMessage.NewUserMessage(userMessage.Message);
-        
-        SendingChatOrProcessingFile = true;
-
-        // Need to add the ability to update a chat message
-        // _appState.ChatSession!.(messageToSend);
-        // ConversationMessages.Add(messageToSend);
-        
-        
-    }
-    
     [RelayCommand]
     private async Task SendMessageAsync()
     {
@@ -221,40 +202,35 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         {
             return;
         }
-        
-        ConversationStarted = true;
-        
-        var message = AesirChatMessage.NewUserMessage(ChatMessage!);
-        
-        SendingChatOrProcessingFile = true;
-        
-        _appState.ChatSession!.AddMessage(message);
-        
-        var userMessageViewModel = Ioc.Default.GetService<UserMessageViewModel>();
-        userMessageViewModel!.SetMessage(message);
-        ConversationMessages.Add(userMessageViewModel);
-        
-        var assistantMessageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
-        ConversationMessages.Add(assistantMessageViewModel);
-        
-        ChatMessage = null;
-        
-        var chatRequest = AesirChatRequest.NewWithDefaults();
-        chatRequest.Model = SelectedModelName!;
-        chatRequest.Conversation = _appState.ChatSession.Conversation;
-        chatRequest.ChatSessionId = _appState.ChatSession.Id;
-        chatRequest.Title = _appState.ChatSession.Title;
-        chatRequest.ChatSessionUpdatedAt = DateTimeOffset.Now;
-        
-        var result = _chatService.ChatCompletionsStreamedAsync(chatRequest);
-        var title = await assistantMessageViewModel!.SetStreamedMessageAsync(result).ConfigureAwait(false);
-        
-        _appState.ChatSession.Title = title;
-        _appState.ChatSession.AddMessage(assistantMessageViewModel.GetAesirChatMessage());
-        
-        _appState.SelectedChatSessionId = _appState.ChatSession.Id;
-        
-        SendingChatOrProcessingFile = false;
+
+        try
+        {
+            ConversationStarted = true;
+            SendingChatOrProcessingFile = true;
+
+            // Add user message to UI
+            var userMessage = AesirChatMessage.NewUserMessage(ChatMessage!);
+            await AddMessageToConversationAsync(userMessage);
+
+            // Add placeholder for assistant response
+            var assistantMessageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
+            ConversationMessages.Add(assistantMessageViewModel);
+
+            // Clear input field
+            ChatMessage = null;
+
+            // Process the chat request
+            await _chatSessionManager.ProcessChatRequestAsync(SelectedModelName!, ConversationMessages);
+        }
+        catch (Exception ex)
+        {
+            // Handle exceptions - in a real app, you'd want to log this and show a user-friendly message
+            System.Diagnostics.Debug.WriteLine($"Error sending message: {ex.Message}");
+        }
+        finally
+        {
+            SendingChatOrProcessingFile = false;
+        }
     }
 
     [RelayCommand]

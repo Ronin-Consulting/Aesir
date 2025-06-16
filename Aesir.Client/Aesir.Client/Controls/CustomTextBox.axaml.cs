@@ -1,11 +1,9 @@
 using System;
-using Aesir.Client.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
-using CommunityToolkit.Mvvm.DependencyInjection;
 
 namespace Aesir.Client.Controls;
 
