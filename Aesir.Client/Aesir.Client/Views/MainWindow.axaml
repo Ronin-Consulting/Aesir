@@ -18,5 +18,5 @@
     </u:UrsaWindow.RightContent>
     <u:UrsaWindow.LeftContent>
     </u:UrsaWindow.LeftContent>
-    <views:MainView Margin="0 16 0 0"/>
+    <views:MainView Margin="0 0 0 0"/>
 </u:UrsaWindow>

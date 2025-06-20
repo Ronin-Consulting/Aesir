@@ -11,6 +11,10 @@ namespace Aesir.Client.ViewModels;
 
 public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<FileUploadRequestMessage>
 {
+    private const int FileProcessingSimulationDelaySeconds = 8;
+    private const string DefaultFileName = "No File";
+    private const string DefaultFilePath = "No Path";
+    
     [ObservableProperty]
     private bool _isVisible;
     
@@ -18,10 +22,10 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
     private bool _isProcessingFile;
     
     [ObservableProperty]
-    private string _fileName = "No File";
+    private string _fileName = DefaultFileName;
     
     [ObservableProperty]
-    private string _filePath = "No Path";
+    private string _filePath = DefaultFilePath;
 
     public void SetFileInfo(string filePath)
     {
@@ -51,8 +55,8 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
 
         IsProcessingFile = false;
         IsVisible = false;
-        FilePath = "No Path";
-        FileName = "No File";
+        FilePath = DefaultFilePath;
+        FileName = DefaultFileName;
     }
 
     public void Receive(FileUploadRequestMessage message)
@@ -69,7 +73,7 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
                 IsProcessing = true
             });
             
-            await Task.Delay(TimeSpan.FromSeconds(8));
+            await Task.Delay(TimeSpan.FromSeconds(FileProcessingSimulationDelaySeconds));
             
             ToggleProcessingFile();
             

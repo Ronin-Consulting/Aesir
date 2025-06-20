@@ -17,6 +17,7 @@ using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
+using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
 
@@ -39,6 +40,8 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     private FileToUploadViewModel _selectedFile;
     [ObservableProperty] 
     private bool _selectedFileEnabled = true;
+    [ObservableProperty]
+    private string? _errorMessage;
     
     private string? _chatMessage;
     public string? ChatMessage
@@ -60,40 +63,68 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     // Services
     private readonly ApplicationState _appState;
     private readonly ISpeechService? _speechService;
-    private readonly IChatService _chatService;
-    private readonly IChatHistoryService _chatHistoryService;
+    private readonly IChatSessionManager _chatSessionManager;
     private readonly IModelService _modelService;
-   
-    private readonly ChatSessionManager _chatSessionManager;
+    private readonly ILogger<MainViewViewModel> _logger;
+    private readonly IDialogService _dialogService;
 
     public MainViewViewModel(
         ApplicationState appState,
         ISpeechService speechService,
-        IChatService chatService,
-        IChatHistoryService chatHistoryService,
-        IModelService modelService)
+        IChatSessionManager chatSessionManager,
+        IModelService modelService,
+        ILogger<MainViewViewModel> logger,
+        IDialogService dialogService)
     {
-        _appState = appState;
+        _appState = appState ?? throw new ArgumentNullException(nameof(appState));
         _speechService = speechService;
-        _chatService = chatService;
-        _chatHistoryService = chatHistoryService;
-        _modelService = modelService;
-        _chatSessionManager = new ChatSessionManager(chatHistoryService, chatService, appState);
+        _chatSessionManager = chatSessionManager ?? throw new ArgumentNullException(nameof(chatSessionManager));
+        _modelService = modelService ?? throw new ArgumentNullException(nameof(modelService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
 
         ToggleChatHistory = new RelayCommand(() => PanelOpen = !PanelOpen);
-        ToggleNewChat = new RelayCommand(() => _appState.SelectedChatSessionId = null);
-        ToggleMicrophone = new RelayCommand(() =>
-        {
-            MicOn = !MicOn;
-            
-            // if(_micOn)
-            //     _speechService?.SpeakAsync("Aesir is listening.");
-        });
+        ToggleNewChat = new RelayCommand(ExecuteNewChat);
+        ToggleMicrophone = new RelayCommand(ExecuteToggleMicrophone);
         
         SelectedFile = new FileToUploadViewModel
         {
             IsActive = true
         };
+    }
+
+    private void ExecuteNewChat()
+    {
+        try
+        {
+            _appState.SelectedChatSessionId = null;
+            ErrorMessage = null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start new chat");
+            ErrorMessage = "Failed to start new chat. Please try again.";
+        }
+    }
+
+    private async void ExecuteToggleMicrophone()
+    {
+        try
+        {
+            MicOn = !MicOn;
+            ErrorMessage = null;
+            
+            if (MicOn && _speechService != null)
+            {
+                await _speechService.SpeakAsync("Aesir is listening.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to toggle microphone");
+            ErrorMessage = "Failed to toggle microphone. Please try again.";
+            MicOn = false;
+        }
     }
 
     protected override void OnActivated()
@@ -125,10 +156,10 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         switch (messageViewModel)
         {
             case UserMessageViewModel userMessage:
-                RegenerateMessage(userMessage);
+                _ = RegenerateMessageAsync(userMessage);
                 break;
             case AssistantMessageViewModel assistantMessage:
-                RegenerateFromAssistantMessage(assistantMessage);
+                _ = RegenerateFromAssistantMessageAsync(assistantMessage);
                 break;
         }
     }
@@ -141,30 +172,74 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
 
     private async Task LoadSelectedModelAsync()
     {
-        var models = await _modelService.GetModelsAsync();
-        _appState.SelectedModel = models.FirstOrDefault(m => m.IsChatModel);
-        SelectedModelName = _appState.SelectedModel?.Id!;
+        try
+        {
+            var models = await _modelService.GetModelsAsync();
+            _appState.SelectedModel = models.FirstOrDefault(m => m.IsChatModel);
+            SelectedModelName = _appState.SelectedModel?.Id ?? "No model available";
+            ErrorMessage = null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load models");
+            ErrorMessage = "Failed to load available models. Please check your connection.";
+            SelectedModelName = "Error loading models";
+        }
     }
 
     private async Task LoadChatSessionAsync()
     {
-        await _chatSessionManager.LoadChatSessionAsync();
-        ConversationStarted = _appState.SelectedChatSessionId != null;
-
-        await RefreshConversationMessagesAsync();
+        try
+        {
+            await _chatSessionManager.LoadChatSessionAsync();
+            ConversationStarted = _appState.SelectedChatSessionId != null;
+            await RefreshConversationMessagesAsync();
+            ErrorMessage = null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load chat session");
+            ErrorMessage = "Failed to load chat session. Please try again.";
+        }
     }
 
     private async Task RefreshConversationMessagesAsync()
     {
-        ConversationMessages.Clear();
-
-        foreach(var message in _appState.ChatSession!.GetMessages())
+        try
         {
-            await AddMessageToConversationAsync(message);
+            ConversationMessages.Clear();
+
+            if (_appState.ChatSession != null)
+            {
+                const int batchSize = 10;
+                var messages = _appState.ChatSession.GetMessages().ToList();
+                
+                // Process messages in batches to avoid UI blocking
+                for (int i = 0; i < messages.Count; i += batchSize)
+                {
+                    var batch = messages.Skip(i).Take(batchSize);
+                    
+                    foreach (var message in batch)
+                    {
+                        await AddMessageToConversationAsync(message);
+                    }
+                    
+                    // Allow UI thread to breathe between batches
+                    if (i + batchSize < messages.Count)
+                    {
+                        await Task.Delay(1); // Small delay to prevent UI freezing
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to refresh conversation messages");
+            ErrorMessage = "Failed to load conversation messages.";
         }
     }
 
-    private Task AddMessageToConversationAsync(AesirChatMessage message)
+    private async Task AddMessageToConversationAsync(AesirChatMessage message)
     {
         MessageViewModel? messageViewModel = null;
 
@@ -172,18 +247,21 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         {
             case "user":
                 messageViewModel = Ioc.Default.GetService<UserMessageViewModel>();
-                messageViewModel!.SetMessage(message);
+                if (messageViewModel != null)
+                    await messageViewModel.SetMessage(message);
                 break;
 
             case "assistant":
                 messageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
-                messageViewModel!.SetMessage(message);
+                if (messageViewModel != null)
+                    await messageViewModel.SetMessage(message);
                 break;
 
             case "system":
                 messageViewModel = Ioc.Default.GetService<SystemMessageViewModel>();
-                // always reset the system message
-                messageViewModel!.SetMessage(AesirChatMessage.NewSystemMessage());
+                if (messageViewModel != null)
+                    // always reset the system message
+                    await messageViewModel.SetMessage(AesirChatMessage.NewSystemMessage());
                 break;
         }
 
@@ -191,8 +269,6 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         {
             ConversationMessages.Add(messageViewModel);
         }
-
-        return Task.CompletedTask;
     }
 
     [RelayCommand]
@@ -203,29 +279,50 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(SelectedModelName) || SelectedModelName == "Select a model")
+        {
+            ErrorMessage = "Please select a model before sending a message.";
+            return;
+        }
+
+        var currentMessage = ChatMessage;
+        ChatMessage = null;
+        ErrorMessage = null;
+
         try
         {
             ConversationStarted = true;
             SendingChatOrProcessingFile = true;
 
             // Add user message to UI
-            var userMessage = AesirChatMessage.NewUserMessage(ChatMessage!);
+            var userMessage = AesirChatMessage.NewUserMessage(currentMessage);
             await AddMessageToConversationAsync(userMessage);
 
             // Add placeholder for assistant response
             var assistantMessageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
+            if (assistantMessageViewModel == null)
+            {
+                throw new InvalidOperationException("Could not resolve AssistantMessageViewModel");
+            }
             ConversationMessages.Add(assistantMessageViewModel);
 
-            // Clear input field
-            ChatMessage = null;
-
             // Process the chat request
-            await _chatSessionManager.ProcessChatRequestAsync(SelectedModelName!, ConversationMessages);
+            await _chatSessionManager.ProcessChatRequestAsync(SelectedModelName, ConversationMessages);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument when sending message");
+            ErrorMessage = "Invalid input. Please check your message and try again.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation when sending message");
+            ErrorMessage = "Unable to send message. Please try again.";
         }
         catch (Exception ex)
         {
-            // Handle exceptions - in a real app, you'd want to log this and show a user-friendly message
-            System.Diagnostics.Debug.WriteLine($"Error sending message: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error sending message");
+            ErrorMessage = "An unexpected error occurred. Please try again.";
         }
         finally
         {
@@ -236,43 +333,79 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     [RelayCommand]
     private async Task ShowFileSelectionAsync()
     {
-        var files = await OpenPdfFilePickerAsync();
-
-        if (files.Count >= 1)
+        try
         {
-            RequestFileUpload(files[0].Path.LocalPath);
-        }   
+            var files = await OpenPdfFilePickerAsync();
+
+            if (files.Count >= 1)
+            {
+                RequestFileUpload(files[0].Path.LocalPath);
+                ErrorMessage = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to show file selection dialog");
+            ErrorMessage = "Failed to open file selection dialog. Please try again.";
+        }
     }
 
     private async Task<IReadOnlyList<IStorageFile>> OpenPdfFilePickerAsync()
     {
-        var topLevel = TopLevel.GetTopLevel(GetMainView());
-        if (topLevel == null) return Array.Empty<IStorageFile>();
-
-        return await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        try
         {
-            Title = "Upload PDF",
-            AllowMultiple = false,
-            FileTypeFilter = [
-                new FilePickerFileType("PDF Documents")
-                {
-                    Patterns = ["*.pdf"],
-                    MimeTypes = ["application/pdf"],
-                    AppleUniformTypeIdentifiers = ["com.adobe.pdf"]
-                }
-            ]
-        });
+            var topLevel = TopLevel.GetTopLevel(GetTopLevelControl());
+            if (topLevel?.StorageProvider == null) 
+            {
+                _logger.LogWarning("Storage provider not available");
+                return Array.Empty<IStorageFile>();
+            }
+
+            return await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Upload PDF",
+                AllowMultiple = false,
+                FileTypeFilter = [
+                    new FilePickerFileType("PDF Documents")
+                    {
+                        Patterns = ["*.pdf"],
+                        MimeTypes = ["application/pdf"],
+                        AppleUniformTypeIdentifiers = ["com.adobe.pdf"]
+                    }
+                ]
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to open PDF file picker");
+            return Array.Empty<IStorageFile>();
+        }
     }
 
     private void RequestFileUpload(string filePath)
     {
-        WeakReferenceMessenger.Default.Send(new FileUploadRequestMessage()
+        try
         {
-            FilePath = filePath
-        });
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                _logger.LogWarning("Attempted to upload file with empty path");
+                ErrorMessage = "Invalid file path.";
+                return;
+            }
+
+            WeakReferenceMessenger.Default.Send(new FileUploadRequestMessage()
+            {
+                FilePath = filePath
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to request file upload for path: {FilePath}", filePath);
+            ErrorMessage = "Failed to upload file. Please try again.";
+        }
     }
 
-    public async void RegenerateMessage(UserMessageViewModel userMessageViewModel)
+    private async Task RegenerateMessageAsync(UserMessageViewModel userMessageViewModel)
     {
         // Find the index of the user message in the conversation
         var messageIndex = ConversationMessages.IndexOf(userMessageViewModel);
@@ -295,7 +428,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         await ResendUserMessage(userMessageViewModel);
     }
 
-    public async void RegenerateFromAssistantMessage(AssistantMessageViewModel assistantMessageViewModel)
+    private async Task RegenerateFromAssistantMessageAsync(AssistantMessageViewModel assistantMessageViewModel)
     {
         // Find the index of the assistant message in the conversation
         var assistantIndex = ConversationMessages.IndexOf(assistantMessageViewModel);
@@ -333,6 +466,12 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
 
     private async Task ResendUserMessage(UserMessageViewModel userMessageViewModel)
     {
+        if (string.IsNullOrWhiteSpace(SelectedModelName) || SelectedModelName == "Select a model")
+        {
+            ErrorMessage = "Please select a model before sending a message.";
+            return;
+        }
+        
         ConversationStarted = true;
         SendingChatOrProcessingFile = true;
 
@@ -342,36 +481,30 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         // Create new assistant message view model
         var assistantMessageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
         ConversationMessages.Add(assistantMessageViewModel);
-
-        // Prepare the chat request
-        var chatRequest = AesirChatRequest.NewWithDefaults();
-        chatRequest.Model = SelectedModelName!;
-        chatRequest.Conversation = _appState.ChatSession!.Conversation;
-        chatRequest.ChatSessionId = _appState.ChatSession.Id;
-        chatRequest.Title = _appState.ChatSession.Title;
-        chatRequest.ChatSessionUpdatedAt = DateTimeOffset.Now;
-
-        // Send the request and stream the response
-        var result = _chatService.ChatCompletionsStreamedAsync(chatRequest);
-        var title = await assistantMessageViewModel!.SetStreamedMessageAsync(result).ConfigureAwait(false);
-
-        // Update the chat session
-        _appState.ChatSession.Title = title;
-        _appState.ChatSession.AddMessage(assistantMessageViewModel.GetAesirChatMessage());
-
-        _appState.SelectedChatSessionId = _appState.ChatSession.Id;
-
+        
+        await _chatSessionManager.ProcessChatRequestAsync(SelectedModelName, ConversationMessages);
+        
         SendingChatOrProcessingFile = false;
     }
     protected virtual void Dispose(bool disposing)
     {
         if (disposing)
         {
-            // Unregister messaging
-            IsActive = false;
+            try
+            {
+                // Unregister messaging
+                IsActive = false;
 
-            // Dispose any managed resources if needed
-            (_speechService as IDisposable)?.Dispose();
+                // Dispose any managed resources if needed
+                if (_speechService is IDisposable disposableSpeechService)
+                {
+                    disposableSpeechService.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during disposal");
+            }
         }
     }
 
@@ -381,61 +514,22 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         GC.SuppressFinalize(this);
     }
     
-    private ContentControl? GetMainView()
+    private ContentControl? GetTopLevelControl()
     {
-        switch (Application.Current?.ApplicationLifetime)
+        try
         {
-            case IClassicDesktopStyleApplicationLifetime desktop:
-                return desktop.MainWindow;
-            case ISingleViewApplicationLifetime singleView:
-                return singleView.MainView as ContentControl;
-            default:
-                throw new System.NotImplementedException();
+            return Application.Current?.ApplicationLifetime switch
+            {
+                IClassicDesktopStyleApplicationLifetime desktop => desktop.MainWindow,
+                ISingleViewApplicationLifetime singleView => singleView.MainView as ContentControl,
+                _ => null
+            };
         }
-    }
-}
-
-// ChatSessionManager class to handle chat session operations.
-// For now, keeping it in same file to keep close to usage.
-internal class ChatSessionManager(
-    IChatHistoryService chatHistoryService,
-    IChatService chatService,
-    ApplicationState appState)
-{
-    public async Task LoadChatSessionAsync()
-    {
-        var currentId = appState.SelectedChatSessionId;
-        if (currentId == null)
+        catch (Exception ex)
         {
-            appState.ChatSession = new AesirChatSession();
-            return;
+            _logger.LogError(ex, "Failed to get top level control");
+            return null;
         }
-
-        appState.ChatSession = await chatHistoryService.GetChatSessionAsync(currentId.Value);
-    }
-
-    public async Task<string> ProcessChatRequestAsync(string modelName, ObservableCollection<MessageViewModel?> conversationMessages)
-    {
-        var message = AesirChatMessage.NewUserMessage(conversationMessages.Last(m => m is UserMessageViewModel)?.GetAesirChatMessage().Content!);
-        appState.ChatSession!.AddMessage(message);
-
-        var chatRequest = AesirChatRequest.NewWithDefaults();
-        chatRequest.Model = modelName;
-        chatRequest.Conversation = appState.ChatSession.Conversation;
-        chatRequest.ChatSessionId = appState.ChatSession.Id;
-        chatRequest.Title = appState.ChatSession.Title;
-        chatRequest.ChatSessionUpdatedAt = DateTimeOffset.Now;
-
-        var result = chatService.ChatCompletionsStreamedAsync(chatRequest);
-        var assistantMessageViewModel = conversationMessages.Last(m => m is AssistantMessageViewModel) as AssistantMessageViewModel;
-        var title = await assistantMessageViewModel!.SetStreamedMessageAsync(result).ConfigureAwait(false);
-
-        appState.ChatSession.Title = title;
-        appState.ChatSession.AddMessage(assistantMessageViewModel.GetAesirChatMessage());
-
-        appState.SelectedChatSessionId = appState.ChatSession.Id;
-
-        return title;
     }
 
 }

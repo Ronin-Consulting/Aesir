@@ -44,11 +44,11 @@ public abstract partial class MessageViewModel : ObservableRecipient
         return new RelayCommand(() => { }); // Default no-op implementation
     }
     
-    public void SetMessage(AesirChatMessage message)
+    public async Task SetMessage(AesirChatMessage message)
     {
         Content = message.Content;
         
-        var htmlMessage = _markdownService.RenderMarkdownAsHtmlAsync(message.Content).Result;
+        var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(NormalizeInput(message.Content));
         Message = htmlMessage;
         
         IsLoaded = true;
@@ -77,7 +77,7 @@ public abstract partial class MessageViewModel : ObservableRecipient
                 
                 var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(Content);
                 
-                Dispatcher.UIThread.Invoke(() =>
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     Message = htmlMessage;
                     IsLoaded = true;

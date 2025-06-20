@@ -1,6 +1,7 @@
 
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Platform;
 using Ursa.Controls;
 
 namespace Aesir.Client.Views;
@@ -14,6 +15,10 @@ public partial class MainWindow : UrsaWindow
         InitializeComponent();
         
         NotificationManager = new WindowNotificationManager(this) { MaxItems = 3 };
+
+        // this is most compatible approach
+        ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.PreferSystemChrome;
+        ExtendClientAreaToDecorationsHint = false;
     }
     
     protected override async Task<bool> CanClose()
