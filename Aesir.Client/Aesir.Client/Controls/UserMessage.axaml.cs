@@ -1,6 +1,5 @@
 using Aesir.Client.Models;
 using Aesir.Client.ViewModels;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;

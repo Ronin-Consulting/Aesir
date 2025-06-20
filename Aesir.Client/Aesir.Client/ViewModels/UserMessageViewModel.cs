@@ -1,4 +1,3 @@
-using System;
 using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;

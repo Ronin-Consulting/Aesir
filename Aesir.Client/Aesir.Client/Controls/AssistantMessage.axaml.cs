@@ -1,9 +1,6 @@
-using System;
 using Aesir.Client.ViewModels;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.VisualTree;
 using TheArtOfDev.HtmlRenderer.Avalonia;
 using TheArtOfDev.HtmlRenderer.Core.Entities;
 

@@ -56,4 +56,39 @@ public class DocumentCollectionController : ControllerBase
             
         return Ok();
     }
+
+    [HttpPost("upload")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(104857600)] // 100MB
+    [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
+    public async Task<IActionResult> UploadFileAsync(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest("No file uploaded.");
+
+        if (file.Length > 104857600) // 100MB
+            return BadRequest("File size exceeds 100MB limit.");
+
+        var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (fileExtension != ".pdf")
+            return BadRequest("Only PDF files are allowed.");
+
+        try
+        {
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+            var fileContent = memoryStream.ToArray();
+
+            var mimeType = file.ContentType ?? "application/pdf";
+            
+            await _fileStorageService.UpsertFileAsync(file.FileName, mimeType, fileContent);
+
+            return Ok(new { message = "File uploaded successfully", fileName = file.FileName });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading file");
+            return StatusCode(500, "An error occurred while uploading the file.");
+        }
+    }
 }

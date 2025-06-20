@@ -8,7 +8,6 @@ using Aesir.Client.Services.Implementations.NoOp;
 using Aesir.Client.Services.Implementations.Standard;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using Aesir.Client.ViewModels;
 using Aesir.Client.Views;
@@ -83,6 +82,7 @@ public partial class App : Application
         AppServices.AddSingleton<IChatHistoryService, ChatHistoryService>();
         AppServices.AddSingleton<IModelService, ModelService>();
         AppServices.AddTransient<IDocumentCollectionService, DocumentCollectionService>();
+        AppServices.AddSingleton<IFileUploadService, FileUploadService>();
         AppServices.AddSingleton<IChatSessionManager, ChatSessionManager>();
         AppServices.AddSingleton<IContentProcessingService, ContentProcessingService>();
         
@@ -90,6 +90,7 @@ public partial class App : Application
         AppServices.AddTransient<UserMessageViewModel>();
         AppServices.AddTransient<AssistantMessageViewModel>();
         AppServices.AddTransient<ChatHistoryButtonViewModel>();
+        AppServices.AddTransient<FileToUploadViewModel>();
         
         var delay = Backoff.DecorrelatedJitterBackoffV2(
             medianFirstRetryDelay: TimeSpan.FromSeconds(1), retryCount: 5, fastFirst: true);

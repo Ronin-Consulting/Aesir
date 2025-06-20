@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Build Commands
-- Build solution: `dotnet build`
+- Build solution: `dotnet build Aesir.sln`
 - Run API server: `docker compose -f docker-compose-api-dev.yml up`
 - Run desktop client: `dotnet run --project Aesir.Client/Aesir.Client.Desktop/Aesir.Client.Desktop.csproj`
 

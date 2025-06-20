@@ -1,5 +1,6 @@
 using System;
 using Aesir.Client.Messages;
+using Aesir.Client.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using System.IO;
@@ -11,9 +12,16 @@ namespace Aesir.Client.ViewModels;
 
 public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<FileUploadRequestMessage>
 {
-    private const int FileProcessingSimulationDelaySeconds = 8;
+    private readonly IFileUploadService _fileUploadService;
+    private readonly IDialogService _dialogService;
     private const string DefaultFileName = "No File";
     private const string DefaultFilePath = "No Path";
+
+    public FileToUploadViewModel(IFileUploadService fileUploadService, IDialogService dialogService)
+    {
+        _fileUploadService = fileUploadService;
+        _dialogService = dialogService;
+    }
     
     [ObservableProperty]
     private bool _isVisible;
@@ -72,18 +80,38 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
                 FilePath = message.FilePath,
                 IsProcessing = true
             });
-            
-            await Task.Delay(TimeSpan.FromSeconds(FileProcessingSimulationDelaySeconds));
-            
-            ToggleProcessingFile();
-            
-            WeakReferenceMessenger.Default.Send(new FileUploadStatusMessage()
+
+            try
             {
-                FilePath = message.FilePath,
-                IsProcessing = false,
-                IsSuccess = true
-            });
+                var uploadSuccess = await _fileUploadService.UploadFileAsync(message.FilePath);
+                
+                ToggleProcessingFile();
+                
+                WeakReferenceMessenger.Default.Send(new FileUploadStatusMessage()
+                {
+                    FilePath = message.FilePath,
+                    IsProcessing = false,
+                    IsSuccess = uploadSuccess
+                });
+
+                if (!uploadSuccess)
+                {
+                    await _dialogService.ShowErrorDialogAsync("Upload Failed", "Failed to upload the file. Please try again.");
+                }
+            }
+            catch (Exception ex)
+            {
+                ToggleProcessingFile();
+                
+                WeakReferenceMessenger.Default.Send(new FileUploadStatusMessage()
+                {
+                    FilePath = message.FilePath,
+                    IsProcessing = false,
+                    IsSuccess = false
+                });
+
+                await _dialogService.ShowErrorDialogAsync("Upload Error", $"An error occurred while uploading the file: {ex.Message}");
+            }
         });
-        // here is where I would use the file upload service to send up the file
     }
 }

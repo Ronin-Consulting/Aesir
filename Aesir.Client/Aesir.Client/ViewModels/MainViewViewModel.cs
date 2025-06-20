@@ -74,7 +74,8 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         IChatSessionManager chatSessionManager,
         IModelService modelService,
         ILogger<MainViewViewModel> logger,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        FileToUploadViewModel fileToUploadViewModel)
     {
         _appState = appState ?? throw new ArgumentNullException(nameof(appState));
         _speechService = speechService;
@@ -87,10 +88,8 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         ToggleNewChat = new RelayCommand(ExecuteNewChat);
         ToggleMicrophone = new RelayCommand(ExecuteToggleMicrophone);
         
-        SelectedFile = new FileToUploadViewModel
-        {
-            IsActive = true
-        };
+        SelectedFile = fileToUploadViewModel;
+        SelectedFile.IsActive = true;
     }
 
     private void ExecuteNewChat()
