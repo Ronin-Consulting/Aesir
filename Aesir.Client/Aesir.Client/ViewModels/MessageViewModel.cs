@@ -53,11 +53,12 @@ public abstract partial class MessageViewModel : ObservableRecipient
         IsLoaded = true;
     }
     
-    public Task<string> SetStreamedMessageAsync(IAsyncEnumerable<AesirChatStreamedResult?> message)
+    public async Task<string> SetStreamedMessageAsync(IAsyncEnumerable<AesirChatStreamedResult?> message)
     {
-        return Task.Run(async () =>
+        return await Task.Run(async () =>
         {
             var title = string.Empty;
+            var hasReceivedTitle = false;
             Content = string.Empty;
             await foreach (var result in message)
             {
@@ -68,7 +69,13 @@ public abstract partial class MessageViewModel : ObservableRecipient
                 
                 //_logger.LogDebug("Received streamed message: {Result}", JsonSerializer.Serialize(result));
 
-                title = result.Title;
+                // Only capture the first non-empty title we receive
+                if (!hasReceivedTitle && !string.IsNullOrWhiteSpace(result.Title) && 
+                    result.Title != "Chat Session (Server)" && result.Title != "Chat Session (Client)")
+                {
+                    title = result.Title;
+                    hasReceivedTitle = true;
+                }
                 
                 Content += result.Delta.Content;
                 

@@ -16,7 +16,7 @@ public class AesirChatSession
     [JsonPropertyName("conversation")]
     public AesirConversation Conversation { get; set; } = null!;
 
-    [JsonIgnore]
+    [JsonPropertyName("title")]
     public string Title { get; set; } = "Chat Session (Server)";
 }
 
