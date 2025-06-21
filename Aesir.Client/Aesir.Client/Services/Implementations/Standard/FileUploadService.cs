@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Aesir.Client.Services.Implementations;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -18,10 +19,16 @@ public class FileUploadService(
         .GetOrAdd("FileUploadClient",
             configuration.GetValue<string>("Inference:FileUpload"));
 
-    public async Task<bool> UploadFileAsync(string filePath)
+    public async Task<bool> UploadFileAsync(string filePath, string conversationId)
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(conversationId))
+            {
+                logger.LogError("ConversationId is required for file upload");
+                return false;
+            }
+
             if (!File.Exists(filePath))
             {
                 logger.LogError("File not found: {FilePath}", filePath);
@@ -46,7 +53,7 @@ public class FileUploadService(
             var fileName = Path.GetFileName(filePath);
 
             var response = await _flurlClient
-                .Request("upload")
+                .Request("upload", conversationId)
                 .PostMultipartAsync(mp => 
                     mp.AddFile("file", fileStream, fileName, "application/pdf"));
 

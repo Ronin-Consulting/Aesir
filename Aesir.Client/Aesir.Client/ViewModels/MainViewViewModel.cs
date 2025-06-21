@@ -214,7 +214,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
                 var messages = _appState.ChatSession.GetMessages().ToList();
                 
                 // Process messages in batches to avoid UI blocking
-                for (int i = 0; i < messages.Count; i += batchSize)
+                for (var i = 0; i < messages.Count; i += batchSize)
                 {
                     var batch = messages.Skip(i).Take(batchSize);
                     
@@ -338,6 +338,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
 
             if (files.Count >= 1)
             {
+                SelectedFile.SetConversationId(_appState.ChatSession!.Conversation.Id);
                 RequestFileUpload(files[0].Path.LocalPath);
                 ErrorMessage = null;
             }
@@ -394,6 +395,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
 
             WeakReferenceMessenger.Default.Send(new FileUploadRequestMessage()
             {
+                ConversationId = _appState.ChatSession?.Conversation.Id,
                 FilePath = filePath
             });
         }

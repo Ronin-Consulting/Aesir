@@ -1,5 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
+# 
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E8B96769-8098-40AB-9700-4496845D2F99}"
 	ProjectSection(SolutionItems) = preProject
 		docker-compose-api-dev.yml = docker-compose-api-dev.yml
@@ -18,6 +19,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Api.Server", "Aesir.Api.Server\Aesir.Api.Server.csproj", "{21B98FF9-994B-4FBC-B6BF-AE48535BD295}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Api.Server.Tests", "Aesir.Api.Server.Tests\Aesir.Api.Server.Tests.csproj", "{3D3330DA-4D80-4BDE-8955-B32FD744B515}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Common", "Aesir.Common\Aesir.Common.csproj", "{8766FEAD-E6B7-41CC-BD6F-9B124A34750D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -49,5 +52,9 @@ Global
 		{3D3330DA-4D80-4BDE-8955-B32FD744B515}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3D3330DA-4D80-4BDE-8955-B32FD744B515}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3D3330DA-4D80-4BDE-8955-B32FD744B515}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8766FEAD-E6B7-41CC-BD6F-9B124A34750D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8766FEAD-E6B7-41CC-BD6F-9B124A34750D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8766FEAD-E6B7-41CC-BD6F-9B124A34750D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8766FEAD-E6B7-41CC-BD6F-9B124A34750D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

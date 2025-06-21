@@ -35,6 +35,13 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
     [ObservableProperty]
     private string _filePath = DefaultFilePath;
 
+    private string? _conversationId;
+
+    public void SetConversationId(string conversationId)
+    {
+        _conversationId = conversationId;
+    }
+
     public void SetFileInfo(string filePath)
     {
         FileName = Path.GetFileName(filePath);
@@ -54,41 +61,48 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
     [RelayCommand]
     private async Task RemoveFileAsync()
     {
-        await Task.CompletedTask;
-        
-        WeakReferenceMessenger.Default.Send(new FileUploadCanceledMessage()
-        {
-            FilePath = FilePath
-        });
+        await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                WeakReferenceMessenger.Default.Send(new FileUploadCanceledMessage()
+                {
+                    ConversationId = _conversationId,
+                    FilePath = FilePath
+                });
 
-        IsProcessingFile = false;
-        IsVisible = false;
-        FilePath = DefaultFilePath;
-        FileName = DefaultFileName;
+                IsProcessingFile = false;
+                IsVisible = false;
+                FilePath = DefaultFilePath;
+                FileName = DefaultFileName;
+            }
+        );
     }
 
     public void Receive(FileUploadRequestMessage message)
     {
+        if (_conversationId != message.ConversationId) return;
+        
         Dispatcher.UIThread.InvokeAsync(async () =>
         {
             SetFileInfo(message.FilePath);
             ToggleProcessingFile();
             ToggleVisible();
-
+            
             WeakReferenceMessenger.Default.Send(new FileUploadStatusMessage()
             {
+                ConversationId = _conversationId,
                 FilePath = message.FilePath,
                 IsProcessing = true
             });
 
             try
             {
-                var uploadSuccess = await _fileUploadService.UploadFileAsync(message.FilePath);
+                var uploadSuccess = await _fileUploadService.UploadFileAsync(message.FilePath, _conversationId!);
                 
                 ToggleProcessingFile();
                 
                 WeakReferenceMessenger.Default.Send(new FileUploadStatusMessage()
                 {
+                    ConversationId = _conversationId,
                     FilePath = message.FilePath,
                     IsProcessing = false,
                     IsSuccess = uploadSuccess
@@ -105,6 +119,7 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
                 
                 WeakReferenceMessenger.Default.Send(new FileUploadStatusMessage()
                 {
+                    ConversationId = _conversationId,
                     FilePath = message.FilePath,
                     IsProcessing = false,
                     IsSuccess = false

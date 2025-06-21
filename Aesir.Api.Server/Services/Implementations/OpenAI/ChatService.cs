@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services.Implementations.Standard;
+using Aesir.Common.Prompts;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -21,6 +22,7 @@ namespace Aesir.Api.Server.Services.Implementations.OpenAI;
 public class ChatService : BaseChatService
 {
     private readonly IChatCompletionService _chatCompletionService;
+    private static readonly IPromptProvider _promptProvider = new DefaultPromptProvider();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChatService"/> class.
@@ -48,10 +50,8 @@ public class ChatService : BaseChatService
     /// <returns>A concise title summarizing the user's message.</returns>
     protected override async Task<string> GetTitleForUserMessageAsync(AesirChatRequest request)
     {
-        var titleSystemPrompt = "You are an AI designed to summarize user messages for display as concise list items. Your task is to take a user's chat message and shorten it into a brief, clear summary that retains the original meaning. Focus on capturing the key idea or intent, omitting unnecessary details, filler words, or repetition. The output should be succinct, natural, and suitable for a list format, ideally no longer than 5-10 words. If the message is already short, adjust it minimally to fit a list-item style.\nInput: A user's chat message\n\nOutput: A shortened version of the message as a list item\nExample:\nInput: \"I'm really excited about the new project launch happening next week, it's going to be amazing!\"\nOutput: \"Excited for next week's amazing project launch!\"";
-
         var chatHistory = new ChatHistory();
-        chatHistory.AddSystemMessage(titleSystemPrompt);
+        chatHistory.AddSystemMessage(_promptProvider.GetTitleGenerationPrompt().Content);
         chatHistory.AddUserMessage(request.Conversation.Messages.Last().Content);
 
         var settings = new OpenAIPromptExecutionSettings

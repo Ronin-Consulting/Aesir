@@ -51,4 +51,8 @@
       </None>
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Aesir.Common\Aesir.Common.csproj" />
+    </ItemGroup>
+
 </Project>
