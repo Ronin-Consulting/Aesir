@@ -17,15 +17,19 @@
 - [ ] Add message controls like chatgpt
   - [x] Copy message
   - [x] Regenerate assistant message
-  - [ ] Edit user message
+  - [x] Edit user message
   - [ ] Play message
 - [ ] Implement RAG
-  - [x] Upload
+  - [x] Upload - Global Documents
+  - [ ] Upload - Conversation Documents
   - [ ] Download
   - [x] CRUD
   - [X] Citations
   - [X] Citation Viewer
   - [ ] Other?
+    - [ ] Smart Context Load - Include chunks or whole document if context big enough
+    - [ ] Re-ranker
+    - [ ] Lexical and Semantic Search
 - [ ] Implement Microphone
   - [ ] Record
   - [ ] Stop
@@ -41,7 +45,7 @@
   - [ ] Login
   - [ ] Register
   - [ ] Logout
-- [ ] Implement Model Switching - WIP
+- [ ] Implement Model Switching
 
 ## Supported AI Backends
 
@@ -55,6 +59,7 @@ To use OpenAI as the backend:
 3. Optionally configure organization ID and preferred models
 
 ### Models Tested
-1. qwen2.5:14b-instruct-q6_K
-2. qwen2.5:32b
-3. cogito:32b - This one is the best
+1. **cogito:32b-v1-preview-qwen-q4_K_M - This one is the best**
+2. cogito:32b
+3. qwen2.5:32b
+4. qwen2.5:14b-instruct-q6_K
