@@ -4,7 +4,7 @@ namespace Aesir.Api.Server.Services;
 
 public interface IFileStorageService
 {
-    Task<int> UpsertFileAsync(string filename, string mimeType, byte[] content, string? folder = null);
+    Task<int> UpsertFileAsync(string filename, string mimeType, byte[] content);
     Task<AesirFileInfo?> GetFileInfoAsync(Guid id);
     Task<AesirFileInfo?> GetFileInfoAsync(string filename);
     Task<IEnumerable<AesirFileInfo>> GetFilesAsync();

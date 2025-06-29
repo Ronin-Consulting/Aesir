@@ -12,7 +12,8 @@ public class DocumentCollectionController : ControllerBase
     private readonly ILogger<DocumentCollectionController> _logger;
     private readonly IFileStorageService _fileStorageService;
     private readonly IPdfDataLoaderService _pdfDataLoaderService;
-    
+    private const int MaxFileSize = 104857600; // 100MB
+
     public DocumentCollectionController(
         ILogger<DocumentCollectionController> logger,
         IFileStorageService fileStorageService, 
@@ -26,8 +27,98 @@ public class DocumentCollectionController : ControllerBase
     [HttpGet("file/{filename}/content")]
     public async Task<IActionResult> GetFileContentAsync([FromRoute]string filename)
     {
+        return await GetFileContentCoreAsync(filename);
+    }
+
+    [HttpGet("load/test/data")]
+    public async Task<IActionResult> LoadTestDataAsync()
+    {
+        const string filePath = "Assets/MissionPlan-OU812.pdf";
+
+        await _pdfDataLoaderService.LoadPdfAsync(filePath, 2, 100, CancellationToken.None);
+
+        var bytes = await System.IO.File.ReadAllBytesAsync(filePath);
+        var filename = Path.GetFileName(filePath);
+        var mimeType = filename.GetContentType();
+
+        await _fileStorageService.UpsertFileAsync(filename, mimeType, bytes);
+
+        return Ok();
+    }
+
+    #region Global Files
+    [HttpPost("globals/{categoryId}/upload/file")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(MaxFileSize)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxFileSize)]
+    public async Task<IActionResult> UploadGlobalFileAsync(IFormFile? file, [FromRoute] string categoryId)
+    {
+        var result = await ProcessFileUploadAsync(file, categoryId, "CategoryId");
+
+        if (!result.Success)
+            return BadRequest(result.ErrorMessage);
+
+        return Ok(new { message = "File uploaded successfully", fileName = file?.FileName, categoryId });
+    }
+
+    [HttpGet("globals/{categoryId}/files")]
+    public async Task<IActionResult> GetGlobalFilesAsync([FromRoute] string categoryId)
+    {
+        return await GetFilesByFolderAsync(categoryId, "CategoryId", "global");
+    }
+
+    [HttpGet("globals/{categoryId}/files/{filename}/content")]
+    public async Task<IActionResult> GetGlobalFileContentAsync([FromRoute] string categoryId, [FromRoute] string filename)
+    {
+        return await GetFolderFileContentAsync(categoryId, filename, "CategoryId");
+    }
+
+    [HttpDelete("globals/{categoryId}/files")]
+    public async Task<IActionResult> DeleteGlobalsFilesAsync([FromRoute] string categoryId)
+    {
+        return await DeleteFilesByFolderAsync(categoryId, "CategoryId", "global");
+    }
+    #endregion
+
+    #region Conversation Files
+    [HttpPost("conversations/{conversationId}/upload/file")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(MaxFileSize)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxFileSize)]
+    public async Task<IActionResult> UploadConversationFileAsync(IFormFile? file, [FromRoute] string conversationId)
+    {
+        var result = await ProcessFileUploadAsync(file, conversationId, "ConversationId");
+
+        if (!result.Success)
+            return BadRequest(result.ErrorMessage);
+
+        return Ok(new { message = "File uploaded successfully", fileName = file?.FileName, conversationId });
+    }
+
+    [HttpGet("conversations/{conversationId}/files")]
+    public async Task<IActionResult> GetConversationFilesAsync([FromRoute] string conversationId)
+    {
+        return await GetFilesByFolderAsync(conversationId, "ConversationId", "conversation");
+    }
+
+    [HttpGet("conversations/{conversationId}/files/{filename}/content")]
+    public async Task<IActionResult> GetConversationFileContentAsync([FromRoute] string conversationId, [FromRoute] string filename)
+    {
+        return await GetFolderFileContentAsync(conversationId, filename, "ConversationId");
+    }
+
+    [HttpDelete("conversations/{conversationId}/files")]
+    public async Task<IActionResult> DeleteConversationFilesAsync([FromRoute] string conversationId)
+    {
+        return await DeleteFilesByFolderAsync(conversationId, "ConversationId", "conversation");
+    }
+    #endregion
+
+    #region Common Methods
+    private async Task<IActionResult> GetFileContentCoreAsync(string filename)
+    {
         var result = await _fileStorageService.GetFileContentAsync(filename);
-        
+
         if(result == null || !System.IO.File.Exists(result.Value.FilePath))
             return NotFound();
 
@@ -40,41 +131,80 @@ public class DocumentCollectionController : ControllerBase
             EnableRangeProcessing = true
         };
     }
-    
-    [HttpGet("load/test/data")]
-    public async Task<IActionResult> LoadTestDataAsync()
-    {
-        const string filePath = "Assets/MissionPlan-OU812.pdf";
-        
-        await _pdfDataLoaderService.LoadPdfAsync(filePath, 2, 100, CancellationToken.None);
 
-        var bytes = await System.IO.File.ReadAllBytesAsync(filePath);
-        var filename = Path.GetFileName(filePath);
-        var mimeType = filename.GetContentType();
-        
-        await _fileStorageService.UpsertFileAsync(filename, mimeType, bytes);
-            
-        return Ok();
+    private async Task<IActionResult> GetFilesByFolderAsync(string folderId, string folderIdName, string folderType)
+    {
+        if (string.IsNullOrWhiteSpace(folderId))
+            return BadRequest($"{folderIdName} is required.");
+
+        try
+        {
+            var files = await _fileStorageService.GetFilesByFolderAsync(folderId);
+            return Ok(files);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving files for {FolderType} {FolderId}", folderType, folderId);
+            return StatusCode(500, "An error occurred while retrieving files.");
+        }
     }
 
-    [HttpPost("upload/{conversationId}")]
-    [Consumes("multipart/form-data")]
-    [RequestSizeLimit(104857600)] // 100MB
-    [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
-    public async Task<IActionResult> UploadFileAsync(IFormFile file, [FromRoute] string conversationId)
+    private async Task<IActionResult> GetFolderFileContentAsync(string folderId, string filename, string folderIdName)
     {
-        if (string.IsNullOrWhiteSpace(conversationId))
-            return BadRequest("ConversationId is required.");
+        if (string.IsNullOrWhiteSpace(folderId))
+            return BadRequest($"{folderIdName} is required.");
+
+        if (string.IsNullOrWhiteSpace(filename))
+            return BadRequest("Filename is required.");
+
+        try
+        {
+            var virtualFilename = $"{folderId}/{filename}";
+            return await GetFileContentCoreAsync(virtualFilename);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving file content for {FolderId}/{Filename}", folderId, filename);
+            return StatusCode(500, "An error occurred while retrieving the file.");
+        }
+    }
+
+    private async Task<IActionResult> DeleteFilesByFolderAsync(string folderId, string folderIdName, string folderType)
+    {
+        if (string.IsNullOrWhiteSpace(folderId))
+            return BadRequest($"{folderIdName} is required.");
+
+        try
+        {
+            var success = await _fileStorageService.DeleteFilesByFolderAsync(folderId);
+
+            if (success)
+                return Ok(new { message = "Files deleted successfully", folderId });
+            else
+                return NotFound(new { message = $"No files found for the specified {folderType}", folderId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting files for {FolderType} {FolderId}", folderType, folderId);
+            return StatusCode(500, "An error occurred while deleting files.");
+        }
+    }
+
+    private async Task<(bool Success, string? ErrorMessage, string? VirtualFilename)> ProcessFileUploadAsync(
+        IFormFile? file, string folderId, string folderIdName)
+    {
+        if (string.IsNullOrWhiteSpace(folderId))
+            return (false, $"{folderIdName} is required.", null);
 
         if (file == null || file.Length == 0)
-            return BadRequest("No file uploaded.");
+            return (false, "No file uploaded.", null);
 
-        if (file.Length > 104857600) // 100MB
-            return BadRequest("File size exceeds 100MB limit.");
+        if (file.Length > MaxFileSize)
+            return (false, "File size exceeds 100MB limit.", null);
 
         var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (fileExtension != ".pdf")
-            return BadRequest("Only PDF files are allowed.");
+            return (false, "Only PDF files are allowed.", null);
 
         try
         {
@@ -82,89 +212,20 @@ public class DocumentCollectionController : ControllerBase
             await file.CopyToAsync(memoryStream);
             var fileContent = memoryStream.ToArray();
 
-            var mimeType = file.ContentType ?? "application/pdf";
-            
-            await _fileStorageService.UpsertFileAsync(file.FileName, mimeType, fileContent, conversationId);
+            var mimeType = file.ContentType;
 
-            return Ok(new { message = "File uploaded successfully", fileName = file.FileName, conversationId });
+            var fileName = Path.GetFileName(file.FileName);
+            var virtualFilename = $"{folderId}/{fileName}";
+
+            await _fileStorageService.UpsertFileAsync(virtualFilename, mimeType, fileContent);
+
+            return (true, null, virtualFilename);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error uploading file");
-            return StatusCode(500, "An error occurred while uploading the file.");
+            return (false, "An error occurred while uploading the file.", null);
         }
     }
-
-    [HttpGet("conversations/{conversationId}/files")]
-    public async Task<IActionResult> GetConversationFilesAsync([FromRoute] string conversationId)
-    {
-        if (string.IsNullOrWhiteSpace(conversationId))
-            return BadRequest("ConversationId is required.");
-
-        try
-        {
-            var files = await _fileStorageService.GetFilesByFolderAsync(conversationId);
-            return Ok(files);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving files for conversation {ConversationId}", conversationId);
-            return StatusCode(500, "An error occurred while retrieving files.");
-        }
-    }
-
-    [HttpGet("conversations/{conversationId}/files/{filename}/content")]
-    public async Task<IActionResult> GetConversationFileContentAsync([FromRoute] string conversationId, [FromRoute] string filename)
-    {
-        if (string.IsNullOrWhiteSpace(conversationId))
-            return BadRequest("ConversationId is required.");
-
-        if (string.IsNullOrWhiteSpace(filename))
-            return BadRequest("Filename is required.");
-
-        try
-        {
-            var virtualFilename = $"{conversationId}/{filename}";
-            var result = await _fileStorageService.GetFileContentAsync(virtualFilename);
-            
-            if (result == null || !System.IO.File.Exists(result.Value.FilePath))
-                return NotFound();
-
-            var fileStream = new FileStream(result.Value.FilePath, FileMode.Open, FileAccess.Read);
-            var contentType = result.Value.FileInfo.MimeType;
-
-            return new FileStreamResult(fileStream, contentType)
-            {
-                FileDownloadName = filename,
-                EnableRangeProcessing = true
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving file content for {ConversationId}/{Filename}", conversationId, filename);
-            return StatusCode(500, "An error occurred while retrieving the file.");
-        }
-    }
-
-    [HttpDelete("conversations/{conversationId}/files")]
-    public async Task<IActionResult> DeleteConversationFilesAsync([FromRoute] string conversationId)
-    {
-        if (string.IsNullOrWhiteSpace(conversationId))
-            return BadRequest("ConversationId is required.");
-
-        try
-        {
-            var success = await _fileStorageService.DeleteFilesByFolderAsync(conversationId);
-            
-            if (success)
-                return Ok(new { message = "Files deleted successfully", conversationId });
-            else
-                return NotFound(new { message = "No files found for the specified conversation", conversationId });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting files for conversation {ConversationId}", conversationId);
-            return StatusCode(500, "An error occurred while deleting files.");
-        }
-    }
+    #endregion
 }

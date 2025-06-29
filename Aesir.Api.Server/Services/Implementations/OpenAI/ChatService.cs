@@ -22,19 +22,17 @@ namespace Aesir.Api.Server.Services.Implementations.OpenAI;
 public class ChatService : BaseChatService
 {
     private readonly IChatCompletionService _chatCompletionService;
-    private static readonly IPromptProvider _promptProvider = new DefaultPromptProvider();
+    private static readonly IPromptProvider PromptProvider = new DefaultPromptProvider();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChatService"/> class.
     /// </summary>
     /// <param name="logger">Logger for diagnostic information.</param>
-    /// <param name="vectorStoreTextSearch">Vector store for semantic search.</param>
     /// <param name="kernel">Semantic Kernel instance for AI operations.</param>
     /// <param name="chatCompletionService">Service for chat completions.</param>
     /// <param name="chatHistoryService">Service for persisting and retrieving chat history.</param>
     public ChatService(
         ILogger<ChatService> logger,
-        VectorStoreTextSearch<AesirTextData<Guid>> vectorStoreTextSearch,
         Kernel kernel,
         IChatCompletionService chatCompletionService,
         IChatHistoryService chatHistoryService)
@@ -51,7 +49,7 @@ public class ChatService : BaseChatService
     protected override async Task<string> GetTitleForUserMessageAsync(AesirChatRequest request)
     {
         var chatHistory = new ChatHistory();
-        chatHistory.AddSystemMessage(_promptProvider.GetTitleGenerationPrompt().Content);
+        chatHistory.AddSystemMessage(PromptProvider.GetTitleGenerationPrompt().Content);
         chatHistory.AddUserMessage(request.Conversation.Messages.Last().Content);
 
         var settings = new OpenAIPromptExecutionSettings

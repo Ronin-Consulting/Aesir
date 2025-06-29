@@ -9,11 +9,8 @@ public class FileStorageService(ILogger<FileStorageService> logger, IDbContext d
     private readonly ILogger<FileStorageService> _logger = logger;
     private readonly IDbContext _dbContext = dbContext;
 
-    public async Task<int> UpsertFileAsync(string filename, string mimeType, byte[] content, string? folder = null)
+    public async Task<int> UpsertFileAsync(string filename, string mimeType, byte[] content)
     {
-        // Create virtual path: folder/filename or use shared_folder for legacy files
-        var virtualFileName = folder != null ? $"{folder}/{filename}" : $"shared_folder/{filename}";
-        
         const string sql = @"
             INSERT INTO aesir.aesir_file_storage (file_name, mime_type, file_size, file_content)
             VALUES (@FileName, @MimeType, @FileSize, @Content)
@@ -27,7 +24,7 @@ public class FileStorageService(ILogger<FileStorageService> logger, IDbContext d
         return await _dbContext.UnitOfWorkAsync(async (connection) => 
         await connection.ExecuteAsync(sql, new
         {
-            FileName = virtualFileName, 
+            FileName = filename, 
             MimeType = mimeType, 
             FileSize = content.Length,
             Content = content

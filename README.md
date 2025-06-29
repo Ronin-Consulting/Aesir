@@ -63,3 +63,4 @@ To use OpenAI as the backend:
 2. cogito:32b
 3. qwen2.5:32b
 4. qwen2.5:14b-instruct-q6_K
+5. gemma3n:latest - NEW not tried yet

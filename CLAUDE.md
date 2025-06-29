@@ -19,3 +19,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Dependency Injection**: Use constructor injection and register services in App.axaml.cs
 - **MVVM Pattern**: ViewModels should derive from ViewModelBase, use CommunityToolkit.Mvvm
 - **Error Handling**: Use try/catch with specific exception types, avoid general Exception catches
+
+## Plan Creation
+- Always ask any clarifying questions, if needed, before creating code change plans.

@@ -25,8 +25,6 @@ public class PdfViewerService(
         if (Application.Current != null &&
             Application.Current.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var mainWindow = desktop.MainWindow!;
-            
             var options = new DrawerOptions()
             {
                 Position = Position.Right,
@@ -69,7 +67,7 @@ public class PdfViewerService(
             if (!int.TryParse(uri.Fragment.TrimStart('#', 'p', 'a', 'g', 'e', '='), out var pageNumber))
                 return null;
 
-            await using var pdfStream = await documentCollectionService.GetStreamAsync(filename);
+            await using var pdfStream = await documentCollectionService.GetFileContentStreamAsync(filename);
             
             // Render the first page (pageIndex: 0) to a SKBitmap
 #pragma warning disable CA1416

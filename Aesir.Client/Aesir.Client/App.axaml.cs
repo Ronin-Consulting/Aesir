@@ -81,8 +81,7 @@ public partial class App : Application
         AppServices.AddSingleton<IChatService,ChatService>();
         AppServices.AddSingleton<IChatHistoryService, ChatHistoryService>();
         AppServices.AddSingleton<IModelService, ModelService>();
-        AppServices.AddTransient<IDocumentCollectionService, DocumentCollectionService>();
-        AppServices.AddSingleton<IFileUploadService, FileUploadService>();
+        AppServices.AddSingleton<IDocumentCollectionService, DocumentCollectionService>();
         AppServices.AddSingleton<IChatSessionManager, ChatSessionManager>();
         AppServices.AddSingleton<IContentProcessingService, ContentProcessingService>();
         

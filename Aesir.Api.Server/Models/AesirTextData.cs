@@ -8,21 +8,35 @@ namespace Aesir.Api.Server.Models;
 [Experimental("SKEXP0001")]
 public class AesirTextData<TKey>
 {
-    [VectorStoreKey]
+    [VectorStoreKey(StorageName = "key")]
     public required TKey Key { get; set; }
 
     [TextSearchResultValue]
-    [VectorStoreData]
+    [VectorStoreData(StorageName = "text")]
     public string? Text { get; set; }
 
     [TextSearchResultName]
-    [VectorStoreData]
+    [VectorStoreData(StorageName = "reference_description")]
     public string? ReferenceDescription { get; set; }
 
     [TextSearchResultLink]
-    [VectorStoreData]
+    [VectorStoreData(StorageName = "reference_link")]
     public string? ReferenceLink { get; set; }
-
-    [VectorStoreVector(768)]
+    
+    [VectorStoreVector(768, StorageName = "text_embedding")]
     public Embedding<float>? TextEmbedding { get; set; }
+}
+
+[Experimental("SKEXP0001")]
+public class AesirGlobalDocumentTextData<TKey> : AesirTextData<TKey>
+{
+    [VectorStoreData(StorageName = "category")]
+    public string? Category { get; set; }
+}
+
+[Experimental("SKEXP0001")]
+public class AesirConversationDocumentTextData<TKey> : AesirTextData<TKey>
+{
+    [VectorStoreData(StorageName = "conversation_id")]
+    public string? ConversationId { get; set; }
 }

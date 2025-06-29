@@ -67,20 +67,51 @@ public static class ServiceCollectionExtensions
             EmbeddingGenerator = embeddingGenerator
         };
 
-        services.AddPostgresCollection<Guid, AesirTextData<Guid>>("aesir_documents", rcOptions);
-
+        
+        services.AddPostgresCollection<Guid, AesirConversationDocumentTextData<Guid>>("aesir_conversation_documents", rcOptions);
+        services.AddPostgresCollection<Guid, AesirGlobalDocumentTextData<Guid>>("aesir_global_documents", rcOptions);
+        
         services.AddSingleton(new UniqueKeyGenerator<Guid>(Guid.NewGuid));
         services.AddSingleton<IPdfDataLoaderService, PdfDataLoaderService<Guid>>();
         
-        kernelBuilder.AddVectorStoreTextSearch<AesirTextData<Guid>>();
+        kernelBuilder.AddVectorStoreTextSearch<AesirConversationDocumentTextData<Guid>>();
+        kernelBuilder.AddVectorStoreTextSearch<AesirGlobalDocumentTextData<Guid>>();
 
-        var vectorStoreTextSearch = services.BuildServiceProvider().GetRequiredService<VectorStoreTextSearch<AesirTextData<Guid>>>();
-        var missionPlanRagPlugin = vectorStoreTextSearch.CreateWithGetTextSearchResults(
-            "SearchMissionPlanDetails",
-            "A natural language search returning details about mission plans."
-        );
-        kernelBuilder.Plugins.Add(missionPlanRagPlugin);
-
+        // global documents setup
+        var globalDocumentCollections = 
+            configuration.GetSection("GlobalDocumentCollections").Get<GlobalDocumentCollection[]>() ?? [];
+       
+        var globalDocumentTextSearch = services.BuildServiceProvider()
+            .GetRequiredService<VectorStoreTextSearch<AesirGlobalDocumentTextData<Guid>>>();
+        
+        foreach (var globalDocumentCollection in globalDocumentCollections)
+        {
+            var categoryFilter = new TextSearchFilter();
+            categoryFilter.Equality(nameof(AesirGlobalDocumentTextData<Guid>.Category), globalDocumentCollection.Name);
+            var globalDocumentTextSearchOptions = new TextSearchOptions
+            {
+                Top = 5,
+                Filter = categoryFilter
+            };
+            
+            var globalDocumentSearchPlugin = globalDocumentTextSearch
+                .CreateGetTextSearchResults(searchOptions: globalDocumentTextSearchOptions);
+            
+            kernelBuilder.Plugins.Add(KernelPluginFactory.CreateFromFunctions(
+                globalDocumentCollection.PluginName, 
+                globalDocumentCollection.PluginDescription, 
+                [globalDocumentSearchPlugin]
+            ));
+        }
+        
         return services;
     }
+}
+
+// ReSharper disable once ClassNeverInstantiated.Global
+internal class GlobalDocumentCollection
+{
+    public string Name { get; set; } = null!;
+    public string PluginName { get; set; } = null!;
+    public string PluginDescription { get; set; } = null!;
 }

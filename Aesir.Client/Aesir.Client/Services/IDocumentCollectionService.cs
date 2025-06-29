@@ -5,5 +5,9 @@ namespace Aesir.Client.Services;
 
 public interface IDocumentCollectionService
 {
-    Task<Stream> GetStreamAsync(string filename);
+    Task<Stream> GetFileContentStreamAsync(string filename);
+    
+    Task UploadConversationFileAsync(string filePath, string conversationId);
+    
+    Task UploadGlobalFileAsync(string filePath, string categoryId);
 }

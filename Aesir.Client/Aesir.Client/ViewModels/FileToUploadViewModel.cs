@@ -12,14 +12,14 @@ namespace Aesir.Client.ViewModels;
 
 public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<FileUploadRequestMessage>
 {
-    private readonly IFileUploadService _fileUploadService;
+    private readonly IDocumentCollectionService _documentCollectionService;
     private readonly IDialogService _dialogService;
     private const string DefaultFileName = "No File";
     private const string DefaultFilePath = "No Path";
 
-    public FileToUploadViewModel(IFileUploadService fileUploadService, IDialogService dialogService)
+    public FileToUploadViewModel(IDocumentCollectionService documentCollectionService, IDialogService dialogService)
     {
-        _fileUploadService = fileUploadService;
+        _documentCollectionService = documentCollectionService;
         _dialogService = dialogService;
     }
     
@@ -96,7 +96,7 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
 
             try
             {
-                var uploadSuccess = await _fileUploadService.UploadFileAsync(message.FilePath, _conversationId!);
+                await _documentCollectionService.UploadConversationFileAsync(message.FilePath, _conversationId!);
                 
                 ToggleProcessingFile();
                 
@@ -105,13 +105,8 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
                     ConversationId = _conversationId,
                     FilePath = message.FilePath,
                     IsProcessing = false,
-                    IsSuccess = uploadSuccess
+                    IsSuccess = true
                 });
-
-                if (!uploadSuccess)
-                {
-                    await _dialogService.ShowErrorDialogAsync("Upload Failed", "Failed to upload the file. Please try again.");
-                }
             }
             catch (Exception ex)
             {

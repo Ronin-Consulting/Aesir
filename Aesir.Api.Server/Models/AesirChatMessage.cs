@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Aesir.Api.Server.Extensions;
 
 namespace Aesir.Api.Server.Models;
 
@@ -9,6 +10,26 @@ public class AesirChatMessage
 
     [JsonPropertyName("content")]
     public string Content { get; set; } = null!;
+
+    public bool HasFile()
+    {
+        if (Role != "user") return false;
+        
+        return Content.StartsWith("<file", StringComparison.OrdinalIgnoreCase) && 
+               Content.Contains("</file>", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public void AddFile(string filename)
+    {
+        //<file>SalesData.pdf</file>
+        var contentFixed = Content;
+        if (Content.StartsWith("<file", StringComparison.OrdinalIgnoreCase))
+        {
+            contentFixed = contentFixed.Split("</file>")[1];
+        }
+
+        Content = $"<file>{filename}</file>{contentFixed}";
+    }
 
     public static AesirChatMessage NewSystemMessage(string content)
     {
