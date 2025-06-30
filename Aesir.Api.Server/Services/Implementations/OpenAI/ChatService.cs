@@ -5,7 +5,6 @@ using Aesir.Common.Prompts;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Microsoft.SemanticKernel.Data;
 using OpenAI.Chat;
 
 namespace Aesir.Api.Server.Services.Implementations.OpenAI;
@@ -17,11 +16,18 @@ namespace Aesir.Api.Server.Services.Implementations.OpenAI;
 /// <remarks>
 /// This service requires OpenAI API credentials configured via the application settings.
 /// It integrates with the chat history service to persist conversations.
+/// Additionally, it supports document processing through the conversation document collection service,
+/// allowing the AI to reference and utilize documents uploaded by users during chat sessions.
 /// </remarks>
 [Experimental("SKEXP0070")]
 public class ChatService : BaseChatService
 {
     private readonly IChatCompletionService _chatCompletionService;
+    /// <summary>
+    /// Service for managing document collections within conversations, providing functionality
+    /// to search and retrieve information from documents uploaded during chat sessions.
+    /// </summary>
+    private readonly IConversationDocumentCollectionService _conversationDocumentCollectionService;
     private static readonly IPromptProvider PromptProvider = new DefaultPromptProvider();
 
     /// <summary>
@@ -31,14 +37,17 @@ public class ChatService : BaseChatService
     /// <param name="kernel">Semantic Kernel instance for AI operations.</param>
     /// <param name="chatCompletionService">Service for chat completions.</param>
     /// <param name="chatHistoryService">Service for persisting and retrieving chat history.</param>
+    /// <param name="conversationDocumentCollectionService">Service for accessing and searching documents uploaded within conversations.</param>
     public ChatService(
         ILogger<ChatService> logger,
         Kernel kernel,
         IChatCompletionService chatCompletionService,
-        IChatHistoryService chatHistoryService)
+        IChatHistoryService chatHistoryService,
+        IConversationDocumentCollectionService  conversationDocumentCollectionService)
         : base(logger, chatHistoryService, kernel)
     {
         _chatCompletionService = chatCompletionService;
+        _conversationDocumentCollectionService = conversationDocumentCollectionService;
     }
 
     /// <summary>
@@ -89,13 +98,7 @@ public class ChatService : BaseChatService
     {
         var chatHistory = CreateChatHistory(request.Conversation.Messages);
 
-        var settings = new OpenAIPromptExecutionSettings
-        {
-            ModelId = request.Model,
-            Temperature = request.Temperature ?? 0.7f,
-            TopP = request.TopP,
-            MaxTokens = request.MaxTokens
-        };
+        var settings = await CreatePromptExecutionSettingsAsync(request);
 
         var completionResults = await _chatCompletionService.GetChatMessageContentsAsync(
             chatHistory,
@@ -105,8 +108,8 @@ public class ChatService : BaseChatService
         if (completionResults.Count > 0)
         {
             var content = completionResults[0].Content ?? string.Empty;
-            int promptTokens = 0;
-            int completionTokens = 0;
+            var promptTokens = 0;
+            var completionTokens = 0;
 
             if (completionResults[0].Metadata != null &&
                 completionResults[0].Metadata!.TryGetValue("Usage", out var usageObj) &&
@@ -131,13 +134,7 @@ public class ChatService : BaseChatService
     {
         var chatHistory = CreateChatHistory(request.Conversation.Messages);
 
-        var settings = new OpenAIPromptExecutionSettings
-        {
-            ModelId = request.Model,
-            Temperature = request.Temperature ?? 0.7f,
-            TopP = request.TopP,
-            MaxTokens = request.MaxTokens
-        };
+        var settings = await CreatePromptExecutionSettingsAsync(request);
 
         var streamingResults = _chatCompletionService.GetStreamingChatMessageContentsAsync(
             chatHistory,
@@ -148,12 +145,45 @@ public class ChatService : BaseChatService
         {
             _logger.LogDebug("Received streaming content from Semantic Kernel: {Content}", streamResult.Content);
 
-            bool isComplete = streamResult is OpenAIStreamingChatMessageContent { FinishReason: ChatFinishReason.Stop };
+            var isComplete = streamResult is OpenAIStreamingChatMessageContent { FinishReason: ChatFinishReason.Stop };
 
             yield return (streamResult.Content ?? string.Empty, isComplete);
         }
     }
 
+    /// <summary>
+    /// Creates prompt execution settings for the OpenAI model based on the chat request parameters.
+    /// If the conversation contains file attachments, configures the settings to utilize the document
+    /// search functionality through function calling capabilities.
+    /// </summary>
+    /// <param name="request">The chat request containing model and parameter settings.</param>
+    /// <returns>Configured OpenAI prompt execution settings.</returns>
+    private async Task<OpenAIPromptExecutionSettings> CreatePromptExecutionSettingsAsync(AesirChatRequest request)
+    {
+        var settings = new OpenAIPromptExecutionSettings
+        {
+            ModelId = request.Model,
+            Temperature = request.Temperature ?? 0.7f,
+            TopP = request.TopP,
+            MaxTokens = request.MaxTokens
+        };
+        
+        if (request.Conversation.Messages.Any(m => m.HasFile()))
+        {
+            settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
+
+            var conversationId = request.Conversation.Id;
+            _kernel.Plugins.Add(await _conversationDocumentCollectionService.GetKernelPluginAsync(conversationId));
+        }
+        
+        if (request.Temperature.HasValue)
+            settings.Temperature = (float?)request.Temperature;
+        else if (request.TopP.HasValue)
+            settings.TopP = (float?)request.TopP;
+
+        return settings;
+    }
+    
     /// <summary>
     /// Creates a chat history from Aesir chat messages.
     /// </summary>

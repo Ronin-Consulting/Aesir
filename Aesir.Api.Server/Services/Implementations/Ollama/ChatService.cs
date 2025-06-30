@@ -19,18 +19,24 @@ namespace Aesir.Api.Server.Services.Implementations.Ollama;
 /// <remarks>
 /// This service requires a running Ollama instance configured via the application settings.
 /// It integrates with the chat history service to persist conversations.
+/// Additionally, it supports document processing through the conversation document collection service,
+/// allowing the AI to reference and utilize documents uploaded by users during chat sessions.
 /// </remarks>
 [Experimental("SKEXP0070")]
 public class ChatService : BaseChatService
 {
     private readonly OllamaApiClient _api;
     private readonly IChatCompletionService _chatCompletionService;
+    /// <summary>
+    /// Service for managing document collections within conversations, providing functionality
+    /// to search and retrieve information from documents uploaded during chat sessions.
+    /// </summary>
     private readonly IConversationDocumentCollectionService _conversationDocumentCollectionService;
 
     private const int TitleGenerationMaxTokens = 250;
     private const float TitleGenerationTemperature = 0.2f;
     private static readonly IPromptProvider PromptProvider = new DefaultPromptProvider();
-    
+
     /// <summary>
     /// Initializes a new instance of the <see cref="ChatService"/> class.
     /// </summary>
@@ -39,6 +45,7 @@ public class ChatService : BaseChatService
     /// <param name="kernel">Semantic Kernel instance for AI operations.</param>
     /// <param name="chatCompletionService">Service for chat completions.</param>
     /// <param name="chatHistoryService">Service for persisting and retrieving chat history.</param>
+    /// <param name="conversationDocumentCollectionService">Service for accessing and searching documents uploaded within conversations.</param>
     public ChatService(
         ILogger<ChatService> logger,
         OllamaApiClient api,
@@ -99,7 +106,7 @@ public class ChatService : BaseChatService
     /// <returns>A tuple containing the response content, prompt tokens, and completion tokens.</returns>
     protected override async Task<(string content, int promptTokens, int completionTokens)> ExecuteChatCompletionAsync(AesirChatRequest request)
     {
-        var settings = CreatePromptExecutionSettings(request);
+        var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = CreateChatHistory(request);
         
         var results = await _chatCompletionService.GetChatMessageContentsAsync(
@@ -134,7 +141,7 @@ public class ChatService : BaseChatService
     /// <returns>An async enumerable of tuples containing content chunks and completion status.</returns>
     protected override async IAsyncEnumerable<(string content, bool isComplete)> ExecuteStreamingChatCompletionAsync(AesirChatRequest request)
     {
-        var settings = CreatePromptExecutionSettings(request);
+        var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = CreateChatHistory(request);
 
         var results = _chatCompletionService.GetStreamingChatMessageContentsAsync(
@@ -152,13 +159,27 @@ public class ChatService : BaseChatService
         }
     }
 
-    private static OllamaPromptExecutionSettings CreatePromptExecutionSettings(AesirChatRequest request)
+    /// <summary>
+    /// Creates prompt execution settings for the Ollama model based on the chat request parameters.
+    /// If the conversation contains file attachments, configures the settings to utilize the document
+    /// search functionality through function calling capabilities.
+    /// </summary>
+    /// <param name="request">The chat request containing model and parameter settings.</param>
+    /// <returns>Configured Ollama prompt execution settings.</returns>
+    private async Task<OllamaPromptExecutionSettings> CreatePromptExecutionSettingsAsync(AesirChatRequest request)
     {
         var settings = new OllamaPromptExecutionSettings
         {
-            ModelId = request.Model,
-            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+            ModelId = request.Model
         };
+        
+        if (request.Conversation.Messages.Any(m => m.HasFile()))
+        {
+            settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
+
+            var conversationId = request.Conversation.Id;
+            _kernel.Plugins.Add(await _conversationDocumentCollectionService.GetKernelPluginAsync(conversationId));
+        }
         
         if (request.Temperature.HasValue)
             settings.Temperature = (float?)request.Temperature;
@@ -168,6 +189,11 @@ public class ChatService : BaseChatService
         return settings;
     }
 
+    /// <summary>
+    /// Creates a chat history from an Aesir chat request for use with the Semantic Kernel.
+    /// </summary>
+    /// <param name="request">The chat request containing conversation messages.</param>
+    /// <returns>A chat history for use with Semantic Kernel chat completions.</returns>
     private static ChatHistory CreateChatHistory(AesirChatRequest request)
     {
         var chatHistory = new ChatHistory();
@@ -175,6 +201,11 @@ public class ChatService : BaseChatService
         return chatHistory;
     }
 
+    /// <summary>
+    /// Converts an Aesir chat message to a Semantic Kernel compatible message format.
+    /// </summary>
+    /// <param name="message">The Aesir chat message to convert.</param>
+    /// <returns>A Semantic Kernel compatible chat message content.</returns>
     private static ChatMessageContent ConvertToSemanticKernelMessage(dynamic message)
     {
         var role = message.Role switch

@@ -23,8 +23,9 @@ public class Program
 
         if (useOpenAi)
         {
-            builder.Services.AddSingleton<IModelsService, AesirOpenAI.ModelsService>();
-            builder.Services.AddSingleton<IChatService, AesirOpenAI.ChatService>();
+            // should be transient to always get fresh kernel
+            builder.Services.AddTransient<IModelsService, AesirOpenAI.ModelsService>();
+            builder.Services.AddTransient<IChatService, AesirOpenAI.ChatService>();
 
             var apiKey = builder.Configuration["Inference:OpenAI:ApiKey"] ??
                 throw new InvalidOperationException("OpenAI API key not configured");
@@ -44,8 +45,9 @@ public class Program
         }
         else
         {
-            builder.Services.AddSingleton<IModelsService, AesirOllama.ModelsService>();
-            builder.Services.AddSingleton<IChatService, AesirOllama.ChatService>();
+            // should be transient to always get fresh kernel
+            builder.Services.AddTransient<IModelsService, AesirOllama.ModelsService>();
+            builder.Services.AddTransient<IChatService, AesirOllama.ChatService>();
 
             const string ollamaClientName = "OllamaApiClient";
             builder.Services.AddHttpClient(ollamaClientName, client =>

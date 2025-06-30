@@ -14,6 +14,12 @@ public class DocumentCollectionController : ControllerBase
     private readonly IPdfDataLoaderService _pdfDataLoaderService;
     private const int MaxFileSize = 104857600; // 100MB
 
+    private enum FolderType
+    {
+        Global,
+        Conversation
+    }
+
     public DocumentCollectionController(
         ILogger<DocumentCollectionController> logger,
         IFileStorageService fileStorageService, 
@@ -53,7 +59,7 @@ public class DocumentCollectionController : ControllerBase
     [RequestFormLimits(MultipartBodyLengthLimit = MaxFileSize)]
     public async Task<IActionResult> UploadGlobalFileAsync(IFormFile? file, [FromRoute] string categoryId)
     {
-        var result = await ProcessFileUploadAsync(file, categoryId, "CategoryId");
+        var result = await ProcessFileUploadAsync(file, categoryId, FolderType.Global);
 
         if (!result.Success)
             return BadRequest(result.ErrorMessage);
@@ -64,19 +70,19 @@ public class DocumentCollectionController : ControllerBase
     [HttpGet("globals/{categoryId}/files")]
     public async Task<IActionResult> GetGlobalFilesAsync([FromRoute] string categoryId)
     {
-        return await GetFilesByFolderAsync(categoryId, "CategoryId", "global");
+        return await GetFilesByFolderAsync(categoryId, "CategoryId", FolderType.Global);
     }
 
     [HttpGet("globals/{categoryId}/files/{filename}/content")]
     public async Task<IActionResult> GetGlobalFileContentAsync([FromRoute] string categoryId, [FromRoute] string filename)
     {
-        return await GetFolderFileContentAsync(categoryId, filename, "CategoryId");
+        return await GetFolderFileContentAsync(categoryId, filename, FolderType.Global);
     }
 
     [HttpDelete("globals/{categoryId}/files")]
     public async Task<IActionResult> DeleteGlobalsFilesAsync([FromRoute] string categoryId)
     {
-        return await DeleteFilesByFolderAsync(categoryId, "CategoryId", "global");
+        return await DeleteFilesByFolderAsync(categoryId, "CategoryId", FolderType.Global);
     }
     #endregion
 
@@ -87,7 +93,7 @@ public class DocumentCollectionController : ControllerBase
     [RequestFormLimits(MultipartBodyLengthLimit = MaxFileSize)]
     public async Task<IActionResult> UploadConversationFileAsync(IFormFile? file, [FromRoute] string conversationId)
     {
-        var result = await ProcessFileUploadAsync(file, conversationId, "ConversationId");
+        var result = await ProcessFileUploadAsync(file, conversationId, FolderType.Conversation);
 
         if (!result.Success)
             return BadRequest(result.ErrorMessage);
@@ -98,19 +104,19 @@ public class DocumentCollectionController : ControllerBase
     [HttpGet("conversations/{conversationId}/files")]
     public async Task<IActionResult> GetConversationFilesAsync([FromRoute] string conversationId)
     {
-        return await GetFilesByFolderAsync(conversationId, "ConversationId", "conversation");
+        return await GetFilesByFolderAsync(conversationId, "ConversationId", FolderType.Conversation);
     }
 
     [HttpGet("conversations/{conversationId}/files/{filename}/content")]
     public async Task<IActionResult> GetConversationFileContentAsync([FromRoute] string conversationId, [FromRoute] string filename)
     {
-        return await GetFolderFileContentAsync(conversationId, filename, "ConversationId");
+        return await GetFolderFileContentAsync(conversationId, filename, FolderType.Conversation);
     }
 
     [HttpDelete("conversations/{conversationId}/files")]
     public async Task<IActionResult> DeleteConversationFilesAsync([FromRoute] string conversationId)
     {
-        return await DeleteFilesByFolderAsync(conversationId, "ConversationId", "conversation");
+        return await DeleteFilesByFolderAsync(conversationId, "ConversationId", FolderType.Conversation);
     }
     #endregion
 
@@ -132,7 +138,7 @@ public class DocumentCollectionController : ControllerBase
         };
     }
 
-    private async Task<IActionResult> GetFilesByFolderAsync(string folderId, string folderIdName, string folderType)
+    private async Task<IActionResult> GetFilesByFolderAsync(string folderId, string folderIdName, FolderType folderType)
     {
         if (string.IsNullOrWhiteSpace(folderId))
             return BadRequest($"{folderIdName} is required.");
@@ -144,15 +150,15 @@ public class DocumentCollectionController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving files for {FolderType} {FolderId}", folderType, folderId);
+            _logger.LogError(ex, "Error retrieving files for {FolderType} {FolderId}", folderType.ToString().ToLowerInvariant(), folderId);
             return StatusCode(500, "An error occurred while retrieving files.");
         }
     }
 
-    private async Task<IActionResult> GetFolderFileContentAsync(string folderId, string filename, string folderIdName)
+    private async Task<IActionResult> GetFolderFileContentAsync(string folderId, string filename, FolderType folderType)
     {
         if (string.IsNullOrWhiteSpace(folderId))
-            return BadRequest($"{folderIdName} is required.");
+            return BadRequest($"{folderType.ToString()} ID is required.");
 
         if (string.IsNullOrWhiteSpace(filename))
             return BadRequest("Filename is required.");
@@ -169,7 +175,7 @@ public class DocumentCollectionController : ControllerBase
         }
     }
 
-    private async Task<IActionResult> DeleteFilesByFolderAsync(string folderId, string folderIdName, string folderType)
+    private async Task<IActionResult> DeleteFilesByFolderAsync(string folderId, string folderIdName, FolderType folderType)
     {
         if (string.IsNullOrWhiteSpace(folderId))
             return BadRequest($"{folderIdName} is required.");
@@ -181,20 +187,20 @@ public class DocumentCollectionController : ControllerBase
             if (success)
                 return Ok(new { message = "Files deleted successfully", folderId });
             else
-                return NotFound(new { message = $"No files found for the specified {folderType}", folderId });
+                return NotFound(new { message = $"No files found for the specified {folderType.ToString().ToLowerInvariant()}", folderId });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting files for {FolderType} {FolderId}", folderType, folderId);
+            _logger.LogError(ex, "Error deleting files for {FolderType} {FolderId}", folderType.ToString().ToLowerInvariant(), folderId);
             return StatusCode(500, "An error occurred while deleting files.");
         }
     }
 
     private async Task<(bool Success, string? ErrorMessage, string? VirtualFilename)> ProcessFileUploadAsync(
-        IFormFile? file, string folderId, string folderIdName)
+        IFormFile? file, string folderId, FolderType folderType)
     {
         if (string.IsNullOrWhiteSpace(folderId))
-            return (false, $"{folderIdName} is required.", null);
+            return (false, $"{folderType.ToString()} ID is required.", null);
 
         if (file == null || file.Length == 0)
             return (false, "No file uploaded.", null);
