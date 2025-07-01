@@ -160,6 +160,8 @@ public class ChatService : BaseChatService
     /// <returns>Configured OpenAI prompt execution settings.</returns>
     private async Task<OpenAIPromptExecutionSettings> CreatePromptExecutionSettingsAsync(AesirChatRequest request)
     {
+        await Task.CompletedTask;
+        
         var settings = new OpenAIPromptExecutionSettings
         {
             ModelId = request.Model,
@@ -173,7 +175,11 @@ public class ChatService : BaseChatService
             settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
 
             var conversationId = request.Conversation.Id;
-            _kernel.Plugins.Add(await _conversationDocumentCollectionService.GetKernelPluginAsync(conversationId));
+            
+            var args = ConversationDocumentCollectionArgs.Default;
+            args.AddConversationId(conversationId);
+            
+            _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(args));
         }
         
         if (request.Temperature.HasValue)

@@ -5,7 +5,7 @@ namespace Aesir.Api.Server.Services;
 public interface IDocumentCollectionService
 {
     Task LoadDocumentAsync(string documentPath, IDictionary<string, object>? fileMetaData = null, CancellationToken cancellationToken = default);
-    Task<KernelPlugin> GetKernelPluginAsync(IDictionary<string, object>? kernelArguments = null);
+    KernelPlugin GetKernelPlugin(IDictionary<string, object>? kernelPluginArguments = null);
 }
 
 public enum DocumentCollectionType
@@ -16,7 +16,7 @@ public enum DocumentCollectionType
 
 public class GlobalDocumentCollectionArgs : Dictionary<string, object>
 {
-    public static readonly GlobalDocumentCollectionArgs Default = new();
+    public static GlobalDocumentCollectionArgs Default => new();
     
     public DocumentCollectionType DocumentCollectionType => (DocumentCollectionType) this["DocumentCollectionType"];
 
@@ -33,7 +33,7 @@ public class GlobalDocumentCollectionArgs : Dictionary<string, object>
 
 public class ConversationDocumentCollectionArgs : Dictionary<string, object>
 {
-    public static readonly ConversationDocumentCollectionArgs Default = new();
+    public static ConversationDocumentCollectionArgs Default => new();
     
     public DocumentCollectionType DocumentCollectionType => (DocumentCollectionType) this["DocumentCollectionType"];
     
@@ -46,4 +46,9 @@ public class ConversationDocumentCollectionArgs : Dictionary<string, object>
     {
         this["ConversationId"] = conversationId;   
     }
+}
+
+public static class SupportedFileContentTypes
+{
+    public static readonly string PdfContentType = "application/pdf";
 }

@@ -12,35 +12,41 @@ using TextContent = Microsoft.SemanticKernel.TextContent;
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 [Experimental("SKEXP0001")]
-public class PdfDataLoaderService<TKey>(
+public class PdfDataLoaderService<TKey, TRecord>(
     UniqueKeyGenerator<TKey> uniqueKeyGenerator,
-    VectorStoreCollection<TKey, AesirTextData<TKey>> vectorStoreRecordCollection,
+    VectorStoreCollection<TKey, TRecord> vectorStoreRecordCollection,
     IChatCompletionService chatCompletionService,
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
-    ILogger<PdfDataLoaderService<TKey>> logger) : IPdfDataLoaderService where TKey : notnull
+    Func<RawContent, LoadPdfRequest, TRecord> recordFactory,
+    ILogger<PdfDataLoaderService<TKey, TRecord>> logger) : IPdfDataLoaderService<TKey, TRecord>
+    where TKey : notnull
+    where TRecord : AesirTextData<TKey>
 {
-    /// <inheritdoc/>
-    public async Task LoadPdfAsync(string pdfPath, int batchSize, int betweenBatchDelayInMs, CancellationToken cancellationToken)
+    public async Task LoadPdfAsync(LoadPdfRequest request, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrEmpty(request.PdfPath))
+            throw new InvalidOperationException("PdfPath is empty");
+
         // Create the collection if it doesn't exist.
         await vectorStoreRecordCollection.EnsureCollectionExistsAsync(cancellationToken).ConfigureAwait(false);
 
         // First delete any existing PDFs with same name
         var toDelete = await vectorStoreRecordCollection.GetAsync(
-            filter: data => true,
-            10000, // this is dumb but if we get here that is fine we making $$$$$$
-            cancellationToken: cancellationToken)
+                filter: data => true,
+                10000, // this is dumb 
+                cancellationToken: cancellationToken)
             .ToListAsync(cancellationToken: cancellationToken);
 
-        toDelete = toDelete.Where(data => data.ReferenceDescription!.Contains(Path.GetFileName(pdfPath))).ToList();
-        
-        if(toDelete.Count > 0)
+        toDelete = toDelete.Where(data =>
+            data.ReferenceDescription!.Contains(Path.GetFileName(request.PdfPath))).ToList();
+
+        if (toDelete.Count > 0)
             await vectorStoreRecordCollection.DeleteAsync(
                 toDelete.Select(td => td.Key), cancellationToken);
 
         // Load the text and images from the PDF file and split them into batches.
-        var sections = LoadTextAndImages(pdfPath, cancellationToken);
-        var batches = sections.Chunk(batchSize);
+        var sections = LoadTextAndImages(request.PdfPath, cancellationToken);
+        var batches = sections.Chunk(request.BatchSize);
 
         // Process each batch of content items.
         foreach (var batch in batches)
@@ -61,13 +67,19 @@ public class PdfDataLoaderService<TKey>(
             var textContent = await Task.WhenAll(textContentTasks).ConfigureAwait(false);
 
             // Map each paragraph to a TextSnippet and generate an embedding for it.
-            var recordTasks = textContent.Select(async content => new AesirTextData<TKey>
+            var recordTasks = textContent.Select(async content =>
             {
-                Key = uniqueKeyGenerator.GenerateKey(),
-                Text = content.Text,
-                ReferenceDescription = $"{new FileInfo(pdfPath).Name}#page={content.PageNumber}",
-                ReferenceLink = $"{new Uri(new FileInfo(pdfPath).FullName).AbsoluteUri}#page={content.PageNumber}",
-                TextEmbedding = await GenerateEmbeddingsWithRetryAsync(content.Text!, cancellationToken)
+                var record = recordFactory(content, request);
+
+                record.Key = uniqueKeyGenerator.GenerateKey();
+
+                record.Text ??= content.Text;
+                record.ReferenceDescription ??= $"{new FileInfo(request.PdfPath).Name}#page={content.PageNumber}";
+                record.ReferenceLink ??=
+                    $"{new Uri(new FileInfo(request.PdfPath).FullName).AbsoluteUri}#page={content.PageNumber}";
+                record.TextEmbedding ??= await GenerateEmbeddingsWithRetryAsync(content.Text!, cancellationToken);
+
+                return record;
             });
 
             var records = await Task.WhenAll(recordTasks).ConfigureAwait(false);
@@ -76,7 +88,7 @@ public class PdfDataLoaderService<TKey>(
             await vectorStoreRecordCollection
                 .UpsertAsync(records, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            await Task.Delay(betweenBatchDelayInMs, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(request.BetweenBatchDelayInMs, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -86,7 +98,8 @@ public class PdfDataLoaderService<TKey>(
     /// <param name="text">The text to generate the embedding for.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
     /// <returns>The generated embedding.</returns>
-    private async Task<Embedding<float>> GenerateEmbeddingsWithRetryAsync(string text, CancellationToken cancellationToken)
+    private async Task<Embedding<float>> GenerateEmbeddingsWithRetryAsync(string text,
+        CancellationToken cancellationToken)
     {
         var tries = 0;
 
@@ -185,7 +198,9 @@ public class PdfDataLoaderService<TKey>(
                     new TextContent("What’s in this image?"),
                     new ImageContent(imageBytes, "image/png"),
                 ]);
-                var result = await chatCompletionService.GetChatMessageContentsAsync(chatHistory, cancellationToken: cancellationToken).ConfigureAwait(false);
+                var result = await chatCompletionService
+                    .GetChatMessageContentsAsync(chatHistory, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
                 return string.Join("\n", result.Select(x => x.Content));
             }
             catch (HttpOperationException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
@@ -205,18 +220,15 @@ public class PdfDataLoaderService<TKey>(
             }
         }
     }
+}
 
-    /// <summary>
-    /// Private model for returning the content items from a PDF file.
-    /// </summary>
-    private sealed class RawContent
-    {
-        public string? Text { get; init; }
+public sealed class RawContent
+{
+    public string? Text { get; init; }
 
-        public ReadOnlyMemory<byte>? Image { get; init; }
+    public ReadOnlyMemory<byte>? Image { get; init; }
 
-        public int PageNumber { get; init; }
-    }
+    public int PageNumber { get; init; }
 }
 
 public class UniqueKeyGenerator<TKey>(Func<TKey> generator)

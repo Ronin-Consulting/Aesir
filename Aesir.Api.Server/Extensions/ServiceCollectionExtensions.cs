@@ -3,9 +3,10 @@ using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services;
 using Aesir.Api.Server.Services.Implementations.Standard;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.PgVector;
-using Microsoft.SemanticKernel.Data;
 using Npgsql;
 using OllamaSharp;
 
@@ -16,7 +17,6 @@ public static class ServiceCollectionExtensions
     [Experimental("SKEXP0070")]
     public static IServiceCollection SetupSemanticKernel(this IServiceCollection services, IConfiguration configuration)
     {
-
         var useOpenAi = configuration.GetValue<bool>("Inference:UseOpenAICompatible");
         var embeddingModelId = useOpenAi
             ? configuration.GetSection("Inference:OpenAI:EmbeddingModel").Value
@@ -52,7 +52,8 @@ public static class ServiceCollectionExtensions
             kernelBuilder.AddOllamaEmbeddingGenerator(ollamaClient);
         }
 
-        var embeddingGenerator = services.BuildServiceProvider().GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
+        var embeddingGenerator = services.BuildServiceProvider()
+            .GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
 
         var vsOptions = new PostgresVectorStoreOptions
         {
@@ -67,43 +68,93 @@ public static class ServiceCollectionExtensions
             EmbeddingGenerator = embeddingGenerator
         };
 
-        
-        services.AddPostgresCollection<Guid, AesirConversationDocumentTextData<Guid>>("aesir_conversation_documents", rcOptions);
+
+        services.AddPostgresCollection<Guid, AesirConversationDocumentTextData<Guid>>("aesir_conversation_documents",
+            rcOptions);
         services.AddPostgresCollection<Guid, AesirGlobalDocumentTextData<Guid>>("aesir_global_documents", rcOptions);
-        
+
         services.AddSingleton(new UniqueKeyGenerator<Guid>(Guid.NewGuid));
-        services.AddSingleton<IPdfDataLoaderService, PdfDataLoaderService<Guid>>();
-        
+
+
+        services.AddSingleton<IPdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>(serviceProvider =>
+        {
+            return new PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>(
+                serviceProvider.GetRequiredService<UniqueKeyGenerator<Guid>>(),
+                serviceProvider.GetRequiredService<VectorStoreCollection<Guid, AesirGlobalDocumentTextData<Guid>>>(),
+                serviceProvider.GetRequiredService<IChatCompletionService>(),
+                serviceProvider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
+                (rawContent, request) =>
+                {
+                    var metadata = request.Metadata ?? new Dictionary<string, object>();
+                    var category = metadata.TryGetValue("CategoryId", out var categoryObj)
+                        ? categoryObj.ToString()
+                        : null;
+
+                    return new AesirGlobalDocumentTextData<Guid>
+                    {
+                        Category = category,
+                        Key = Guid.Empty // This will be replaced in the service
+                    };
+                },
+                serviceProvider
+                    .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>>()
+            );
+        });
+
+        services.AddSingleton<IPdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>(serviceProvider =>
+        {
+            return new PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>(
+                serviceProvider.GetRequiredService<UniqueKeyGenerator<Guid>>(),
+                serviceProvider
+                    .GetRequiredService<VectorStoreCollection<Guid, AesirConversationDocumentTextData<Guid>>>(),
+                serviceProvider.GetRequiredService<IChatCompletionService>(),
+                serviceProvider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
+                (rawContent, request) =>
+                {
+                    var metadata = request.Metadata ?? new Dictionary<string, object>();
+                    var conversationId = metadata.TryGetValue("ConversationId", out var conversationIdObj)
+                        ? conversationIdObj.ToString()
+                        : null;
+
+                    return new AesirConversationDocumentTextData<Guid>
+                    {
+                        ConversationId = conversationId,
+                        Key = Guid.Empty // This will be replaced in the service
+                    };
+                },
+                serviceProvider
+                    .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
+            );
+        });
+
         kernelBuilder.AddVectorStoreTextSearch<AesirConversationDocumentTextData<Guid>>();
         kernelBuilder.AddVectorStoreTextSearch<AesirGlobalDocumentTextData<Guid>>();
 
+        services.AddSingleton<IConversationDocumentCollectionService, ConversationDocumentCollectionService>();
+        services.AddSingleton<IGlobalDocumentCollectionService, GlobalDocumentCollectionService>();
+        services.AddSingleton<IDocumentCollectionService, AutoDocumentCollectionService>();
+
         // global documents setup
-        var globalDocumentCollections = 
+        var globalDocumentCollections =
             configuration.GetSection("GlobalDocumentCollections").Get<GlobalDocumentCollection[]>() ?? [];
-       
-        var globalDocumentTextSearch = services.BuildServiceProvider()
-            .GetRequiredService<VectorStoreTextSearch<AesirGlobalDocumentTextData<Guid>>>();
-        
+
+        var globalDocumentCollectionService =
+            services.BuildServiceProvider().GetRequiredService<IGlobalDocumentCollectionService>();
+
         foreach (var globalDocumentCollection in globalDocumentCollections)
         {
-            var categoryFilter = new TextSearchFilter();
-            categoryFilter.Equality(nameof(AesirGlobalDocumentTextData<Guid>.Category), globalDocumentCollection.Name);
-            var globalDocumentTextSearchOptions = new TextSearchOptions
-            {
-                Top = 5,
-                Filter = categoryFilter
-            };
-            
-            var globalDocumentSearchPlugin = globalDocumentTextSearch
-                .CreateGetTextSearchResults(searchOptions: globalDocumentTextSearchOptions);
-            
-            kernelBuilder.Plugins.Add(KernelPluginFactory.CreateFromFunctions(
-                globalDocumentCollection.PluginName, 
-                globalDocumentCollection.PluginDescription, 
-                [globalDocumentSearchPlugin]
-            ));
+            var args = GlobalDocumentCollectionArgs.Default;
+
+            args.AddCategoryId(globalDocumentCollection.Name);
+
+            args["PluginName"] = globalDocumentCollection.Name;
+            args["PluginDescription"] = globalDocumentCollection.PluginDescription;
+
+            var plugin = globalDocumentCollectionService.GetKernelPlugin(args);
+
+            kernelBuilder.Plugins.Add(plugin);
         }
-        
+
         return services;
     }
 }

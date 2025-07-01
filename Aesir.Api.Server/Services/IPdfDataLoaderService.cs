@@ -1,17 +1,25 @@
+using System.Diagnostics.CodeAnalysis;
+using Aesir.Api.Server.Models;
+
 namespace Aesir.Api.Server.Services;
 
 
 // This interface defines functionality for loading text content from a PDF file into a data store,
 // allowing parallel processing and batching to support efficient and controlled uploads.
-public interface IPdfDataLoaderService
+[Experimental("SKEXP0001")]
+public interface IPdfDataLoaderService<TKey, TRecord> 
+    where TKey : notnull
+    where TRecord : AesirTextData<TKey>
 {
-    /// <summary>
-    /// Load the text from a PDF file into the data store.
-    /// </summary>
-    /// <param name="pdfPath">The pdf file to load.</param>
-    /// <param name="batchSize">Maximum number of parallel threads to generate embeddings and upload records.</param>
-    /// <param name="betweenBatchDelayInMs">The number of milliseconds to delay between batches to avoid throttling.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
-    /// <returns>An async task that completes when the loading is complete.</returns>
-    Task LoadPdfAsync(string pdfPath, int batchSize, int betweenBatchDelayInMs, CancellationToken cancellationToken);
+
+    Task LoadPdfAsync(LoadPdfRequest request, CancellationToken cancellationToken);
+}
+
+public sealed class LoadPdfRequest
+{
+    public string? PdfPath { get; set; }
+    public int BatchSize { get; set; } = 1;
+    public int BetweenBatchDelayInMs { get; set; } = 100;
+    
+    public IDictionary<string, object>? Metadata { get; set; }
 }

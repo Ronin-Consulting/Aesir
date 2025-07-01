@@ -11,7 +11,7 @@ public class DocumentCollectionController : ControllerBase
 {
     private readonly ILogger<DocumentCollectionController> _logger;
     private readonly IFileStorageService _fileStorageService;
-    private readonly IPdfDataLoaderService _pdfDataLoaderService;
+    private readonly IDocumentCollectionService _documentCollectionService;
     private const int MaxFileSize = 104857600; // 100MB
 
     private enum FolderType
@@ -23,11 +23,11 @@ public class DocumentCollectionController : ControllerBase
     public DocumentCollectionController(
         ILogger<DocumentCollectionController> logger,
         IFileStorageService fileStorageService, 
-        IPdfDataLoaderService pdfDataLoaderService)
+        IDocumentCollectionService documentCollectionService)
     {
         _logger = logger;
         _fileStorageService = fileStorageService;
-        _pdfDataLoaderService = pdfDataLoaderService;
+        _documentCollectionService = documentCollectionService;
     }
     
     [HttpGet("file/{filename}/content")]
@@ -35,23 +35,7 @@ public class DocumentCollectionController : ControllerBase
     {
         return await GetFileContentCoreAsync(filename);
     }
-
-    [HttpGet("load/test/data")]
-    public async Task<IActionResult> LoadTestDataAsync()
-    {
-        const string filePath = "Assets/MissionPlan-OU812.pdf";
-
-        await _pdfDataLoaderService.LoadPdfAsync(filePath, 2, 100, CancellationToken.None);
-
-        var bytes = await System.IO.File.ReadAllBytesAsync(filePath);
-        var filename = Path.GetFileName(filePath);
-        var mimeType = filename.GetContentType();
-
-        await _fileStorageService.UpsertFileAsync(filename, mimeType, bytes);
-
-        return Ok();
-    }
-
+    
     #region Global Files
     [HttpPost("globals/{categoryId}/upload/file")]
     [Consumes("multipart/form-data")]
@@ -212,25 +196,53 @@ public class DocumentCollectionController : ControllerBase
         if (fileExtension != ".pdf")
             return (false, "Only PDF files are allowed.", null);
 
+        var tempFilePath = Path.GetTempFileName() + fileExtension;
+
         try
         {
-            using var memoryStream = new MemoryStream();
-            await file.CopyToAsync(memoryStream);
-            var fileContent = memoryStream.ToArray();
-
             var mimeType = file.ContentType;
 
             var fileName = Path.GetFileName(file.FileName);
             var virtualFilename = $"{folderId}/{fileName}";
 
-            await _fileStorageService.UpsertFileAsync(virtualFilename, mimeType, fileContent);
+            using (var memoryStream = new MemoryStream())
+            {
+                await file.CopyToAsync(memoryStream);
+                var fileContent = memoryStream.ToArray();
 
+                await _fileStorageService.UpsertFileAsync(virtualFilename, mimeType, fileContent);
+                await System.IO.File.WriteAllBytesAsync(tempFilePath, fileContent);
+
+                fileContent = null;
+                GC.Collect();
+            }
+
+            switch (folderType)
+            {
+                case FolderType.Global:
+                    var globalArgs = GlobalDocumentCollectionArgs.Default;
+                    globalArgs.AddCategoryId(folderId);
+                    await _documentCollectionService.LoadDocumentAsync(tempFilePath, globalArgs);
+                    break;
+                case FolderType.Conversation:
+                    var conversationArgs = ConversationDocumentCollectionArgs.Default;
+                    conversationArgs.AddConversationId(folderId);
+                    await _documentCollectionService.LoadDocumentAsync(tempFilePath, conversationArgs);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(folderType), folderType, null);
+            }
+            
             return (true, null, virtualFilename);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error uploading file");
             return (false, "An error occurred while uploading the file.", null);
+        }
+        finally
+        {
+            System.IO.File.Delete(tempFilePath);
         }
     }
     #endregion

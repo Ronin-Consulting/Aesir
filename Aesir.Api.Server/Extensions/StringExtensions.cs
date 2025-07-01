@@ -39,7 +39,7 @@ public static class StringExtensions
         return contentType;
     }
     
-    public static bool IsFileContentType(this string filePath, string contentType, out string fileContentType)
+    public static bool ValidFileContentType(this string filePath, string contentType, out string fileContentType)
     {
         fileContentType = GetContentType(filePath);
         return contentType != fileContentType;

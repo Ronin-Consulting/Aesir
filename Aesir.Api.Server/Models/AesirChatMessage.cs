@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using Aesir.Api.Server.Extensions;
 
 namespace Aesir.Api.Server.Models;
 
