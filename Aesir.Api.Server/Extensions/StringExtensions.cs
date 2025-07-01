@@ -42,6 +42,17 @@ public static class StringExtensions
     public static bool ValidFileContentType(this string filePath, string contentType, out string fileContentType)
     {
         fileContentType = GetContentType(filePath);
-        return contentType != fileContentType;
+        return contentType == fileContentType;
+    }
+    
+    
+    public static string TrimStart(this string input, string prefix)
+    {
+        if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(prefix))
+            return input;
+
+        return input.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) 
+            ? input[prefix.Length..] 
+            : input;
     }
 }

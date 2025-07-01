@@ -22,7 +22,7 @@ public class DocumentCollectionService : IDocumentCollectionService
         _logger = logger;
         _flurlClient = flurlClientCache
             .GetOrAdd("DocumentCollectionClient",
-                configuration.GetValue<string>("Inference:DocumentService"));
+                configuration.GetValue<string>("Inference:DocumentCollections"));
     }
     
     public async Task<Stream> GetFileContentStreamAsync(string filename)

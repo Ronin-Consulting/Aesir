@@ -145,9 +145,9 @@ public static class ServiceCollectionExtensions
         {
             var args = GlobalDocumentCollectionArgs.Default;
 
-            args.AddCategoryId(globalDocumentCollection.Name);
+            args.SetCategoryId(globalDocumentCollection.Name);
 
-            args["PluginName"] = globalDocumentCollection.Name;
+            args["PluginName"] = globalDocumentCollection.PluginName;
             args["PluginDescription"] = globalDocumentCollection.PluginDescription;
 
             var plugin = globalDocumentCollectionService.GetKernelPlugin(args);

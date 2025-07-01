@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
+using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Models;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
@@ -24,7 +25,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
 {
     public async Task LoadPdfAsync(LoadPdfRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(request.PdfPath))
+        if (string.IsNullOrEmpty(request.PdfLocalPath))
             throw new InvalidOperationException("PdfPath is empty");
 
         // Create the collection if it doesn't exist.
@@ -38,14 +39,14 @@ public class PdfDataLoaderService<TKey, TRecord>(
             .ToListAsync(cancellationToken: cancellationToken);
 
         toDelete = toDelete.Where(data =>
-            data.ReferenceDescription!.Contains(Path.GetFileName(request.PdfPath))).ToList();
+            data.ReferenceDescription!.Contains(request.PdfFileName!.TrimStart("file://"))).ToList();
 
         if (toDelete.Count > 0)
             await vectorStoreRecordCollection.DeleteAsync(
                 toDelete.Select(td => td.Key), cancellationToken);
 
         // Load the text and images from the PDF file and split them into batches.
-        var sections = LoadTextAndImages(request.PdfPath, cancellationToken);
+        var sections = LoadTextAndImages(request.PdfLocalPath, cancellationToken);
         var batches = sections.Chunk(request.BatchSize);
 
         // Process each batch of content items.
@@ -74,9 +75,9 @@ public class PdfDataLoaderService<TKey, TRecord>(
                 record.Key = uniqueKeyGenerator.GenerateKey();
 
                 record.Text ??= content.Text;
-                record.ReferenceDescription ??= $"{new FileInfo(request.PdfPath).Name}#page={content.PageNumber}";
+                record.ReferenceDescription ??= $"{request.PdfFileName!.TrimStart("file://")}#page={content.PageNumber}";
                 record.ReferenceLink ??=
-                    $"{new Uri(new FileInfo(request.PdfPath).FullName).AbsoluteUri}#page={content.PageNumber}";
+                    $"{new Uri($"file://{request.PdfFileName!.TrimStart("file://")}").AbsoluteUri}#page={content.PageNumber}";
                 record.TextEmbedding ??= await GenerateEmbeddingsWithRetryAsync(content.Text!, cancellationToken);
 
                 return record;

@@ -203,7 +203,7 @@ public class DocumentCollectionController : ControllerBase
             var mimeType = file.ContentType;
 
             var fileName = Path.GetFileName(file.FileName);
-            var virtualFilename = $"{folderId}/{fileName}";
+            var virtualFilename = $"/{folderId}/{fileName}";
 
             using (var memoryStream = new MemoryStream())
             {
@@ -221,12 +221,14 @@ public class DocumentCollectionController : ControllerBase
             {
                 case FolderType.Global:
                     var globalArgs = GlobalDocumentCollectionArgs.Default;
-                    globalArgs.AddCategoryId(folderId);
+                    globalArgs.SetCategoryId(folderId);
+                    globalArgs["FileName"] = virtualFilename;
                     await _documentCollectionService.LoadDocumentAsync(tempFilePath, globalArgs);
                     break;
                 case FolderType.Conversation:
                     var conversationArgs = ConversationDocumentCollectionArgs.Default;
-                    conversationArgs.AddConversationId(folderId);
+                    conversationArgs.SetConversationId(folderId);
+                    conversationArgs["FileName"] = virtualFilename;
                     await _documentCollectionService.LoadDocumentAsync(tempFilePath, conversationArgs);
                     break;
                 default:

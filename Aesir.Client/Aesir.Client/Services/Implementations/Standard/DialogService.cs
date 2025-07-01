@@ -6,8 +6,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
 using Ursa.Controls;
-using Notification = Avalonia.Controls.Notifications.Notification;
-using WindowNotificationManager = Avalonia.Controls.Notifications.WindowNotificationManager;
+using Notification = Ursa.Controls.Notification;
+using WindowNotificationManager = Ursa.Controls.WindowNotificationManager;
 
 namespace Aesir.Client.Services.Implementations.Standard
 {
@@ -63,8 +63,23 @@ namespace Aesir.Client.Services.Implementations.Standard
         public async Task ShowErrorDialogAsync(string title, string message)
         {
             var topLevel = TopLevel.GetTopLevel(GetMainView());
-            var manager = new WindowNotificationManager(topLevel) { MaxItems = 3 };
-            manager.Show(new Notification(title, message, NotificationType.Error));
+            var manager = new WindowNotificationManager(topLevel)
+            {
+                MaxItems = 3
+            };
+            
+            var notification = new Notification(
+                title,
+                message
+            );
+            
+            manager.Show(
+                content: notification,
+                showClose: true,
+                showIcon: true,
+                type: NotificationType.Error,
+                classes: ["Light"]
+            );
             
             await Task.CompletedTask;
         }

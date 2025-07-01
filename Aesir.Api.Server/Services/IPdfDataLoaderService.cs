@@ -17,7 +17,8 @@ public interface IPdfDataLoaderService<TKey, TRecord>
 
 public sealed class LoadPdfRequest
 {
-    public string? PdfPath { get; set; }
+    public string? PdfLocalPath { get; set; }
+    public string? PdfFileName { get; set; }
     public int BatchSize { get; set; } = 1;
     public int BetweenBatchDelayInMs { get; set; } = 100;
     

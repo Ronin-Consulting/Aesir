@@ -25,7 +25,7 @@ public class GlobalDocumentCollectionArgs : Dictionary<string, object>
         this["DocumentCollectionType"] = DocumentCollectionType.Global;
     }
 
-    public void AddCategoryId(string categoryId)
+    public void SetCategoryId(string categoryId)
     {
         this["CategoryId"] = categoryId;   
     }
@@ -42,7 +42,7 @@ public class ConversationDocumentCollectionArgs : Dictionary<string, object>
         this["DocumentCollectionType"] = DocumentCollectionType.Conversation;
     }
     
-    public void AddConversationId(string conversationId)
+    public void SetConversationId(string conversationId)
     {
         this["ConversationId"] = conversationId;   
     }

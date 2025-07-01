@@ -177,7 +177,7 @@ public class ChatService : BaseChatService
             var conversationId = request.Conversation.Id;
             
             var args = ConversationDocumentCollectionArgs.Default;
-            args.AddConversationId(conversationId);
+            args.SetConversationId(conversationId);
             
             _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(args));
         }

@@ -63,9 +63,15 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
             throw new InvalidDataException($"Invalid file content type: {actualContentType}");
         }
 
+        if (fileMetaData == null || !fileMetaData.TryGetValue("FileName", out var fileNameMetaData))
+        {
+            throw new InvalidDataException($"FileName is required metadata.");
+        }
+        
         var request = new LoadPdfRequest()
         {
-            PdfPath = documentPath,
+            PdfLocalPath = documentPath,
+            PdfFileName = fileNameMetaData.ToString(),
             BatchSize = 2,
             BetweenBatchDelayInMs = 10,
             Metadata = fileMetaData
