@@ -5,6 +5,8 @@ namespace Aesir.Api.Server.Services;
 public interface IDocumentCollectionService
 {
     Task LoadDocumentAsync(string documentPath, IDictionary<string, object>? fileMetaData = null, CancellationToken cancellationToken = default);
+    Task<bool> DeleteDocumentAsync(IDictionary<string, object>? fileMetaData,
+        CancellationToken cancellationToken = default);
     KernelPlugin GetKernelPlugin(IDictionary<string, object>? kernelPluginArguments = null);
 }
 

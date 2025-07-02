@@ -9,5 +9,9 @@ public interface IDocumentCollectionService
     
     Task UploadConversationFileAsync(string filePath, string conversationId);
     
+    Task DeleteUploadedConversationFileAsync(string fileName, string conversationId);
+    
     Task UploadGlobalFileAsync(string filePath, string categoryId);
+    
+    Task DeleteUploadedGlobalFileAsync(string fileName, string categoryId);
 }

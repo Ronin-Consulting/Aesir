@@ -92,6 +92,20 @@ public class DocumentCollectionService : IDocumentCollectionService
         return response;
     }
 
+    private async Task<IFlurlResponse> DeleteFileAsync(params string[] pathSegments)
+    {
+        var response = await _flurlClient
+            .Request(pathSegments)
+            .DeleteAsync();
+
+        if (!response.ResponseMessage.IsSuccessStatusCode)
+        {
+            throw new Exception($"Delete file failed with status code: {response.ResponseMessage.StatusCode}");
+        }
+
+        return response;
+    }
+    
     private async Task ExecuteWithExceptionHandlingAsync(Func<Task> operation, string operationName, string filePath)
     {
         try
@@ -119,6 +133,14 @@ public class DocumentCollectionService : IDocumentCollectionService
         }, "upload file", filePath);
     }
 
+    public async Task DeleteUploadedConversationFileAsync(string fileName, string conversationId)
+    {
+        await ExecuteWithExceptionHandlingAsync(async () =>
+        {
+            await DeleteFileAsync("conversations", conversationId, "files", fileName);
+        }, "delete file", fileName);
+    }
+
     public async Task UploadGlobalFileAsync(string filePath, string categoryId)
     {
         await ExecuteWithExceptionHandlingAsync(async () =>
@@ -126,5 +148,13 @@ public class DocumentCollectionService : IDocumentCollectionService
             ValidateUploadFile(filePath, categoryId, nameof(categoryId));
             await UploadFileAsync(filePath, "globals", categoryId, "upload", "file");
         }, "upload file", filePath);
+    }
+
+    public async Task DeleteUploadedGlobalFileAsync(string fileName, string categoryId)
+    {
+        await ExecuteWithExceptionHandlingAsync(async () =>
+        {
+            await DeleteFileAsync("globals", categoryId, "files", fileName);
+        }, "delete file", fileName);
     }
 }

@@ -85,7 +85,7 @@ public class FileStorageService(ILogger<FileStorageService> logger, IDbContext d
         ";
 
         return await _dbContext.UnitOfWorkAsync(async (connection) =>
-            await connection.QueryAsync<AesirFileInfo>(sql, new { FolderPattern = $"{folder}/%" }));
+            await connection.QueryAsync<AesirFileInfo>(sql, new { FolderPattern = $"/{folder}/%" }));
     }
     
     public async Task<bool> DeleteFileAsync(Guid id)
@@ -106,7 +106,7 @@ public class FileStorageService(ILogger<FileStorageService> logger, IDbContext d
         return await _dbContext.UnitOfWorkAsync(async (connection) => 
             await connection.ExecuteAsync(sql, new
             {
-                FolderPattern = $"{folder}/%"
+                FolderPattern = $"/{folder}/%"
             }), true) > 0;
     }
 

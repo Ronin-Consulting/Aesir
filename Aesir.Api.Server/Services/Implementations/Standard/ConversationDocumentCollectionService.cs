@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Models;
+using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Data;
 
@@ -18,6 +19,7 @@ namespace Aesir.Api.Server.Services.Implementations.Standard;
 public class ConversationDocumentCollectionService : IConversationDocumentCollectionService
 {
     private readonly VectorStoreTextSearch<AesirConversationDocumentTextData<Guid>> _conversationDocumentTextSearch;
+    private readonly VectorStoreCollection<Guid, AesirConversationDocumentTextData<Guid>> _vectorStoreRecordCollection;
     private readonly IPdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> _pdfDataLoader;
     private readonly ILogger<ConversationDocumentCollectionService> _logger;
 
@@ -29,11 +31,13 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// <param name="logger">Logger for recording service operations.</param>
     public ConversationDocumentCollectionService(
         VectorStoreTextSearch<AesirConversationDocumentTextData<Guid>> conversationDocumentTextSearch,
+        VectorStoreCollection<Guid, AesirConversationDocumentTextData<Guid>> vectorStoreRecordCollection,
         IPdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> pdfDataLoader,
         ILogger<ConversationDocumentCollectionService> logger
     )
     {
         _conversationDocumentTextSearch = conversationDocumentTextSearch;
+        _vectorStoreRecordCollection = vectorStoreRecordCollection;
         _pdfDataLoader = pdfDataLoader;
         _logger = logger;
     }
@@ -68,6 +72,33 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             Metadata = fileMetaData
         };
         await _pdfDataLoader.LoadPdfAsync(request, cancellationToken);
+    }
+
+    public async Task<bool> DeleteDocumentAsync(IDictionary<string, object>? fileMetaData, CancellationToken cancellationToken = default)
+    {
+        if (fileMetaData == null || !fileMetaData.TryGetValue("FileName", out var fileNameMetaData))
+        {
+            throw new InvalidDataException($"FileName is required metadata.");
+        }
+        
+        var fileName = fileNameMetaData.ToString();
+        
+        var toDelete = await _vectorStoreRecordCollection.GetAsync(
+                filter: data => true,
+                10000, // this is dumb 
+                cancellationToken: cancellationToken)
+            .ToListAsync(cancellationToken: cancellationToken);
+
+        toDelete = toDelete.Where(data =>
+            data.ReferenceDescription!.Contains(fileName!.TrimStart("file://"))).ToList();
+
+        if (toDelete.Count <= 0)
+            return false;
+        
+        await _vectorStoreRecordCollection.DeleteAsync(
+            toDelete.Select(td => td.Key), cancellationToken);
+        
+        return true;
     }
 
     /// <summary>

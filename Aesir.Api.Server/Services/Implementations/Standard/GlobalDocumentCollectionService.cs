@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Models;
+using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Data;
 
@@ -18,6 +19,8 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
     /// Vector store for searching text data in global documents
     /// </summary>
     private readonly VectorStoreTextSearch<AesirGlobalDocumentTextData<Guid>> _globalDocumentTextSearch;
+
+    private readonly VectorStoreCollection<Guid, AesirGlobalDocumentTextData<Guid>> _vectorStoreRecordCollection;
 
     /// <summary>
     /// Service for loading PDF documents and converting them to text data
@@ -37,11 +40,13 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
     /// <param name="logger">Logger for the GlobalDocumentCollectionService</param>
     public GlobalDocumentCollectionService(
         VectorStoreTextSearch<AesirGlobalDocumentTextData<Guid>> globalDocumentTextSearch,
+        VectorStoreCollection<Guid, AesirGlobalDocumentTextData<Guid>> vectorStoreRecordCollection,
         IPdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>> pdfDataLoader,
         ILogger<GlobalDocumentCollectionService> logger
     )
     {
         _globalDocumentTextSearch = globalDocumentTextSearch;
+        _vectorStoreRecordCollection = vectorStoreRecordCollection;
         _pdfDataLoader = pdfDataLoader;
         _logger = logger;
     }
@@ -79,6 +84,33 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         await _pdfDataLoader.LoadPdfAsync(request, cancellationToken);
     }
 
+    public async Task<bool> DeleteDocumentAsync(IDictionary<string, object>? fileMetaData, CancellationToken cancellationToken = default)
+    {
+        if (fileMetaData == null || !fileMetaData.TryGetValue("FileName", out var fileNameMetaData))
+        {
+            throw new InvalidDataException($"FileName is required metadata.");
+        }
+        
+        var fileName = fileNameMetaData.ToString();
+        
+        var toDelete = await _vectorStoreRecordCollection.GetAsync(
+                filter: data => true,
+                10000, // this is dumb 
+                cancellationToken: cancellationToken)
+            .ToListAsync(cancellationToken: cancellationToken);
+
+        toDelete = toDelete.Where(data =>
+            data.ReferenceDescription!.Contains(fileName!.TrimStart("file://"))).ToList();
+
+        if (toDelete.Count <= 0)
+            return false;
+        
+        await _vectorStoreRecordCollection.DeleteAsync(
+            toDelete.Select(td => td.Key), cancellationToken);
+        
+        return true;
+    }
+    
     /// <summary>
     /// Creates a kernel plugin for searching documents in the global document collection
     /// </summary>

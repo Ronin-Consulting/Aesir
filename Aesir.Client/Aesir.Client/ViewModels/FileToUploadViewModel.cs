@@ -61,7 +61,7 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
     [RelayCommand]
     private async Task RemoveFileAsync()
     {
-        await Dispatcher.UIThread.InvokeAsync(() =>
+        await Dispatcher.UIThread.InvokeAsync(async () =>
             {
                 WeakReferenceMessenger.Default.Send(new FileUploadCanceledMessage()
                 {
@@ -69,6 +69,8 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
                     FilePath = FilePath
                 });
 
+                await _documentCollectionService.DeleteUploadedConversationFileAsync(FileName, _conversationId!);
+                
                 IsProcessingFile = false;
                 IsVisible = false;
                 FilePath = DefaultFilePath;

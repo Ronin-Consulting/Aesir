@@ -12,6 +12,7 @@ using TextContent = Microsoft.SemanticKernel.TextContent;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
+// NOTE: REFACTOR SOON... inject in to document collection services
 [Experimental("SKEXP0001")]
 public class PdfDataLoaderService<TKey, TRecord>(
     UniqueKeyGenerator<TKey> uniqueKeyGenerator,

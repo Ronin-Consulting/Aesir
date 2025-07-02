@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Aesir.Api.Server.Controllers;
 
+// NOTE: REFACTOR SOON
 [ApiController]
 [Route("document/collections")]
 [Produces("application/json")]
@@ -62,11 +63,11 @@ public class DocumentCollectionController : ControllerBase
     {
         return await GetFolderFileContentAsync(categoryId, filename, FolderType.Global);
     }
-
-    [HttpDelete("globals/{categoryId}/files")]
-    public async Task<IActionResult> DeleteGlobalsFilesAsync([FromRoute] string categoryId)
+    
+    [HttpDelete("globals/{categoryId}/files/{filename}")]
+    public async Task<IActionResult> DeleteGlobalFileAsync([FromRoute] string categoryId, [FromRoute] string filename)
     {
-        return await DeleteFilesByFolderAsync(categoryId, "CategoryId", FolderType.Global);
+        return await DeleteFileAsync(categoryId, "CategoryId", FolderType.Global, filename);
     }
     #endregion
 
@@ -96,11 +97,11 @@ public class DocumentCollectionController : ControllerBase
     {
         return await GetFolderFileContentAsync(conversationId, filename, FolderType.Conversation);
     }
-
-    [HttpDelete("conversations/{conversationId}/files")]
-    public async Task<IActionResult> DeleteConversationFilesAsync([FromRoute] string conversationId)
+    
+    [HttpDelete("conversations/{conversationId}/files/{filename}")]
+    public async Task<IActionResult> DeleteConversationFileAsync([FromRoute] string conversationId, [FromRoute] string filename)
     {
-        return await DeleteFilesByFolderAsync(conversationId, "ConversationId", FolderType.Conversation);
+        return await DeleteFileAsync(conversationId, "ConversationId", FolderType.Conversation, filename);
     }
     #endregion
 
@@ -158,28 +159,53 @@ public class DocumentCollectionController : ControllerBase
             return StatusCode(500, "An error occurred while retrieving the file.");
         }
     }
-
-    private async Task<IActionResult> DeleteFilesByFolderAsync(string folderId, string folderIdName, FolderType folderType)
+    
+    private async Task<IActionResult> DeleteFileAsync(string folderId, string folderIdName, FolderType folderType, string filename)
     {
         if (string.IsNullOrWhiteSpace(folderId))
             return BadRequest($"{folderIdName} is required.");
 
         try
         {
-            var success = await _fileStorageService.DeleteFilesByFolderAsync(folderId);
+            var files = await _fileStorageService.GetFilesByFolderAsync(folderId);
+            
+            var virtualFilename = $"/{folderId}/{filename}";
+            var fileToDelete = files.FirstOrDefault(f => f.FileName == virtualFilename);
+            if (fileToDelete != null)
+            {
+                await _fileStorageService.DeleteFileAsync(fileToDelete.Id);
+            }
+            
+            IDictionary<string, object>? args = null;
+            switch (folderType)
+            {
+                case FolderType.Global:
+                    var globalArgs = GlobalDocumentCollectionArgs.Default;
+                    globalArgs.SetCategoryId(folderId);
+                    globalArgs["FileName"] = virtualFilename;
+                    args = globalArgs;
+                    break;
+                case FolderType.Conversation:
+                    var conversationArgs = ConversationDocumentCollectionArgs.Default;
+                    conversationArgs.SetConversationId(folderId);
+                    conversationArgs["FileName"] = virtualFilename;
+                    args = conversationArgs;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(folderType), folderType, null);
+            }
 
-            if (success)
-                return Ok(new { message = "Files deleted successfully", folderId });
-            else
-                return NotFound(new { message = $"No files found for the specified {folderType.ToString().ToLowerInvariant()}", folderId });
+            await _documentCollectionService.DeleteDocumentAsync(args);
+
+            return Ok(new { message = "Files deleted successfully", folderId, filename });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting files for {FolderType} {FolderId}", folderType.ToString().ToLowerInvariant(), folderId);
-            return StatusCode(500, "An error occurred while deleting files.");
+            _logger.LogError(ex, "Error deleting file {FileName} for {FolderType} {FolderId}", folderType.ToString().ToLowerInvariant(), folderId, filename);
+            return StatusCode(500, "An error occurred while deleting file.");
         }
     }
-
+    
     private async Task<(bool Success, string? ErrorMessage, string? VirtualFilename)> ProcessFileUploadAsync(
         IFormFile? file, string folderId, FolderType folderType)
     {
@@ -217,23 +243,26 @@ public class DocumentCollectionController : ControllerBase
                 GC.Collect();
             }
 
+            IDictionary<string, object>? args = null;
             switch (folderType)
             {
                 case FolderType.Global:
                     var globalArgs = GlobalDocumentCollectionArgs.Default;
                     globalArgs.SetCategoryId(folderId);
                     globalArgs["FileName"] = virtualFilename;
-                    await _documentCollectionService.LoadDocumentAsync(tempFilePath, globalArgs);
+                    args = globalArgs;
                     break;
                 case FolderType.Conversation:
                     var conversationArgs = ConversationDocumentCollectionArgs.Default;
                     conversationArgs.SetConversationId(folderId);
                     conversationArgs["FileName"] = virtualFilename;
-                    await _documentCollectionService.LoadDocumentAsync(tempFilePath, conversationArgs);
+                    args = conversationArgs;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(folderType), folderType, null);
             }
+            
+            await _documentCollectionService.LoadDocumentAsync(tempFilePath, args);
             
             return (true, null, virtualFilename);
         }
