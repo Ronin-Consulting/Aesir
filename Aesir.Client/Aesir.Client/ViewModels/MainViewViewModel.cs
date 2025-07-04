@@ -483,9 +483,6 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         ConversationStarted = true;
         SendingChatOrProcessingFile = true;
 
-        // Add the edited chat message to the session
-        _appState.ChatSession!.AddMessage(userMessageViewModel.AsUserMessage());
-        
         // Create new assistant message view model
         var assistantMessageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
         ConversationMessages.Add(assistantMessageViewModel);
