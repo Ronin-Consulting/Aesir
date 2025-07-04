@@ -8,6 +8,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Microsoft.Extensions.Logging;
 using SkiaSharp;
 using Ursa.Common;
 using Ursa.Controls;
@@ -16,6 +17,7 @@ using Ursa.Controls.Options;
 namespace Aesir.Client.Desktop.Services;
 
 public class PdfViewerService(
+    ILogger<PdfViewerService> logger,
     IDocumentCollectionService documentCollectionService,
     IDialogService dialogService
 ) : IPdfViewerService
@@ -59,15 +61,11 @@ public class PdfViewerService(
         try
         {
             var uri = new Uri(fileUri);
-            var filename = Path.GetFileName(uri.LocalPath);
-            
-            if(string.IsNullOrEmpty(filename))
-                return null;
             
             if (!int.TryParse(uri.Fragment.TrimStart('#', 'p', 'a', 'g', 'e', '='), out var pageNumber))
                 return null;
 
-            await using var pdfStream = await documentCollectionService.GetFileContentStreamAsync(filename);
+            await using var pdfStream = await documentCollectionService.GetFileContentStreamAsync(uri.LocalPath);
             
             // Render the first page (pageIndex: 0) to a SKBitmap
 #pragma warning disable CA1416
@@ -82,8 +80,9 @@ public class PdfViewerService(
             
             return new Bitmap(memoryStream);
         }
-        catch
+        catch(Exception ex)
         {
+            logger.LogError(ex, "Error occurred while fetching PDF page image.");
             return null;
         }
     }

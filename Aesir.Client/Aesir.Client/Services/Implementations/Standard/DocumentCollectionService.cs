@@ -32,7 +32,7 @@ public class DocumentCollectionService : IDocumentCollectionService
             //file/{filename}/content
             var response = (await _flurlClient.Request()
                 .AppendPathSegment("file")
-                .AppendPathSegment(filename)
+                .AppendPathSegment(filename, true)
                 .AppendPathSegment("content")
                 .GetAsync());
             

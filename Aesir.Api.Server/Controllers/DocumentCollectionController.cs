@@ -31,10 +31,11 @@ public class DocumentCollectionController : ControllerBase
         _documentCollectionService = documentCollectionService;
     }
     
+    //https://aesir.localhost/document/collections/file/%2F407e11d8-2763-48a9-aa7a-2bd549b3e7f9%2FMissionPlan-OU812.pdf/content
     [HttpGet("file/{filename}/content")]
     public async Task<IActionResult> GetFileContentAsync([FromRoute]string filename)
     {
-        return await GetFileContentCoreAsync(filename);
+        return await GetFileContentCoreAsync(Uri.UnescapeDataString(filename));
     }
     
     #region Global Files
