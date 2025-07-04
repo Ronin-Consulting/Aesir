@@ -77,7 +77,6 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         {
             PdfLocalPath = documentPath,
             PdfFileName = fileNameMetaData.ToString(),
-            BatchSize = 2,
             BetweenBatchDelayInMs = 10,
             Metadata = fileMetaData
         };
@@ -154,7 +153,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         categoryFilter.Equality(nameof(AesirGlobalDocumentTextData<Guid>.Category), categoryId);
         var globalDocumentTextSearchOptions = new TextSearchOptions
         {
-            Top = 5,
+            Top = 25,
             Filter = categoryFilter
         };
             

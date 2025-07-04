@@ -64,7 +64,7 @@ public class AesirChatMessage
         return Content;
     }
 
-    public static AesirChatMessage NewSystemMessage(string? content = null, PromptContext context = PromptContext.Military)
+    public static AesirChatMessage NewSystemMessage(string? content = null, PromptContext context = PromptContext.Business)
     {
         var promptProvider = new DefaultPromptProvider();
         var defaultSystemContent = promptProvider.GetSystemPrompt(context).Content;

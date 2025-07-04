@@ -143,6 +143,8 @@ public static class ServiceCollectionExtensions
 
         foreach (var globalDocumentCollection in globalDocumentCollections)
         {
+            if(!globalDocumentCollection.IsEnabled) continue;
+            
             var args = GlobalDocumentCollectionArgs.Default;
 
             args.SetCategoryId(globalDocumentCollection.Name);
@@ -163,6 +165,7 @@ public static class ServiceCollectionExtensions
 internal class GlobalDocumentCollection
 {
     public string Name { get; set; } = null!;
+    public bool IsEnabled { get; set; }
     public string PluginName { get; set; } = null!;
     public string PluginDescription { get; set; } = null!;
 }

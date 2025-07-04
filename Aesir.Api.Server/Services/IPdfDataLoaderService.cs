@@ -19,7 +19,7 @@ public sealed class LoadPdfRequest
 {
     public string? PdfLocalPath { get; set; }
     public string? PdfFileName { get; set; }
-    public int BatchSize { get; set; } = 1;
+    public int BatchSize { get; set; } =  Math.Max(1, Environment.ProcessorCount / 2);
     public int BetweenBatchDelayInMs { get; set; } = 100;
     
     public IDictionary<string, object>? Metadata { get; set; }

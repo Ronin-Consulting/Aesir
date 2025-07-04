@@ -67,7 +67,6 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         {
             PdfLocalPath = documentPath,
             PdfFileName = fileNameMetaData.ToString(),
-            BatchSize = 2,
             BetweenBatchDelayInMs = 10,
             Metadata = fileMetaData
         };
@@ -153,14 +152,14 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         var conversationFilter = new TextSearchFilter();
         conversationFilter.Equality(nameof(AesirConversationDocumentTextData<Guid>.ConversationId), conversationId);
         
-        var globalDocumentTextSearchOptions = new TextSearchOptions
+        var conversationDocumentTextSearchOptions = new TextSearchOptions
         {
-            Top = 5,
+            Top = 25,
             Filter = conversationFilter
         };
             
         var conversationDocumentSearchPlugin = _conversationDocumentTextSearch
-            .CreateGetTextSearchResults(searchOptions: globalDocumentTextSearchOptions);
+            .CreateGetTextSearchResults(searchOptions: conversationDocumentTextSearchOptions);
         
         return KernelPluginFactory.CreateFromFunctions(
             "ChatDocSearch",
