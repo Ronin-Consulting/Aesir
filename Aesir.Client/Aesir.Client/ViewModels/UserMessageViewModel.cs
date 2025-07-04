@@ -1,5 +1,8 @@
+using System;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Messages;
+using Aesir.Client.Models;
 using Aesir.Client.Services;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -12,16 +15,55 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
 {
     [ObservableProperty]
     private bool _isEditing = false;
-    
-    [ObservableProperty]
+
+    [ObservableProperty] 
     private string _rawMessage = string.Empty;
 
-
+    [ObservableProperty]
+    private string? _fileName;
+    
     public override string Role => "user";
 
     protected override ICommand CreateRegenerateMessageCommand()
     {
         return new RelayCommand(RegenerateMessage);
+    }
+    
+    public override async Task SetMessage(AesirChatMessage message)
+    {
+        if (message.HasFile())
+        {
+            FileName = message.GetFileName();
+        }
+        
+        Content = message.GetContentWithoutFileName() ?? throw new InvalidOperationException();
+        
+        var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(NormalizeInput(message.Content));
+        Message = htmlMessage;
+        
+        IsLoaded = true;
+    }
+
+    public async Task SetMessageAfterEdit(string rawMessage)
+    {
+        Content = rawMessage;
+        
+        var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(NormalizeInput(rawMessage));
+        Message = htmlMessage;
+        
+        IsLoaded = true;
+    }
+
+    public AesirChatMessage AsUserMessage()
+    {
+        var content = Content;
+
+        if (FileName != null)
+        {
+            content = $"<file>{FileName}</file>{Content}";
+        }
+
+        return AesirChatMessage.NewUserMessage(content);
     }
 
     public string ConvertUnorderedListTagsToBulletLists(string html)
@@ -102,6 +144,8 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
 
     public string ConvertFromHtml(string html)
     {
+        // Can we go from html back to markdown instead...
+        
         var result = html;
         
         // Convert HTML lists to plain text format
@@ -113,12 +157,7 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
         
         return result.TrimEnd('\n');
     }
-
-    public string ConvertToHtml(string rawMessage)
-    {
-        return markdownService.RenderMarkdownAsHtmlAsync(rawMessage).Result;
-    }
-
+    
     private void RegenerateMessage()
     {
         WeakReferenceMessenger.Default.Send(new RegenerateMessageMessage(this));

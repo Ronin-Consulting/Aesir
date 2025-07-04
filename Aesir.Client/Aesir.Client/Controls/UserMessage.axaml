@@ -12,7 +12,35 @@
     <UserControl.Resources>
         <SolidColorBrush x:Key="AesirBackground" Opacity="0.16" Color="#54A9FF" />
     </UserControl.Resources>
+    
     <Panel HorizontalAlignment="Right" Margin="0,0,0,24">
+        <Panel Theme="{DynamicResource CardBorder}" 
+               IsVisible="{Binding FileName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" 
+               Height="70" Width="215" Margin="25 0 0 12">
+            <RelativePanel Height="70" Width="210"
+                           VerticalAlignment="Stretch" 
+                           HorizontalAlignment="Stretch">
+                <StackPanel
+                    Name="FileStackPanel"
+                    RelativePanel.AlignBottomWithPanel="True"
+                    RelativePanel.AlignTopWithPanel="True"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Stretch">
+                    <avaloniaIcons:MaterialIcon
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Kind="FileDocument"
+                        Width="40" Height="40" />
+                    <TextBlock Text="{Binding FileName}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Margin="0 0 0 0" 
+                               TextTrimming="PrefixCharacterEllipsis"
+                               Width="165"
+                    />
+                </StackPanel>
+            </RelativePanel>
+        </Panel>
         <StackPanel IsVisible="{Binding IsEditing}">
             <Border Background="{DynamicResource AesirBackground}"
                     BorderBrush="Black"

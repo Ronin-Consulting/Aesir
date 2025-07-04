@@ -56,7 +56,7 @@ public partial class UserMessage : UserControl
     public void EndEditAction_Clicked(object sender, RoutedEventArgs e)
     {
         if (DataContext is not UserMessageViewModel viewModel) return;
-        viewModel.SetMessage(AesirChatMessage.NewUserMessage(viewModel.ConvertToHtml(viewModel.RawMessage)));
+        viewModel.SetMessageAfterEdit(viewModel.RawMessage);
         viewModel.IsEditing = false;
     }
 }

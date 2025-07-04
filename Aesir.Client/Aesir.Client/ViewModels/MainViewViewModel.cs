@@ -246,6 +246,12 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         {
             case "user":
                 messageViewModel = Ioc.Default.GetService<UserMessageViewModel>();
+                if (SelectedFile.IsVisible)
+                {
+                    message.AddFile(SelectedFile.FileName);
+                    SelectedFile.ClearFile();
+                }
+
                 if (messageViewModel != null)
                     await messageViewModel.SetMessage(message);
                 break;
@@ -477,7 +483,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         SendingChatOrProcessingFile = true;
 
         // Add the edited chat message to the session
-        _appState.ChatSession!.AddMessage(AesirChatMessage.NewUserMessage(userMessageViewModel.Message));
+        _appState.ChatSession!.AddMessage(userMessageViewModel.AsUserMessage());
         
         // Create new assistant message view model
         var assistantMessageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();

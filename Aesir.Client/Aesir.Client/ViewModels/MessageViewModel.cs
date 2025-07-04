@@ -43,7 +43,7 @@ public abstract partial class MessageViewModel : ObservableRecipient
         return new RelayCommand(() => { }); // Default no-op implementation
     }
     
-    public async Task SetMessage(AesirChatMessage message)
+    public virtual async Task SetMessage(AesirChatMessage message)
     {
         Content = message.Content;
         

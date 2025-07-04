@@ -79,6 +79,14 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
         );
     }
 
+    public void ClearFile()
+    {
+        IsProcessingFile = false;
+        IsVisible = false;
+        FilePath = DefaultFilePath;
+        FileName = DefaultFileName;
+    }
+
     public void Receive(FileUploadRequestMessage message)
     {
         if (_conversationId != message.ConversationId) return;
