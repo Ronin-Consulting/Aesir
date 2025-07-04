@@ -14,20 +14,103 @@ public class AesirChatMessage
     {
         if (Role != "user") return false;
         
-        return Content.StartsWith("<file", StringComparison.OrdinalIgnoreCase) && 
-               Content.Contains("</file>", StringComparison.OrdinalIgnoreCase);
+        // Use regex to detect <file>...</file> pattern anywhere in the content
+        return System.Text.RegularExpressions.Regex.IsMatch(
+            Content, 
+            @"<file>.*?</file>", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
     }
 
     public void AddFile(string filename)
     {
-        //<file>SalesData.pdf</file>
-        var contentFixed = Content;
-        if (Content.StartsWith("<file", StringComparison.OrdinalIgnoreCase))
+        if (Role != "user") return;
+        
+        // Try to replace existing <file>...</file> tag with new filename
+        var originalContent = Content;
+        Content = System.Text.RegularExpressions.Regex.Replace(
+            Content, 
+            @"<file>.*?</file>", 
+            $"<file>{filename}</file>", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    
+        // If no replacement was made (no existing file tag), add the file tag
+        if (Content == originalContent)
         {
-            contentFixed = contentFixed.Split("</file>")[1];
+            Content = $"<file>{filename}</file>{Content}";
         }
+    }
 
-        Content = $"<file>{filename}</file>{contentFixed}";
+    public string? GetFileName()
+    {
+        if (Role != "user") return null;
+
+        if (!HasFile()) return null;
+        
+        var match = System.Text.RegularExpressions.Regex.Match(
+            Content, 
+            @"<file>(.*?)</file>", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        
+        return match.Success ? match.Groups[1].Value : null;
+    }
+    
+    public string? GetContentWithoutFileName()
+    {
+        if (Role != "user") return Content;
+
+        if (!HasFile()) return Content;
+        
+        // Use regex to remove all <file>...</file> tags
+        var result = System.Text.RegularExpressions.Regex.Replace(
+            Content, 
+            @"<file>.*?</file>", 
+            string.Empty, 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    
+        // Clean up any extra whitespace that might be left
+        return result.Trim();
+    }
+
+    private static string NormalizeContent(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return content;
+
+        var trimmedContent = content.Trim();
+    
+        // Check if the content is wrapped in HTML tags
+        if (trimmedContent.StartsWith("<") && trimmedContent.EndsWith(">"))
+        {
+            // Find the first opening tag
+            var firstTagEnd = trimmedContent.IndexOf('>');
+            if (firstTagEnd > 0)
+            {
+                var openingTag = trimmedContent.Substring(0, firstTagEnd + 1);
+            
+                // Extract tag name (e.g., "p" from "<p>" or "<p class='test'>")
+                var tagNameMatch = System.Text.RegularExpressions.Regex.Match(openingTag, @"<(\w+)");
+                if (tagNameMatch.Success)
+                {
+                    var tagName = tagNameMatch.Groups[1].Value;
+                    var closingTag = $"</{tagName}>";
+                
+                    // Check if content ends with the corresponding closing tag
+                    if (trimmedContent.EndsWith(closingTag, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Remove the outermost container tags
+                        var innerContent = trimmedContent.Substring(firstTagEnd + 1, 
+                            trimmedContent.Length - firstTagEnd - 1 - closingTag.Length);
+                    
+                        // Recursively check for more outer containers
+                        return NormalizeContent(innerContent);
+                    }
+                }
+            }
+        }
+    
+        // If no outer container found, just replace newlines
+        return trimmedContent;
     }
 
     public static AesirChatMessage NewSystemMessage(string content)
@@ -53,7 +136,7 @@ public class AesirChatMessage
         return new AesirChatMessage()
         {
             Role = "user",
-            Content = content
+            Content = NormalizeContent(content)
         };
     }
 }

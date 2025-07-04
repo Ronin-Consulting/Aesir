@@ -38,7 +38,7 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
         
         Content = message.GetContentWithoutFileName() ?? throw new InvalidOperationException();
         
-        var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(NormalizeInput(message.Content));
+        var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(NormalizeInput(Content));
         Message = htmlMessage;
         
         IsLoaded = true;
