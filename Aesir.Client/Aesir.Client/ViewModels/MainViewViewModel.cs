@@ -246,12 +246,6 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         {
             case "user":
                 messageViewModel = Ioc.Default.GetService<UserMessageViewModel>();
-                if (SelectedFile.IsVisible)
-                {
-                    message.AddFile(SelectedFile.FileName);
-                    SelectedFile.ClearFile();
-                }
-
                 if (messageViewModel != null)
                     await messageViewModel.SetMessage(message);
                 break;
@@ -301,6 +295,13 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
 
             // Add user message to UI
             var userMessage = AesirChatMessage.NewUserMessage(currentMessage);
+            
+            if (SelectedFile.IsVisible)
+            {
+                userMessage.AddFile(SelectedFile.FileName);
+                SelectedFile.ClearFile();
+            }
+            
             await AddMessageToConversationAsync(userMessage);
 
             // Add placeholder for assistant response

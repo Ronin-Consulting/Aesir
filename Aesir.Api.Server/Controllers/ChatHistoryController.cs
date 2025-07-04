@@ -12,11 +12,19 @@ namespace Aesir.Api.Server.Controllers
     {
         private readonly ILogger<ChatHistoryController> _logger;
         private readonly IChatHistoryService _chatHistoryService;
+        private readonly IFileStorageService _fileStorageService;
+        private readonly IDocumentCollectionService _documentCollectionService;
 
-        public ChatHistoryController(ILogger<ChatHistoryController> logger, IChatHistoryService chatHistoryService)
+        public ChatHistoryController(
+            ILogger<ChatHistoryController> logger, 
+            IChatHistoryService chatHistoryService,        
+            IFileStorageService fileStorageService, 
+            IDocumentCollectionService documentCollectionService)
         {
             _logger = logger;
             _chatHistoryService = chatHistoryService;
+            _fileStorageService = fileStorageService;
+            _documentCollectionService = documentCollectionService;
         }
 
         [HttpGet("user/{userId}")]
@@ -92,6 +100,15 @@ namespace Aesir.Api.Server.Controllers
         [HttpDelete("{id:guid}")]
         public async Task DeleteChatSessionAsync([FromRoute] Guid id)
         {
+            var found = await _chatHistoryService.GetChatSessionAsync(id);
+            
+            var conversationId = found!.Conversation.Id;
+            var conversationArgs = ConversationDocumentCollectionArgs.Default;
+            conversationArgs.SetConversationId(conversationId);
+
+            await _documentCollectionService.DeleteDocumentsAsync(conversationArgs);
+            await _fileStorageService.DeleteFilesByFolderAsync(conversationId);
+
             await _chatHistoryService.DeleteChatSessionAsync(id);
         }
     }

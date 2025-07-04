@@ -54,6 +54,11 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
         IsLoaded = true;
     }
 
+    public override AesirChatMessage GetAesirChatMessage()
+    {
+        return AsUserMessage();
+    }
+
     public AesirChatMessage AsUserMessage()
     {
         var content = Content;

@@ -72,6 +72,20 @@ public class AutoDocumentCollectionService : IDocumentCollectionService
         };
     }
 
+    public Task DeleteDocumentsAsync(IDictionary<string, object>? args, CancellationToken cancellationToken = default)
+    {
+        if(args == null || !args.TryGetValue("DocumentCollectionType", out var metaValue))
+            throw new ArgumentException("Args must contain a DocumentCollectionType property");
+        
+        var documentCollectionType = (DocumentCollectionType)metaValue;
+        return documentCollectionType switch
+        {
+            DocumentCollectionType.Conversation => _conversationDocumentCollectionService.DeleteDocumentsAsync(args, cancellationToken),
+            DocumentCollectionType.Global => _globalDocumentCollectionService.DeleteDocumentsAsync(args, cancellationToken),
+            _ => throw new ArgumentException("Invalid DocumentCollectionType")
+        };
+    }
+    
     public KernelPlugin GetKernelPlugin(IDictionary<string, object>? kernelPluginArguments = null)
     {
         if(kernelPluginArguments == null || !kernelPluginArguments.TryGetValue("DocumentCollectionType", out var metaValue))

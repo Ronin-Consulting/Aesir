@@ -31,11 +31,11 @@ public class PdfDataLoaderService<TKey, TRecord>(
 
         // Create the collection if it doesn't exist.
         await vectorStoreRecordCollection.EnsureCollectionExistsAsync(cancellationToken).ConfigureAwait(false);
-
+        
         // First delete any existing PDFs with same name
         var toDelete = await vectorStoreRecordCollection.GetAsync(
                 filter: data => true,
-                10000, // this is dumb 
+                int.MaxValue, // this is dumb 
                 cancellationToken: cancellationToken)
             .ToListAsync(cancellationToken: cancellationToken);
 

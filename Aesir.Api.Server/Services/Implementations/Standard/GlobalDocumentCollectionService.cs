@@ -111,6 +111,30 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         return true;
     }
     
+    public async Task DeleteDocumentsAsync(IDictionary<string, object>? args, CancellationToken cancellationToken = default)
+    {
+        if(args == null || !args.TryGetValue("CategoryId", out var metaValue))
+            throw new ArgumentException("Args must contain a CategoryId property");
+        
+        var categoryId = (string)args["CategoryId"];
+        
+        var retrievalOptions = new FilteredRecordRetrievalOptions<AesirGlobalDocumentTextData<Guid>>()
+        {
+            IncludeVectors = false
+        };
+        var toDelete = await _vectorStoreRecordCollection.GetAsync(
+                filter: data => data.Category == categoryId,
+                top: int.MaxValue, // this is dumb
+                options: retrievalOptions,
+                cancellationToken: cancellationToken)
+            .ToListAsync(cancellationToken: cancellationToken);
+
+        if (toDelete.Count <= 0) return;
+        
+        await _vectorStoreRecordCollection.DeleteAsync(
+            toDelete.Select(td => td.Key), cancellationToken);
+    }
+    
     /// <summary>
     /// Creates a kernel plugin for searching documents in the global document collection
     /// </summary>

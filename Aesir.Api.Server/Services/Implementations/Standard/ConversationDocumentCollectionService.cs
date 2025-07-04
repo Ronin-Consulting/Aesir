@@ -81,11 +81,21 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             throw new InvalidDataException($"FileName is required metadata.");
         }
         
+        if(!fileMetaData.TryGetValue("ConversationId", out var metaValue))
+            throw new ArgumentException("File metadata must contain a ConversationId property");
+        
+        var conversationId = (string)fileMetaData["ConversationId"];
+        
         var fileName = fileNameMetaData.ToString();
         
+        var retrievalOptions = new FilteredRecordRetrievalOptions<AesirConversationDocumentTextData<Guid>>()
+        {
+            IncludeVectors = false
+        };
         var toDelete = await _vectorStoreRecordCollection.GetAsync(
-                filter: data => true,
-                10000, // this is dumb 
+                filter: data => data.ConversationId == conversationId,
+                top: int.MaxValue, // this is dumb
+                options: retrievalOptions,
                 cancellationToken: cancellationToken)
             .ToListAsync(cancellationToken: cancellationToken);
 
@@ -99,6 +109,30 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             toDelete.Select(td => td.Key), cancellationToken);
         
         return true;
+    }
+
+    public async Task DeleteDocumentsAsync(IDictionary<string, object>? args, CancellationToken cancellationToken = default)
+    {
+        if(args == null || !args.TryGetValue("ConversationId", out var metaValue))
+            throw new ArgumentException("Args must contain a ConversationId property");
+        
+        var conversationId = (string)args["ConversationId"];
+        
+        var retrievalOptions = new FilteredRecordRetrievalOptions<AesirConversationDocumentTextData<Guid>>()
+        {
+            IncludeVectors = false
+        };
+        var toDelete = await _vectorStoreRecordCollection.GetAsync(
+                filter: data => data.ConversationId == conversationId,
+                top: int.MaxValue, // this is dumb
+                options: retrievalOptions,
+                cancellationToken: cancellationToken)
+            .ToListAsync(cancellationToken: cancellationToken);
+
+        if (toDelete.Count <= 0) return;
+        
+        await _vectorStoreRecordCollection.DeleteAsync(
+            toDelete.Select(td => td.Key), cancellationToken);
     }
 
     /// <summary>

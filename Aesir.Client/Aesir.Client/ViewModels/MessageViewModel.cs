@@ -99,7 +99,7 @@ public abstract partial class MessageViewModel : ObservableRecipient
         return input.Replace("\n", "<br>");
     }
     
-    public AesirChatMessage GetAesirChatMessage()
+    public virtual AesirChatMessage GetAesirChatMessage()
     {
         return new AesirChatMessage()
         {
