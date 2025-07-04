@@ -1,4 +1,5 @@
 
+using System;
 using System.Threading.Tasks;
 using Avalonia.Platform;
 using Ursa.Controls;
@@ -15,9 +16,18 @@ public partial class MainWindow : UrsaWindow
         
         NotificationManager = new WindowNotificationManager(this) { MaxItems = 3 };
 
-        // this is most compatible approach
+        // this is the most compatible approach; we need to test on Linux
         ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.PreferSystemChrome;
         ExtendClientAreaToDecorationsHint = false;
+        
+        if (OperatingSystem.IsWindows())
+        {
+            IsFullScreenButtonVisible = false;
+            IsManagedResizerVisible = false;
+            IsCloseButtonVisible = false;
+            IsMinimizeButtonVisible = false;
+            IsRestoreButtonVisible = false;
+        }
     }
     
     protected override async Task<bool> CanClose()

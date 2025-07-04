@@ -17,15 +17,15 @@
         <PackageReference Include="LangChain.DocumentLoaders.Word" Version="0.17.0" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.6" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.6" />
-        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.58.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.58.0-alpha" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.58.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.PgVector" Version="1.58.0-preview" />
-        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.58.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.59.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.59.0-alpha" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.59.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.PgVector" Version="1.59.0-preview" />
+        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.59.0" />
         <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="Npgsql" Version="9.0.3" />
-        <PackageReference Include="OpenAI" Version="2.2.0-beta.4" />
+        <PackageReference Include="OpenAI" Version="2.2.0" />
         <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.12.0" />
         <PackageReference Include="PdfPig" Version="0.1.10" />
         <PackageReference Include="Pgvector" Version="0.3.2" />
