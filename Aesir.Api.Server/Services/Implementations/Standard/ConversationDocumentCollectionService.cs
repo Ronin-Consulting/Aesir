@@ -147,14 +147,13 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             throw new ArgumentException("File metadata must contain a ConversationId property");
         
         var conversationId = (string)metaValue;
-        if (string.IsNullOrEmpty(conversationId)) throw new ArgumentNullException(nameof(conversationId));
         
         var conversationFilter = new TextSearchFilter();
         conversationFilter.Equality(nameof(AesirConversationDocumentTextData<Guid>.ConversationId), conversationId);
         
         var conversationDocumentTextSearchOptions = new TextSearchOptions
         {
-            Top = 25,
+            Top = 150, 
             Filter = conversationFilter
         };
             

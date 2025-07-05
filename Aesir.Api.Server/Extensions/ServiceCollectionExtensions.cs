@@ -69,9 +69,9 @@ public static class ServiceCollectionExtensions
         };
 
 
-        services.AddPostgresCollection<Guid, AesirConversationDocumentTextData<Guid>>("aesir_conversation_documents",
+        services.AddPostgresCollection<Guid, AesirConversationDocumentTextData<Guid>>("aesir_conversation_document",
             rcOptions);
-        services.AddPostgresCollection<Guid, AesirGlobalDocumentTextData<Guid>>("aesir_global_documents", rcOptions);
+        services.AddPostgresCollection<Guid, AesirGlobalDocumentTextData<Guid>>("aesir_global_document", rcOptions);
 
         services.AddSingleton(new UniqueKeyGenerator<Guid>(Guid.NewGuid));
 

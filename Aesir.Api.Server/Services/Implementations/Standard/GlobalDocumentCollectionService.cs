@@ -153,7 +153,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         categoryFilter.Equality(nameof(AesirGlobalDocumentTextData<Guid>.Category), categoryId);
         var globalDocumentTextSearchOptions = new TextSearchOptions
         {
-            Top = 25,
+            Top = 150, 
             Filter = categoryFilter
         };
             

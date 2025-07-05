@@ -23,6 +23,8 @@ public class AesirChatSession
     
     public void AddMessage(AesirChatMessage message)
     {
+        if (Conversation.Messages.Contains(message)) return;
+        
         Conversation.Messages.Add(message);
     }
     

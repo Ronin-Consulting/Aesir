@@ -25,6 +25,9 @@ public class AesirTextData<TKey>
     
     [VectorStoreVector(768, StorageName = "text_embedding")]
     public Embedding<float>? TextEmbedding { get; set; }
+    
+    [VectorStoreData(StorageName = "token_count")]
+    public int? TokenCount { get; set; }
 }
 
 [Experimental("SKEXP0001")]

@@ -4,7 +4,7 @@ using Aesir.Common.Prompts;
 
 namespace Aesir.Client.Models;
 
-public class AesirChatMessage
+public class AesirChatMessage : IEquatable<AesirChatMessage>
 {
     [JsonPropertyName("role")] 
     public string Role { get; set; } = null!;
@@ -143,5 +143,25 @@ public class AesirChatMessage
             Role = "user",
             Content = NormalizeContent(content)
         };
+    }
+
+    public bool Equals(AesirChatMessage? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        return Role == other.Role && Content == other.Content;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is null) return false;
+        if (ReferenceEquals(this, obj)) return true;
+        if (obj.GetType() != GetType()) return false;
+        return Equals((AesirChatMessage)obj);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Role, Content);
     }
 }

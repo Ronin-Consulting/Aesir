@@ -6,6 +6,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Tiktoken;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
 using TextContent = Microsoft.SemanticKernel.TextContent;
@@ -24,6 +25,10 @@ public class PdfDataLoaderService<TKey, TRecord>(
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
+    // ReSharper disable once StaticMemberInGenericType
+    private static readonly Encoder TokenCounter = new(DocumentChunker.DefaultEncoding);
+    // ReSharper disable once StaticMemberInGenericType
+    private static readonly DocumentChunker DocumentChunker = new(768, 25);
     public async Task LoadPdfAsync(LoadPdfRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.PdfLocalPath))
@@ -47,14 +52,15 @@ public class PdfDataLoaderService<TKey, TRecord>(
                 toDelete.Select(td => td.Key), cancellationToken);
 
         // Load the text and images from the PDF file and split them into batches.
-        var sections = LoadTextAndImages(request.PdfLocalPath, cancellationToken);
-        var batches = sections.Chunk(request.BatchSize);
+        var pages = LoadTextAndImages(request.PdfLocalPath, cancellationToken);
+        
+        var batches = pages.Chunk(request.BatchSize);
 
         // Process each batch of content items.
-        foreach (var batch in batches)
+        foreach (var page in batches)
         {
             // Convert any images to text.
-            var textContentTasks = batch.Select(async content =>
+            var extractTextTasks = page.Select(async content =>
             {
                 if (content.Text != null)
                 {
@@ -64,12 +70,28 @@ public class PdfDataLoaderService<TKey, TRecord>(
                 var textFromImage = await ConvertImageToTextWithRetryAsync(
                     content.Image!.Value,
                     cancellationToken).ConfigureAwait(false);
+                
                 return new RawContent { Text = textFromImage, PageNumber = content.PageNumber };
             });
-            var textContent = await Task.WhenAll(textContentTasks).ConfigureAwait(false);
+            var rawTextContents = await Task.WhenAll(extractTextTasks).ConfigureAwait(false);
 
+            // now need to break all the pages into smaller chunks with overlap to preserve mean context
+            var chunkingTasks = rawTextContents.Select(rawTextContent => 
+                Task.Run(() =>
+                {
+                    var textChunks = DocumentChunker.ChunkText(rawTextContent.Text!);
+                    return textChunks.Select(textChunk => new RawContent
+                    {
+                        Text = textChunk,
+                        PageNumber = rawTextContent.PageNumber
+                    });
+                }, cancellationToken)
+            );
+            var chunkedResults = await Task.WhenAll(chunkingTasks).ConfigureAwait(false);
+            var textContents = chunkedResults.SelectMany(x => x);
+            
             // Map each paragraph to a TextSnippet and generate an embedding for it.
-            var recordTasks = textContent.Select(async content =>
+            var recordTasks = textContents.Select(async content =>
             {
                 var record = recordFactory(content, request);
 
@@ -81,6 +103,8 @@ public class PdfDataLoaderService<TKey, TRecord>(
                     $"{new Uri($"file://{request.PdfFileName!.TrimStart("file://")}").AbsoluteUri}#page={content.PageNumber}";
                 record.TextEmbedding ??= await GenerateEmbeddingsWithRetryAsync(content.Text!, cancellationToken);
 
+                record.TokenCount ??= TokenCounter.CountTokens(record.Text!);
+                
                 return record;
             });
 

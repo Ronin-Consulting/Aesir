@@ -420,7 +420,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         if (messageIndex == -1) return;
         
         // Remove all messages after this user message (including the assistant response)
-        for (int i = ConversationMessages.Count - 1; i > messageIndex; i--)
+        for (var i = ConversationMessages.Count - 1; i > messageIndex; i--)
         {
             ConversationMessages.RemoveAt(i);
         }
@@ -440,11 +440,11 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     {
         // Find the index of the assistant message in the conversation
         var assistantIndex = ConversationMessages.IndexOf(assistantMessageViewModel);
-        if (assistantIndex == -1 || assistantIndex == 0) return;
+        if (assistantIndex is -1 or 0) return;
 
         // Find the preceding user message
         UserMessageViewModel? userMessage = null;
-        for (int i = assistantIndex - 1; i >= 0; i--)
+        for (var i = assistantIndex - 1; i >= 0; i--)
         {
             if (ConversationMessages[i] is UserMessageViewModel user)
             {
@@ -456,7 +456,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         if (userMessage == null) return;
 
         // Remove the assistant message and all messages after it
-        for (int i = ConversationMessages.Count - 1; i >= assistantIndex; i--)
+        for (var i = ConversationMessages.Count - 1; i >= assistantIndex; i--)
         {
             ConversationMessages.RemoveAt(i);
         }
