@@ -55,7 +55,11 @@ public class Program
                 var endpoint = builder.Configuration["Inference:Ollama:Endpoint"] ??
                               throw new InvalidOperationException();
                 client.BaseAddress = new Uri($"{endpoint}/api");
-            });
+            })
+            .AddHttpMessageHandler<LoggingHttpMessageHandler>();
+
+            builder.Services.AddTransient<LoggingHttpMessageHandler>();
+            
             builder.Services.AddTransient<OllamaApiClient>(p =>
             {
                 var httpClientFactory = p.GetRequiredService<IHttpClientFactory>();
