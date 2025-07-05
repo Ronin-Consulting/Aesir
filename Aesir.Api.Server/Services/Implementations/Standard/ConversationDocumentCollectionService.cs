@@ -153,7 +153,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         
         var conversationDocumentTextSearchOptions = new TextSearchOptions
         {
-            Top = 150, 
+            Top = 5, 
             Filter = conversationFilter
         };
             
@@ -162,7 +162,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         
         return KernelPluginFactory.CreateFromFunctions(
             "ChatDocSearch",
-            "Search and extract relevant information from chat conversation documents uploaded by the user during a conversation. It is designed to query the content of these impromptu text-based documents, such as transcripts or message logs, to retrieve details based on user-specified criteria, including keywords, topics, participants, or timestamps. Use this tool when the task involves analyzing or retrieving information from user-uploaded chat conversation documents.",
+            //"Search and extract relevant information from chat conversation documents uploaded by the user during a conversation. It is designed to query the content of these impromptu text-based documents, such as transcripts or message logs, to retrieve details based on user-specified criteria, including keywords, topics, participants, or timestamps. Use this tool when the task involves analyzing or retrieving information from user-uploaded chat conversation documents.",
             [conversationDocumentSearchPlugin]
         );
     }

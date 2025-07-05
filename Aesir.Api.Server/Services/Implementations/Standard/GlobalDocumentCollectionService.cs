@@ -153,7 +153,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         categoryFilter.Equality(nameof(AesirGlobalDocumentTextData<Guid>.Category), categoryId);
         var globalDocumentTextSearchOptions = new TextSearchOptions
         {
-            Top = 150, 
+            Top = 5, 
             Filter = categoryFilter
         };
             
@@ -172,7 +172,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         
         return KernelPluginFactory.CreateFromFunctions(
             pluginName, 
-            pluginDescription, 
+            //pluginDescription, 
             [globalDocumentSearchPlugin]
         );
     }

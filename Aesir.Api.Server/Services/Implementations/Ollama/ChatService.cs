@@ -211,7 +211,7 @@ public class ChatService : BaseChatService
     /// </summary>
     /// <param name="message">The Aesir chat message to convert.</param>
     /// <returns>A Semantic Kernel compatible chat message content.</returns>
-    private static ChatMessageContent ConvertToSemanticKernelMessage(dynamic message)
+    private static ChatMessageContent ConvertToSemanticKernelMessage(AesirChatMessage message)
     {
         var role = message.Role switch
         {
@@ -220,6 +220,6 @@ public class ChatService : BaseChatService
             _ => AuthorRole.User
         };
         
-        return new ChatMessageContent(role, message.Content);
+        return new ChatMessageContent(role, message.GetContentWithoutFileName());
     }
 }
