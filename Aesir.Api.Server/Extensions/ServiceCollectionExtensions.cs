@@ -133,7 +133,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConversationDocumentCollectionService, ConversationDocumentCollectionService>();
         services.AddSingleton<IGlobalDocumentCollectionService, GlobalDocumentCollectionService>();
         services.AddSingleton<IDocumentCollectionService, AutoDocumentCollectionService>();
-
+        
+        services.AddSingleton<IFunctionInvocationFilter, InferenceLoggingService>();
+        services.AddSingleton<IPromptRenderFilter, InferenceLoggingService>();
+        services.AddSingleton<IAutoFunctionInvocationFilter, InferenceLoggingService>();
+        
         // global documents setup
         var globalDocumentCollections =
             configuration.GetSection("GlobalDocumentCollections").Get<GlobalDocumentCollection[]>() ?? [];

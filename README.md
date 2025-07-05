@@ -58,9 +58,13 @@ To use OpenAI as the backend:
 2. Add your API key to `"Inference:OpenAI:ApiKey"`
 3. Optionally configure organization ID and preferred models
 
-### Models Tested
+### LLM Models Tested
 1. **cogito:32b-v1-preview-qwen-q4_K_M - This one is the best**
 2. cogito:32b
 3. qwen2.5:32b
 4. qwen2.5:14b-instruct-q6_K
 5. gemma3n:latest - NEW not tried yet
+
+### Embedding Models Tested
+1. mxbai-embed-large:latest
+2. nomic-embed-text:latest

@@ -28,7 +28,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
     // ReSharper disable once StaticMemberInGenericType
     private static readonly Encoder TokenCounter = new(DocumentChunker.DefaultEncoding);
     // ReSharper disable once StaticMemberInGenericType
-    private static readonly DocumentChunker DocumentChunker = new(768, 25);
+    private static readonly DocumentChunker DocumentChunker = new(120, 40);
     public async Task LoadPdfAsync(LoadPdfRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.PdfLocalPath))
@@ -74,12 +74,14 @@ public class PdfDataLoaderService<TKey, TRecord>(
                 return new RawContent { Text = textFromImage, PageNumber = content.PageNumber };
             });
             var rawTextContents = await Task.WhenAll(extractTextTasks).ConfigureAwait(false);
-
+            
             // now need to break all the pages into smaller chunks with overlap to preserve mean context
             var chunkingTasks = rawTextContents.Select(rawTextContent => 
                 Task.Run(() =>
                 {
-                    var textChunks = DocumentChunker.ChunkText(rawTextContent.Text!);
+                    var chunkHeader = $"Page: {rawTextContent.PageNumber}\n";
+                    logger.LogDebug("Created Chunk: {ChunkHeader}",chunkHeader);
+                    var textChunks = DocumentChunker.ChunkText(rawTextContent.Text!, chunkHeader);
                     return textChunks.Select(textChunk => new RawContent
                     {
                         Text = textChunk,

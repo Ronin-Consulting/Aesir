@@ -111,7 +111,7 @@ public abstract class BaseChatService : IChatService
         {
             await foreach (var (content, _) in streamingResults)
             {
-                _logger.LogDebug("Received streaming content: {Content}", content);
+                //_logger.LogDebug("Received streaming content: {Content}", content);
 
                 if (!string.IsNullOrEmpty(content))
                 {

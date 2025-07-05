@@ -23,7 +23,7 @@ public class AesirTextData<TKey>
     [VectorStoreData(StorageName = "reference_link")]
     public string? ReferenceLink { get; set; }
     
-    [VectorStoreVector(768, StorageName = "text_embedding")]
+    [VectorStoreVector(1024, StorageName = "text_embedding")]
     public Embedding<float>? TextEmbedding { get; set; }
     
     [VectorStoreData(StorageName = "token_count")]
