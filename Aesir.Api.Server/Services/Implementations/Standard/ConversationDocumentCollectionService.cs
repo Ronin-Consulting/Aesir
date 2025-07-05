@@ -153,7 +153,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         
         var conversationDocumentTextSearchOptions = new TextSearchOptions
         {
-            Top = 5, 
+            Top = 10, 
             Filter = conversationFilter
         };
             

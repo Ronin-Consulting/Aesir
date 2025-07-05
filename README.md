@@ -21,7 +21,7 @@
   - [ ] Play message
 - [ ] Implement RAG
   - [x] Upload - Global Documents
-  - [ ] Upload - Conversation Documents
+  - [x] Upload - Conversation Documents
   - [ ] Download
   - [x] CRUD
   - [X] Citations
