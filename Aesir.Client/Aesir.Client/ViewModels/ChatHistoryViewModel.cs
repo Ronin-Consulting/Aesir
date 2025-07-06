@@ -16,12 +16,13 @@ using Humanizer;
 
 namespace Aesir.Client.ViewModels;
 
-public partial class ChatHistoryViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<bool>>, IRecipient<ChatHistoryChangedMessage>
+public partial class ChatHistoryViewModel(
+    ApplicationState appState,
+    IChatHistoryService chatHistoryService)
+    : ObservableRecipient, IRecipient<PropertyChangedMessage<bool>>, IRecipient<ChatHistoryChangedMessage>
 {
     public ObservableGroupedCollection<string, ChatHistoryButtonViewModel> ChatHistoryByDate { get; } = [];
-    
-    private readonly ApplicationState _appState;
-    private readonly IChatHistoryService _chatHistoryService;
+
     private CancellationTokenSource _debounceTokenSource;
     private const int DebounceDelayMs = 300; // 300ms delay
     private const int MinSearchLength = 3; // Minimum characters to start searching
@@ -29,14 +30,6 @@ public partial class ChatHistoryViewModel : ObservableRecipient, IRecipient<Prop
     [ObservableProperty]
     private string _searchText = string.Empty;
 
-    public ChatHistoryViewModel(
-        ApplicationState appState,
-        IChatHistoryService chatHistoryService)
-    {
-        _appState = appState;
-        _chatHistoryService = chatHistoryService;
-    }
-    
     partial void OnSearchTextChanged(string value)
     {
         // Cancel any pending search
@@ -66,7 +59,7 @@ public partial class ChatHistoryViewModel : ObservableRecipient, IRecipient<Prop
         base.OnActivated();
 
         ChatHistoryByDate.Clear();
-        _appState.ChatSessions.Clear();
+        appState.ChatSessions.Clear();
         
         Dispatcher.UIThread.InvokeAsync(LoadChatHistoryAsync);
     }
@@ -74,7 +67,7 @@ public partial class ChatHistoryViewModel : ObservableRecipient, IRecipient<Prop
     private async Task SearchChatHistoryAsync(string searchQuery)
     {
         var foundChatSessions = 
-            await _chatHistoryService.SearchChatSessionsAsync("Unknown", searchQuery);
+            await chatHistoryService.SearchChatSessionsAsync("Unknown", searchQuery);
         
         RefreshChatHistoryDisplay(foundChatSessions);
     }
@@ -88,8 +81,8 @@ public partial class ChatHistoryViewModel : ObservableRecipient, IRecipient<Prop
         {
             foreach (var chatSession in chatSessionGroup)
             {
-                if(_appState.ChatSessions.Any(cs => cs.Id != chatSession.Id))
-                    _appState.ChatSessions.Add(chatSession);
+                if(appState.ChatSessions.Any(cs => cs.Id != chatSession.Id))
+                    appState.ChatSessions.Add(chatSession);
             }
 
             var groupKey = chatSessionGroup.Key.Humanize().Humanize(LetterCasing.Sentence).Replace("Now", "Today");
@@ -104,7 +97,7 @@ public partial class ChatHistoryViewModel : ObservableRecipient, IRecipient<Prop
 
                 chatHistoryButtonViewModel.IsActive = true;
 
-                chatHistoryButtonViewModel.IsChecked = _appState.SelectedChatSessionId == cs.Id;
+                chatHistoryButtonViewModel.IsChecked = appState.SelectedChatSessionId == cs.Id;
                 
                 return chatHistoryButtonViewModel;
             }
@@ -123,7 +116,7 @@ public partial class ChatHistoryViewModel : ObservableRecipient, IRecipient<Prop
     
     private async Task LoadChatHistoryAsync()
     {
-        var chatSessions = await _chatHistoryService.GetChatSessionsAsync("Unknown");
+        var chatSessions = await chatHistoryService.GetChatSessionsAsync("Unknown");
         RefreshChatHistoryDisplay(chatSessions);
 
     }

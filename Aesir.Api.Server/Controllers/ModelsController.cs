@@ -7,18 +7,11 @@ namespace Aesir.Api.Server.Controllers;
 [ApiController]
 [Route("models")]
 [Produces("application/json")]
-public class ModelsController : ControllerBase
+public class ModelsController(IModelsService modelsService) : ControllerBase
 {
-    private readonly IModelsService _modelsService;
-
-    public ModelsController(IModelsService modelsService)
-    {
-        _modelsService = modelsService;
-    }
-
     [HttpGet]
     public async Task<IEnumerable<AesirModelInfo>> GetAsync()
     {
-        return await _modelsService.GetModelsAsync();
+        return await modelsService.GetModelsAsync();
     }
 }

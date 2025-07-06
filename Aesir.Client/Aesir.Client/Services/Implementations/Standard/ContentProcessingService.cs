@@ -4,18 +4,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.Services.Implementations.Standard;
 
-public class ContentProcessingService : IContentProcessingService
+public class ContentProcessingService(
+    IPdfViewerService pdfViewerService,
+    ILogger<ContentProcessingService> logger)
+    : IContentProcessingService
 {
-    private readonly IPdfViewerService _pdfViewerService;
-    private readonly ILogger<ContentProcessingService> _logger;
-
-    public ContentProcessingService(
-        IPdfViewerService pdfViewerService,
-        ILogger<ContentProcessingService> logger)
-    {
-        _pdfViewerService = pdfViewerService ?? throw new ArgumentNullException(nameof(pdfViewerService));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+    private readonly IPdfViewerService _pdfViewerService = pdfViewerService ?? throw new ArgumentNullException(nameof(pdfViewerService));
+    private readonly ILogger<ContentProcessingService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public string ProcessThinkingModelContent(string input)
     {

@@ -8,24 +8,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.Services.Implementations.Standard;
 
-public class ChatSessionManager : IChatSessionManager
+public class ChatSessionManager(
+    IChatHistoryService chatHistoryService,
+    IChatService chatService,
+    ApplicationState appState,
+    ILogger<ChatSessionManager> logger)
+    : IChatSessionManager
 {
-    private readonly IChatHistoryService _chatHistoryService;
-    private readonly IChatService _chatService;
-    private readonly ApplicationState _appState;
-    private readonly ILogger<ChatSessionManager> _logger;
-
-    public ChatSessionManager(
-        IChatHistoryService chatHistoryService,
-        IChatService chatService,
-        ApplicationState appState,
-        ILogger<ChatSessionManager> logger)
-    {
-        _chatHistoryService = chatHistoryService ?? throw new ArgumentNullException(nameof(chatHistoryService));
-        _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
-        _appState = appState ?? throw new ArgumentNullException(nameof(appState));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+    private readonly IChatHistoryService _chatHistoryService = chatHistoryService ?? throw new ArgumentNullException(nameof(chatHistoryService));
+    private readonly IChatService _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
+    private readonly ApplicationState _appState = appState ?? throw new ArgumentNullException(nameof(appState));
+    private readonly ILogger<ChatSessionManager> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public async Task LoadChatSessionAsync()
     {

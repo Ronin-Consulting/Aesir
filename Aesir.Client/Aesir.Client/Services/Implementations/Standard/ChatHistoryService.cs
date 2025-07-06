@@ -9,20 +9,16 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.Services.Implementations.Standard;
 
-public class ChatHistoryService : IChatHistoryService
+public class ChatHistoryService(
+    ILogger<ChatService> logger,
+    IConfiguration configuration,
+    IFlurlClientCache flurlClientCache)
+    : IChatHistoryService
 {
-    private readonly ILogger<ChatService> _logger;
-    private readonly IFlurlClient _flurlClient;
+    private readonly IFlurlClient _flurlClient = flurlClientCache
+        .GetOrAdd("ChatHistoryClient",
+            configuration.GetValue<string>("Inference:ChatHistory"));
 
-    public ChatHistoryService(ILogger<ChatService> logger,
-        IConfiguration configuration, IFlurlClientCache flurlClientCache)
-    {
-        _logger = logger;
-        _flurlClient = flurlClientCache
-            .GetOrAdd("ChatHistoryClient",
-                configuration.GetValue<string>("Inference:ChatHistory"));
-    }
-    
     public async Task<IEnumerable<AesirChatSessionItem>> GetChatSessionsAsync(string userId)
     {
         try
@@ -34,7 +30,7 @@ public class ChatHistoryService : IChatHistoryService
         }
         catch (FlurlHttpException ex)
         {
-            await _logger.LogFlurlExceptionAsync(ex);
+            await logger.LogFlurlExceptionAsync(ex);
             throw;
         }
     }
@@ -52,7 +48,7 @@ public class ChatHistoryService : IChatHistoryService
         }
         catch (FlurlHttpException ex)
         {
-            await _logger.LogFlurlExceptionAsync(ex);
+            await logger.LogFlurlExceptionAsync(ex);
             throw;
         }
     }
@@ -67,7 +63,7 @@ public class ChatHistoryService : IChatHistoryService
         }
         catch (FlurlHttpException ex)
         {
-            await _logger.LogFlurlExceptionAsync(ex);
+            await logger.LogFlurlExceptionAsync(ex);
             throw;
         }
     }
@@ -83,7 +79,7 @@ public class ChatHistoryService : IChatHistoryService
         }
         catch (FlurlHttpException ex)
         {
-            await _logger.LogFlurlExceptionAsync(ex);
+            await logger.LogFlurlExceptionAsync(ex);
             throw;
         }
     }
@@ -98,7 +94,7 @@ public class ChatHistoryService : IChatHistoryService
         }
         catch (FlurlHttpException ex)
         {
-            await _logger.LogFlurlExceptionAsync(ex);
+            await logger.LogFlurlExceptionAsync(ex);
             throw;
         }
     }

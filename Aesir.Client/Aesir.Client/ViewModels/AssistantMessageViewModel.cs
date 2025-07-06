@@ -8,18 +8,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
 
-public class AssistantMessageViewModel : MessageViewModel
+public class AssistantMessageViewModel(
+    ILogger<AssistantMessageViewModel> logger,
+    IMarkdownService markdownService,
+    IContentProcessingService contentProcessingService)
+    : MessageViewModel(logger, markdownService)
 {
-    private readonly IContentProcessingService _contentProcessingService;
-
-    public AssistantMessageViewModel(
-        ILogger<AssistantMessageViewModel> logger, 
-        IMarkdownService markdownService,
-        IContentProcessingService contentProcessingService) 
-        : base(logger, markdownService)
-    {
-        _contentProcessingService = contentProcessingService ?? throw new System.ArgumentNullException(nameof(contentProcessingService));
-    }
+    private readonly IContentProcessingService _contentProcessingService = contentProcessingService ?? throw new System.ArgumentNullException(nameof(contentProcessingService));
 
     public override string Role => "assistant";
     

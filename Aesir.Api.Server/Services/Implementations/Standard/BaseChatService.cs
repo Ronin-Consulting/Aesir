@@ -5,23 +5,17 @@ using Microsoft.SemanticKernel;
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 [Experimental("SKEXP0070")]
-public abstract class BaseChatService : IChatService
+public abstract class BaseChatService(
+    ILogger logger,
+    IChatHistoryService chatHistoryService,
+    Kernel kernel)
+    : IChatService
 {
-    protected readonly ILogger _logger;
+    protected readonly ILogger _logger = logger;
 
-    protected readonly IChatHistoryService _chatHistoryService;
+    protected readonly IChatHistoryService _chatHistoryService = chatHistoryService;
 
-    protected readonly Kernel _kernel;
-
-    protected BaseChatService(
-        ILogger logger,
-        IChatHistoryService chatHistoryService,
-        Kernel kernel)
-    {
-        _logger = logger;
-        _chatHistoryService = chatHistoryService;
-        _kernel = kernel;
-    }
+    protected readonly Kernel _kernel = kernel;
 
     public async Task<AesirChatResult> ChatCompletionsAsync(AesirChatRequest request)
     {

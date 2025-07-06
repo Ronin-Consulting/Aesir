@@ -4,7 +4,7 @@ using Dapper;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
-public class ChatHistoryService : IChatHistoryService
+public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext dbContext) : IChatHistoryService
 {
     static ChatHistoryService()
     {
@@ -12,14 +12,7 @@ public class ChatHistoryService : IChatHistoryService
         SqlMapper.AddTypeHandler(new JsonTypeHandler<AesirChatMessage>());
     }
 
-    private readonly ILogger<ChatHistoryService> _logger;
-    private readonly IDbContext _dbContext;
-
-    public ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext dbContext)
-    {
-        _logger = logger;
-        _dbContext = dbContext;
-    }
+    private readonly ILogger<ChatHistoryService> _logger = logger;
 
     public async Task UpsertChatSessionAsync(AesirChatSession chatSession)
     {
@@ -33,7 +26,7 @@ public class ChatHistoryService : IChatHistoryService
                 title = @Title      
         ";
 
-        await _dbContext.UnitOfWorkAsync(async connection =>
+        await dbContext.UnitOfWorkAsync(async connection =>
         {
             await connection.ExecuteAsync(sql, chatSession);
         }, withTransaction: true);
@@ -47,7 +40,7 @@ public class ChatHistoryService : IChatHistoryService
             WHERE id = @Id::uuid
         ";
 
-        return await _dbContext.UnitOfWorkAsync(async connection =>
+        return await dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryFirstOrDefaultAsync<AesirChatSession>(sql, new { Id = id }));
     }
 
@@ -60,7 +53,7 @@ public class ChatHistoryService : IChatHistoryService
             ORDER BY updated_at DESC
         ";
 
-        return await _dbContext.UnitOfWorkAsync(async connection =>
+        return await dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryAsync<AesirChatSession>(sql, new { UserId = userId }));
     }
 
@@ -75,7 +68,7 @@ public class ChatHistoryService : IChatHistoryService
             ORDER BY updated_at DESC
         ";
 
-        return await _dbContext.UnitOfWorkAsync(async connection =>
+        return await dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryAsync<AesirChatSession>(sql, new { UserId = userId, From = from, To = to }));
     }
 
@@ -86,7 +79,7 @@ public class ChatHistoryService : IChatHistoryService
             WHERE id = @Id::uuid
         ";
 
-        await _dbContext.UnitOfWorkAsync(async connection =>
+        await dbContext.UnitOfWorkAsync(async connection =>
             await connection.ExecuteAsync(sql, new { Id = id }), withTransaction: true);
     }
 
@@ -111,7 +104,7 @@ public class ChatHistoryService : IChatHistoryService
 
         var searchQuery = string.Join(" & ", normalizedSearchTerm.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-        return await _dbContext.UnitOfWorkAsync(async connection =>
+        return await dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryAsync<AesirChatSession>(sql, new { userId, searchQuery }));
     }
 }

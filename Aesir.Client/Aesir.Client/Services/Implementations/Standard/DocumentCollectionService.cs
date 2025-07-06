@@ -8,23 +8,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.Services.Implementations.Standard;
 
-public class DocumentCollectionService : IDocumentCollectionService
+public class DocumentCollectionService(
+    ILogger<DocumentCollectionService> logger,
+    IConfiguration configuration,
+    IFlurlClientCache flurlClientCache)
+    : IDocumentCollectionService
 {
     private const long MaxFileSizeBytes = 104857600; // 100MB
     private const string AllowedFileExtension = ".pdf";
-    
-    private readonly ILogger<DocumentCollectionService> _logger;
-    private readonly IFlurlClient _flurlClient;
 
-    public DocumentCollectionService(ILogger<DocumentCollectionService> logger,
-        IConfiguration configuration, IFlurlClientCache flurlClientCache)
-    {
-        _logger = logger;
-        _flurlClient = flurlClientCache
-            .GetOrAdd("DocumentCollectionClient",
-                configuration.GetValue<string>("Inference:DocumentCollections"));
-    }
-    
+    private readonly IFlurlClient _flurlClient = flurlClientCache
+        .GetOrAdd("DocumentCollectionClient",
+            configuration.GetValue<string>("Inference:DocumentCollections"));
+
     public async Task<Stream> GetFileContentStreamAsync(string filename)
     {
         try
@@ -44,7 +40,7 @@ public class DocumentCollectionService : IDocumentCollectionService
         }
         catch (FlurlHttpException ex)
         {
-            await _logger.LogFlurlExceptionAsync(ex);
+            await logger.LogFlurlExceptionAsync(ex);
             throw new Exception($"Failed to get file stream for '{filename}': {ex.Message}", ex);
         }
     }
@@ -114,12 +110,12 @@ public class DocumentCollectionService : IDocumentCollectionService
         }
         catch (FlurlHttpException ex)
         {
-            await _logger.LogFlurlExceptionAsync(ex);
+            await logger.LogFlurlExceptionAsync(ex);
             throw new Exception($"Failed to {operationName} '{filePath}': {ex.Message}", ex);
         }
         catch (Exception ex) when (!(ex is ArgumentException || ex is FileNotFoundException || ex is InvalidOperationException || ex is NotSupportedException))
         {
-            _logger.LogError(ex, "Error {OperationName}", operationName);
+            logger.LogError(ex, "Error {OperationName}", operationName);
             throw new Exception($"Unexpected error {operationName} '{filePath}': {ex.Message}", ex);
         }
     }

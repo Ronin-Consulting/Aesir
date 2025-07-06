@@ -10,19 +10,14 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Aesir.Client.ViewModels;
 
-public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<FileUploadRequestMessage>
+public partial class FileToUploadViewModel(
+    IDocumentCollectionService documentCollectionService,
+    IDialogService dialogService)
+    : ObservableRecipient, IRecipient<FileUploadRequestMessage>
 {
-    private readonly IDocumentCollectionService _documentCollectionService;
-    private readonly IDialogService _dialogService;
     private const string DefaultFileName = "No File";
     private const string DefaultFilePath = "No Path";
 
-    public FileToUploadViewModel(IDocumentCollectionService documentCollectionService, IDialogService dialogService)
-    {
-        _documentCollectionService = documentCollectionService;
-        _dialogService = dialogService;
-    }
-    
     [ObservableProperty]
     private bool _isVisible;
     
@@ -69,7 +64,7 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
                     FilePath = FilePath
                 });
 
-                await _documentCollectionService.DeleteUploadedConversationFileAsync(FileName, _conversationId!);
+                await documentCollectionService.DeleteUploadedConversationFileAsync(FileName, _conversationId!);
                 
                 IsProcessingFile = false;
                 IsVisible = false;
@@ -106,7 +101,7 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
 
             try
             {
-                await _documentCollectionService.UploadConversationFileAsync(message.FilePath, _conversationId!);
+                await documentCollectionService.UploadConversationFileAsync(message.FilePath, _conversationId!);
                 
                 ToggleProcessingFile();
                 
@@ -130,7 +125,7 @@ public partial class FileToUploadViewModel : ObservableRecipient, IRecipient<Fil
                     IsSuccess = false
                 });
 
-                await _dialogService.ShowErrorDialogAsync("Upload Error", $"An error occurred while uploading the file: {ex.Message}");
+                await dialogService.ShowErrorDialogAsync("Upload Error", $"An error occurred while uploading the file: {ex.Message}");
             }
         });
     }

@@ -7,8 +7,8 @@ namespace Aesir.Client.Models;
 public class AesirChatSession
 {
     [JsonPropertyName("id")]
-    public Guid Id { get; set; }
-    
+    public Guid Id { get; set; } = Guid.NewGuid();
+
     [JsonPropertyName("user_id")]
     public string UserId { get; set; }
     
@@ -16,7 +16,14 @@ public class AesirChatSession
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
     
     [JsonPropertyName("conversation")]
-    public AesirConversation Conversation { get; set; }
+    public AesirConversation Conversation { get; set; } = new()
+    {
+        Id = Guid.NewGuid().ToString(),
+        Messages = new List<AesirChatMessage>()
+        {
+            AesirChatMessage.NewSystemMessage()
+        }
+    };
 
     [JsonPropertyName("title")]
     public string Title  { get; set; } = "Chat Session (Client)";
@@ -36,19 +43,6 @@ public class AesirChatSession
     public IList<AesirChatMessage> GetMessages()
     {
         return Conversation.Messages;
-    }
-    
-    public AesirChatSession()
-    {
-        Id = Guid.NewGuid();
-        Conversation = new AesirConversation()
-        {
-            Id = Guid.NewGuid().ToString(),
-            Messages = new List<AesirChatMessage>()
-            {
-                AesirChatMessage.NewSystemMessage()
-            }
-        };
     }
 }
 

@@ -6,24 +6,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.Services.Implementations.MarkdigMarkdown;
 
-public class MarkdigMarkdownService : IMarkdownService
+public class MarkdigMarkdownService(ILogger<MarkdigMarkdownService> logger) : IMarkdownService
 {
-    private readonly ILogger<MarkdigMarkdownService> _logger;
-    private readonly MarkdownPipeline _pipeline;
-    
-    public MarkdigMarkdownService(ILogger<MarkdigMarkdownService> logger)
-    {
-        _logger = logger;
-        _pipeline = new MarkdownPipelineBuilder()
-            .UsePipeTables()
-            .UseAdvancedExtensions()
-            .UseColorCode(styleDictionary: StyleDictionary.DefaultDark)
-            .UseAutoLinks()
-            .UseEmojiAndSmiley()
-            .UseMediaLinks()
-            .UseCitations()
-            .Build();
-    }
+    private readonly ILogger<MarkdigMarkdownService> _logger = logger;
+    private readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder()
+        .UsePipeTables()
+        .UseAdvancedExtensions()
+        .UseColorCode(styleDictionary: StyleDictionary.DefaultDark)
+        .UseAutoLinks()
+        .UseEmojiAndSmiley()
+        .UseMediaLinks()
+        .UseCitations()
+        .Build();
 
     public Task<string> RenderMarkdownAsHtmlAsync(string markdown)
     {

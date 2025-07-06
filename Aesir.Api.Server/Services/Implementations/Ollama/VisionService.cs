@@ -6,23 +6,14 @@ using Microsoft.SemanticKernel.Connectors.Ollama;
 namespace Aesir.Api.Server.Services.Implementations.Ollama;
 
 [Experimental("SKEXP0070")]
-public class VisionService : IVisionService
+public class VisionService(
+    ILogger<VisionService> logger,
+    VisionModelConfig visionModelConfig,
+    IChatCompletionService chatCompletionService)
+    : IVisionService
 {
-    private readonly ILogger<VisionService> _logger;
-    private readonly IChatCompletionService _chatCompletionService;
-    private readonly string _visionModel;
+    private readonly string _visionModel = visionModelConfig.ModelId;
 
-    public VisionService(
-        ILogger<VisionService> logger, 
-        VisionModelConfig  visionModelConfig,
-        IChatCompletionService chatCompletionService
-        )
-    {
-        _logger = logger;
-        _chatCompletionService = chatCompletionService;
-        _visionModel = visionModelConfig.ModelId;
-    }
-    
     public async Task<string> GetImageTextAsync(ReadOnlyMemory<byte> image, string mimeType, CancellationToken cancellationToken = default)
     {
         if(string.IsNullOrWhiteSpace(_visionModel))
@@ -40,7 +31,7 @@ public class VisionService : IVisionService
             Temperature = 0.2f
         };
         
-        var result = await _chatCompletionService
+        var result = await chatCompletionService
             .GetChatMessageContentsAsync(chatHistory, settings, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         

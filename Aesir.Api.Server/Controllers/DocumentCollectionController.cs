@@ -7,11 +7,12 @@ namespace Aesir.Api.Server.Controllers;
 [ApiController]
 [Route("document/collections")]
 [Produces("application/json")]
-public class DocumentCollectionController : ControllerBase
+public class DocumentCollectionController(
+    ILogger<DocumentCollectionController> logger,
+    IFileStorageService fileStorageService,
+    IDocumentCollectionService documentCollectionService)
+    : ControllerBase
 {
-    private readonly ILogger<DocumentCollectionController> _logger;
-    private readonly IFileStorageService _fileStorageService;
-    private readonly IDocumentCollectionService _documentCollectionService;
     private const int MaxFileSize = 104857600; // 100MB
 
     private enum FolderType
@@ -20,16 +21,6 @@ public class DocumentCollectionController : ControllerBase
         Conversation
     }
 
-    public DocumentCollectionController(
-        ILogger<DocumentCollectionController> logger,
-        IFileStorageService fileStorageService, 
-        IDocumentCollectionService documentCollectionService)
-    {
-        _logger = logger;
-        _fileStorageService = fileStorageService;
-        _documentCollectionService = documentCollectionService;
-    }
-    
     //https://aesir.localhost/document/collections/file/%2F407e11d8-2763-48a9-aa7a-2bd549b3e7f9%2FMissionPlan-OU812.pdf/content
     [HttpGet("file/{filename}/content")]
     public async Task<IActionResult> GetFileContentAsync([FromRoute]string filename)
@@ -108,7 +99,7 @@ public class DocumentCollectionController : ControllerBase
     #region Common Methods
     private async Task<IActionResult> GetFileContentCoreAsync(string filename)
     {
-        var result = await _fileStorageService.GetFileContentAsync(filename);
+        var result = await fileStorageService.GetFileContentAsync(filename);
 
         if(result == null || !System.IO.File.Exists(result.Value.FilePath))
             return NotFound();
@@ -130,12 +121,12 @@ public class DocumentCollectionController : ControllerBase
 
         try
         {
-            var files = await _fileStorageService.GetFilesByFolderAsync(folderId);
+            var files = await fileStorageService.GetFilesByFolderAsync(folderId);
             return Ok(files);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving files for {FolderType} {FolderId}", folderType.ToString().ToLowerInvariant(), folderId);
+            logger.LogError(ex, "Error retrieving files for {FolderType} {FolderId}", folderType.ToString().ToLowerInvariant(), folderId);
             return StatusCode(500, "An error occurred while retrieving files.");
         }
     }
@@ -155,7 +146,7 @@ public class DocumentCollectionController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving file content for {FolderId}/{Filename}", folderId, filename);
+            logger.LogError(ex, "Error retrieving file content for {FolderId}/{Filename}", folderId, filename);
             return StatusCode(500, "An error occurred while retrieving the file.");
         }
     }
@@ -167,13 +158,13 @@ public class DocumentCollectionController : ControllerBase
 
         try
         {
-            var files = await _fileStorageService.GetFilesByFolderAsync(folderId);
+            var files = await fileStorageService.GetFilesByFolderAsync(folderId);
             
             var virtualFilename = $"/{folderId}/{filename}";
             var fileToDelete = files.FirstOrDefault(f => f.FileName == virtualFilename);
             if (fileToDelete != null)
             {
-                await _fileStorageService.DeleteFileAsync(fileToDelete.Id);
+                await fileStorageService.DeleteFileAsync(fileToDelete.Id);
             }
             
             IDictionary<string, object>? args = null;
@@ -195,13 +186,13 @@ public class DocumentCollectionController : ControllerBase
                     throw new ArgumentOutOfRangeException(nameof(folderType), folderType, null);
             }
 
-            await _documentCollectionService.DeleteDocumentAsync(args);
+            await documentCollectionService.DeleteDocumentAsync(args);
 
             return Ok(new { message = "Files deleted successfully", folderId, filename });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting file {FileName} for {FolderType} {FolderId}", folderType.ToString().ToLowerInvariant(), folderId, filename);
+            logger.LogError(ex, "Error deleting file {FileName} for {FolderType} {FolderId}", folderType.ToString().ToLowerInvariant(), folderId, filename);
             return StatusCode(500, "An error occurred while deleting file.");
         }
     }
@@ -236,7 +227,7 @@ public class DocumentCollectionController : ControllerBase
                 await file.CopyToAsync(memoryStream);
                 var fileContent = memoryStream.ToArray();
 
-                await _fileStorageService.UpsertFileAsync(virtualFilename, mimeType, fileContent);
+                await fileStorageService.UpsertFileAsync(virtualFilename, mimeType, fileContent);
                 await System.IO.File.WriteAllBytesAsync(tempFilePath, fileContent);
 
                 fileContent = null;
@@ -262,13 +253,13 @@ public class DocumentCollectionController : ControllerBase
                     throw new ArgumentOutOfRangeException(nameof(folderType), folderType, null);
             }
             
-            await _documentCollectionService.LoadDocumentAsync(tempFilePath, args);
+            await documentCollectionService.LoadDocumentAsync(tempFilePath, args);
             
             return (true, null, virtualFilename);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error uploading file");
+            logger.LogError(ex, "Error uploading file");
             return (false, "An error occurred while uploading the file.", null);
         }
         finally

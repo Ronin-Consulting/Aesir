@@ -14,11 +14,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
 
-public partial class ChatHistoryButtonViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>
+public partial class ChatHistoryButtonViewModel(
+    ILogger<ChatHistoryButtonViewModel> logger,
+    ApplicationState appState)
+    : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>
 {
-    private readonly ILogger<ChatHistoryButtonViewModel> _logger;
-    private readonly ApplicationState _appState;
-    
     private string _title = "Chat History";
     [MinLength(10)]
     public string Title
@@ -33,15 +33,7 @@ public partial class ChatHistoryButtonViewModel : ObservableRecipient, IRecipien
     private bool _isChecked;
     
     private AesirChatSessionItem? _chatSessionItem;
-    
-    public ChatHistoryButtonViewModel(
-        ILogger<ChatHistoryButtonViewModel> logger, 
-        ApplicationState appState)
-    {
-        _logger = logger;
-        _appState = appState;
-    }
-    
+
     public void SetChatSessionItem(AesirChatSessionItem chatSessionItem)
     {
         _chatSessionItem = chatSessionItem ?? throw new ArgumentNullException(nameof(chatSessionItem));
@@ -52,11 +44,11 @@ public partial class ChatHistoryButtonViewModel : ObservableRecipient, IRecipien
     
     partial void OnIsCheckedChanged(bool oldValue, bool newValue)
     {
-        if (newValue == false && _appState.SelectedChatSessionId == ChatSessionId)
-            _appState.SelectedChatSessionId = null;
+        if (newValue == false && appState.SelectedChatSessionId == ChatSessionId)
+            appState.SelectedChatSessionId = null;
         
-        if (newValue == true && _appState.SelectedChatSessionId != ChatSessionId)
-            _appState.SelectedChatSessionId = ChatSessionId;
+        if (newValue == true && appState.SelectedChatSessionId != ChatSessionId)
+            appState.SelectedChatSessionId = ChatSessionId;
     }
 
     public void Receive(PropertyChangedMessage<Guid?> message)
@@ -115,7 +107,7 @@ public partial class ChatHistoryButtonViewModel : ObservableRecipient, IRecipien
                 var chatHistoryService = Ioc.Default.GetService<IChatHistoryService>();
                 await chatHistoryService?.DeleteChatSessionAsync(ChatSessionId.Value)!;
                 
-                _appState.SelectedChatSessionId = null;
+                appState.SelectedChatSessionId = null;
                 
                 // Update UI
                 WeakReferenceMessenger.Default.Send(new ChatHistoryChangedMessage());
@@ -128,7 +120,7 @@ public partial class ChatHistoryButtonViewModel : ObservableRecipient, IRecipien
     [RelayCommand]
     private void RightClick()
     {
-        _logger.LogDebug("Right click handled in ViewModel for chat: {Title}", Title);
+        logger.LogDebug("Right click handled in ViewModel for chat: {Title}", Title);
     }
 
 }

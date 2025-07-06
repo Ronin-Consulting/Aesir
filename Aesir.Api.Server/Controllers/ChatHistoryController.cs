@@ -8,29 +8,17 @@ namespace Aesir.Api.Server.Controllers
     [ApiController]
     [Route("chat/history")]
     [Produces("application/json")]
-    public class ChatHistoryController : ControllerBase
+    public class ChatHistoryController(
+        ILogger<ChatHistoryController> logger,
+        IChatHistoryService chatHistoryService,
+        IFileStorageService fileStorageService,
+        IDocumentCollectionService documentCollectionService)
+        : ControllerBase
     {
-        private readonly ILogger<ChatHistoryController> _logger;
-        private readonly IChatHistoryService _chatHistoryService;
-        private readonly IFileStorageService _fileStorageService;
-        private readonly IDocumentCollectionService _documentCollectionService;
-
-        public ChatHistoryController(
-            ILogger<ChatHistoryController> logger, 
-            IChatHistoryService chatHistoryService,        
-            IFileStorageService fileStorageService, 
-            IDocumentCollectionService documentCollectionService)
-        {
-            _logger = logger;
-            _chatHistoryService = chatHistoryService;
-            _fileStorageService = fileStorageService;
-            _documentCollectionService = documentCollectionService;
-        }
-
         [HttpGet("user/{userId}")]
         public async Task<IEnumerable<AesirChatSessionItem>> GetChatSessionsAsync([FromRoute] string userId)
         {
-            var results = (await _chatHistoryService.GetChatSessionsAsync(userId))
+            var results = (await chatHistoryService.GetChatSessionsAsync(userId))
                 .Select(
                     chatSession => new AesirChatSessionItem()
                     {
@@ -40,8 +28,8 @@ namespace Aesir.Api.Server.Controllers
                     }
                 ).ToList();
 
-            _logger.LogDebug("Found {Count} chat sessions for user {UserId}", results.Count, userId);
-            _logger.LogDebug("Results = {Results}", JsonSerializer.Serialize(results));
+            logger.LogDebug("Found {Count} chat sessions for user {UserId}", results.Count, userId);
+            logger.LogDebug("Results = {Results}", JsonSerializer.Serialize(results));
 
             return results;
         }
@@ -50,7 +38,7 @@ namespace Aesir.Api.Server.Controllers
         public async Task<IEnumerable<AesirChatSessionItem>> SearchChatSessionsAsync(
             [FromRoute] string userId, [FromRoute] string searchTerm)
         {
-            var results = (await _chatHistoryService.SearchChatSessionsAsync(searchTerm, userId))
+            var results = (await chatHistoryService.SearchChatSessionsAsync(searchTerm, userId))
                 .Select(
                     chatSession => new AesirChatSessionItem()
                     {
@@ -60,8 +48,8 @@ namespace Aesir.Api.Server.Controllers
                     }
                 ).ToList();
 
-            _logger.LogDebug("Found {Count} chat sessions for user {UserId} and search term {SearchTerm}", results.Count, userId, searchTerm);
-            _logger.LogDebug("Results = {Results}", JsonSerializer.Serialize(results));
+            logger.LogDebug("Found {Count} chat sessions for user {UserId} and search term {SearchTerm}", results.Count, userId, searchTerm);
+            logger.LogDebug("Results = {Results}", JsonSerializer.Serialize(results));
 
             return results;
         }
@@ -70,7 +58,7 @@ namespace Aesir.Api.Server.Controllers
         [ProducesResponseType(typeof(AesirChatSession), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetChatSessionAsync([FromRoute] Guid id)
         {
-            var found = await _chatHistoryService.GetChatSessionAsync(id);
+            var found = await chatHistoryService.GetChatSessionAsync(id);
 
             if (found is null)
             {
@@ -83,7 +71,7 @@ namespace Aesir.Api.Server.Controllers
         [HttpPut("{id:guid}/{title:required}")]
         public async Task<IActionResult> GetChatSessionAsync([FromRoute] Guid id, [FromRoute] string title)
         {
-            var found = await _chatHistoryService.GetChatSessionAsync(id);
+            var found = await chatHistoryService.GetChatSessionAsync(id);
 
             if (found is null)
             {
@@ -92,7 +80,7 @@ namespace Aesir.Api.Server.Controllers
 
             found.Title = title;
 
-            await _chatHistoryService.UpsertChatSessionAsync(found);
+            await chatHistoryService.UpsertChatSessionAsync(found);
 
             return Ok();
         }
@@ -100,16 +88,16 @@ namespace Aesir.Api.Server.Controllers
         [HttpDelete("{id:guid}")]
         public async Task DeleteChatSessionAsync([FromRoute] Guid id)
         {
-            var found = await _chatHistoryService.GetChatSessionAsync(id);
+            var found = await chatHistoryService.GetChatSessionAsync(id);
             
             var conversationId = found!.Conversation.Id;
             var conversationArgs = ConversationDocumentCollectionArgs.Default;
             conversationArgs.SetConversationId(conversationId);
 
-            await _documentCollectionService.DeleteDocumentsAsync(conversationArgs);
-            await _fileStorageService.DeleteFilesByFolderAsync(conversationId);
+            await documentCollectionService.DeleteDocumentsAsync(conversationArgs);
+            await fileStorageService.DeleteFilesByFolderAsync(conversationId);
 
-            await _chatHistoryService.DeleteChatSessionAsync(id);
+            await chatHistoryService.DeleteChatSessionAsync(id);
         }
     }
 }

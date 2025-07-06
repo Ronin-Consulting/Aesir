@@ -3,17 +3,10 @@ using Npgsql;
 
 namespace Aesir.Api.Server.Data;
 
-public class PgDbContext : IDbContext
+public class PgDbContext(string connectionString) : IDbContext
 {
-    private readonly string _connectionString;
-
-    public PgDbContext(string connectionString)
-    {
-        _connectionString = connectionString;
-    }
-
     public IDbConnection GetConnection()
     {
-        return new NpgsqlConnection(_connectionString);
+        return new NpgsqlConnection(connectionString);
     }
 }

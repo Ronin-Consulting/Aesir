@@ -3,15 +3,8 @@ using System.Text;
 
 namespace Aesir.Api.Server.Services;
 
-public class LoggingHttpMessageHandler : DelegatingHandler
+public class LoggingHttpMessageHandler(ILogger<LoggingHttpMessageHandler> logger) : DelegatingHandler
 {
-    private readonly ILogger<LoggingHttpMessageHandler> _logger;
-
-    public LoggingHttpMessageHandler(ILogger<LoggingHttpMessageHandler> logger)
-    {
-        _logger = logger;
-    }
-
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         if (request == null)
@@ -25,7 +18,7 @@ public class LoggingHttpMessageHandler : DelegatingHandler
             requestContent = await request.Content.ReadAsStringAsync(cancellationToken);
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "[{Id}] HTTP Request: {Method} {Uri} {Headers} {Content}", 
             id, request.Method, request.RequestUri, 
             FormatHeaders(request.Headers), requestContent);
@@ -42,7 +35,7 @@ public class LoggingHttpMessageHandler : DelegatingHandler
                 responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
             }
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "[{Id}] HTTP Response: {StatusCode} {Headers} {Content}", 
                 id, response.StatusCode, 
                 FormatHeaders(response.Headers), responseContent);
@@ -51,7 +44,7 @@ public class LoggingHttpMessageHandler : DelegatingHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{Id}] HTTP Request failed: {Message}", id, ex.Message);
+            logger.LogError(ex, "[{Id}] HTTP Request failed: {Message}", id, ex.Message);
             throw;
         }
     }
