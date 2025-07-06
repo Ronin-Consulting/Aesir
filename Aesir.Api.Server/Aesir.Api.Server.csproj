@@ -27,6 +27,7 @@
         <PackageReference Include="PdfPig" Version="0.1.10" />
         <PackageReference Include="Pgvector" Version="0.3.2" />
         <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.10" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.1" />
         <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="9.0.1" />
         <PackageReference Include="System.Linq.Async" Version="6.0.3" />

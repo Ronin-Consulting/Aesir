@@ -1,4 +1,3 @@
-using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Services;
 using Microsoft.AspNetCore.Mvc;
 

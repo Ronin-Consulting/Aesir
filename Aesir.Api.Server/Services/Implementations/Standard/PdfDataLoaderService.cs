@@ -6,10 +6,11 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
 using Tiktoken;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
-using TextContent = Microsoft.SemanticKernel.TextContent;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
@@ -18,17 +19,20 @@ namespace Aesir.Api.Server.Services.Implementations.Standard;
 public class PdfDataLoaderService<TKey, TRecord>(
     UniqueKeyGenerator<TKey> uniqueKeyGenerator,
     VectorStoreCollection<TKey, TRecord> vectorStoreRecordCollection,
-    IChatCompletionService chatCompletionService,
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     Func<RawContent, LoadPdfRequest, TRecord> recordFactory,
+    IVisionService visionService,
     ILogger<PdfDataLoaderService<TKey, TRecord>> logger) : IPdfDataLoaderService<TKey, TRecord>
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
+    private const string PngMimeType = "image/png";
+    
     // ReSharper disable once StaticMemberInGenericType
     private static readonly Encoder TokenCounter = new(DocumentChunker.DefaultEncoding);
     // ReSharper disable once StaticMemberInGenericType
     private static readonly DocumentChunker DocumentChunker = new(120, 40);
+    
     public async Task LoadPdfAsync(LoadPdfRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.PdfLocalPath))
@@ -118,6 +122,8 @@ public class PdfDataLoaderService<TKey, TRecord>(
 
             await Task.Delay(request.BetweenBatchDelayInMs, cancellationToken).ConfigureAwait(false);
         }
+
+        await visionService.UnloadModelAsync(cancellationToken);
     }
 
     /// <summary>
@@ -178,21 +184,47 @@ public class PdfDataLoaderService<TKey, TRecord>(
                 break;
             }
 
-            foreach (var image in page.GetImages())
+            var images = page.GetImages().ToList();
+            logger.LogDebug("Page {PageNumber}: Found {ImageCount} images", page.Number, images.Count());
+            
+            foreach (var image in images)
             {
+                // Log detailed image information
+                logger.LogDebug("Image details - Width: {Width}, Height: {Height}, BitsPerComponent: {BitsPerComponent}, ColorSpace: {ColorSpace}", 
+                    image.Bounds.Width, image.Bounds.Height, image.BitsPerComponent, image.ColorSpaceDetails?.Type);
+
+                // Try to get image bounds and other properties
+                logger.LogDebug("Image bounds: {Bounds}", image.Bounds);
+
+                ReadOnlyMemory<byte>? imageBytes = null;
+            
+                // Try different image formats in order of preference
                 if (image.TryGetPng(out var png))
                 {
-                    yield return new RawContent { Image = png, PageNumber = page.Number };
+                    imageBytes = png;
+                }
+                else if (image.TryGetBytesAsMemory(out var rawBytes))
+                {
+                    // Convert raw bytes to PNG using System.Drawing or ImageSharp
+                    imageBytes = ConvertToPng(rawBytes);
                 }
                 else
                 {
-                    logger.LogInformation($"Unsupported image format on page {page.Number}");
+                    imageBytes = image.RawMemory;
+                }
+
+                if (imageBytes.HasValue)
+                {
+                    yield return new RawContent { Image = imageBytes.Value, PageNumber = page.Number };
                 }
             }
-
+            
             var pageSegmenter = DefaultPageSegmenter.Instance;
 
             var blocks = pageSegmenter.GetBlocks(page.GetWords());
+            
+            logger.LogDebug("Page {PageNumber}: Found {BlockCount} text blocks", page.Number, blocks.Count());
+            
             foreach (var block in blocks)
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -221,15 +253,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
         {
             try
             {
-                var chatHistory = new ChatHistory();
-                chatHistory.AddUserMessage([
-                    new TextContent("What’s in this image?"),
-                    new ImageContent(imageBytes, "image/png"),
-                ]);
-                var result = await chatCompletionService
-                    .GetChatMessageContentsAsync(chatHistory, cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-                return string.Join("\n", result.Select(x => x.Content));
+                return await visionService.GetImageTextAsync(imageBytes, PngMimeType, cancellationToken).ConfigureAwait(false);
             }
             catch (HttpOperationException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
             {
@@ -248,6 +272,26 @@ public class PdfDataLoaderService<TKey, TRecord>(
             }
         }
     }
+    
+    private ReadOnlyMemory<byte> ConvertToPng(ReadOnlyMemory<byte> imageBytes)
+    {
+        try
+        {
+            using var inputStream = new MemoryStream(imageBytes.ToArray());
+            using var outputStream = new MemoryStream();
+        
+            using var image = Image.Load(inputStream);
+            image.Save(outputStream, new PngEncoder());
+        
+            return outputStream.ToArray();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to convert image to PNG format");
+            throw new ApplicationException("Failed to convert image to PNG format", ex);
+        }
+    }
+
 }
 
 public sealed class RawContent

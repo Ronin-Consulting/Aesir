@@ -72,6 +72,27 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         return result.Trim();
     }
 
+    public string? GetContentWithFileName()
+    {
+        if (Role != "user") return Content;
+
+        if (!HasFile()) return Content;
+        
+        // Use regex to remove all <file>...</file> tags
+        var result = System.Text.RegularExpressions.Regex.Replace(
+            Content, 
+            @"<file>.*?</file>", 
+            string.Empty, 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    
+        result = result.Trim();
+
+        result = $"The file is: {GetFileName()}\n{result}";
+        
+        // Clean up any extra whitespace that might be left
+        return result.Trim();
+    }
+
     private static string NormalizeContent(string content)
     {
         if (string.IsNullOrWhiteSpace(content))

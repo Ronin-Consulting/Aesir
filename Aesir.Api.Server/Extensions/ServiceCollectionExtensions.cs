@@ -5,7 +5,6 @@ using Aesir.Api.Server.Services.Implementations.Standard;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.PgVector;
 using Npgsql;
 using OllamaSharp;
@@ -81,7 +80,6 @@ public static class ServiceCollectionExtensions
             return new PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>(
                 serviceProvider.GetRequiredService<UniqueKeyGenerator<Guid>>(),
                 serviceProvider.GetRequiredService<VectorStoreCollection<Guid, AesirGlobalDocumentTextData<Guid>>>(),
-                serviceProvider.GetRequiredService<IChatCompletionService>(),
                 serviceProvider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
                 (rawContent, request) =>
                 {
@@ -96,6 +94,7 @@ public static class ServiceCollectionExtensions
                         Key = Guid.Empty // This will be replaced in the service
                     };
                 },
+                serviceProvider.GetRequiredService<IVisionService>(),
                 serviceProvider
                     .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>>()
             );
@@ -107,7 +106,6 @@ public static class ServiceCollectionExtensions
                 serviceProvider.GetRequiredService<UniqueKeyGenerator<Guid>>(),
                 serviceProvider
                     .GetRequiredService<VectorStoreCollection<Guid, AesirConversationDocumentTextData<Guid>>>(),
-                serviceProvider.GetRequiredService<IChatCompletionService>(),
                 serviceProvider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
                 (rawContent, request) =>
                 {
@@ -122,6 +120,7 @@ public static class ServiceCollectionExtensions
                         Key = Guid.Empty // This will be replaced in the service
                     };
                 },
+                serviceProvider.GetRequiredService<IVisionService>(),
                 serviceProvider
                     .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );

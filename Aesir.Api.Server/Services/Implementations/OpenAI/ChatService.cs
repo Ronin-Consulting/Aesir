@@ -85,8 +85,7 @@ public class ChatService : BaseChatService
             _logger.LogError(ex, "Error generating title using Semantic Kernel IChatCompletionService");
         }
 
-        return request.Conversation.Messages.Last().Content.Substring(0,
-            Math.Min(50, request.Conversation.Messages.Last().Content.Length)) + "...";
+        return request.Conversation.Messages.Last().Content[..Math.Min(50, request.Conversation.Messages.Last().Content.Length)] + "...";
     }
 
     /// <summary>
@@ -96,10 +95,9 @@ public class ChatService : BaseChatService
     /// <returns>A tuple containing the response content, prompt tokens, and completion tokens.</returns>
     protected override async Task<(string content, int promptTokens, int completionTokens)> ExecuteChatCompletionAsync(AesirChatRequest request)
     {
-        var chatHistory = CreateChatHistory(request.Conversation.Messages);
-
         var settings = await CreatePromptExecutionSettingsAsync(request);
-
+        var chatHistory = CreateChatHistory(request.Conversation.Messages);
+        
         var completionResults = await _chatCompletionService.GetChatMessageContentsAsync(
             chatHistory,
             settings,
@@ -132,10 +130,9 @@ public class ChatService : BaseChatService
     /// <returns>An async enumerable of tuples containing content chunks and completion status.</returns>
     protected override async IAsyncEnumerable<(string content, bool isComplete)> ExecuteStreamingChatCompletionAsync(AesirChatRequest request)
     {
-        var chatHistory = CreateChatHistory(request.Conversation.Messages);
-
         var settings = await CreatePromptExecutionSettingsAsync(request);
-
+        var chatHistory = CreateChatHistory(request.Conversation.Messages);
+        
         var streamingResults = _chatCompletionService.GetStreamingChatMessageContentsAsync(
             chatHistory,
             settings,
@@ -143,10 +140,9 @@ public class ChatService : BaseChatService
 
         await foreach (var streamResult in streamingResults)
         {
-            _logger.LogDebug("Received streaming content from Semantic Kernel: {Content}", streamResult.Content);
+            //_logger.LogDebug("Received streaming content from Semantic Kernel: {Content}", streamResult.Content);
 
             var isComplete = streamResult is OpenAIStreamingChatMessageContent { FinishReason: ChatFinishReason.Stop };
-
             yield return (streamResult.Content ?? string.Empty, isComplete);
         }
     }
@@ -198,7 +194,7 @@ public class ChatService : BaseChatService
     private static ChatHistory CreateChatHistory(IEnumerable<AesirChatMessage> messages)
     {
         var chatHistory = new ChatHistory();
-
+        
         foreach (var message in messages)
         {
             switch (message.Role)

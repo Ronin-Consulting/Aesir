@@ -5,7 +5,6 @@ using Aesir.Common.Prompts;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.Ollama;
-using Newtonsoft.Json;
 using OllamaSharp;
 using OllamaSharp.Models;
 using OllamaSharp.Models.Chat;
@@ -96,7 +95,8 @@ public class ChatService : BaseChatService
             message.Content += completion!.Message.Content;
         }
 
-        return message.Content.Trim('"');
+        var result = message.Content.Trim('"');
+        return result.Length > 50 ? $"{result[..47]}..." : result;
     }
 
     /// <summary>
@@ -121,7 +121,7 @@ public class ChatService : BaseChatService
         
         foreach (var completion in results)
         {
-            _logger.LogDebug("Received Chat Completion Response from Ollama backend: {Json}", JsonConvert.SerializeObject(completion));
+            //_logger.LogDebug("Received Chat Completion Response from Ollama backend: {Json}", JsonConvert.SerializeObject(completion));
             
             content += completion.Content ?? string.Empty;
 
@@ -152,7 +152,7 @@ public class ChatService : BaseChatService
 
         await foreach (var completion in results)
         {
-            _logger.LogDebug("Received Chat Completion Response from Ollama backend: {Json}", JsonConvert.SerializeObject(completion));
+            //_logger.LogDebug("Received Chat Completion Response from Ollama backend: {Json}", JsonConvert.SerializeObject(completion));
 
             var isComplete = completion.InnerContent is ChatDoneResponseStream { Done: true };
             yield return (completion.Content ?? string.Empty, isComplete);
@@ -220,6 +220,6 @@ public class ChatService : BaseChatService
             _ => AuthorRole.User
         };
         
-        return new ChatMessageContent(role, message.GetContentWithoutFileName());
+        return new ChatMessageContent(role, message.GetContentWithFileName());
     }
 }

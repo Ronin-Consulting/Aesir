@@ -48,7 +48,18 @@ public class Program
             // should be transient to always get fresh kernel
             builder.Services.AddTransient<IModelsService, AesirOllama.ModelsService>();
             builder.Services.AddTransient<IChatService, AesirOllama.ChatService>();
-
+            
+            builder.Services.AddTransient<AesirOllama.VisionModelConfig>(serviceProvider =>
+            {
+                var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+                return new AesirOllama.VisionModelConfig
+                {
+                    ModelId = configuration.GetValue<string>("Inference:Ollama:VisionModel") ?? "NoVisionModel",
+                };
+            });
+            // should be transient so during dispose we unload model
+            builder.Services.AddTransient<IVisionService, AesirOllama.VisionService>();
+            
             const string ollamaClientName = "OllamaApiClient";
             builder.Services.AddHttpClient(ollamaClientName, client =>
             {
