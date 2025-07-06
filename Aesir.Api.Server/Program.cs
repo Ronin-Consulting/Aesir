@@ -27,6 +27,17 @@ public class Program
             builder.Services.AddTransient<IModelsService, AesirOpenAI.ModelsService>();
             builder.Services.AddTransient<IChatService, AesirOpenAI.ChatService>();
 
+            builder.Services.AddTransient<AesirOpenAI.VisionModelConfig>(serviceProvider =>
+            {
+                var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+                return new AesirOpenAI.VisionModelConfig
+                {
+                    ModelId = configuration.GetValue<string>("Inference:OpenAI:VisionModel") ?? "NoVisionModel",
+                };
+            });
+            // should be transient so during dispose we unload model
+            builder.Services.AddTransient<IVisionService, AesirOpenAI.VisionService>();
+            
             var apiKey = builder.Configuration["Inference:OpenAI:ApiKey"] ??
                 throw new InvalidOperationException("OpenAI API key not configured");
 

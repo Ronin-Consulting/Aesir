@@ -95,6 +95,7 @@ public static class ServiceCollectionExtensions
                     };
                 },
                 serviceProvider.GetRequiredService<IVisionService>(),
+                serviceProvider.GetRequiredService<IModelsService>(),
                 serviceProvider
                     .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>>()
             );
@@ -121,6 +122,7 @@ public static class ServiceCollectionExtensions
                     };
                 },
                 serviceProvider.GetRequiredService<IVisionService>(),
+                serviceProvider.GetRequiredService<IModelsService>(),
                 serviceProvider
                     .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );

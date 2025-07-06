@@ -58,4 +58,22 @@ public class ModelsService(
 
         return result;
     }
+
+    public Task UnloadChatModelAsync()
+    {
+        // no op
+        return Task.CompletedTask;
+    }
+
+    public Task UnloadEmbeddingModelAsync()
+    {
+        // no op
+        return Task.CompletedTask;
+    }
+
+    public Task UnloadVisionModelAsync()
+    {
+        // no op
+        return Task.CompletedTask;
+    }
 }

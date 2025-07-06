@@ -5,7 +5,6 @@ using Aesir.Api.Server.Models;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.ChatCompletion;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using Tiktoken;
@@ -22,6 +21,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     Func<RawContent, LoadPdfRequest, TRecord> recordFactory,
     IVisionService visionService,
+    IModelsService modelsService,
     ILogger<PdfDataLoaderService<TKey, TRecord>> logger) : IPdfDataLoaderService<TKey, TRecord>
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
@@ -31,7 +31,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
     // ReSharper disable once StaticMemberInGenericType
     private static readonly Encoder TokenCounter = new(DocumentChunker.DefaultEncoding);
     // ReSharper disable once StaticMemberInGenericType
-    private static readonly DocumentChunker DocumentChunker = new(120, 40);
+    private static readonly DocumentChunker DocumentChunker = new(250, 50);
     
     public async Task LoadPdfAsync(LoadPdfRequest request, CancellationToken cancellationToken)
     {
@@ -123,7 +123,8 @@ public class PdfDataLoaderService<TKey, TRecord>(
             await Task.Delay(request.BetweenBatchDelayInMs, cancellationToken).ConfigureAwait(false);
         }
 
-        await visionService.UnloadModelAsync(cancellationToken);
+        await modelsService.UnloadVisionModelAsync();
+        await modelsService.UnloadEmbeddingModelAsync();
     }
 
     /// <summary>

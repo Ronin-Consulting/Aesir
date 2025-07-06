@@ -2,28 +2,24 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.Ollama;
-using OllamaSharp;
 
 namespace Aesir.Api.Server.Services.Implementations.Ollama;
 
 [Experimental("SKEXP0070")]
-public class VisionService : IVisionService, IAsyncDisposable
+public class VisionService : IVisionService
 {
     private readonly ILogger<VisionService> _logger;
     private readonly IChatCompletionService _chatCompletionService;
-    private readonly OllamaApiClient _ollamaApiClient;
     private readonly string _visionModel;
 
     public VisionService(
         ILogger<VisionService> logger, 
         VisionModelConfig  visionModelConfig,
-        IChatCompletionService chatCompletionService,
-        OllamaApiClient  ollamaApiClient
+        IChatCompletionService chatCompletionService
         )
     {
         _logger = logger;
         _chatCompletionService = chatCompletionService;
-        _ollamaApiClient = ollamaApiClient;
         _visionModel = visionModelConfig.ModelId;
     }
     
@@ -49,34 +45,6 @@ public class VisionService : IVisionService, IAsyncDisposable
             .ConfigureAwait(false);
         
         return string.Join("\n", result.Select(x => x.Content));
-    }
-
-    public async Task UnloadModelAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            await _ollamaApiClient.RequestModelUnloadAsync(_visionModel, cancellationToken: cancellationToken);
-        }
-        catch
-        {
-            _logger.LogWarning("Failed to unload vision model");
-        }
-    }
-
-    protected virtual async ValueTask DisposeAsyncCore()
-    {
-        await UnloadModelAsync();
-        
-        if (_ollamaApiClient is IAsyncDisposable ollamaApiClientAsyncDisposable)
-            await ollamaApiClientAsyncDisposable.DisposeAsync();
-        else
-            _ollamaApiClient.Dispose();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await DisposeAsyncCore();
-        GC.SuppressFinalize(this);
     }
 }
 

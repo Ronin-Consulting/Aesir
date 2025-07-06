@@ -11,8 +11,6 @@ public class ModelsService(
     IConfiguration configuration)
     : IModelsService
 {
-    private readonly ILogger<ChatService> _logger = logger;
-
     public async Task<IEnumerable<AesirModelInfo>> GetModelsAsync()
     {
         // only ever one embedding model
@@ -60,5 +58,53 @@ public class ModelsService(
         }));
 
         return models;
+    }
+
+    public async Task UnloadChatModelAsync()
+    {
+        var allowedModelNames = (configuration.GetSection("Inference:Ollama:ChatModels").Get<string[]>()
+                                 ?? throw new InvalidOperationException("No chat models configured")).ToList();
+
+        await Parallel.ForEachAsync(allowedModelNames, async (modelName, token) =>
+        {
+            try
+            {
+                await api.RequestModelUnloadAsync(modelName, token);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Unload of chat model had error: {Error}", ex);
+            }
+        });
+    }
+
+    public async Task UnloadEmbeddingModelAsync()
+    {
+        var modelName = configuration.GetValue<string>("Inference:Ollama:EmbeddingModel")
+                                 ?? throw new InvalidOperationException("No embedding model configured");
+        
+        try
+        {
+            await api.RequestModelUnloadAsync(modelName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Unload of embedding model had error: {Error}", ex);
+        }
+    }
+
+    public async Task UnloadVisionModelAsync()
+    {
+        var modelName = configuration.GetValue<string>("Inference:Ollama:VisionModel")
+                        ?? throw new InvalidOperationException("No vision model configured");
+
+        try
+        {
+            await api.RequestModelUnloadAsync(modelName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Unload of vision model had error: {Error}", ex);
+        }
     }
 }
