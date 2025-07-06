@@ -22,14 +22,22 @@
 - [ ] Implement RAG
   - [x] Upload - Global Documents
   - [x] Upload - Conversation Documents
-  - [ ] Download
+  - [ ] Download (should we do this?)
   - [x] CRUD
   - [X] Citations
   - [X] Citation Viewer
+  - [x] Handle image based PDFs
+    - [X] Vison Model Backended OCR
+    - [ ] Tesseract .NET?  Is it cross platformed?
+    - [ ] Other - ASPOSE?
+  - [ ] RBAC RAG
   - [ ] Other?
-    - [ ] Smart Context Load - Include chunks or whole document if context big enough
+    - [x] Smarter Chunking - Use Semantic Kernel Chunker (we could make this configurable?)
     - [ ] Re-ranker
     - [ ] Lexical and Semantic Search
+  - [ ] Implement Computer Vision
+    - [X] Support for Local Vision Models
+    - [ ] Support for Hosted Vision Models
 - [ ] Implement Microphone
   - [ ] Record
   - [ ] Stop
@@ -68,3 +76,6 @@ To use OpenAI as the backend:
 ### Embedding Models Tested
 1. mxbai-embed-large:latest
 2. nomic-embed-text:latest
+
+### Vision Models Tested
+1. gemma3:12b (works pretty good)
