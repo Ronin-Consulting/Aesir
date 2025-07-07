@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services.Implementations.Standard;
+using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -12,29 +13,55 @@ using OllamaSharp.Models.Chat;
 namespace Aesir.Api.Server.Services.Implementations.Ollama;
 
 /// <summary>
-/// Provides chat completion services using the Ollama backend.
-/// Handles both synchronous and streaming chat completions.
+/// Represents a chat service implementation utilizing the Ollama backend.
+/// Provides functionality for chat completions, including synchronous and streaming operations.
 /// </summary>
 /// <remarks>
-/// This service requires a running Ollama instance configured via the application settings.
-/// It integrates with the chat history service to persist conversations.
-/// Additionally, it supports document processing through the conversation document collection service,
-/// allowing the AI to reference and utilize documents uploaded by users during chat sessions.
+/// This class builds upon the base chat service implementation to offer extended capabilities specific to the Ollama system.
+/// It leverages an external API client for processing, integrates with chat history for conversation tracking,
+/// and interacts with document collection services for enriched contextual responses in chat sessions.
+/// The service is marked as experimental and may undergo changes in future iterations.
 /// </remarks>
 [Experimental("SKEXP0070")]
 public class ChatService : BaseChatService
 {
-    private readonly OllamaApiClient _api;
-    private readonly IChatCompletionService _chatCompletionService;
     /// <summary>
-    /// Service for managing document collections within conversations, providing functionality
-    /// to search and retrieve information from documents uploaded during chat sessions.
+    /// Client for communicating with the Ollama backend, enabling chat interactions
+    /// and facilitating API requests for chat completions, including synchronous
+    /// and streaming responses.
+    /// </summary>
+    private readonly OllamaApiClient _api;
+
+    /// <summary>
+    /// Provides functionality for executing chat completion tasks using a defined backend service,
+    /// including synchronous and streaming chat message processing.
+    /// </summary>
+    private readonly IChatCompletionService _chatCompletionService;
+
+    /// <summary>
+    /// Provides functionality for managing and interfacing with document collections associated with conversations,
+    /// enabling operations such as document retrieval, search, and interaction within the context of a dialogue.
     /// </summary>
     private readonly IConversationDocumentCollectionService _conversationDocumentCollectionService;
 
+    /// <summary>
+    /// The maximum number of tokens allowed for generating a title during a chat completion.
+    /// This limit controls the token budget used when creating a concise and meaningful title
+    /// based on the user's input and the context of the conversation.
+    /// </summary>
     private const int TitleGenerationMaxTokens = 250;
+
+    /// <summary>
+    /// Temperature setting used during title generation to adjust the randomness in the model's output.
+    /// A lower value makes the output more deterministic, while a higher value introduces more variation.
+    /// </summary>
     private const float TitleGenerationTemperature = 0.2f;
-    private static readonly IPromptProvider PromptProvider = new DefaultPromptProvider();
+
+    /// <summary>
+    /// Provides the default implementation for generating prompts used in chat completion services.
+    /// Used to define and supply structured prompts for interactions and title generation in conversations.
+    /// </summary>
+    private static readonly DefaultPromptProvider PromptProvider = new DefaultPromptProvider();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChatService"/> class.
@@ -42,16 +69,16 @@ public class ChatService : BaseChatService
     /// <param name="logger">Logger for diagnostic information.</param>
     /// <param name="api">Ollama API client for direct API access.</param>
     /// <param name="kernel">Semantic Kernel instance for AI operations.</param>
-    /// <param name="chatCompletionService">Service for chat completions.</param>
-    /// <param name="chatHistoryService">Service for persisting and retrieving chat history.</param>
-    /// <param name="conversationDocumentCollectionService">Service for accessing and searching documents uploaded within conversations.</param>
+    /// <param name="chatCompletionService">Service for generating chat completions.</param>
+    /// <param name="chatHistoryService">Service for managing chat history persistence and retrieval.</param>
+    /// <param name="conversationDocumentCollectionService">Service for handling and querying documents within conversations.</param>
     public ChatService(
         ILogger<ChatService> logger,
         OllamaApiClient api,
         Kernel kernel,
         IChatCompletionService chatCompletionService,
         IChatHistoryService chatHistoryService,
-        IConversationDocumentCollectionService  conversationDocumentCollectionService)
+        IConversationDocumentCollectionService conversationDocumentCollectionService)
         : base(logger, chatHistoryService, kernel)
     {
         _api = api;
@@ -62,7 +89,7 @@ public class ChatService : BaseChatService
     /// <summary>
     /// Generates a title for a chat session based on the user's first message.
     /// </summary>
-    /// <param name="request">The chat request containing the user's message.</param>
+    /// <param name="request">The chat request containing the conversation details and user's message.</param>
     /// <returns>A concise title summarizing the user's message.</returns>
     protected override async Task<string> GetTitleForUserMessageAsync(AesirChatRequest request)
     {
@@ -102,13 +129,14 @@ public class ChatService : BaseChatService
     /// <summary>
     /// Executes a chat completion request and returns the content and token usage.
     /// </summary>
-    /// <param name="request">The chat request to process.</param>
-    /// <returns>A tuple containing the response content, prompt tokens, and completion tokens.</returns>
-    protected override async Task<(string content, int promptTokens, int completionTokens)> ExecuteChatCompletionAsync(AesirChatRequest request)
+    /// <param name="request">An instance of <see cref="AesirChatRequest"/> representing the chat request details.</param>
+    /// <returns>A tuple containing the response content as a string, the number of prompt tokens used as an integer, and the number of completion tokens used as an integer.</returns>
+    protected override async Task<(string content, int promptTokens, int completionTokens)> ExecuteChatCompletionAsync(
+        AesirChatRequest request)
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = CreateChatHistory(request);
-        
+
         var results = await _chatCompletionService.GetChatMessageContentsAsync(
             chatHistory,
             settings,
@@ -138,8 +166,9 @@ public class ChatService : BaseChatService
     /// Executes a streaming chat completion request and returns content chunks with completion status.
     /// </summary>
     /// <param name="request">The chat request to process.</param>
-    /// <returns>An async enumerable of tuples containing content chunks and completion status.</returns>
-    protected override async IAsyncEnumerable<(string content, bool isComplete)> ExecuteStreamingChatCompletionAsync(AesirChatRequest request)
+    /// <returns>An asynchronous enumerable of tuples containing content chunks and a boolean indicating the completion status.</returns>
+    protected override async IAsyncEnumerable<(string content, bool isComplete)> ExecuteStreamingChatCompletionAsync(
+        AesirChatRequest request)
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = CreateChatHistory(request);
@@ -169,12 +198,12 @@ public class ChatService : BaseChatService
     private async Task<OllamaPromptExecutionSettings> CreatePromptExecutionSettingsAsync(AesirChatRequest request)
     {
         await Task.CompletedTask;
-        
+
         var settings = new OllamaPromptExecutionSettings
         {
             ModelId = request.Model
         };
-        
+
         if (request.Conversation.Messages.Any(m => m.HasFile()))
         {
             settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();

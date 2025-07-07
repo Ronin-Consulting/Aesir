@@ -1,62 +1,60 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json.Serialization;
+using Aesir.Common.Models;
 
 namespace Aesir.Client.Models;
 
-public class AesirChatSession
+/// <summary>
+/// Represents a chat session in the Aesir client. This class provides functionality for managing
+/// messages within a chat conversation and includes default initialization for new chat sessions.
+/// </summary>
+public class AesirChatSession : AesirChatSessionBase
 {
-    [JsonPropertyName("id")]
-    public Guid Id { get; set; } = Guid.NewGuid();
-
-    [JsonPropertyName("user_id")]
-    public string UserId { get; set; }
-    
-    [JsonPropertyName("updated_at")]
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
-    
-    [JsonPropertyName("conversation")]
-    public AesirConversation Conversation { get; set; } = new()
+    /// <summary>
+    /// Represents a chat session with client-specific defaults, containing metadata, messages, and conversation context.
+    /// </summary>
+    public AesirChatSession()
     {
-        Id = Guid.NewGuid().ToString(),
-        Messages = new List<AesirChatMessage>()
+        Id = Guid.NewGuid();
+        Title = "Chat Session (Client)";
+        Conversation = new AesirConversation()
         {
-            AesirChatMessage.NewSystemMessage()
-        }
-    };
+            Id = Guid.NewGuid().ToString(),
+            Messages = new List<AesirChatMessage>()
+            {
+                AesirChatMessage.NewSystemMessage()
+            }
+        };
+    }
 
-    [JsonPropertyName("title")]
-    public string Title  { get; set; } = "Chat Session (Client)";
-    
+    /// <summary>
+    /// Adds a new message to the current conversation if it is not already present.
+    /// </summary>
+    /// <param name="message">The chat message to be added to the conversation.</param>
     public void AddMessage(AesirChatMessage message)
     {
         if (Conversation.Messages.Contains(message)) return;
         
         Conversation.Messages.Add(message);
     }
-    
+
+    /// <summary>
+    /// Removes a specified message from the conversation's message collection.
+    /// </summary>
+    /// <param name="message">The AesirChatMessage instance to be removed from the conversation.</param>
     public void RemoveMessage(AesirChatMessage message)
     {
         Conversation.Messages.Remove(message);
     }
-    
+
+    /// <summary>
+    /// Retrieves the list of messages from the current conversation in the chat session.
+    /// </summary>
+    /// <returns>
+    /// A list of messages representing the conversation history.
+    /// </returns>
     public IList<AesirChatMessage> GetMessages()
     {
         return Conversation.Messages;
     }
-}
-
-public class AesirChatSessionItem
-{
-    [JsonPropertyName("id")]
-    public Guid Id { get; set; }
-    
-    [JsonPropertyName("user_id")]
-    public string UserId { get; set; }
-    
-    [JsonPropertyName("title")]
-    public string Title { get; set; } = "Chat Session (Client)";
-    
-    [JsonPropertyName("updated_at")]
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
 }

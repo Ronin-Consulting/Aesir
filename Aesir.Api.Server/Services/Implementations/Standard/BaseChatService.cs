@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
+using Aesir.Common.Models;
 using Microsoft.SemanticKernel;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;

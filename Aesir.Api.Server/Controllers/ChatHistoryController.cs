@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services;
+using Aesir.Common.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Aesir.Api.Server.Controllers

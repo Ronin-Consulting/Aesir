@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Aesir.Api.Server.Models;
+namespace Aesir.Common.Models;
 
 /// <summary>
 /// Represents a conversation containing a collection of chat messages.

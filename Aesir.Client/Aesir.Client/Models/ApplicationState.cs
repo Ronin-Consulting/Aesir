@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using Aesir.Client.Services;
+using Aesir.Common.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Aesir.Client.Models;

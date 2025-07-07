@@ -7,6 +7,7 @@ using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
+using Aesir.Common.Models;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -26,7 +27,7 @@ namespace Aesir.Client.ViewModels;
 /// and communication with services for chat, file upload, and other related functionalities.
 /// </summary>
 /// <remarks>
-/// This class integrates with MVVM principles and utilizes CommunityToolkit.Mvvm for state management and messaging.
+/// This class integrates with MVVM principles and uses CommunityToolkit.Mvvm for state management and messaging.
 /// It manages user interactions such as sending chat messages, toggling the microphone, handling chat history, and selecting files for upload.
 /// </remarks>
 public partial class MainViewViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>,

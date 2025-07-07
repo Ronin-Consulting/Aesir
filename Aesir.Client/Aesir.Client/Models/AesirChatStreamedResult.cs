@@ -1,22 +1,19 @@
-using System;
-using System.Text.Json.Serialization;
+using Aesir.Common.Models;
 
 namespace Aesir.Client.Models;
 
-public class AesirChatStreamedResult
+/// <summary>
+/// Represents a streamed result of a chat session in the Aesir system.
+/// Inherits from <see cref="AesirChatStreamedResultBase"/> and is specifically used
+/// in the client context to handle chat stream responses.
+/// </summary>
+public class AesirChatStreamedResult : AesirChatStreamedResultBase
 {
-    [JsonPropertyName("id")] 
-    public string Id { get; set; } = null!;
-
-    [JsonPropertyName("chat_session_id")]
-    public Guid? ChatSessionId { get; set; }
-    
-    [JsonPropertyName("conversation_id")] 
-    public string ConversationId { get; set; } = null!;
-
-    [JsonPropertyName("title")] 
-    public string Title { get; set; } = "Chat Session (Client)";
-    
-    [JsonPropertyName("delta")] 
-    public AesirChatMessage Delta { get; set; } = null!;
+    /// <summary>
+    /// Represents a streamed result for a chat session specifically in the client context.
+    /// </summary>
+    public AesirChatStreamedResult()
+    {
+        Title = "Chat Session (Client)";
+    }
 }

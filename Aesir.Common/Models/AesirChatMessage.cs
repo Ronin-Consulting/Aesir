@@ -1,28 +1,29 @@
 using System.Text.Json.Serialization;
+using Aesir.Common.Prompts;
 
-namespace Aesir.Api.Server.Models;
+namespace Aesir.Common.Models;
 
 /// <summary>
-/// Represents a single chat message with role-based content and file attachment support.
+/// Represents a chat message within the Aesir system.
 /// </summary>
 public class AesirChatMessage : IEquatable<AesirChatMessage>
 {
     /// <summary>
-    /// Gets or sets the role of the message sender (e.g., "user", "assistant", "system").
+    /// Gets or sets the role of the participant in the chat message (e.g., "user", "assistant", "system").
     /// </summary>
     [JsonPropertyName("role")]
     public string Role { get; set; } = null!;
 
     /// <summary>
-    /// Gets or sets the content of the message.
+    /// Gets or sets the content of the message. This may include plain text, formatted content, or embedded file references.
     /// </summary>
     [JsonPropertyName("content")]
     public string Content { get; set; } = null!;
 
     /// <summary>
-    /// Determines whether the message contains a file attachment reference.
+    /// Determines if the message content contains a file reference.
     /// </summary>
-    /// <returns>True if the message contains a file reference; otherwise, false.</returns>
+    /// <returns>True if the content includes a file reference; otherwise, false.</returns>
     public bool HasFile()
     {
         if (Role != "user") return false;
@@ -36,9 +37,9 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     }
 
     /// <summary>
-    /// Adds or replaces a file reference in the message content.
+    /// Adds or updates a file reference in the content of the message.
     /// </summary>
-    /// <param name="filename">The filename to add to the message.</param>
+    /// <param name="filename">The name of the file to be added or updated in the content.</param>
     public void AddFile(string filename)
     {
         if (Role != "user") return;
@@ -59,9 +60,9 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     }
 
     /// <summary>
-    /// Extracts the filename from the message content if present.
+    /// Extracts the file name from the message content if a file tag is present.
     /// </summary>
-    /// <returns>The filename if found; otherwise, null.</returns>
+    /// <returns>The extracted file name if a file tag exists; otherwise, null.</returns>
     public string? GetFileName()
     {
         if (Role != "user") return null;
@@ -75,17 +76,15 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         
         return match.Success ? match.Groups[1].Value : null;
     }
-    
+
     /// <summary>
-    /// Gets the message content with file references removed.
+    /// Gets the message content with file references removed and formats it for display.
     /// </summary>
-    /// <returns>The message content without file references.</returns>
+    /// <returns>The message content with all file references stripped, formatted for display.</returns>
     public string? GetContentWithoutFileName()
     {
-        if (Role != "user") return Content;
+        if (Role != "user" || !HasFile()) return Content;
 
-        if (!HasFile()) return Content;
-        
         // Use regex to remove all <file>...</file> tags
         var result = System.Text.RegularExpressions.Regex.Replace(
             Content, 
@@ -98,15 +97,13 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     }
 
     /// <summary>
-    /// Gets the message content with file references formatted for display.
+    /// Gets the message content with file references included and formatted for display.
     /// </summary>
-    /// <returns>The message content with file information formatted for display.</returns>
+    /// <returns>The message content with file references included and formatted for display.</returns>
     public string? GetContentWithFileName()
     {
-        if (Role != "user") return Content;
+        if (Role != "user" || !HasFile()) return Content;
 
-        if (!HasFile()) return Content;
-        
         // Use regex to remove all <file>...</file> tags
         var result = System.Text.RegularExpressions.Regex.Replace(
             Content, 
@@ -123,10 +120,11 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     }
 
     /// <summary>
-    /// Normalizes message content by removing outer HTML container tags.
+    /// Normalizes the content string by trimming whitespace, removing outer HTML tags,
+    /// and processing any additional formatting to simplify the content structure.
     /// </summary>
-    /// <param name="content">The content to normalize.</param>
-    /// <returns>The normalized content.</returns>
+    /// <param name="content">The original content string to be normalized.</param>
+    /// <returns>The normalized content string, with unnecessary outer HTML tags removed and trimmed whitespace.</returns>
     private static string NormalizeContent(string content)
     {
         if (string.IsNullOrWhiteSpace(content))
@@ -169,24 +167,28 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     }
 
     /// <summary>
-    /// Creates a new system message with the specified content.
+    /// Creates a new system message with the specified content and context.
     /// </summary>
-    /// <param name="content">The message content.</param>
-    /// <returns>A new system message.</returns>
-    public static AesirChatMessage NewSystemMessage(string content)
+    /// <param name="content">The optional content of the system message. If null, a default system message will be used based on the specified context.</param>
+    /// <param name="context">The context of the system message used to determine the default content when no content is provided.</param>
+    /// <returns>A new instance of <see cref="AesirChatMessage"/> configured as a system message.</returns>
+    public static AesirChatMessage NewSystemMessage(string? content = null, PromptContext context = PromptContext.Business)
     {
+        var promptProvider = new DefaultPromptProvider();
+        var defaultSystemContent = promptProvider.GetSystemPrompt(context).Content;
+        
         return new AesirChatMessage()
         {
             Role = "system",
-            Content = content
+            Content = content ?? defaultSystemContent
         };
     }
 
     /// <summary>
-    /// Creates a new assistant message with the specified content.
+    /// Creates a new message with the role of 'assistant' and assigns the specified content to it.
     /// </summary>
-    /// <param name="content">The message content.</param>
-    /// <returns>A new assistant message.</returns>
+    /// <param name="content">The content of the assistant's message.</param>
+    /// <returns>A new instance of <see cref="AesirChatMessage"/> representing an assistant message with the specified content.</returns>
     public static AesirChatMessage NewAssistantMessage(string content)
     {
         return new AesirChatMessage()
@@ -199,8 +201,8 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     /// <summary>
     /// Creates a new user message with the specified content.
     /// </summary>
-    /// <param name="content">The message content.</param>
-    /// <returns>A new user message with normalized content.</returns>
+    /// <param name="content">The content of the user message.</param>
+    /// <returns>A new instance of <see cref="AesirChatMessage"/> representing a user message.</returns>
     public static AesirChatMessage NewUserMessage(string content)
     {
         return new AesirChatMessage()
@@ -210,6 +212,11 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         };
     }
 
+    /// <summary>
+    /// Determines whether the specified AesirChatMessage is equal to the current instance.
+    /// </summary>
+    /// <param name="other">The AesirChatMessage to compare with the current instance.</param>
+    /// <returns><c>true</c> if the specified message is equal to the current instance; otherwise, <c>false</c>.</returns>
     public bool Equals(AesirChatMessage? other)
     {
         if (other is null) return false;
@@ -217,6 +224,11 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         return Role == other.Role && Content == other.Content;
     }
 
+    /// <summary>
+    /// Determines whether the specified object is equal to the current instance.
+    /// </summary>
+    /// <param name="obj">The object to compare with the current instance.</param>
+    /// <returns>True if the specified object is equal to the current instance; otherwise, false.</returns>
     public override bool Equals(object? obj)
     {
         if (obj is null) return false;
@@ -225,6 +237,10 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         return Equals((AesirChatMessage)obj);
     }
 
+    /// <summary>
+    /// Serves as the default hash function for the AesirChatMessage class by combining its Role and Content properties.
+    /// </summary>
+    /// <returns>A hash code for the current AesirChatMessage instance.</returns>
     public override int GetHashCode()
     {
         return HashCode.Combine(Role, Content);

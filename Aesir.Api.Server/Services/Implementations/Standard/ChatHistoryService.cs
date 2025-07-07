@@ -1,5 +1,6 @@
 using Aesir.Api.Server.Data;
 using Aesir.Api.Server.Models;
+using Aesir.Common.Models;
 using Dapper;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
@@ -14,6 +15,7 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
     static ChatHistoryService()
     {
         SqlMapper.AddTypeHandler(new JsonTypeHandler<AesirConversation>());
+        SqlMapper.AddTypeHandler(new JsonTypeHandler<AesirChatMessage>());
         SqlMapper.AddTypeHandler(new JsonTypeHandler<AesirChatMessage>());
     }
 

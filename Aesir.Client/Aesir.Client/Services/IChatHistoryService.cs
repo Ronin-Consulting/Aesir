@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Aesir.Client.Models;
+using Aesir.Common.Models;
 
 namespace Aesir.Client.Services;
 

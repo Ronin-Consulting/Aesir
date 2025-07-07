@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Aesir.Client.Models;
 using Aesir.Client.ViewModels;
+using Aesir.Common.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.Services.Implementations.Standard;

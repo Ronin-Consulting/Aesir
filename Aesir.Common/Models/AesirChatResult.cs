@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Aesir.Api.Server.Models;
+namespace Aesir.Common.Models;
 
 /// <summary>
 /// Represents the result of a chat completion request including conversation data and token usage statistics.
