@@ -4,6 +4,12 @@ using Microsoft.SemanticKernel;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
+/// <summary>
+/// Provides a base implementation for chat services with common functionality.
+/// </summary>
+/// <param name="logger">The logger instance for recording operations.</param>
+/// <param name="chatHistoryService">The chat history service for managing conversation persistence.</param>
+/// <param name="kernel">The semantic kernel instance for AI operations.</param>
 [Experimental("SKEXP0070")]
 public abstract class BaseChatService(
     ILogger logger,

@@ -3,6 +3,10 @@ using Microsoft.SemanticKernel;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
+/// <summary>
+/// Provides logging functionality for inference operations including function invocations and prompt rendering.
+/// </summary>
+/// <param name="logger">The logger instance for recording inference operations.</param>
 public class InferenceLoggingService(ILogger<InferenceLoggingService> logger)
     : IFunctionInvocationFilter, IPromptRenderFilter, IAutoFunctionInvocationFilter
 {

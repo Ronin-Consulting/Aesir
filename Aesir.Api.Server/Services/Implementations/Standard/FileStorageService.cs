@@ -3,7 +3,12 @@ using Aesir.Api.Server.Models;
 using Dapper;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
- 
+
+/// <summary>
+/// Provides file storage functionality using a database backend.
+/// </summary>
+/// <param name="logger">The logger instance for recording operations.</param>
+/// <param name="dbContext">The database context for data access.</param>
 public class FileStorageService(ILogger<FileStorageService> logger, IDbContext dbContext) : IFileStorageService
 {
     private readonly ILogger<FileStorageService> _logger = logger;

@@ -4,6 +4,12 @@ using OllamaSharp;
 
 namespace Aesir.Api.Server.Services.Implementations.Ollama;
 
+/// <summary>
+/// Provides model management services using the Ollama backend.
+/// </summary>
+/// <param name="logger">The logger instance for recording operations.</param>
+/// <param name="api">The Ollama API client for model operations.</param>
+/// <param name="configuration">The application configuration for model settings.</param>
 [Experimental("SKEXP0070")]
 public class ModelsService(
     ILogger<ChatService> logger,

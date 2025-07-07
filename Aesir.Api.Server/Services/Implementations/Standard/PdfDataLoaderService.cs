@@ -13,6 +13,13 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
+/// <summary>
+/// Provides PDF data loading services for extracting and storing text content from PDF files.
+/// </summary>
+/// <typeparam name="TKey">The type of the key used to identify records.</typeparam>
+/// <typeparam name="TRecord">The type of the text data record.</typeparam>
+/// <param name="uniqueKeyGenerator">The key generator for creating unique identifiers.</param>
+/// <param name="vectorStoreRecordCollection">The vector store collection for storing text records.</param>
 // NOTE: REFACTOR SOON... inject in to document collection services
 [Experimental("SKEXP0001")]
 public class PdfDataLoaderService<TKey, TRecord>(

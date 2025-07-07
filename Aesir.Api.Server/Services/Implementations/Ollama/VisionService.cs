@@ -5,6 +5,12 @@ using Microsoft.SemanticKernel.Connectors.Ollama;
 
 namespace Aesir.Api.Server.Services.Implementations.Ollama;
 
+/// <summary>
+/// Provides vision AI services using the Ollama backend.
+/// </summary>
+/// <param name="logger">The logger instance for recording operations.</param>
+/// <param name="visionModelConfig">The configuration for the vision model.</param>
+/// <param name="chatCompletionService">The chat completion service for processing vision requests.</param>
 [Experimental("SKEXP0070")]
 public class VisionService(
     ILogger<VisionService> logger,

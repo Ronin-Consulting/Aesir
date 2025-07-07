@@ -4,6 +4,11 @@ using Dapper;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
+/// <summary>
+/// Provides chat history management functionality using a database backend.
+/// </summary>
+/// <param name="logger">The logger instance for recording operations.</param>
+/// <param name="dbContext">The database context for data access.</param>
 public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext dbContext) : IChatHistoryService
 {
     static ChatHistoryService()

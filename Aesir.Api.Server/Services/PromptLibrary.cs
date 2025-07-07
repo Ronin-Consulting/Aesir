@@ -2,13 +2,25 @@ using Aesir.Common.Prompts;
 
 namespace Aesir.Api.Server.Services;
 
+/// <summary>
+/// Provides a centralized library for accessing system and condense prompt templates.
+/// </summary>
 public class PromptLibrary
 {
-    private static readonly IPromptProvider _promptProvider = new DefaultPromptProvider();
+    /// <summary>
+    /// The prompt provider used to retrieve prompts.
+    /// </summary>
+    private static readonly IPromptProvider PromptProvider = new DefaultPromptProvider();
 
+    /// <summary>
+    /// Gets the default system prompt template for business context.
+    /// </summary>
     public static string DefaultSystemPromptTemplate => 
-        _promptProvider.GetSystemPrompt(PromptContext.Business).Content;
+        PromptProvider.GetSystemPrompt(PromptContext.Business).Content;
 
+    /// <summary>
+    /// Gets the default condense prompt template.
+    /// </summary>
     public static string DefaultCondensePromptTemplate => 
-        _promptProvider.GetCondensePrompt().Content;
+        PromptProvider.GetCondensePrompt().Content;
 }
