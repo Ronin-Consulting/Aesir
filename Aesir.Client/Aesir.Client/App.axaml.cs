@@ -33,6 +33,22 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        // {
+        //     desktop.MainWindow = new MvvmSplashWindow()
+        //     {
+        //         DataContext = new SplashViewModel()
+        //     };
+        // }
+        // else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+        // {
+        //     singleView.MainView = new SingleView()
+        //     {
+        //         DataContext = new MainViewViewModel(),
+        //     };
+        // }
+        // base.OnFrameworkInitializationCompleted();
+
         var serviceProvider = ConfigureServices(this);
         var mainViewModel = serviceProvider.GetService<MainViewViewModel>();
         
@@ -42,7 +58,10 @@ public partial class App : Application
             // Without this line you will get duplicate validations from both Avalonia and CT
             //BindingPlugins.DataValidators.RemoveAt(0);
 
-            desktop.MainWindow = new MainWindow().WithViewModel(mainViewModel!);
+            //desktop.MainWindow = new MainWindow().WithViewModel(mainViewModel!);
+            
+            var splashModel = serviceProvider.GetService<SplashViewModel>();
+            desktop.MainWindow = new AesirSplashWindow().WithViewModel(splashModel);
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
@@ -90,6 +109,7 @@ public partial class App : Application
         AppServices.AddTransient<AssistantMessageViewModel>();
         AppServices.AddTransient<ChatHistoryButtonViewModel>();
         AppServices.AddTransient<FileToUploadViewModel>();
+        AppServices.AddTransient<SplashViewModel>();
         
         var delay = Backoff.DecorrelatedJitterBackoffV2(
             medianFirstRetryDelay: TimeSpan.FromSeconds(1), retryCount: 5, fastFirst: true);

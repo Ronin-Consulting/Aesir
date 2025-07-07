@@ -1,0 +1,57 @@
+<u:SplashWindow
+    x:Class="Aesir.Client.Views.AesirSplashWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:u="https://irihi.tech/ursa"
+    xmlns:viewModels="clr-namespace:Aesir.Client.ViewModels"
+    xmlns:views="clr-namespace:Aesir.Client.Views"
+    Title="Starting AESIR"
+    Width="800"
+    Height="600"
+    Icon="/Assets/logo.ico"
+    x:DataType="viewModels:SplashViewModel"
+    CountDown="{x:Null}"
+    mc:Ignorable="d">
+    
+    <u:SplashWindow.Resources>
+        <views:BooleanToForegroundConverter x:Key="BooleanToForegroundConverter" />
+    </u:SplashWindow.Resources>
+
+    <Grid
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        ColumnDefinitions="Auto, Auto"
+        RowDefinitions="Auto, Auto, Auto">
+        <StackPanel Grid.Row="0" Grid.Column="1">
+            <Image Margin="0" VerticalAlignment="Center">
+                <Image.Source>
+                    <SvgImage Source="/Assets/logo.svg" />
+                </Image.Source>
+            </Image>
+        </StackPanel>
+        <ProgressBar
+            Grid.Row="1"
+            Grid.Column="0"
+            Grid.ColumnSpan="2"
+            Margin="0,16,0,0"
+            Value="{Binding Progress}" />
+        <StackPanel
+            Grid.Row="2"
+            Grid.Column="0"
+            Grid.ColumnSpan="2">
+            <TextBlock
+                Margin="0,12,0,12"
+                HorizontalAlignment="Center"
+                FontSize="14"
+                Foreground="{Binding IsError, Converter={StaticResource BooleanToForegroundConverter}}"
+                Text="{Binding Status}" />
+            <TextBlock
+                Margin="0,12,0,0"
+                HorizontalAlignment="Center"
+                FontSize="10"
+                Text="©Rōnin Consulting LLC. All rights reserved." />
+        </StackPanel>
+    </Grid>
+</u:SplashWindow>
