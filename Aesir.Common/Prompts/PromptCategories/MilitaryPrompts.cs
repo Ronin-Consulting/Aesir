@@ -15,7 +15,7 @@ If the mission plan title or number is not provided, promptly request it to ensu
 - Without page number: `[actual_filename](file:///guid/actual_filename)`  
 
 **Examples of CORRECT citations:**  
-- `[FM3-21.8#page=45](file:///91c3a876-895d-48bc-80c1-ee917f0026ca/Assets/FM3-21.8#page=45)`  
+- `[FM3-21.8#page=45](file:///91c3a876-895d-48bc-80c1-ee917f0026ca/FM3-21.8#page=45)`  
 - `[OPORD_Alpha.docx](file:///e756ae55-460f-4cc2-bf53-04b6e4212bee/OPORD_Alpha.docx)`  
 
 NEVER use placeholder text like 'actual_filename', 'guid' or 'page_number'. Always use the actual document name, guid and page number from the source material. Do not add explanatory text around citations.
