@@ -8,8 +8,26 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Aesir.Client.Controls;
 
+/// <summary>
+/// Provides extension methods for Avalonia controls and frameworks to streamline workflow
+/// with view models and clipboard functionality.
+/// </summary>
 public static class AvaloniaExtensions
 {
+    /// Configures a UserControl with the specified ViewModel and manages its lifecycle events.
+    /// <param name="element">
+    /// The UserControl to configure with the ViewModel.
+    /// </param>
+    /// <param name="viewModel">
+    /// The ViewModel (of type ObservableRecipient) to bind to the UserControl. This ViewModel's lifecycle
+    /// will be tied to the logical tree events of the UserControl (e.g., AttachedToLogicalTree, DetachedFromLogicalTree).
+    /// </param>
+    /// <returns>
+    /// The UserControl instance with the ViewModel set as its DataContext.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the provided ViewModel is null.
+    /// </exception>
     public static UserControl WithViewModel(this UserControl element, ObservableRecipient? viewModel)
     {
         if (viewModel == null) throw new InvalidOperationException();
@@ -28,7 +46,13 @@ public static class AvaloniaExtensions
 
         return element;
     }
-    
+
+    /// Associates a view model with the specified window, sets the window's DataContext,
+    /// and manages the activation state of the view model based on the window's lifecycle events.
+    /// <param name="window">The window to associate with the view model.</param>
+    /// <param name="viewModel">The view model to associate with the window. Cannot be null.</param>
+    /// <returns>The window instance, with the associated view model set as its DataContext.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the provided view model is null.</exception>
     public static Window WithViewModel(this Window window, ObservableRecipient? viewModel)
     {
         if (viewModel == null) throw new InvalidOperationException();
@@ -48,6 +72,15 @@ public static class AvaloniaExtensions
         return window;
     }
 
+    /// <summary>
+    /// Retrieves the clipboard instance associated with the application,
+    /// depending on the application's lifetime (classic desktop or single view).
+    /// </summary>
+    /// <param name="viewModel">The view model instance that invokes the method.</param>
+    /// <returns>An instance of <see cref="IClipboard"/> representing the clipboard functionality of the application.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the clipboard functionality is not supported or the application lifetime cannot be determined.
+    /// </exception>
     public static IClipboard GetClipboard(this ObservableRecipient viewModel)
     {
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
