@@ -24,8 +24,8 @@
         VerticalAlignment="Center"
         ColumnDefinitions="Auto, Auto"
         RowDefinitions="Auto, Auto, Auto">
-        <StackPanel Grid.Row="0" Grid.Column="1">
-            <Image Margin="0" VerticalAlignment="Center">
+        <StackPanel Grid.Row="0" Grid.Column="1" Width="700">
+            <Image Margin="0" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <Image.Source>
                     <SvgImage Source="/Assets/logo.svg" />
                 </Image.Source>
