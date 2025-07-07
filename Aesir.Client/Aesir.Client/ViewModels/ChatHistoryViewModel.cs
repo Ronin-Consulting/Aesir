@@ -18,12 +18,13 @@ using Humanizer;
 namespace Aesir.Client.ViewModels;
 
 /// <summary>
-/// Represents the ViewModel responsible for managing and displaying the chat history in a grouped collection.
+/// Represents the ViewModel responsible for managing and presenting chat history grouped by date.
 /// </summary>
 /// <remarks>
-/// This ViewModel interacts with the application's state and chat history service to load and refresh
-/// the chat history. It listens to property changes and specific messages related to the chat history status
-/// to update the user interface accordingly. It also handles resource disposal to ensure proper cleanup.
+/// This ViewModel interacts with the application state and chat history service to load, group, and refresh
+/// chat history data. It also listens for property changes and messages related to changes in chat history
+/// to ensure the UI remains in sync with the underlying data. Proper resource management is facilitated via
+/// the implementation of the IDisposable interface for cleanup purposes.
 /// </remarks>
 /// <seealso cref="ObservableRecipient" />
 /// <seealso cref="IRecipient{TMessage}" />
@@ -33,55 +34,50 @@ public partial class ChatHistoryViewModel(
     IChatHistoryService chatHistoryService)
     : ObservableRecipient, IRecipient<PropertyChangedMessage<bool>>, IRecipient<ChatHistoryChangedMessage>, IDisposable
 {
-    /// Represents a grouped collection of chat history items organized by date.
-    /// This property contains an `ObservableGroupedCollection` where each group is identified
-    /// by a string representing a human-readable date (e.g., "Today" or "Yesterday"). Each group
-    /// contains a collection of `ChatHistoryButtonViewModel` items that represent individual chat
-    /// session entries.
-    /// The collection is dynamically populated and updated based on changes in chat session data.
+    /// Represents a collection of chat history items grouped by date.
+    /// This property holds an `ObservableGroupedCollection` where each group is identified by a
+    /// human-readable date string (e.g., "Today", "Yesterday"). Each group contains a set of
+    /// `ChatHistoryButtonViewModel` objects representing individual chat session entries.
+    /// Automatically refreshed when chat session data changes, it enables efficient display
+    /// and categorization of chat history in the user interface.
     public ObservableGroupedCollection<string, ChatHistoryButtonViewModel> ChatHistoryByDate { get; } = [];
 
     /// <summary>
-    /// A <see cref="CancellationTokenSource"/> instance used to manage and control the cancellation of
-    /// debounce operations for search functionality within the <see cref="ChatHistoryViewModel"/>.
+    /// Manages the cancellation of debounce operations for handling user input changes,
+    /// such as search functionality in the <see cref="ChatHistoryViewModel"/>.
     /// </summary>
     /// <remarks>
-    /// This variable is essential for debouncing search input to minimize redundant operations and improve performance.
-    /// It is re-initialized whenever the search input changes, ensuring timely cancellation of ongoing tasks.
+    /// This <see cref="CancellationTokenSource"/> instance is used to ensure efficient processing by allowing
+    /// the cancellation of pending tasks when the input changes rapidly. It helps prevent redundant
+    /// computations and ensures only the most recent input triggers the desired operations.
+    /// The token source is re-initialized whenever new input occurs to support timely task cancellation.
     /// </remarks>
     private CancellationTokenSource _debounceTokenSource = null!;
 
     /// <summary>
-    /// Specifies the delay duration, in milliseconds, used for debouncing operations such as search text input.
-    /// This delay allows the system to wait for a brief period of inactivity before executing the associated task,
-    /// thereby reducing unnecessary repetitive operations.
+    /// Represents the delay duration, in milliseconds, used for debouncing certain operations
+    /// within the ViewModel, such as reacting to changes in the search text input.
+    /// This value helps reduce unnecessary frequent executions by waiting for a brief period
+    /// of inactivity before triggering the associated operation, improving performance and responsiveness.
     /// </summary>
     private const int DebounceDelayMs = 300; // 300ms delay
 
-    /// <summary>
-    /// Represents the minimum length a search string must have before initiating a search operation.
-    /// </summary>
-    /// <remarks>
-    /// Used to ensure that search operations are not performed with excessively short inputs,
-    /// which helps optimize performance and avoid redundant or unnecessary queries.
-    /// </remarks>
+    /// Represents the minimum number of characters required in a search string
+    /// before a search operation is triggered.
+    /// This constant is used to prevent search queries from being executed for
+    /// inputs that are too short, thereby improving performance and avoiding
+    /// unnecessary processing or network requests.
     private const int MinSearchLength = 3; // Minimum characters to start searching
 
-    /// <summary>
-    /// Represents the text entered by the user to search within the chat history.
-    /// This property is bound to the UI and updated as the user types input.
-    /// </summary>
-    /// <remarks>
-    /// The search functionality is enabled when the length of the input text
-    /// meets or exceeds the defined minimum search length.
-    /// </remarks>
-    [ObservableProperty]
-    private string _searchText = string.Empty;
+    /// Represents the text input used to search within the chat history.
+    /// This variable is updated dynamically as the user enters or modifies the search query.
+    /// The search operation is initiated only when the input text length satisfies the minimum required characters.
+    [ObservableProperty] private string _searchText = string.Empty;
 
-    /// Handles the event when the search text is modified. This method handles debounce logic for
-    /// search execution and manages cancellation of previous searches if applicable.
-    /// <param name="value">The updated search text input. If empty or shorter than the minimum
-    /// search length, the full chat history will be reloaded.</param>
+    /// Handles the event when the search text is modified. This method incorporates debounce logic
+    /// to delay search execution and cancels any ongoing search operations if necessary.
+    /// <param name="value">The newly updated search text input. If the input is blank or does not meet
+    /// the minimum required length for a search, the entire chat history is reloaded.</param>
     partial void OnSearchTextChanged(string value)
     {
         // Cancel any pending search
@@ -90,8 +86,9 @@ public partial class ChatHistoryViewModel(
             _debounceTokenSource.Cancel();
             _debounceTokenSource.Dispose();
         }
+
         _debounceTokenSource = new CancellationTokenSource();
-        
+
         if (string.IsNullOrWhiteSpace(value) || value.Length < MinSearchLength)
         {
             // If search is cleared or too short, reload full history
@@ -111,44 +108,41 @@ public partial class ChatHistoryViewModel(
             }, TaskContinuationOptions.OnlyOnRanToCompletion);
     }
 
-    /// <summary>
-    /// Invoked when the view model is activated. This method is responsible for initializing
-    /// and refreshing the state related to chat history. It clears existing chat session data
-    /// and updates the grouped chat history list. Additionally, it triggers the asynchronous
-    /// loading of chat history data on the UI thread.
-    /// </summary>
+    /// Handles activation of the ViewModel. This method initializes the view model state by
+    /// clearing existing chat session data and resetting the grouped chat history collection.
+    /// It also schedules the asynchronous loading of the chat history data on the UI thread.
     protected override void OnActivated()
     {
         base.OnActivated();
 
         ChatHistoryByDate.Clear();
         appState.ChatSessions.Clear();
-        
+
         Dispatcher.UIThread.InvokeAsync(LoadChatHistoryAsync);
     }
 
-    /// Searches the chat history using the provided search query and updates the display with the results.
-    /// <param name="searchQuery">The search query used to filter chat history items.</param>
+    /// Searches the chat history with the specified search query, retrieves matching chat sessions,
+    /// and updates the display with the results.
+    /// <param name="searchQuery">The search query used to filter and retrieve relevant chat history items.</param>
     /// <returns>A task that represents the asynchronous search operation.</returns>
     private async Task SearchChatHistoryAsync(string searchQuery)
     {
-        var foundChatSessions = 
+        var foundChatSessions =
             await chatHistoryService.SearchChatSessionsAsync("Unknown", searchQuery);
-        
-        RefreshChatHistoryDisplay(foundChatSessions ?? Array.Empty<AesirChatSessionItem>());
+
+        RefreshChatHistoryDisplay(foundChatSessions ?? []);
     }
 
-    /// <summary>
     /// Refreshes the chat history display by organizing and grouping chat sessions by date,
-    /// and populating them into the observable collection for display.
-    /// </summary>
-    /// <param name="chatSessions">The collection of chat sessions to be displayed, grouped, and ordered by date.</param>
+    /// and populating the grouped results into the observable collection for viewing.
+    /// <param name="chatSessions">The collection of chat sessions to display. The sessions are grouped by date
+    /// in descending order and added to the observable grouped collection for presentation.</param>
     private void RefreshChatHistoryDisplay(IEnumerable<AesirChatSessionItem> chatSessions)
     {
         ChatHistoryByDate.Clear();
-        
-        foreach (var chatSessionGroup in chatSessions.GroupBy(
-                     cs => DateOnly.FromDateTime(cs.UpdatedAt.ToLocalTime().DateTime)))
+
+        foreach (var chatSessionGroup in chatSessions.GroupBy(cs =>
+                     DateOnly.FromDateTime(cs.UpdatedAt.ToLocalTime().DateTime)))
         {
             foreach (var chatSession in chatSessionGroup)
             {
@@ -171,14 +165,15 @@ public partial class ChatHistoryViewModel(
     }
 
 
-    /// Creates a new instance of the ChatHistoryButtonViewModel and initializes it with the given chat session item.
+    /// Creates a new instance of the ChatHistoryButtonViewModel and initializes it with the provided chat session item.
     /// <param name="cs">The chat session item to associate with the ChatHistoryButtonViewModel.</param>
-    /// <returns>A fully initialized ChatHistoryButtonViewModel instance.</returns>
+    /// <returns>A fully initialized ChatHistoryButtonViewModel instance with its properties set based on the provided chat session item.</returns>
     private ChatHistoryButtonViewModel CreateChatHistoryButtonViewModel(AesirChatSessionItem cs)
     {
         var chatHistoryButtonViewModel = Ioc.Default.GetService<ChatHistoryButtonViewModel>();
 
-        if (chatHistoryButtonViewModel == null) throw new InvalidOperationException("Could not resolve ChatHistoryButtonViewModel");
+        if (chatHistoryButtonViewModel == null)
+            throw new InvalidOperationException("Could not resolve ChatHistoryButtonViewModel");
 
         chatHistoryButtonViewModel.SetChatSessionItem(cs);
         chatHistoryButtonViewModel.IsActive = true;
@@ -187,15 +182,16 @@ public partial class ChatHistoryViewModel(
         return chatHistoryButtonViewModel;
     }
 
-    /// <summary>
-    /// Asynchronously loads the chat history for the current user and updates the chat history display.
-    /// </summary>
-    /// <returns>A <see cref="Task"/> representing the asynchronous operation of loading chat history.</returns>
+    /// Asynchronously loads the chat history for the current user and updates the user interface to reflect
+    /// the retrieved data. This method retrieves the chat sessions from the chat history service, processes
+    /// the data, and updates the grouped collection for display. It includes error handling to manage
+    /// potential exceptions during the data retrieval process.
+    /// <returns>A task representing the asynchronous execution of loading and updating the chat history display.</returns>
     private async Task LoadChatHistoryAsync()
     {
         try
         {
-            var chatSessions = await chatHistoryService.GetChatSessionsAsync("Unknown");
+            var chatSessions = await chatHistoryService.GetChatSessionsAsync();
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (chatSessions != null)
             {
@@ -223,8 +219,9 @@ public partial class ChatHistoryViewModel(
         }
     }
 
-    /// Handles the receipt of a `ChatHistoryChangedMessage`.
-    /// <param name="message">The `ChatHistoryChangedMessage` instance containing the notification data to process.</param>
+    /// Handles the receipt of a `ChatHistoryChangedMessage` to trigger a reload of the chat history.
+    /// <param name="message">The `ChatHistoryChangedMessage` instance containing the notification data
+    /// that initiates the chat history reload process.</param>
     public void Receive(ChatHistoryChangedMessage message)
     {
         Dispatcher.UIThread.InvokeAsync(LoadChatHistoryAsync);
@@ -232,10 +229,10 @@ public partial class ChatHistoryViewModel(
 
     /// Releases all resources used by the ChatHistoryViewModel instance.
     /// This method cancels any ongoing operations associated with the debounce token,
-    /// disposes of the CancellationTokenSource, and suppresses finalization of the object
-    /// to ensure that resources are properly released and garbage collection is optimized.
-    /// It is important to call this method when the ChatHistoryViewModel is no longer needed
-    /// to avoid resource leaks and ensure proper disposal of unmanaged resources.
+    /// disposes of the CancellationTokenSource to release managed resources,
+    /// and suppresses finalization of the instance to optimize garbage collection.
+    /// Proper disposal of this method is required to prevent resource leaks and
+    /// to ensure that no background operations persist after the object is no longer in use.
     public void Dispose()
     {
         if (_debounceTokenSource is { IsCancellationRequested: false })
@@ -243,6 +240,7 @@ public partial class ChatHistoryViewModel(
             _debounceTokenSource.Cancel();
             _debounceTokenSource.Dispose();
         }
+
         _debounceTokenSource = null!;
         GC.SuppressFinalize(this);
     }

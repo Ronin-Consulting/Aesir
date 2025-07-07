@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Aesir.Client.Models;
-using Aesir.Client.Services;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Irihi.Avalonia.Shared.Contracts;
@@ -32,26 +31,7 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
     /// components of the Aesir client application.
     /// </summary>
     private readonly ApplicationState _appState;
-
-    /// <summary>
-    /// Represents a service for interacting with models in the application.
-    /// The _modelService variable is used to access and manage model-related data,
-    /// such as retrieving a list of available models, determining their properties,
-    /// and selecting an appropriate model for specific operations.
-    /// </summary>
-    private readonly IModelService _modelService;
-
-    /// <summary>
-    /// Manages chat session operations, such as loading existing chat sessions
-    /// and processing chat requests within the application.
-    /// </summary>
-    /// <remarks>
-    /// This instance is utilized within <see cref="SplashViewModel"/> to perform
-    /// actions like loading chat sessions asynchronously during application
-    /// initialization.
-    /// </remarks>
-    private readonly IChatSessionManager _chatSessionManager;
-
+    
     /// Represents the current progress value in the range of 0.0 to 100.0, used for tracking the state of an operation or process in the SplashViewModel.
     /// This field is observable and notifies the UI or other bound components when its value changes.
     [ObservableProperty] 
@@ -74,14 +54,10 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
     /// initialization tasks and manages the loading of the application state.
     public SplashViewModel(
         ILogger<SplashViewModel> logger, 
-        ApplicationState appState, 
-        IModelService modelService,
-        IChatSessionManager chatSessionManager)
+        ApplicationState appState)
     {
         _logger = logger;
         _appState = appState;
-        _modelService = modelService;
-        _chatSessionManager = chatSessionManager;
         
         DispatcherTimer.RunOnce(LoadApplication, TimeSpan.FromMilliseconds(20), DispatcherPriority.Default);
     }
@@ -102,6 +78,9 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
     /// </exception>
     private async void LoadApplication()
     {
+        // NOTE: while some of this loading is helpful its more used to test connections to
+        // model host and database.
+        
         Progress += 0;
         
         try
@@ -112,9 +91,10 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
                 try
                 {
                     Progress += 1;
+
+                    await _appState.LoadAvailableModelsAsync();
+                    _appState.SelectedModel = _appState.AvailableModels.FirstOrDefault(m => m.IsChatModel);
                     
-                    var models = await _modelService.GetModelsAsync();
-                    _appState.SelectedModel = models.FirstOrDefault(m => m.IsChatModel);
                     break;
                 }
                 catch
@@ -142,8 +122,23 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
         try
         {
             Status = "Loading existing chat sessions...";
-            
-            await _chatSessionManager.LoadChatSessionAsync();
+
+            for (var i = 0; i < 5; i++)
+            {
+                try
+                {
+                    Progress += 1;
+                    
+                    await _appState.LoadAvailableChatSessionsAsync();
+                    
+                    break;
+                }
+                catch
+                {
+                    if (i == 4) throw;
+                    await Task.Delay(TimeSpan.FromSeconds(2));
+                }
+            }
         }
         catch (Exception ex)
         {

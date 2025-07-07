@@ -33,33 +33,11 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        // if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        // {
-        //     desktop.MainWindow = new MvvmSplashWindow()
-        //     {
-        //         DataContext = new SplashViewModel()
-        //     };
-        // }
-        // else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
-        // {
-        //     singleView.MainView = new SingleView()
-        //     {
-        //         DataContext = new MainViewViewModel(),
-        //     };
-        // }
-        // base.OnFrameworkInitializationCompleted();
-
         var serviceProvider = ConfigureServices(this);
         var mainViewModel = serviceProvider.GetService<MainViewViewModel>();
         
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Line below is needed to remove Avalonia data validation.
-            // Without this line you will get duplicate validations from both Avalonia and CT
-            //BindingPlugins.DataValidators.RemoveAt(0);
-
-            //desktop.MainWindow = new MainWindow().WithViewModel(mainViewModel!);
-            
             var splashModel = serviceProvider.GetService<SplashViewModel>();
             desktop.MainWindow = new AesirSplashWindow().WithViewModel(splashModel);
         }
@@ -86,7 +64,10 @@ public partial class App : Application
         // setup shared services
         AppServices.AddSingleton<ApplicationState>(p =>
         {
-            var appState = new ApplicationState
+            var appState = new ApplicationState(
+                p.GetRequiredService<IModelService>(),
+                p.GetRequiredService<IChatHistoryService>()
+            )
             {
                 IsActive = true
             };

@@ -389,6 +389,12 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     {
         try
         {
+            if (_appState.SelectedModel == null)
+            {
+                await _appState.LoadAvailableModelsAsync();
+                _appState.SelectedModel = _appState.AvailableModels.FirstOrDefault(m=> m.IsChatModel);
+            }
+
             SelectedModelName = _appState.SelectedModel?.Id ?? "No model available";
             ErrorMessage = null;
 

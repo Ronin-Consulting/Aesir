@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using Aesir.Client.Services;
 using Aesir.Common.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -7,59 +9,102 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Aesir.Client.Models;
 
 /// <summary>
-/// Represents the application state that maintains shared, observable properties
-/// and collections used throughout the application.
+/// Maintains the shared and observable state of the application, including
+/// collections and properties related to available models and chat sessions.
 /// </summary>
 /// <remarks>
-/// This class inherits from <see cref="ObservableRecipient"/>, which enables it
-/// to act as a recipient for messages and provides property change notifications.
+/// This class, derived from <see cref="ObservableRecipient"/>, provides
+/// functionality for property change notifications and message handling. It
+/// manages collections like <see cref="AvailableModels"/> and <see cref="ChatSessions"/>,
+/// which are dynamically loaded through asynchronous methods.
 /// </remarks>
-public partial class ApplicationState : ObservableRecipient
+public partial class ApplicationState(IModelService modelService, IChatHistoryService chatHistoryService)
+    : ObservableRecipient
 {
     /// <summary>
-    /// Indicates whether the application is ready to process a new AI-generated message.
-    /// When set to true, the system can accept and handle a new AI message; otherwise, it is not ready.
+    /// Represents a flag indicating the readiness of the application to handle a new AI-generated message.
+    /// This property helps in controlling and synchronizing message processing flows within the application.
     /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedRecipients]
+    [ObservableProperty] [NotifyPropertyChangedRecipients]
     private bool _readyForNewAiMessage = true;
 
     /// <summary>
-    /// Represents the currently selected model in the application state.
-    /// This model is an instance of <see cref="Aesir.Client.Services.AesirModelInfo"/>
-    /// and contains metadata about an Aesir model, including its ID,
-    /// ownership, creation date, and capabilities (such as chat or embedding functionalities).
-    /// Changes to this property notify bound components or services within the application
-    /// to update their state or behavior accordingly.
+    /// Represents the model currently selected by the user in the application.
+    /// This property holds detailed information about the selected model,
+    /// including its metadata retrieved from the Aesir client service.
+    /// Updates to this property trigger notifications to relevant recipients
+    /// to react accordingly in the UI or application logic.
     /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedRecipients]
+    [ObservableProperty] [NotifyPropertyChangedRecipients]
     private AesirModelInfo? _selectedModel;
 
     /// <summary>
-    /// Represents the unique identifier of the currently selected chat session.
-    /// This property is used to track and manage the active chat session within the application's state.
+    /// Stores the unique identifier of the currently active chat session.
+    /// This variable helps track which chat session is selected or being interacted with
+    /// in the application state.
     /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedRecipients]
+    [ObservableProperty] [NotifyPropertyChangedRecipients]
     private Guid? _selectedChatSessionId;
 
     /// <summary>
     /// Represents the currently active chat session in the application.
-    /// This property is observable and notifies recipients when its value changes.
+    /// Maintains the state of the chat session, including its context and interactions.
     /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedRecipients]
+    [ObservableProperty] [NotifyPropertyChangedRecipients]
     private AesirChatSession? _chatSession;
 
     /// <summary>
-    /// Represents a collection of active or previously accessed chat sessions within the application.
+    /// Represents a collection of chat sessions in the application.
+    /// This property is an observable collection used to track and manage
+    /// the list of chat sessions, enabling updates and data binding throughout the application.
     /// </summary>
-    /// <remarks>
-    /// This property is utilized to store and manage chat session data for the user, enabling features
-    /// like displaying chat history and maintaining session state. It is an observable collection
-    /// to reactively update the UI or dependent components upon changes, such as adding or removing
-    /// sessions.
-    /// </remarks>
     public ObservableCollection<AesirChatSessionItem> ChatSessions { get; set; } = [];
+
+    /// <summary>
+    /// Represents the collection of models available for use within the application.
+    /// This collection is populated asynchronously and can include models that
+    /// support various features, such as chat functionalities.
+    /// </summary>
+    public ObservableCollection<AesirModelInfo> AvailableModels { get; set; } = [];
+
+    /// <summary>
+    /// Asynchronously loads the list of available models and updates the shared application state.
+    /// </summary>
+    /// <returns>
+    /// A collection of available models represented as <see cref="AesirModelInfo"/>.
+    /// </returns>
+    public async Task<IEnumerable<AesirModelInfo>> LoadAvailableModelsAsync()
+    {
+        AvailableModels.Clear();
+        
+        var models = await modelService.GetModelsAsync();
+        foreach (var model in models)
+        {
+            AvailableModels.Add(model);
+        }
+        
+        return AvailableModels;
+    }
+
+    /// <summary>
+    /// Asynchronously loads the available chat sessions for the application
+    /// by retrieving them via the chat history service and populates the
+    /// local collection.
+    /// </summary>
+    /// <returns>
+    /// A collection of <see cref="AesirChatSessionItem"/> objects representing
+    /// the loaded chat sessions.
+    /// </returns>
+    public async Task<IEnumerable<AesirChatSessionItem>> LoadAvailableChatSessionsAsync()
+    {
+        ChatSessions.Clear();
+
+        var chatSessions = await chatHistoryService.GetChatSessionsAsync();
+        foreach (var chatSession in chatSessions)
+        {
+            ChatSessions.Add(chatSession);
+        }
+        
+        return ChatSessions;
+    }
 }

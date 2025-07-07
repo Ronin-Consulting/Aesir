@@ -16,7 +16,7 @@ public interface IChatHistoryService
     /// </summary>
     /// <param name="userId">The unique identifier of the user whose chat sessions are to be retrieved.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains a collection of <see cref="AesirChatSessionItem"/> objects, or null if no sessions are available.</returns>
-    Task<IEnumerable<AesirChatSessionItem>?> GetChatSessionsAsync(string userId);
+    Task<IEnumerable<AesirChatSessionItem>?> GetChatSessionsAsync(string userId = "Unknown");
 
     /// <summary>
     /// Searches for chat sessions associated with a specific user, filtered by a search term.
@@ -24,7 +24,7 @@ public interface IChatHistoryService
     /// <param name="userId">The unique identifier of the user whose chat sessions are being searched.</param>
     /// <param name="searchTerm">The term used to search within chat session titles or metadata.</param>
     /// <returns>A collection of matching chat session items as <see cref="AesirChatSessionItem"/>, or null if no matches are found.</returns>
-    Task<IEnumerable<AesirChatSessionItem>?> SearchChatSessionsAsync(string userId, string searchTerm);
+    Task<IEnumerable<AesirChatSessionItem>?> SearchChatSessionsAsync(string userId = "Unknown", string searchTerm = "");
 
     /// <summary>
     /// Retrieves a chat session by its unique identifier.

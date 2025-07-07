@@ -37,7 +37,7 @@ public class ChatHistoryService(
     /// </summary>
     /// <param name="userId">The unique identifier of the user whose chat sessions are to be retrieved.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains a collection of <see cref="AesirChatSessionItem"/> objects, or null if no sessions are available.</returns>
-    public async Task<IEnumerable<AesirChatSessionItem>?> GetChatSessionsAsync(string userId)
+    public async Task<IEnumerable<AesirChatSessionItem>?> GetChatSessionsAsync(string userId = "Unknown")
     {
         try
         {
@@ -59,7 +59,7 @@ public class ChatHistoryService(
     /// <param name="userId">The unique identifier of the user whose chat sessions are being searched.</param>
     /// <param name="searchTerm">The search term to filter chat sessions based on their content or metadata.</param>
     /// <returns>A collection of matching chat session items as <see cref="AesirChatSessionItem"/>, or null if no matches are found.</returns>
-    public async Task<IEnumerable<AesirChatSessionItem>?> SearchChatSessionsAsync(string userId, string searchTerm)
+    public async Task<IEnumerable<AesirChatSessionItem>?> SearchChatSessionsAsync(string userId = "Unknown", string searchTerm = "")
     {
         try
         {
