@@ -2,14 +2,27 @@ using System.Text.Json.Serialization;
 
 namespace Aesir.Api.Server.Models;
 
+/// <summary>
+/// Represents a single chat message with role-based content and file attachment support.
+/// </summary>
 public class AesirChatMessage : IEquatable<AesirChatMessage>
 {
+    /// <summary>
+    /// Gets or sets the role of the message sender (e.g., "user", "assistant", "system").
+    /// </summary>
     [JsonPropertyName("role")]
     public string Role { get; set; } = null!;
 
+    /// <summary>
+    /// Gets or sets the content of the message.
+    /// </summary>
     [JsonPropertyName("content")]
     public string Content { get; set; } = null!;
 
+    /// <summary>
+    /// Determines whether the message contains a file attachment reference.
+    /// </summary>
+    /// <returns>True if the message contains a file reference; otherwise, false.</returns>
     public bool HasFile()
     {
         if (Role != "user") return false;
@@ -22,6 +35,10 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
 
     }
 
+    /// <summary>
+    /// Adds or replaces a file reference in the message content.
+    /// </summary>
+    /// <param name="filename">The filename to add to the message.</param>
     public void AddFile(string filename)
     {
         if (Role != "user") return;
@@ -41,6 +58,10 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         }
     }
 
+    /// <summary>
+    /// Extracts the filename from the message content if present.
+    /// </summary>
+    /// <returns>The filename if found; otherwise, null.</returns>
     public string? GetFileName()
     {
         if (Role != "user") return null;
@@ -55,6 +76,10 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         return match.Success ? match.Groups[1].Value : null;
     }
     
+    /// <summary>
+    /// Gets the message content with file references removed.
+    /// </summary>
+    /// <returns>The message content without file references.</returns>
     public string? GetContentWithoutFileName()
     {
         if (Role != "user") return Content;
@@ -72,6 +97,10 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         return result.Trim();
     }
 
+    /// <summary>
+    /// Gets the message content with file references formatted for display.
+    /// </summary>
+    /// <returns>The message content with file information formatted for display.</returns>
     public string? GetContentWithFileName()
     {
         if (Role != "user") return Content;
@@ -93,6 +122,11 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         return result.Trim();
     }
 
+    /// <summary>
+    /// Normalizes message content by removing outer HTML container tags.
+    /// </summary>
+    /// <param name="content">The content to normalize.</param>
+    /// <returns>The normalized content.</returns>
     private static string NormalizeContent(string content)
     {
         if (string.IsNullOrWhiteSpace(content))
@@ -134,6 +168,11 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         return trimmedContent;
     }
 
+    /// <summary>
+    /// Creates a new system message with the specified content.
+    /// </summary>
+    /// <param name="content">The message content.</param>
+    /// <returns>A new system message.</returns>
     public static AesirChatMessage NewSystemMessage(string content)
     {
         return new AesirChatMessage()
@@ -143,6 +182,11 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         };
     }
 
+    /// <summary>
+    /// Creates a new assistant message with the specified content.
+    /// </summary>
+    /// <param name="content">The message content.</param>
+    /// <returns>A new assistant message.</returns>
     public static AesirChatMessage NewAssistantMessage(string content)
     {
         return new AesirChatMessage()
@@ -152,6 +196,11 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         };
     }
 
+    /// <summary>
+    /// Creates a new user message with the specified content.
+    /// </summary>
+    /// <param name="content">The message content.</param>
+    /// <returns>A new user message with normalized content.</returns>
     public static AesirChatMessage NewUserMessage(string content)
     {
         return new AesirChatMessage()
