@@ -19,7 +19,7 @@ public class ChatHistoryService(
         .GetOrAdd("ChatHistoryClient",
             configuration.GetValue<string>("Inference:ChatHistory"));
 
-    public async Task<IEnumerable<AesirChatSessionItem>> GetChatSessionsAsync(string userId)
+    public async Task<IEnumerable<AesirChatSessionItem>?> GetChatSessionsAsync(string userId)
     {
         try
         {
@@ -35,7 +35,7 @@ public class ChatHistoryService(
         }
     }
     
-    public async Task<IEnumerable<AesirChatSessionItem>> SearchChatSessionsAsync(string userId, string searchTerm)
+    public async Task<IEnumerable<AesirChatSessionItem>?> SearchChatSessionsAsync(string userId, string searchTerm)
     {
         try
         {
@@ -53,7 +53,7 @@ public class ChatHistoryService(
         }
     }
     
-    public async Task<AesirChatSession> GetChatSessionAsync(Guid id)
+    public async Task<AesirChatSession?> GetChatSessionAsync(Guid id)
     {
         try
         {

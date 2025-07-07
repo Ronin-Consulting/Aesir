@@ -7,11 +7,11 @@ namespace Aesir.Client.Services;
 
 public interface IChatHistoryService
 {
-    Task<IEnumerable<AesirChatSessionItem>> GetChatSessionsAsync(string userId);
+    Task<IEnumerable<AesirChatSessionItem>?> GetChatSessionsAsync(string userId);
 
-    Task<IEnumerable<AesirChatSessionItem>> SearchChatSessionsAsync(string userId, string searchTerm);
+    Task<IEnumerable<AesirChatSessionItem>?> SearchChatSessionsAsync(string userId, string searchTerm);
     
-    Task<AesirChatSession> GetChatSessionAsync(Guid id);
+    Task<AesirChatSession?> GetChatSessionAsync(Guid id);
 
     Task UpdateChatSessionTitleAsync(Guid id, string title);
     

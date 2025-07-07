@@ -12,22 +12,66 @@ using Avalonia.Controls.ApplicationLifetimes;
 
 namespace Aesir.Client.ViewModels;
 
+/// <summary>
+/// Represents the splash screen's view model that initializes application state
+/// and services. Provides behavior for displaying and managing the splash screen window.
+/// </summary>
 public partial class SplashViewModel: ObservableRecipient, IDialogContext
 {
+    /// <summary>
+    /// Instance of <see cref="Microsoft.Extensions.Logging.ILogger"/> used for logging activities and errors
+    /// within the <see cref="SplashViewModel"/>. This logger facilitates capturing logs for application
+    /// diagnostics, debugging, and troubleshooting. It is initialized through dependency injection
+    /// in the constructor of the <see cref="SplashViewModel"/> class.
+    /// </summary>
     private readonly ILogger<SplashViewModel> _logger;
+
+    /// <summary>
+    /// Represents the instance of the <see cref="ApplicationState"/> class that
+    /// maintains the current application state and data shared across different
+    /// components of the Aesir client application.
+    /// </summary>
     private readonly ApplicationState _appState;
+
+    /// <summary>
+    /// Represents a service for interacting with models in the application.
+    /// The _modelService variable is used to access and manage model-related data,
+    /// such as retrieving a list of available models, determining their properties,
+    /// and selecting an appropriate model for specific operations.
+    /// </summary>
     private readonly IModelService _modelService;
+
+    /// <summary>
+    /// Manages chat session operations, such as loading existing chat sessions
+    /// and processing chat requests within the application.
+    /// </summary>
+    /// <remarks>
+    /// This instance is utilized within <see cref="SplashViewModel"/> to perform
+    /// actions like loading chat sessions asynchronously during application
+    /// initialization.
+    /// </remarks>
     private readonly IChatSessionManager _chatSessionManager;
 
+    /// Represents the current progress value in the range of 0.0 to 100.0, used for tracking the state of an operation or process in the SplashViewModel.
+    /// This field is observable and notifies the UI or other bound components when its value changes.
     [ObservableProperty] 
     private double _progress;
 
+    /// <summary>
+    /// Represents the current status message displayed in the Splash View.
+    /// Typically used to inform the user about the application's initialization progress or other relevant updates.
+    /// </summary>
     [ObservableProperty] 
     private string _status = "Starting...";
 
+    /// <summary>
+    /// Indicates whether an error condition exists in the SplashViewModel.
+    /// </summary>
     [ObservableProperty]
     private bool _isError;
-    
+
+    /// Represents the view model for the splash screen of the application. Handles
+    /// initialization tasks and manages the loading of the application state.
     public SplashViewModel(
         ILogger<SplashViewModel> logger, 
         ApplicationState appState, 
@@ -42,6 +86,20 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
         DispatcherTimer.RunOnce(LoadApplication, TimeSpan.FromMilliseconds(20), DispatcherPriority.Default);
     }
 
+    /// <summary>
+    /// Initializes and loads the application by performing a series of asynchronous tasks such as retrieving available models,
+    /// loading existing chat sessions, and preparing UI resources. This method also manages error handling during the process
+    /// and updates progress and status accordingly. Invokes a close request upon successful completion or schedules a shutdown
+    /// in case of errors.
+    /// </summary>
+    /// <remarks>
+    /// This method is triggered automatically after a short delay upon initializing the SplashViewModel. It interacts with
+    /// external services to determine the application's readiness and updates progress indicators.
+    /// </remarks>
+    /// <exception cref="Exception">
+    /// An exception is logged if there is an error in fetching models or loading chat sessions, and the application
+    /// transitions to an error state.
+    /// </exception>
     private async void LoadApplication()
     {
         Progress += 0;
@@ -113,6 +171,16 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
         RequestClose?.Invoke(this, true);
     }
 
+    /// Shuts down the desktop application when a critical error occurs, such as
+    /// failures during the initialization process or other unrecoverable issues.
+    /// This method is invoked as part of the error handling mechanism when specific
+    /// operations in the application cannot be completed successfully. It ensures
+    /// proper termination of the application to prevent it from remaining in an
+    /// inconsistent or unusable state.
+    /// If the current application lifetime is of type `IClassicDesktopStyleApplicationLifetime`,
+    /// the method will proceed to gracefully terminate the application by calling
+    /// its `Shutdown` method. This approach ensures that any necessary cleanup
+    /// operations associated with application lifetime are executed before the app exits.
     private void ShutdownForError()
     {
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop )
@@ -121,10 +189,24 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
         }
     }
 
+    /// <summary>
+    /// Triggers a request to close the current dialog context.
+    /// </summary>
+    /// <remarks>
+    /// This method invokes the <see cref="RequestClose"/> event, signaling subscribers
+    /// to close the associated dialog or view. The event is raised with a status of `false`.
+    /// </remarks>
     public void Close()
     {
         RequestClose?.Invoke(this, false);
     }
 
+    /// <summary>
+    /// Event triggered to request closing the current dialog or view.
+    /// </summary>
+    /// <remarks>
+    /// This event allows the SplashViewModel to notify subscribers that it should be closed,
+    /// optionally providing additional information or a status flag.
+    /// </remarks>
     public event EventHandler<object?>? RequestClose;
 }

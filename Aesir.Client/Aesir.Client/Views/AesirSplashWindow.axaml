@@ -1,5 +1,5 @@
 <u:SplashWindow
-    x:Class="Aesir.Client.Views.AesirSplashWindow"
+
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -11,6 +11,7 @@
     Width="800"
     Height="600"
     Icon="/Assets/logo.ico"
+    x:Class="Aesir.Client.Views.AesirSplashWindow"
     x:DataType="viewModels:SplashViewModel"
     CountDown="{x:Null}"
     mc:Ignorable="d">
