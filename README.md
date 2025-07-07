@@ -26,10 +26,11 @@
   - [x] CRUD
   - [X] Citations
   - [X] Citation Viewer
-  - [x] Handle image based PDFs
+  - [ ] Handle image based PDFs
     - [X] Vison Model Backended OCR
     - [ ] Tesseract .NET?  Is it cross platformed?
     - [ ] Other - ASPOSE?
+    - [ ] Other - Handle pages with images and text.
   - [ ] RBAC RAG
   - [ ] Other?
     - [x] Smarter Chunking - Use Semantic Kernel Chunker (we could make this configurable?)
