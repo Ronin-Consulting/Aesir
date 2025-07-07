@@ -11,8 +11,17 @@ using OllamaSharp;
 
 namespace Aesir.Api.Server.Extensions;
 
+/// <summary>
+/// Provides extension methods for configuring dependency injection services including Semantic Kernel and vector stores.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// Configures Semantic Kernel services including chat completions, embeddings, vector stores, and document collections.
+    /// </summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configuration">The application configuration.</param>
+    /// <returns>The service collection for method chaining.</returns>
     [Experimental("SKEXP0070")]
     public static IServiceCollection SetupSemanticKernel(this IServiceCollection services, IConfiguration configuration)
     {
@@ -166,11 +175,26 @@ public static class ServiceCollectionExtensions
     }
 }
 
+/// <summary>
+/// Represents configuration for a global document collection.
+/// </summary>
 // ReSharper disable once ClassNeverInstantiated.Global
 internal class GlobalDocumentCollection
 {
+    /// <summary>
+    /// Gets or sets the name of the document collection.
+    /// </summary>
     public string Name { get; set; } = null!;
+    /// <summary>
+    /// Gets or sets a value indicating whether the document collection is enabled.
+    /// </summary>
     public bool IsEnabled { get; set; }
+    /// <summary>
+    /// Gets or sets the plugin name for the document collection.
+    /// </summary>
     public string PluginName { get; set; } = null!;
+    /// <summary>
+    /// Gets or sets the plugin description for the document collection.
+    /// </summary>
     public string PluginDescription { get; set; } = null!;
 }
