@@ -18,12 +18,18 @@ using Path = System.IO.Path;
 namespace Aesir.Api.Server.Services.Implementations.Samurai;
 
 /// <summary>
-/// Provides PDF data loading services for extracting and storing text content from PDF files.
+/// Provides functionality for extracting text content from PDF files, generating embeddings,
+/// and storing the extracted text along with associated metadata in a vector store.
 /// </summary>
-/// <typeparam name="TKey">The type of the key used to identify records.</typeparam>
-/// <typeparam name="TRecord">The type of the text data record.</typeparam>
-/// <param name="uniqueKeyGenerator">The key generator for creating unique identifiers.</param>
-/// <param name="vectorStoreRecordCollection">The vector store collection for storing text records.</param>
+/// <typeparam name="TKey">The type of the unique key used to identify stored records.</typeparam>
+/// <typeparam name="TRecord">The type of the text data record to be stored.</typeparam>
+/// <param name="uniqueKeyGenerator">The service responsible for generating unique keys for records.</param>
+/// <param name="vectorStoreRecordCollection">The collection responsible for storing text records in a vectorized format.</param>
+/// <param name="embeddingGenerator">The generator used to create embeddings from the extracted text.</param>
+/// <param name="recordFactory">A factory function for creating instances of TRecord using raw content and request parameters.</param>
+/// <param name="visionService">The service used for handling vision-related tasks, such as OCR on PDF images.</param>
+/// <param name="modelsService">The service providing access to AI models for text processing tasks.</param>
+/// <param name="logger">The logger instance used for logging operations and events in the data loading process.</param>
 [Experimental("SKEXP0001")]
 public class PdfDataLoaderService<TKey, TRecord>(
     UniqueKeyGenerator<TKey> uniqueKeyGenerator,
@@ -36,13 +42,43 @@ public class PdfDataLoaderService<TKey, TRecord>(
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
+    /// <summary>
+    /// Represents the MIME type for PNG image files.
+    /// </summary>
+    /// <remarks>
+    /// This constant is used to specify the MIME type "image/png" when handling PNG image data,
+    /// particularly for scenarios involving image processing or passing image data to external services.
+    /// </remarks>
     private const string PngMimeType = "image/png";
     
     // ReSharper disable once StaticMemberInGenericType
+    /// <summary>
+    /// A static readonly instance of the <see cref="Encoder"/> class used to count tokens in a string of text.
+    /// </summary>
+    /// <remarks>
+    /// The <c>TokenCounter</c> leverages the default encoding provided by <see cref="DocumentChunker.DefaultEncoding"/>.
+    /// It is utilized for counting the number of tokens in text data within the PDF processing workflow.
+    /// </remarks>
     private static readonly Encoder TokenCounter = new(DocumentChunker.DefaultEncoding);
     // ReSharper disable once StaticMemberInGenericType
+    /// <summary>
+    /// Provides functionality for chunking text into smaller segments based on specified token limits.
+    /// Designed for use in applications where text needs to be divided into manageable pieces,
+    /// such as processing large documents or preparing data for machine learning models.
+    /// </summary>
+    /// <remarks>
+    /// The chunking process divides text into paragraphs and lines, with a maximum number of tokens
+    /// per paragraph and tokens per line. This is useful for efficiently handling large textual data,
+    /// while maintaining contextual integrity of the content.
+    /// </remarks>
     private static readonly DocumentChunker DocumentChunker = new(250, 50);
-    
+
+    /// <summary>
+    /// Loads a PDF document, processes its contents, and stores the data into a vector store collection.
+    /// </summary>
+    /// <param name="request">An object containing details about the PDF file to process, including its local path, file name, and other parameters.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task LoadPdfAsync(LoadPdfRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.PdfLocalPath))
@@ -180,17 +216,17 @@ public class PdfDataLoaderService<TKey, TRecord>(
     }
 
     /// <summary>
-    /// Read the text and images from each page in the provided PDF file.
+    /// Reads the text and images from each page in the provided PDF file.
     /// </summary>
-    /// <param name="pdfPath">The pdf file to read the text and images from.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
-    /// <returns>The text and images from the pdf file, plus the page number that each is on.</returns>
+    /// <param name="pdfPath">The path to the PDF file to extract text and images from.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to monitor for cancellation requests.</param>
+    /// <returns>A collection of <see cref="RawContent"/> objects containing the extracted text, images, and associated page numbers.</returns>
     private IEnumerable<RawContent> LoadTextAndImages(string pdfPath, CancellationToken cancellationToken)
     {
         //Aspose.PDFfor.NET.lic
         var license = new License();
         license.SetLicense("Aspose.PDFfor.NET.lic");
-        
+
         var rawContents = new List<RawContent>();
 
         // ReSharper disable once ConvertToUsingDeclaration
@@ -304,11 +340,11 @@ public class PdfDataLoaderService<TKey, TRecord>(
     }
 
     /// <summary>
-    /// Add a simple retry mechanism to image to text.
+    /// Adds a retry mechanism to convert an image into text using OCR or other vision services.
     /// </summary>
-    /// <param name="imageBytes">The image to generate the text for.</param>
+    /// <param name="imageBytes">The byte data of the image to process.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
-    /// <returns>The generated text.</returns>
+    /// <returns>The extracted text from the image.</returns>
     private async Task<string> ConvertImageToTextWithRetryAsync(
         ReadOnlyMemory<byte> imageBytes,
         CancellationToken cancellationToken)
