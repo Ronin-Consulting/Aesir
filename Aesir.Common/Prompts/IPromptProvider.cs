@@ -12,5 +12,6 @@ public interface IPromptProvider
 public enum PromptContext
 {
     Business,
-    Military
+    Military,
+    Ocr
 }

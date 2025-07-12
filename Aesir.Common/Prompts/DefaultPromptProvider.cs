@@ -11,6 +11,7 @@ public class DefaultPromptProvider : IPromptProvider
         {
             PromptContext.Business => BusinessPrompts.SystemPrompt,
             PromptContext.Military => MilitaryPrompts.SystemPrompt,
+            PromptContext.Ocr => OcrPrompt.SystemPrompt,
             _ => BusinessPrompts.SystemPrompt
         };
     }
