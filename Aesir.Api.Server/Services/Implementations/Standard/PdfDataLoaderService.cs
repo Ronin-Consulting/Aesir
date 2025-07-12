@@ -14,13 +14,17 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 /// <summary>
-/// Provides PDF data loading services for extracting and storing text content from PDF files.
+/// Handles the process of loading PDF files, extracting their content, and storing the resulting textual data into a vector store.
 /// </summary>
-/// <typeparam name="TKey">The type of the key used to identify records.</typeparam>
-/// <typeparam name="TRecord">The type of the text data record.</typeparam>
-/// <param name="uniqueKeyGenerator">The key generator for creating unique identifiers.</param>
-/// <param name="vectorStoreRecordCollection">The vector store collection for storing text records.</param>
-// NOTE: REFACTOR SOON... inject in to document collection services
+/// <typeparam name="TKey">The data type used for the unique key identification of records.</typeparam>
+/// <typeparam name="TRecord">The data type that represents a record of text content.</typeparam>
+/// <param name="uniqueKeyGenerator">Service responsible for creating unique keys for new records.</param>
+/// <param name="vectorStoreRecordCollection">The storage medium used to keep and manage vectorized data records.</param>
+/// <param name="embeddingGenerator">Generator responsible for producing embeddings from text input.</param>
+/// <param name="recordFactory">Function to create records from raw content and load requests.</param>
+/// <param name="visionService">Service for processing visual content if relevant.</param>
+/// <param name="modelsService">Service for accessing and managing AI models used for processing.</param>
+/// <param name="logger">Logger instance for logging operational and debugging information.</param>
 [Experimental("SKEXP0001")]
 public class PdfDataLoaderService<TKey, TRecord>(
     UniqueKeyGenerator<TKey> uniqueKeyGenerator,
@@ -33,13 +37,44 @@ public class PdfDataLoaderService<TKey, TRecord>(
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
+    /// <summary>
+    /// Represents the MIME type for PNG images.
+    /// </summary>
+    /// <remarks>
+    /// This constant is used when processing image content, specifically for
+    /// identifying PNG image data in the context of text extraction or related operations.
+    /// </remarks>
     private const string PngMimeType = "image/png";
     
     // ReSharper disable once StaticMemberInGenericType
+    /// <summary>
+    /// Static encoder instance used for token counting tasks within the PdfDataLoaderService.
+    /// </summary>
+    /// <remarks>
+    /// TokenCounter leverages the default encoding provided by the DocumentChunker to calculate
+    /// the number of tokens in a given text. This is primarily used for determining token counts
+    /// during PDF text processing and subsequent operations in the service.
+    /// </remarks>
     private static readonly Encoder TokenCounter = new(DocumentChunker.DefaultEncoding);
     // ReSharper disable once StaticMemberInGenericType
+    /// <summary>
+    /// Represents a utility for chunking text into smaller segments based on token limits.
+    /// </summary>
+    /// <remarks>
+    /// This class is designed to split text data into manageable pieces by specifying
+    /// the number of tokens per paragraph and per line. It is primarily used in text processing
+    /// pipelines where handling large text inputs in smaller chunks is required.
+    /// </remarks>
+    /// <param name="tokensPerParagraph">The maximum number of tokens allowed per paragraph.</param>
+    /// <param name="tokensPerLine">The maximum number of tokens allowed per line.</param>
     private static readonly DocumentChunker DocumentChunker = new(250, 50);
-    
+
+    /// <summary>
+    /// Loads a PDF file, processes its contents, and stores them into a vector store collection.
+    /// </summary>
+    /// <param name="request">The request containing details about the PDF file, including its local path and processing parameters.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     public async Task LoadPdfAsync(LoadPdfRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.PdfLocalPath))
@@ -135,11 +170,11 @@ public class PdfDataLoaderService<TKey, TRecord>(
     }
 
     /// <summary>
-    /// Add a simple retry mechanism to embedding generation.
+    /// Adds a retry mechanism to the process of generating embeddings.
     /// </summary>
-    /// <param name="text">The text to generate the embedding for.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
-    /// <returns>The generated embedding.</returns>
+    /// <param name="text">The input text for which the embedding is to be generated.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to observe for cancellation requests.</param>
+    /// <returns>A task representing the asynchronous operation, returning the generated embedding as an <see cref="Embedding{T}"/>.</returns>
     private async Task<Embedding<float>> GenerateEmbeddingsWithRetryAsync(string text,
         CancellationToken cancellationToken)
     {
@@ -177,13 +212,15 @@ public class PdfDataLoaderService<TKey, TRecord>(
     }
 
     /// <summary>
-    /// Read the text and images from each page in the provided PDF file.
+    /// Reads the text and images from each page in the provided PDF file.
     /// </summary>
-    /// <param name="pdfPath">The pdf file to read the text and images from.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
-    /// <returns>The text and images from the pdf file, plus the page number that each is on.</returns>
+    /// <param name="pdfPath">The path to the PDF file to extract text and images from.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to observe for cancellation requests.</param>
+    /// <returns>A collection of <see cref="RawContent"/> containing the text, images, and associated page numbers from the PDF file.</returns>
     private IEnumerable<RawContent> LoadTextAndImages(string pdfPath, CancellationToken cancellationToken)
     {
+        var rawContents = new List<RawContent>();
+
         using var document = PdfDocument.Open(pdfPath);
         foreach (var page in document.GetPages())
         {
@@ -195,7 +232,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
             var images = page.GetImages().ToList();
             logger.LogDebug("Page {PageNumber}: Found {ImageCount} images", page.Number, images.Count());
             
-            foreach (var image in images)
+            foreach (var image in images.TakeWhile(_ => !cancellationToken.IsCancellationRequested))
             {
                 // Log detailed image information
                 logger.LogDebug("Image details - Width: {Width}, Height: {Height}, BitsPerComponent: {BitsPerComponent}, ColorSpace: {ColorSpace}", 
@@ -204,7 +241,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
                 // Try to get image bounds and other properties
                 logger.LogDebug("Image bounds: {Bounds}", image.Bounds);
 
-                ReadOnlyMemory<byte>? imageBytes = null;
+                ReadOnlyMemory<byte>? imageBytes;
             
                 // Try different image formats in order of preference
                 if (image.TryGetPng(out var png))
@@ -223,7 +260,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
 
                 if (imageBytes.HasValue)
                 {
-                    yield return new RawContent { Image = imageBytes.Value, PageNumber = page.Number };
+                    rawContents.Add(new RawContent { Image = imageBytes.Value, PageNumber = page.Number });
                 }
             }
             
@@ -231,26 +268,21 @@ public class PdfDataLoaderService<TKey, TRecord>(
 
             var blocks = pageSegmenter.GetBlocks(page.GetWords());
             
-            logger.LogDebug("Page {PageNumber}: Found {BlockCount} text blocks", page.Number, blocks.Count());
-            
-            foreach (var block in blocks)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
+            logger.LogDebug("Page {PageNumber}: Found {BlockCount} text blocks", page.Number, blocks.Count);
 
-                yield return new RawContent { Text = block.Text, PageNumber = page.Number };
-            }
+            rawContents.AddRange(blocks.TakeWhile(_ => !cancellationToken.IsCancellationRequested)
+                .Select(block => new RawContent { Text = block.Text, PageNumber = page.Number }));
         }
+        
+        return rawContents;
     }
 
     /// <summary>
-    /// Add a simple retry mechanism to image to text.
+    /// Adds a simple retry mechanism for converting an image to text.
     /// </summary>
-    /// <param name="imageBytes">The image to generate the text for.</param>
+    /// <param name="imageBytes">The image data to be processed for text extraction.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
-    /// <returns>The generated text.</returns>
+    /// <returns>A task that represents the asynchronous operation, producing the extracted text from the image.</returns>
     private async Task<string> ConvertImageToTextWithRetryAsync(
         ReadOnlyMemory<byte> imageBytes,
         CancellationToken cancellationToken)
@@ -280,7 +312,13 @@ public class PdfDataLoaderService<TKey, TRecord>(
             }
         }
     }
-    
+
+    /// <summary>
+    /// Converts a given image in raw byte format to PNG format.
+    /// </summary>
+    /// <param name="imageBytes">The raw byte array of the input image.</param>
+    /// <returns>A readonly memory containing the PNG-formatted image bytes.</returns>
+    /// <exception cref="ApplicationException">Thrown when the conversion to PNG format fails.</exception>
     private ReadOnlyMemory<byte> ConvertToPng(ReadOnlyMemory<byte> imageBytes)
     {
         try
