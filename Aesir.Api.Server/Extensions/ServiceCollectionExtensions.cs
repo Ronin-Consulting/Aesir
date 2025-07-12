@@ -8,6 +8,7 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.PgVector;
 using Npgsql;
 using OllamaSharp;
+using SamurAI = Aesir.Api.Server.Services.Implementations.Samurai;
 
 namespace Aesir.Api.Server.Extensions;
 
@@ -86,7 +87,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IPdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>(serviceProvider =>
         {
-            return new PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>(
+            return new SamurAI.PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>(
                 serviceProvider.GetRequiredService<UniqueKeyGenerator<Guid>>(),
                 serviceProvider.GetRequiredService<VectorStoreCollection<Guid, AesirGlobalDocumentTextData<Guid>>>(),
                 serviceProvider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
@@ -106,13 +107,13 @@ public static class ServiceCollectionExtensions
                 serviceProvider.GetRequiredService<IVisionService>(),
                 serviceProvider.GetRequiredService<IModelsService>(),
                 serviceProvider
-                    .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>>()
+                    .GetRequiredService<ILogger<SamurAI.PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>>()
             );
         });
 
         services.AddSingleton<IPdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>(serviceProvider =>
         {
-            return new PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>(
+            return new SamurAI.PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>(
                 serviceProvider.GetRequiredService<UniqueKeyGenerator<Guid>>(),
                 serviceProvider
                     .GetRequiredService<VectorStoreCollection<Guid, AesirConversationDocumentTextData<Guid>>>(),
@@ -133,7 +134,7 @@ public static class ServiceCollectionExtensions
                 serviceProvider.GetRequiredService<IVisionService>(),
                 serviceProvider.GetRequiredService<IModelsService>(),
                 serviceProvider
-                    .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
+                    .GetRequiredService<ILogger<SamurAI.PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
         });
 

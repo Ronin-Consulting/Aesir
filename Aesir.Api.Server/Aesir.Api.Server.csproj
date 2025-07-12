@@ -7,7 +7,12 @@
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <EnableSystemDrawingCommon>true</EnableSystemDrawingCommon>
+    </PropertyGroup>
+    
     <ItemGroup>
+        <PackageReference Include="Aspose.PDF.Drawing" Version="25.6.0" />
         <PackageReference Include="Dapper" Version="2.1.66" />
         <PackageReference Include="FluentMigrator" Version="7.1.0" />
         <PackageReference Include="FluentMigrator.Extensions.Postgres" Version="7.1.0" />
@@ -43,6 +48,10 @@
     <ItemGroup>
       <Content Include="..\.dockerignore">
         <Link>.dockerignore</Link>
+      </Content>
+      <None Remove="Aspose.PDFfor.NET.lic" />
+      <Content Include="Aspose.PDFfor.NET.lic">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
     </ItemGroup>
 

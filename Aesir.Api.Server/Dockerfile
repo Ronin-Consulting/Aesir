@@ -1,5 +1,9 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    libgdiplus \
+    libc6-dev
+RUN ln -s /usr/lib/libgdiplus.so /usr/lib/gdiplus.dll
 USER $APP_UID
 WORKDIR /app
 EXPOSE 80

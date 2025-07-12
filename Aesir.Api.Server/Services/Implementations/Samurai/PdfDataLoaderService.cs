@@ -2,16 +2,20 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Models;
+using Aspose.Pdf;
+using Aspose.Pdf.Drawing;
+using Aspose.Pdf.Facades;
+using Aspose.Pdf.Text;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Processing;
 using Tiktoken;
-using UglyToad.PdfPig;
-using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
+using Image = SixLabors.ImageSharp.Image;
+using Path = System.IO.Path;
 
-namespace Aesir.Api.Server.Services.Implementations.Standard;
+namespace Aesir.Api.Server.Services.Implementations.Samurai;
 
 /// <summary>
 /// Provides PDF data loading services for extracting and storing text content from PDF files.
@@ -20,7 +24,6 @@ namespace Aesir.Api.Server.Services.Implementations.Standard;
 /// <typeparam name="TRecord">The type of the text data record.</typeparam>
 /// <param name="uniqueKeyGenerator">The key generator for creating unique identifiers.</param>
 /// <param name="vectorStoreRecordCollection">The vector store collection for storing text records.</param>
-// NOTE: REFACTOR SOON... inject in to document collection services
 [Experimental("SKEXP0001")]
 public class PdfDataLoaderService<TKey, TRecord>(
     UniqueKeyGenerator<TKey> uniqueKeyGenerator,
@@ -184,63 +187,118 @@ public class PdfDataLoaderService<TKey, TRecord>(
     /// <returns>The text and images from the pdf file, plus the page number that each is on.</returns>
     private IEnumerable<RawContent> LoadTextAndImages(string pdfPath, CancellationToken cancellationToken)
     {
-        using var document = PdfDocument.Open(pdfPath);
-        foreach (var page in document.GetPages())
+        //Aspose.PDFfor.NET.lic
+        var license = new License();
+        license.SetLicense("Aspose.PDFfor.NET.lic");
+        
+        var rawContents = new List<RawContent>();
+
+        // ReSharper disable once ConvertToUsingDeclaration
+        using (var document = new Document(pdfPath))
         {
-            if (cancellationToken.IsCancellationRequested)
+            var pdfFileEditor = new PdfFileEditor();
+
+            for (var pageNum = 1; pageNum <= document.Pages.Count; pageNum++)
             {
-                break;
+                var parentDirectory = Path.GetDirectoryName(pdfPath) ?? string.Empty;
+                
+                var pageFile = 
+                    Path.Combine(parentDirectory, 
+                        $"{Path.GetFileNameWithoutExtension(pdfPath)}_{pageNum}{Path.GetExtension(pdfPath)}"
+                    );
+                
+                pdfFileEditor.Extract(pdfPath, [pageNum], pageFile);
+
+                // ReSharper disable once ConvertToUsingDeclaration
+                using (var pageDocument = new Document(pageFile))
+                {
+                    var imageFolder = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+                    var mdFilename =  Path.Combine(parentDirectory, $"{Path.GetFileNameWithoutExtension(pageFile)}.md");
+                    
+                    var hasImages = pageDocument.Pages.First().Resources.Images.Count > 0;
+                    
+                    var textAbsorber = new TextAbsorber();
+                    pageDocument.Pages.First().Accept(textAbsorber);
+                    
+                    var hasText = !string.IsNullOrWhiteSpace(textAbsorber.Text);
+                    
+                    if (!hasText && hasImages)
+                    {
+                        var page = pageDocument.Pages.First();
+                        if (page.Resources.Images.Count <= 0) continue;
+                        
+                        foreach (var image in page.Resources.Images)
+                        {
+                            using var ms = new MemoryStream();
+                            image.Save(ms, ImageFormat.Png);
+                            rawContents.Add(new RawContent
+                            {
+                                PageNumber = pageNum,
+                                Image = ms.ToArray()
+                            });
+                        }
+                    }
+                    else
+                    {
+                        // Create an instance of MarkdownSaveOptions to configure the Markdown export settings
+                        var saveOptions = new MarkdownSaveOptions
+                        {
+                            // Set to false to prevent the use of HTML <img> tags for images in the Markdown output
+                            UseImageHtmlTag = false,
+                            // Specify the directory name where resources (like images) will be stored
+                            ResourcesDirectoryName = imageFolder
+                        };
+                    
+                        // Save PDF document in Markdown format to the specified output file path using the defined save options   
+                        pageDocument.Save(mdFilename, saveOptions);
+                    
+                        // Now pull the markdown into the RawContent
+                        rawContents.Add(new RawContent
+                        {
+                            PageNumber = pageNum,
+                            Text = File.ReadAllText(mdFilename)
+                        });
+                    
+                        // now load the images
+                        var imageFiles = Directory.EnumerateFiles(imageFolder);
+                        rawContents.AddRange(
+                            imageFiles.Select(imageFile => 
+                                new RawContent { PageNumber = pageNum, Image = File.ReadAllBytes(imageFile) }
+                            )
+                        );
+
+                        DeleteDirectoryQuietly(imageFolder);
+                        DeleteFileQuietly(mdFilename);  
+                    }
+                }
+
+                DeleteFileQuietly(pageFile);
             }
+        }
 
-            var images = page.GetImages().ToList();
-            logger.LogDebug("Page {PageNumber}: Found {ImageCount} images", page.Number, images.Count());
-            
-            foreach (var image in images)
+        return rawContents;
+
+        void DeleteDirectoryQuietly(string directoryPath)
+        {
+            try
             {
-                // Log detailed image information
-                logger.LogDebug("Image details - Width: {Width}, Height: {Height}, BitsPerComponent: {BitsPerComponent}, ColorSpace: {ColorSpace}", 
-                    image.Bounds.Width, image.Bounds.Height, image.BitsPerComponent, image.ColorSpaceDetails?.Type);
-
-                // Try to get image bounds and other properties
-                logger.LogDebug("Image bounds: {Bounds}", image.Bounds);
-
-                ReadOnlyMemory<byte>? imageBytes = null;
-            
-                // Try different image formats in order of preference
-                if (image.TryGetPng(out var png))
-                {
-                    imageBytes = png;
-                }
-                else if (image.TryGetBytesAsMemory(out var rawBytes))
-                {
-                    // Convert raw bytes to PNG using System.Drawing or ImageSharp
-                    imageBytes = ConvertToPng(rawBytes);
-                }
-                else
-                {
-                    imageBytes = image.RawMemory;
-                }
-
-                if (imageBytes.HasValue)
-                {
-                    yield return new RawContent { Image = imageBytes.Value, PageNumber = page.Number };
-                }
+                Directory.Delete(directoryPath, true);
             }
-            
-            var pageSegmenter = DefaultPageSegmenter.Instance;
-
-            var blocks = pageSegmenter.GetBlocks(page.GetWords());
-            
-            logger.LogDebug("Page {PageNumber}: Found {BlockCount} text blocks", page.Number, blocks.Count());
-            
-            foreach (var block in blocks)
+            catch (Exception ex)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
+                logger.LogWarning(ex, "Failed to delete directory: {DirectoryPath}", directoryPath);
+            }
+        }
 
-                yield return new RawContent { Text = block.Text, PageNumber = page.Number };
+        void DeleteFileQuietly(string filePath)
+        {
+            try
+            {
+                File.Delete(filePath);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to delete file: {FilePath}", filePath);
             }
         }
     }
@@ -261,7 +319,20 @@ public class PdfDataLoaderService<TKey, TRecord>(
         {
             try
             {
-                return await visionService.GetImageTextAsync(imageBytes, PngMimeType, cancellationToken).ConfigureAwait(false);
+                // Resize the image to a resolution that works well with the vision model
+                using var image = Image.Load(imageBytes.Span);
+                image.Mutate(x => 
+                    x.Resize(new ResizeOptions
+                {
+                    Size = new Size(1024, 1024),
+                    Mode = ResizeMode.Max
+                }));
+                
+                using var ms = new MemoryStream();
+                await image.SaveAsPngAsync(ms, cancellationToken);
+                var resizedImageBytes = new ReadOnlyMemory<byte>(ms.ToArray());
+                
+                return await visionService.GetImageTextAsync(resizedImageBytes, PngMimeType, cancellationToken).ConfigureAwait(false);
             }
             catch (HttpOperationException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
             {
@@ -280,24 +351,4 @@ public class PdfDataLoaderService<TKey, TRecord>(
             }
         }
     }
-    
-    private ReadOnlyMemory<byte> ConvertToPng(ReadOnlyMemory<byte> imageBytes)
-    {
-        try
-        {
-            using var inputStream = new MemoryStream(imageBytes.ToArray());
-            using var outputStream = new MemoryStream();
-        
-            using var image = Image.Load(inputStream);
-            image.Save(outputStream, new PngEncoder());
-        
-            return outputStream.ToArray();
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to convert image to PNG format");
-            throw new ApplicationException("Failed to convert image to PNG format", ex);
-        }
-    }
-
 }

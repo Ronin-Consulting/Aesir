@@ -77,6 +77,8 @@ public class Program
                 var endpoint = builder.Configuration["Inference:Ollama:Endpoint"] ??
                               throw new InvalidOperationException();
                 client.BaseAddress = new Uri($"{endpoint}/api");
+                
+                client.Timeout = TimeSpan.FromSeconds(240);
             })
             .AddHttpMessageHandler<LoggingHttpMessageHandler>();
 

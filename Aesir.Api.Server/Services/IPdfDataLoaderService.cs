@@ -52,3 +52,22 @@ public sealed class LoadPdfRequest
     /// </summary>
     public IDictionary<string, object>? Metadata { get; set; }
 }
+
+public sealed class RawContent
+{
+    public string? Text { get; init; }
+
+    public ReadOnlyMemory<byte>? Image { get; init; }
+
+    public int PageNumber { get; init; }
+}
+
+public class UniqueKeyGenerator<TKey>(Func<TKey> generator)
+    where TKey : notnull
+{
+    /// <summary>
+    /// Generate a unique key.
+    /// </summary>
+    /// <returns>The unique key that was generated.</returns>
+    public TKey GenerateKey() => generator();
+}
