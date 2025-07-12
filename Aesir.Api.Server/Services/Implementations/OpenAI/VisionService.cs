@@ -1,13 +1,40 @@
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+
 namespace Aesir.Api.Server.Services.Implementations.OpenAI;
 
 /// <summary>
 /// Provides vision AI services using the OpenAI backend.
 /// </summary>
-public class VisionService : IVisionService
+public class VisionService(ILogger<VisionService> logger,
+    VisionModelConfig visionModelConfig,
+    IChatCompletionService chatCompletionService) : IVisionService
 {
-    public Task<string> GetImageTextAsync(ReadOnlyMemory<byte> image, string mimeType, CancellationToken cancellationToken = default)
+    private readonly string _visionModel = visionModelConfig.ModelId;
+
+    public async Task<string> GetImageTextAsync(ReadOnlyMemory<byte> image, string mimeType, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("Implement me please.");
+        if (string.IsNullOrWhiteSpace(_visionModel))
+            throw new InvalidOperationException("No vision model provided");
+
+        var chatHistory = new ChatHistory();
+        chatHistory.AddUserMessage([
+            new TextContent("Extract and return only the text visible in the provided image as plain text."),
+            new ImageContent(image, mimeType),
+        ]);
+
+        var settings = new OpenAIPromptExecutionSettings
+        {
+            ModelId = _visionModel,
+            Temperature = 0.2f
+        };
+
+        var result = await chatCompletionService
+            .GetChatMessageContentsAsync(chatHistory, settings, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        return string.Join("\n", result.Select(x => x.Content));
     }
 }
 

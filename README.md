@@ -26,19 +26,19 @@
   - [x] CRUD
   - [X] Citations
   - [X] Citation Viewer
-  - [ ] Handle image based PDFs
+  - [X] Handle image based PDFs
     - [X] Vison Model Backended OCR
-    - [ ] Tesseract .NET?  Is it cross platformed?
-    - [ ] Other - ASPOSE?
-    - [ ] Other - Handle pages with images and text.
+    - [ ] ~~Tesseract .NET? Is it cross platformed?~~
+    - [X] Other - ASPOSE?
+    - [X] Other - Handle pages with images and text.
   - [ ] RBAC RAG
   - [ ] Other?
-    - [x] Smarter Chunking - Use Semantic Kernel Chunker (we could make this configurable?)
+    - [X] Smarter Chunking - Use Semantic Kernel Chunker (we could make this configurable?)
     - [ ] Re-ranker
     - [ ] Lexical and Semantic Search
-  - [ ] Implement Computer Vision
+  - [X] Implement Computer Vision
     - [X] Support for Local Vision Models
-    - [ ] Support for Hosted Vision Models
+    - [X] Support for Hosted Vision Models
 - [ ] Implement Microphone
   - [ ] Record
   - [ ] Stop
