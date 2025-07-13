@@ -1,6 +1,8 @@
 ﻿volumes:
   dbdata:
   letsencryptdata:
+  qdrant_storage:
+
 services:
   aesir:
     image: aesir.api.server
@@ -25,6 +27,7 @@ services:
       - "traefik.http.routers.aesir.entrypoints=websecure"
       - "traefik.http.routers.aesir.tls=true"
       - "traefik.http.routers.aesir.tls.certresolver=letsencryptresolver"
+      - "traefik.http.routers.aesir.service=aesir"
       - "traefik.http.services.aesir.loadbalancer.server.port=80"
   pgdb:
     environment:
@@ -68,3 +71,34 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - letsencryptdata:/letsencrypt
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: always
+    container_name: qdrant
+    environment:
+      - QDRANT__SERVICE__API_KEY=aesir_3a087fa5640958985025b0a03d2f6b0c80253884c5bd7c05f65f2fdf2404d7ab
+    ports:
+      - 6333:6333
+      - 6334:6334
+    expose:
+      - 6333
+      - 6334
+      - 6335
+    configs:
+      - source: qdrant_config
+        target: /qdrant/config/production.yaml
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qdrant.rule=Host(`qdrant.localhost`)"
+      - "traefik.http.routers.qdrant.entrypoints=web"
+      - "traefik.http.routers.qdrant.entrypoints=websecure"
+      - "traefik.http.routers.qdrant.tls=true"
+      - "traefik.http.routers.qdrant.tls.certresolver=letsencryptresolver"
+      - "traefik.http.services.qdrant.loadbalancer.server.port=6333"
+
+configs:
+  qdrant_config:
+    content: |
+      log_level: INFO

@@ -89,7 +89,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
         
         // First delete any existing PDFs with same name
         var toDelete = await vectorStoreRecordCollection.GetAsync(
-                filter: data => true,
+                filter: data => data.Text != null,// dumb because contains is not supported across vectorstore providers
                 int.MaxValue, // this is dumb 
                 cancellationToken: cancellationToken)
             .ToListAsync(cancellationToken: cancellationToken);

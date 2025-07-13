@@ -8,15 +8,15 @@
     <ItemGroup>
         <PackageReference Include="Avalonia.Browser" Version="11.3.2" />
         <PackageReference Include="Material.Icons.Avalonia" Version="2.4.1" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.6" />
-        <PackageReference Include="Semi.Avalonia" Version="11.2.1.8" />
-        <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.2.1.8" />
-        <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.2.1.8" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
+        <PackageReference Include="Semi.Avalonia" Version="11.2.1.9" />
+        <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.2.1.9" />
+        <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.2.1.9" />
         <PackageReference Include="Semi.Avalonia.TreeDataGrid" Version="11.0.10.4" />
-        <PackageReference Include="System.Net.Http.Json" Version="9.0.6" />
-        <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.6" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.6" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.6" />
+        <PackageReference Include="System.Net.Http.Json" Version="9.0.7" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.7" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.7" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.7" />
         <PackageReference Include="Flurl.Http" Version="4.0.2" />
     </ItemGroup>
 

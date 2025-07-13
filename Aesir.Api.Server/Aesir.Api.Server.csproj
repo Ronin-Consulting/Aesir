@@ -17,13 +17,14 @@
         <PackageReference Include="FluentMigrator" Version="7.1.0" />
         <PackageReference Include="FluentMigrator.Extensions.Postgres" Version="7.1.0" />
         <PackageReference Include="FluentMigrator.Runner.Postgres" Version="7.1.0" />
-        <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.6" />
-        <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.6" />
-        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.59.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.59.0-alpha" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.59.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.PgVector" Version="1.59.0-preview" />
-        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.59.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.7" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.7" />
+        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.60.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.60.0-alpha" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.60.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.PgVector" Version="1.60.0-preview" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Qdrant" Version="1.60.0-preview" />
+        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.60.0" />
         <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="Npgsql" Version="9.0.3" />
@@ -33,8 +34,8 @@
         <PackageReference Include="Pgvector" Version="0.3.2" />
         <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.10" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.1" />
-        <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="9.0.1" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3" />
+        <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="9.0.3" />
         <PackageReference Include="System.Linq.Async" Version="6.0.3" />
         <PackageReference Include="Tiktoken" Version="2.2.0" />
         <PackageReference Include="Tiktoken.Encodings.p50k" Version="2.2.0" />

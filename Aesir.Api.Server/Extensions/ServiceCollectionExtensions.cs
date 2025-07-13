@@ -6,6 +6,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.PgVector;
+using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Npgsql;
 using OllamaSharp;
 using SamurAI = Aesir.Api.Server.Services.Implementations.Samurai;
@@ -31,12 +32,13 @@ public static class ServiceCollectionExtensions
             ? configuration.GetSection("Inference:OpenAI:EmbeddingModel").Value
             : configuration.GetSection("Inference:Ollama:EmbeddingModel").Value;
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        // UNCOMMENT TO ENABLE PG VECTOR
+        // var connectionString = configuration.GetConnectionString("DefaultConnection");
+        //
+        // var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+        // dataSourceBuilder.UseVector();
 
-        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-        dataSourceBuilder.UseVector();
-
-        services.AddSingleton(dataSourceBuilder.Build());
+        //services.AddSingleton(dataSourceBuilder.Build());
 
         var kernelBuilder = services.AddKernel();
 
@@ -60,31 +62,50 @@ public static class ServiceCollectionExtensions
 
             kernelBuilder.AddOllamaEmbeddingGenerator(ollamaClient);
         }
-
+        
+        // UNCOMMENT TO ENABLE PG VECTOR
+        // var vsOptions = new PostgresVectorStoreOptions
+        // {
+        //     Schema = "aesir",
+        //     EmbeddingGenerator = embeddingGenerator
+        // };
+        // services.AddPostgresVectorStore(vsOptions);
+        //
+        // var rcOptions = new PostgresCollectionOptions
+        // {
+        //     Schema = "aesir",
+        //     EmbeddingGenerator = embeddingGenerator
+        // };
+        // services.AddPostgresCollection<Guid, AesirConversationDocumentTextData<Guid>>("aesir_conversation_document",
+        //     rcOptions);
+        // services.AddPostgresCollection<Guid, AesirGlobalDocumentTextData<Guid>>("aesir_global_document", rcOptions);
+        
         var embeddingGenerator = services.BuildServiceProvider()
             .GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
-
-        var vsOptions = new PostgresVectorStoreOptions
+        
+        var collectionOptions = new QdrantCollectionOptions
         {
-            Schema = "aesir",
             EmbeddingGenerator = embeddingGenerator
         };
-        services.AddPostgresVectorStore(vsOptions);
-
-        var rcOptions = new PostgresCollectionOptions
-        {
-            Schema = "aesir",
-            EmbeddingGenerator = embeddingGenerator
-        };
-
-
-        services.AddPostgresCollection<Guid, AesirConversationDocumentTextData<Guid>>("aesir_conversation_document",
-            rcOptions);
-        services.AddPostgresCollection<Guid, AesirGlobalDocumentTextData<Guid>>("aesir_global_document", rcOptions);
-
+        
+        kernelBuilder.Services.AddQdrantCollection<Guid, AesirConversationDocumentTextData<Guid>>(
+            name: "aesir_conversation_document",
+            host: "qdrant",
+            port: 6334,
+            https: false,
+            "aesir_3a087fa5640958985025b0a03d2f6b0c80253884c5bd7c05f65f2fdf2404d7ab",
+            collectionOptions);
+        
+        kernelBuilder.Services.AddQdrantCollection<Guid, AesirGlobalDocumentTextData<Guid>>(
+            name: "aesir_global_document",
+            host: "qdrant",
+            port: 6334,
+            https: false,
+            "aesir_3a087fa5640958985025b0a03d2f6b0c80253884c5bd7c05f65f2fdf2404d7ab",
+            collectionOptions);
+        
         services.AddSingleton(new UniqueKeyGenerator<Guid>(Guid.NewGuid));
-
-
+        
         services.AddSingleton<IPdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>(serviceProvider =>
         {
             return new SamurAI.PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>(

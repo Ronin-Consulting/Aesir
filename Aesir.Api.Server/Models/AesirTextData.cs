@@ -22,7 +22,7 @@ public class AesirTextData<TKey>
     /// Gets or sets the text content of the document.
     /// </summary>
     [TextSearchResultValue]
-    [VectorStoreData(StorageName = "text")]
+    [VectorStoreData(StorageName = "text", IsFullTextIndexed = true)]
     public string? Text { get; set; }
 
     /// <summary>
