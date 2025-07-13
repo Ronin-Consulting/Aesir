@@ -61,7 +61,7 @@ public class ChatService : BaseChatService
     /// Provides the default implementation for generating prompts used in chat completion services.
     /// Used to define and supply structured prompts for interactions and title generation in conversations.
     /// </summary>
-    private static readonly DefaultPromptProvider PromptProvider = new DefaultPromptProvider();
+    private static readonly DefaultPromptProvider PromptProvider = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChatService"/> class.
@@ -201,7 +201,8 @@ public class ChatService : BaseChatService
 
         var settings = new OllamaPromptExecutionSettings
         {
-            ModelId = request.Model
+            ModelId = request.Model,
+            NumPredict = request.MaxTokens ?? 8192
         };
 
         if (request.Conversation.Messages.Any(m => m.HasFile()))
@@ -219,7 +220,7 @@ public class ChatService : BaseChatService
             settings.Temperature = (float?)request.Temperature;
         else if (request.TopP.HasValue)
             settings.TopP = (float?)request.TopP;
-
+        
         return settings;
     }
 

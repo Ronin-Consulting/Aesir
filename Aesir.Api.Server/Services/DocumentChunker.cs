@@ -11,7 +11,7 @@ namespace Aesir.Api.Server.Services;
 /// <param name="tokensPerParagraph">The maximum number of tokens per paragraph chunk.</param>
 /// <param name="tokensPerLine">The maximum number of tokens per line chunk.</param>
 [Experimental("SKEXP0050")]
-public class DocumentChunker(int tokensPerParagraph, int tokensPerLine)
+public class DocumentChunker(int tokensPerParagraph = 400, int tokensPerLine = 150)
 {
     /// <summary>
     /// Gets the default encoding used for token counting.
@@ -44,6 +44,8 @@ public class DocumentChunker(int tokensPerParagraph, int tokensPerLine)
         // return chunks;
         
         var lines = TextChunker.SplitPlainTextLines(text, tokensPerLine);
-        return TextChunker.SplitPlainTextParagraphs(lines, tokensPerParagraph, chunkHeader: chunkHeader);
+        return TextChunker.SplitPlainTextParagraphs(lines, tokensPerParagraph, 
+            overlapTokens: (int)(tokensPerParagraph * 0.2), 
+            chunkHeader: chunkHeader);
     }
 }

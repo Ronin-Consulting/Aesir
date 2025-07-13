@@ -71,7 +71,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
     /// per paragraph and tokens per line. This is useful for efficiently handling large textual data,
     /// while maintaining contextual integrity of the content.
     /// </remarks>
-    private static readonly DocumentChunker DocumentChunker = new(250, 50);
+    private static readonly DocumentChunker DocumentChunker = new();
 
     /// <summary>
     /// Loads a PDF document, processes its contents, and stores the data into a vector store collection.
@@ -190,7 +190,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
             {
                 var options = new EmbeddingGenerationOptions()
                 {
-                    Dimensions = 768
+                    Dimensions = 1024
                 };
                 var vector = (await embeddingGenerator
                     .GenerateAsync(text, options, cancellationToken: cancellationToken).ConfigureAwait(false)).Vector;

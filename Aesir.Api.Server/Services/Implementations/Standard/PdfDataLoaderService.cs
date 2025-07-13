@@ -67,7 +67,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
     /// </remarks>
     /// <param name="tokensPerParagraph">The maximum number of tokens allowed per paragraph.</param>
     /// <param name="tokensPerLine">The maximum number of tokens allowed per line.</param>
-    private static readonly DocumentChunker DocumentChunker = new(250, 50);
+    private static readonly DocumentChunker DocumentChunker = new();
 
     /// <summary>
     /// Loads a PDF file, processes its contents, and stores them into a vector store collection.
@@ -186,7 +186,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
             {
                 var options = new EmbeddingGenerationOptions()
                 {
-                    Dimensions = 768
+                    Dimensions = 1024
                 };
                 var vector = (await embeddingGenerator
                     .GenerateAsync(text, options, cancellationToken: cancellationToken).ConfigureAwait(false)).Vector;
