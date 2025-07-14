@@ -19,6 +19,8 @@
   - [x] Regenerate assistant message
   - [x] Edit user message
   - [ ] Play message
+- [ ] Implement Text to Image Chat
+- [ ] Support "Thinking" In Chat 
 - [ ] Implement RAG
   - [x] Upload - Global Documents
   - [x] Upload - Conversation Documents
