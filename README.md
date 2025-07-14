@@ -39,6 +39,7 @@
   - [X] Implement Computer Vision
     - [X] Support for Local Vision Models
     - [X] Support for Hosted Vision Models
+- [ ] Tools/MCP Integration
 - [ ] Implement Microphone
   - [ ] Record
   - [ ] Stop
