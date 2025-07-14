@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace Aesir.Client.Services.Implementations.Standard;
 
 /// <summary>
-/// Manages chat sessions including loading chat sessions and processing chat requests.
+/// Provides functionality for managing chat sessions, including loading chat sessions and handling chat requests.
 /// </summary>
 public class ChatSessionManager(
     IChatHistoryService chatHistoryService,
@@ -20,48 +20,49 @@ public class ChatSessionManager(
     : IChatSessionManager
 {
     /// <summary>
-    /// Provides access to the chat history services for retrieving, managing,
-    /// and updating chat session data. This service abstraction is responsible
-    /// for handling chat session-related operations, such as fetching a
-    /// specific chat session or managing session metadata.
+    /// Represents a service dedicated to accessing and managing historical chat data.
+    /// Responsible for operations such as retrieving chat sessions, searching within chat
+    /// histories, and performing updates or deletions of session data.
     /// </summary>
     private readonly IChatHistoryService _chatHistoryService =
         chatHistoryService ?? throw new ArgumentNullException(nameof(chatHistoryService));
 
     /// <summary>
-    /// Represents the service responsible for handling chat-related operations such as processing chat requests,
-    /// streaming chat completions, or interacting with backend chat functionality.
+    /// Represents the service responsible for handling chat-related operations,
+    /// including processing chat requests, streaming chat completions, and interfacing
+    /// with the chat backend functionality.
     /// </summary>
     /// <remarks>
-    /// This service is used internally within the <see cref="ChatSessionManager"/> to manage and coordinate chat interactions
-    /// between the application and the underlying chat infrastructure.
+    /// This service is a core dependency for managing chat interactions, ensuring that
+    /// request handling and response streaming are performed efficiently within the
+    /// application.
     /// </remarks>
     private readonly IChatService _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
 
     /// <summary>
-    /// Represents the application's shared state used across the chat session manager.
+    /// Maintains and provides access to the current state of the application,
+    /// including details related to the active chat session and selected identifiers.
+    /// This variable acts as a shared resource for managing runtime application data
+    /// across the chat session manager.
     /// </summary>
-    /// <remarks>
-    /// This variable manages and provides access to the current state of the application,
-    /// including active chat session details and selected chat session identifiers.
-    /// It serves as the backbone for maintaining and retrieving relevant application data during runtime.
-    /// </remarks>
     private readonly ApplicationState _appState = appState ?? throw new ArgumentNullException(nameof(appState));
 
     /// <summary>
-    /// A logger instance used to log information, warnings, errors, and other messages
-    /// for the <see cref="ChatSessionManager"/>. This is primarily utilized for debugging
-    /// purposes, error tracking, and maintaining application logs.
+    /// Represents a logging mechanism for the <see cref="ChatSessionManager"/> class,
+    /// facilitating the ability to record informational messages, warnings, errors,
+    /// and other diagnostic logs. It is used to enhance traceability, debug issues,
+    /// and monitor the application's behavior during chat session management processes.
     /// </summary>
     /// <remarks>
-    /// Provides structured logging functionality, leveraging the Microsoft.Extensions.Logging
-    /// framework.
+    /// This logger leverages the Microsoft.Extensions.Logging framework and provides
+    /// structured, contextualized logging capabilities throughout the lifecycle of the
+    /// chat session manager.
     /// </remarks>
     private readonly ILogger<ChatSessionManager> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     /// Asynchronously loads the current chat session into the application state. If no chat session is
-    /// selected, a new instance of the chat session is created. Handles any exceptions that occur
-    /// during the loading process and logs the error.
+    /// selected, creates a new instance of the chat session. Errors encountered during the loading
+    /// process are logged and a new chat session is initialized in such cases.
     /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task LoadChatSessionAsync()
     {
@@ -86,20 +87,20 @@ public class ChatSessionManager(
     }
 
     /// <summary>
-    /// Processes the chat request by utilizing the specified model and the provided conversation messages.
+    /// Asynchronously processes the chat request using the specified model and the provided conversation messages.
     /// </summary>
-    /// <param name="modelName">The name of the model to be used for processing the chat request. It cannot be null or empty.</param>
-    /// <param name="conversationMessages">The collection of messages representing the current conversation context. It cannot be null.</param>
-    /// <returns>A string representing the result of the chat request processing.</returns>
-    /// <exception cref="ArgumentException">Thrown when the <paramref name="modelName"/> is null, empty, or whitespace.</exception>
-    /// <exception cref="ArgumentNullException">Thrown when the <paramref name="conversationMessages"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when the chat session is not loaded in the application state.</exception>
-    /// <exception cref="Exception">Thrown when an unexpected error occurs during processing.</exception>
-    public async Task<string> ProcessChatRequestAsync(string modelName,
+    /// <param name="modelId">The unique identifier of the model to be utilized for processing the chat request. Must not be null or empty.</param>
+    /// <param name="conversationMessages">The collection of conversation messages that provide context for the chat request. Must not be null.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the result of the chat request as a string.</returns>
+    /// <exception cref="ArgumentException">Thrown if the <paramref name="modelId"/> is null, empty, or consists only of whitespace.</exception>
+    /// <exception cref="ArgumentNullException">Thrown if the <paramref name="conversationMessages"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the chat session is not loaded in the current application state.</exception>
+    /// <exception cref="Exception">Thrown if an error occurs while processing the chat request.</exception>
+    public async Task<string> ProcessChatRequestAsync(string modelId,
         ObservableCollection<MessageViewModel?> conversationMessages)
     {
-        if (string.IsNullOrWhiteSpace(modelName))
-            throw new ArgumentException("Model name cannot be null or empty", nameof(modelName));
+        if (string.IsNullOrWhiteSpace(modelId))
+            throw new ArgumentException("Model Id cannot be null or empty", nameof(modelId));
 
         if (conversationMessages == null)
             throw new ArgumentNullException(nameof(conversationMessages));
@@ -117,7 +118,7 @@ public class ChatSessionManager(
             _appState.ChatSession.AddMessage(message);
 
             var chatRequest = AesirChatRequest.NewWithDefaults();
-            chatRequest.Model = modelName;
+            chatRequest.Model = modelId;
             chatRequest.Conversation = _appState.ChatSession.Conversation;
             chatRequest.ChatSessionId = _appState.ChatSession.Id;
             chatRequest.Title = _appState.ChatSession.Title;
@@ -140,7 +141,7 @@ public class ChatSessionManager(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process chat request for model: {ModelName}", modelName);
+            _logger.LogError(ex, "Failed to process chat request for model: {ModelId}", modelId);
             throw;
         }
     }

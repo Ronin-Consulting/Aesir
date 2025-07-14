@@ -18,7 +18,7 @@ public interface IChatSessionManager
     /// <summary>
     /// Processes a chat request asynchronously using the specified model and a collection of conversation messages.
     /// </summary>
-    /// <param name="modelName">
+    /// <param name="modelId">
     /// The name of the model to be used for processing the chat request.
     /// </param>
     /// <param name="conversationMessages">
@@ -27,5 +27,5 @@ public interface IChatSessionManager
     /// <returns>
     /// A <see cref="Task{TResult}"/> representing the asynchronous operation, containing the model's response as a string.
     /// </returns>
-    Task<string> ProcessChatRequestAsync(string modelName, ObservableCollection<MessageViewModel?> conversationMessages);
+    Task<string> ProcessChatRequestAsync(string modelId, ObservableCollection<MessageViewModel?> conversationMessages);
 }
