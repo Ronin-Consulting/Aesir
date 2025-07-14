@@ -8,89 +8,83 @@ using Microsoft.SemanticKernel.Data;
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 /// <summary>
-/// Service for managing document collections associated with conversations.
-/// Provides operations for loading, deleting, and managing documents, as well as generating searchable plugins
-/// tailored for conversation-related queries.
+/// Provides functionality for managing document collections related to conversations, enabling operations
+/// such as loading, deleting, and retrieving documents. Additionally, facilitates the generation of kernel
+/// plugins designed for advanced searchability and interaction within conversational contexts.
 /// </summary>
 /// <remarks>
-/// This implementation is tagged as experimental with code SKEXP0070.
+/// The service integrates with underlying search and storage components, including vector-based and hybrid
+/// search mechanisms, for optimized document retrieval. Marked as experimental with code SKEXP0070.
 /// </remarks>
 [Experimental("SKEXP0070")]
 public class ConversationDocumentCollectionService : IConversationDocumentCollectionService
 {
     /// <summary>
-    /// Specifies the maximum number of results to return during a document search operation.
+    /// Represents the cap on the number of results to retrieve during a document search process.
     /// </summary>
     /// <remarks>
-    /// This constant is used in search-related processes to limit the number of items retrieved
-    /// and optimize performance. It ensures only the top matching results are returned based on the search logic.
+    /// Used to control the size of the result set returned by search operations, ensuring efficient
+    /// performance and relevance by limiting outcomes to a specific count.
     /// </remarks>
     private const int TopResults = 5;
 
     /// <summary>
-    /// Represents a vector-based text search mechanism for handling conversation document data within the service.
-    /// This field is used for performing operations such as searching conversation documents using vector embeddings
-    /// to find the most relevant semantic matches.
+    /// Encapsulates a vector-based semantic search engine specifically designed for conversation document data management.
     /// </summary>
+    /// <remarks>
+    /// This field enables the service to perform advanced search functionality by leveraging vector embeddings.
+    /// It is integral to locating and retrieving conversational documents that semantically match a given query,
+    /// providing enhanced search precision within the context of conversation data processing.
+    /// </remarks>
     private readonly VectorStoreTextSearch<AesirConversationDocumentTextData<Guid>> _conversationDocumentVectorSearch;
 
     /// <summary>
-    /// Represents a hybrid search mechanism for conversation documents that combines keyword-based searching
-    /// with vector-based searching. This private field is optional and used within the
-    /// ConversationDocumentCollectionService to enhance document retrieval based on search criteria.
+    /// Represents an optional hybrid search capability used for retrieving conversation documents
+    /// by combining both keyword-based and vector-based search methodologies.
     /// </summary>
     /// <remarks>
-    /// The hybrid search functionality, if provided, leverages the generic
-    /// IKeywordHybridSearchable interface with AesirConversationDocumentTextData as the data type.
-    /// This allows for both semantic and keyword-based filtering of conversation documents.
+    /// This private field integrates the functionality of the IKeywordHybridSearchable interface
+    /// with the AesirConversationDocumentTextData model, allowing for a comprehensive search process
+    /// that supports semantic understanding alongside traditional keyword search. It is utilized
+    /// within the ConversationDocumentCollectionService to enhance document retrieval operations.
     /// </remarks>
-    private readonly IKeywordHybridSearchable<AesirConversationDocumentTextData<Guid>>? _conversationDocumentHybridSearch;
+    private readonly IKeywordHybridSearchable<AesirConversationDocumentTextData<Guid>>?
+        _conversationDocumentHybridSearch;
 
     /// <summary>
-    /// Represents a private collection of vector store records, keyed by Guid and containing
-    /// instances of <see cref="AesirConversationDocumentTextData{TKey}"/>.
+    /// Represents the private collection of vector store records within the service,
+    /// keyed by a unique identifier of type <see cref="System.Guid"/> and containing instances
+    /// of <see cref="AesirConversationDocumentTextData{TKey}"/> specific to conversation document data.
     /// </summary>
     /// <remarks>
-    /// This collection is likely used for managing operations such as retrieval, filtering,
-    /// and deletion of document and vector data within the context of conversation documents.
-    /// The specific type parameter ensures that the data is uniquely identified and conforms
-    /// to the structure of <see cref="AesirConversationDocumentTextData{TKey}"/>.
-    /// This field is initialized via dependency injection in the constructor of the containing
-    /// service class.
+    /// This field is intended for managing persistent storage and operations associated with
+    /// conversation-related text data. It supports actions such as querying, updating, or removing
+    /// entries from the vector storage. The collection is initialized and managed through dependency
+    /// injection in the service's constructor.
     /// </remarks>
     private readonly VectorStoreCollection<Guid, AesirConversationDocumentTextData<Guid>> _vectorStoreRecordCollection;
 
     /// <summary>
-    /// The <c>_pdfDataLoader</c> field is an instance of <see cref="IPdfDataLoaderService{TKey, TRecord}"/> that facilitates loading and processing
-    /// of PDF documents in the context of a conversation document collection service.
+    /// Handles the loading and retrieval of PDF data associated with conversation documents.
     /// </summary>
     /// <remarks>
-    /// This field is utilized primarily for interacting with the PDF data loader service to handle operations related to
-    /// PDF document ingestion, metadata processing, and asynchronous loading tasks. It supports integration with
-    /// file processing pipelines, ensuring that only supported file types (e.g., PDFs) are processed.
-    /// The underlying service implementation encapsulates specific methods for loading PDF documents, as demonstrated
-    /// in methods such as <c>LoadDocumentAsync</c>.
+    /// This field is utilized to facilitate operations that involve fetching and managing
+    /// PDF document content related to specific conversation document identifiers.
     /// </remarks>
-    /// <typeparam name="TKey">
-    /// The type of the identifier used to uniquely distinguish documents, constrained to non-nullable types.
-    /// </typeparam>
-    /// <typeparam name="TRecord">
-    /// Represents the data record, which in this case is <see cref="AesirConversationDocumentTextData{TKey}"/>,
-    /// supporting additional metadata and document-related content.
-    /// </typeparam>
     private readonly IPdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> _pdfDataLoader;
 
     /// <summary>
     /// Logger instance for the <see cref="ConversationDocumentCollectionService"/> class.
     /// </summary>
     /// <remarks>
-    /// Utilized for logging information, warnings, errors, and other diagnostic messages
-    /// related to the operations and functionality provided by the service.
+    /// Used to capture and record operational details, including informational messages, warnings,
+    /// and errors, to aid in monitoring, debugging, and maintaining the service's functionalities.
     /// </remarks>
     private readonly ILogger<ConversationDocumentCollectionService> _logger;
 
     /// <summary>
-    /// Provides services for managing and searching conversation documents using vector-based and hybrid search techniques.
+    /// Service responsible for managing a collection of conversation documents and enabling search functionality.
+    /// This includes vector-based search and optional keyword hybrid search mechanisms.
     /// </summary>
     public ConversationDocumentCollectionService(
         VectorStoreTextSearch<AesirConversationDocumentTextData<Guid>> conversationDocumentVectorSearch,
@@ -110,11 +104,11 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// <summary>
     /// Loads a document from the specified path into the conversation document collection asynchronously.
     /// </summary>
-    /// <param name="documentPath">The path of the document to be loaded.</param>
-    /// <param name="fileMetaData">Optional metadata associated with the document.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    /// <exception cref="InvalidDataException">Thrown if the file is not a supported PDF document.</exception>
+    /// <param name="documentPath">The full path of the document to be loaded.</param>
+    /// <param name="fileMetaData">Optional metadata describing attributes of the document.</param>
+    /// <param name="cancellationToken">A token to observe for cancellation of the asynchronous operation.</param>
+    /// <returns>A task representing the asynchronous loading operation.</returns>
+    /// <exception cref="InvalidDataException">Thrown when the document format is unsupported or invalid.</exception>
     public async Task LoadDocumentAsync(string documentPath, IDictionary<string, object>? fileMetaData,
         CancellationToken cancellationToken)
     {
@@ -145,16 +139,17 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// <param name="fileMetaData">A dictionary containing metadata about the file to be deleted, including required keys such as "FileName" and "ConversationId".</param>
     /// <param name="cancellationToken">An optional token to observe while waiting for the task to complete.</param>
     /// <returns>A boolean indicating whether the document was successfully deleted.</returns>
-    public async Task<bool> DeleteDocumentAsync(IDictionary<string, object>? fileMetaData, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteDocumentAsync(IDictionary<string, object>? fileMetaData,
+        CancellationToken cancellationToken = default)
     {
         if (fileMetaData == null || !fileMetaData.TryGetValue("FileName", out var fileNameMetaData))
         {
             throw new InvalidDataException($"FileName is required metadata.");
         }
-        
-        if(!fileMetaData.TryGetValue("ConversationId", out var metaValue))
+
+        if (!fileMetaData.TryGetValue("ConversationId", out var metaValue))
             throw new ArgumentException("File metadata must contain a ConversationId property");
-        
+
         var conversationId = (string)metaValue;
         
         var fileName = fileNameMetaData.ToString();
@@ -185,16 +180,17 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// <summary>
     /// Deletes documents associated with a specific conversation ID from the vector store.
     /// </summary>
-    /// <param name="args">A collection of arguments, including a required "ConversationId" key identifying the conversation whose documents will be deleted.</param>
-    /// <param name="cancellationToken">Token used to propagate notification that operations should be canceled.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task DeleteDocumentsAsync(IDictionary<string, object>? args, CancellationToken cancellationToken = default)
+    /// <param name="args">A dictionary of arguments, where "ConversationId" is the required key identifying the specific conversation whose documents need to be deleted.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous delete operation.</returns>
+    public async Task DeleteDocumentsAsync(IDictionary<string, object>? args,
+        CancellationToken cancellationToken = default)
     {
-        if(args == null || !args.TryGetValue("ConversationId", out var argValue))
+        if (args == null || !args.TryGetValue("ConversationId", out var argValue))
             throw new ArgumentException("Args must contain a ConversationId property");
-        
+
         var conversationId = (string)argValue;
-        
+
         var retrievalOptions = new FilteredRecordRetrievalOptions<AesirConversationDocumentTextData<Guid>>()
         {
             IncludeVectors = false
@@ -213,12 +209,20 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     }
 
     /// <summary>
-    /// Creates a Semantic Kernel plugin for searching conversation documents.
+    /// Creates and configures a Semantic Kernel plugin for searching conversation documents.
     /// </summary>
-    /// <param name="kernelPluginArguments">Optional arguments for the kernel plugin. Must contain a non-empty ConversationId.</param>
-    /// <returns>An instance of <see cref="KernelPlugin"/> configured for conversation document search.</returns>
-    /// <exception cref="ArgumentException">Thrown when kernelPluginArguments is null or does not include a ConversationId.</exception>
-    /// <exception cref="ArgumentNullException">Thrown when the ConversationId is null or empty.</exception>
+    /// <param name="kernelPluginArguments">
+    /// Optional parameters for configuring the kernel plugin. Must include a non-empty "ConversationId" key.
+    /// </param>
+    /// <returns>
+    /// An instance of <see cref="KernelPlugin"/> configured for conversation document search.
+    /// </returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown if <paramref name="kernelPluginArguments"/> is null or does not contain a "ConversationId" key.
+    /// </exception>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown if the value associated with the "ConversationId" key is null or empty.
+    /// </exception>
     public KernelPlugin GetKernelPlugin(IDictionary<string, object>? kernelPluginArguments = null)
     {
         if (kernelPluginArguments == null || !kernelPluginArguments.TryGetValue("ConversationId", out var metaValue))
@@ -226,11 +230,11 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
 
         var conversationId = (string)metaValue;
 
+        // hybrid search
         if (_conversationDocumentHybridSearch != null)
         {
             var hybridSearch = _conversationDocumentHybridSearch;
 
-            // do hybrid search
             // ReSharper disable once MoveLocalFunctionAfterJumpStatement
             async Task<IEnumerable<TextSearchResult>> GetHybridSearchResultAsync(Kernel kernel, KernelFunction function,
                 KernelArguments arguments, CancellationToken cancellationToken, int? count, int skip = 0)
