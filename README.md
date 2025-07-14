@@ -32,10 +32,10 @@
     - [X] Other - ASPOSE?
     - [X] Other - Handle pages with images and text.
   - [ ] RBAC RAG
-  - [ ] Other?
+  - [X] Other?
     - [X] Smarter Chunking - Use Semantic Kernel Chunker (we could make this configurable?)
-    - [ ] Re-ranker
-    - [ ] Lexical and Semantic Search
+    - [ ] ~~Re-ranker~~
+    - [X] Lexical and Semantic Search
   - [X] Implement Computer Vision
     - [X] Support for Local Vision Models
     - [X] Support for Hosted Vision Models
