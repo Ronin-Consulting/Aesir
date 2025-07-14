@@ -4,18 +4,37 @@ using Microsoft.SemanticKernel;
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 /// <summary>
-/// Provides logging functionality for inference operations including function invocations and prompt rendering.
+/// Provides functionality for logging various aspects of inference operations,
+/// including function invocations, prompt rendering, and automatic function invocations.
 /// </summary>
-/// <param name="logger">The logger instance for recording inference operations.</param>
+/// <param name="logger">The logger instance for capturing log messages related to inference activities.</param>
 public class InferenceLoggingService(ILogger<InferenceLoggingService> logger)
     : IFunctionInvocationFilter, IPromptRenderFilter, IAutoFunctionInvocationFilter
 {
-
+    /// <summary>
+    /// Provides configuration options to control the behavior of the System.Text.Json.JsonSerializer.
+    /// </summary>
+    /// <remarks>
+    /// This property is used to customize JSON serialization and deserialization behavior globally or locally within specific contexts.
+    /// It can be utilized to configure the formatting, serialization rules, or handling of specific types during JSON operations.
+    /// </remarks>
     private static JsonSerializerOptions JsonSerializerOptions { get; } = new()
     {
         WriteIndented = true
     };
-    
+
+    /// <summary>
+    /// Handles function invocation events by logging relevant details such as function name, arguments, and results.
+    /// </summary>
+    /// <param name="context">
+    /// The context of the function invocation, including details about the function, arguments, and results.
+    /// </param>
+    /// <param name="next">
+    /// A delegate to invoke the next step in the function invocation pipeline.
+    /// </param>
+    /// <returns>
+    /// A task representing the asynchronous operation of the function invocation lifecycle.
+    /// </returns>
     public async Task OnFunctionInvocationAsync(FunctionInvocationContext context, Func<FunctionInvocationContext, Task> next)
     {
         logger.LogDebug("OnFunctionInvocationAsync --> Function Invocation: {FunctionName}", context.Function.Name);
@@ -30,6 +49,12 @@ public class InferenceLoggingService(ILogger<InferenceLoggingService> logger)
         logger.LogDebug("OnFunctionInvocationAsync --> Function {FunctionName} --> Result: {Result}", context.Function.Name, JsonSerializer.Serialize(context.Result.GetValue<object?>(), JsonSerializerOptions));
     }
 
+    /// <summary>
+    /// Handles the rendering of a prompt for a specific function and logs the details of the rendering process.
+    /// </summary>
+    /// <param name="context">The context of the prompt rendering, including details about the function and the rendered prompt.</param>
+    /// <param name="next">A delegate to invoke the next step in the prompt rendering pipeline.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task OnPromptRenderAsync(PromptRenderContext context, Func<PromptRenderContext, Task> next)
     {
         logger.LogDebug("OnPromptRenderAsync --> Prompt Render for: {FunctionName}", context.Function.Name);
@@ -39,6 +64,12 @@ public class InferenceLoggingService(ILogger<InferenceLoggingService> logger)
         logger.LogDebug("OnPromptRenderAsync --> Prompt Render for {FunctionName} --> Prompt: {Prompt}", context.Function.Name, context.RenderedPrompt);
     }
 
+    /// <summary>
+    /// Logs details about the invocation of an auto function, including its arguments, request sequence index, tool call ID, chat history, and result.
+    /// </summary>
+    /// <param name="context">The context of the auto function invocation containing details such as function metadata, arguments, and execution state.</param>
+    /// <param name="next">A delegate to invoke the next filter or middleware in the pipeline.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task OnAutoFunctionInvocationAsync(AutoFunctionInvocationContext context, Func<AutoFunctionInvocationContext, Task> next)
     {
         logger.LogDebug("OnAutoFunctionInvocationAsync --> Function Invocation: {FunctionName}", context.Function.Name);

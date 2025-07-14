@@ -28,21 +28,6 @@ public class DocumentChunker(int tokensPerParagraph = 400, int tokensPerLine = 1
     /// <returns>A list of text chunks.</returns>
     public List<string> ChunkText(string text, string? chunkHeader = null)
     {
-        // var tokens = _encoder.Encode(text).ToList();
-        // var chunks = new List<string>();
-        // var start = 0;
-        //
-        // while (start < tokens.Count)
-        // {
-        //     var end = Math.Min(start + chunkSize, tokens.Count);
-        //     var chunkTokens = tokens.GetRange(start, end - start);
-        //     var chunkText = _encoder.Decode(chunkTokens);
-        //     chunks.Add(chunkText);
-        //     start += chunkSize - overlap; // Move forward, preserving overlap
-        // }
-        //
-        // return chunks;
-        
         var lines = TextChunker.SplitPlainTextLines(text, tokensPerLine);
         return TextChunker.SplitPlainTextParagraphs(lines, tokensPerParagraph, 
             overlapTokens: (int)(tokensPerParagraph * 0.2), 

@@ -66,8 +66,6 @@ public class PdfDataLoaderService<TKey, TRecord>(
     /// the number of tokens per paragraph and per line. It is primarily used in text processing
     /// pipelines where handling large text inputs in smaller chunks is required.
     /// </remarks>
-    /// <param name="tokensPerParagraph">The maximum number of tokens allowed per paragraph.</param>
-    /// <param name="tokensPerLine">The maximum number of tokens allowed per line.</param>
     private static readonly DocumentChunker DocumentChunker = new();
 
     /// <summary>

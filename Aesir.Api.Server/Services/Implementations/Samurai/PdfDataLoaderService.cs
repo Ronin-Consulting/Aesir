@@ -229,7 +229,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
     /// <param name="pdfPath">The path to the PDF file to extract text and images from.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to monitor for cancellation requests.</param>
     /// <returns>A collection of <see cref="RawContent"/> objects containing the extracted text, images, and associated page numbers.</returns>
-    private IEnumerable<RawContent> LoadTextAndImages(string pdfPath, CancellationToken cancellationToken)
+    private IEnumerable<RawContent> LoadTextAndImages(string pdfPath, CancellationToken cancellationToken = default)
     {
         //Aspose.PDFfor.NET.lic
         var license = new License();

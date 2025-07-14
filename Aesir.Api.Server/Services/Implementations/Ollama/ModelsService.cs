@@ -5,11 +5,11 @@ using OllamaSharp;
 namespace Aesir.Api.Server.Services.Implementations.Ollama;
 
 /// <summary>
-/// Provides model management services using the Ollama backend.
+/// Handles the management and lifecycle operations of models through the Ollama API backend.
 /// </summary>
-/// <param name="logger">The logger instance for recording operations.</param>
-/// <param name="api">The Ollama API client for model operations.</param>
-/// <param name="configuration">The application configuration for model settings.</param>
+/// <param name="logger">The logging service for operation tracking and reporting.</param>
+/// <param name="api">The client for interacting with the Ollama API endpoints.</param>
+/// <param name="configuration">The configuration interface containing application settings.</param>
 [Experimental("SKEXP0070")]
 public class ModelsService(
     ILogger<ChatService> logger,
@@ -17,11 +17,18 @@ public class ModelsService(
     IConfiguration configuration)
     : IModelsService
 {
+    /// <summary>
+    /// Retrieves a collection of models available for use in the application.
+    /// This includes both embedding models and chat models based on the provided configuration and loaded models.
+    /// </summary>
+    /// <returns>
+    /// A task representing the asynchronous operation, containing a list of <c>AesirModelInfo</c> objects.
+    /// </returns>
     public async Task<IEnumerable<AesirModelInfo>> GetModelsAsync()
     {
         // only ever one embedding model
         var embeddingModelName = configuration.GetValue<string>("Inference:Ollama:EmbeddingModel")
-                             ?? throw new InvalidOperationException("No embedding model configured");
+                                 ?? throw new InvalidOperationException("No embedding model configured");
 
         var allowedModelNames = (configuration.GetSection("Inference:Ollama:ChatModels").Get<string[]>()
                       ?? throw new InvalidOperationException("No chat models configured")).ToList();
@@ -66,6 +73,13 @@ public class ModelsService(
         return models;
     }
 
+    /// Asynchronously unloads all configured chat models from the system using the Ollama API.
+    /// This method retrieves a list of allowed chat models from the application configuration,
+    /// then attempts to unload each model by making asynchronous requests to the underlying API.
+    /// Any errors encountered during the unloading process will be logged.
+    /// <returns>
+    /// A task that represents the asynchronous operation of unloading the chat models.
+    /// </returns>
     public async Task UnloadChatModelAsync()
     {
         var allowedModelNames = (configuration.GetSection("Inference:Ollama:ChatModels").Get<string[]>()
@@ -84,6 +98,10 @@ public class ModelsService(
         });
     }
 
+    /// Asynchronously unloads the configured embedding model from the system.
+    /// If the embedding model is not configured, an InvalidOperationException is thrown.
+    /// Logs a warning if an error occurs during the unload process.
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task UnloadEmbeddingModelAsync()
     {
         var modelName = configuration.GetValue<string>("Inference:Ollama:EmbeddingModel")
@@ -99,6 +117,12 @@ public class ModelsService(
         }
     }
 
+    /// Asynchronously unloads the configured vision model from the system.
+    /// This method retrieves the name of the configured vision model from the application's configuration
+    /// and attempts to unload the model using the associated API client. If the configuration setting
+    /// for the vision model is unavailable, an InvalidOperationException is thrown. Additionally, the
+    /// completion or any exception during the unload process is logged.
+    /// <returns>A Task that represents the asynchronous operation.</returns>
     public async Task UnloadVisionModelAsync()
     {
         var modelName = configuration.GetValue<string>("Inference:Ollama:VisionModel")
