@@ -198,13 +198,13 @@ public class ChatService : BaseChatService
     private async Task<OllamaPromptExecutionSettings> CreatePromptExecutionSettingsAsync(AesirChatRequest request)
     {
         await Task.CompletedTask;
-
+        
         var settings = new OllamaPromptExecutionSettings
         {
             ModelId = request.Model,
             NumPredict = request.MaxTokens ?? 8192
         };
-
+        
         if (request.Conversation.Messages.Any(m => m.HasFile()))
         {
             settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
