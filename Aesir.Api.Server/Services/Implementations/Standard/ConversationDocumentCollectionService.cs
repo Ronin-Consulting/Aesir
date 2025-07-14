@@ -237,7 +237,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
 
             // ReSharper disable once MoveLocalFunctionAfterJumpStatement
             async Task<IEnumerable<TextSearchResult>> GetHybridSearchResultAsync(Kernel kernel, KernelFunction function,
-                KernelArguments arguments, CancellationToken cancellationToken, int? count, int skip = 0)
+                KernelArguments arguments, CancellationToken cancellationToken, int count = TopResults, int skip = 0)
             {
                 arguments.TryGetValue("query", out var query);
                 if (string.IsNullOrEmpty(query?.ToString()))
@@ -256,7 +256,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
                 var results = await hybridSearch.HybridSearchAsync(
                     searchValue,
                     keywords,
-                    count ?? TopResults,
+                    count,
                     searchOptions,
                     cancellationToken
                 ).ToListAsync(cancellationToken).ConfigureAwait(false);
@@ -272,7 +272,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
 
             var functionOptions = new KernelFunctionFromMethodOptions()
             {
-                FunctionName = "HybridKeywordSearch",
+                FunctionName = "GetHybridKeywordSearchResults",
                 Description = "Executes a hybrid search combining exact keyword matching with semantic relevance for the given query. Ideal for retrieving targeted content from local or indexed data sources on edge devices. Returns a collection of results, each including a name (e.g., title or identifier), value (e.g., snippet or full content), and link (e.g., URI or reference) for the matched items. Use 'count' to limit results and 'skip' for pagination.",
                 Parameters = [
                     new KernelParameterMetadata("query") { Description = "The search query string, supporting keywords, phrases, or natural language input for hybrid matching.", ParameterType = typeof(string), IsRequired = true },

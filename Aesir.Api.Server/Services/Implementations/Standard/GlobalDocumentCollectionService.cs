@@ -193,7 +193,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
             var hybridSearch = _globalDocumentHybridSearch;
             // ReSharper disable once MoveLocalFunctionAfterJumpStatement
             async Task<IEnumerable<TextSearchResult>> GetHybridSearchResultAsync(Kernel kernel, KernelFunction function,
-                KernelArguments arguments, CancellationToken cancellationToken, int? count, int skip = 0)
+                KernelArguments arguments, CancellationToken cancellationToken, int count = TopResults, int skip = 0)
             {
                 arguments.TryGetValue("query", out var query);
                 if (string.IsNullOrEmpty(query?.ToString()))
@@ -212,7 +212,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
                 var results = await hybridSearch.HybridSearchAsync(
                     searchValue,
                     keywords,
-                    count ?? TopResults,
+                    count,
                     searchOptions,
                     cancellationToken
                 ).ToListAsync(cancellationToken).ConfigureAwait(false);
