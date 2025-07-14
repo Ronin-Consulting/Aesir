@@ -50,7 +50,7 @@ public static class ServiceCollectionExtensions
                         ?.FirstOrDefault() ?? "gpt-4o"
                 );
 
-            kernelBuilder.AddOpenAIEmbeddingGenerator(embeddingModelId ?? "text-embedding-3-small");
+            kernelBuilder.AddOpenAIEmbeddingGenerator(embeddingModelId ?? "text-embedding-3-large", dimensions: 1024);
         }
         else
         {

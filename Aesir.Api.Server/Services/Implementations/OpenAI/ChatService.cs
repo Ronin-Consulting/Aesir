@@ -174,8 +174,6 @@ public class ChatService : BaseChatService
         var settings = new OpenAIPromptExecutionSettings
         {
             ModelId = request.Model,
-            Temperature = request.Temperature ?? 0.7f,
-            TopP = request.TopP,
             MaxTokens = request.MaxTokens
         };
 

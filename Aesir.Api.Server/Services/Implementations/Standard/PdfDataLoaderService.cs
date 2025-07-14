@@ -1,3 +1,4 @@
+using System.ClientModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using Aesir.Api.Server.Extensions;
@@ -199,14 +200,21 @@ public class PdfDataLoaderService<TKey, TRecord>(
 
                 if (tries < 3)
                 {
-                    logger.LogInformation($"Failed to generate embedding. Error: {ex}");
-                    logger.LogInformation("Retrying embedding generation...");
+                    logger.LogWarning($"Failed to generate embedding. Error: {ex}");
+                    logger.LogWarning("Retrying embedding generation...");
                     await Task.Delay(10_000, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
                     throw;
                 }
+            }
+            catch (ClientResultException ex)
+            {
+                logger.LogError("Failed to generate embedding. Error: {HttpOperationException}", 
+                    ex.GetRawResponse()?.Content.ToString() ?? ex.ToString());
+                
+                throw;
             }
         }
     }
@@ -301,14 +309,23 @@ public class PdfDataLoaderService<TKey, TRecord>(
 
                 if (tries < 3)
                 {
-                    logger.LogInformation("Failed to generate text from image. Error: {HttpOperationException}", ex);
-                    logger.LogInformation("Retrying text to image conversion...");
+                    logger.LogWarning("Failed to generate text from image. Error: {HttpOperationException}", ex);
+                    logger.LogWarning("Retrying text to image conversion...");
                     await Task.Delay(10_000, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
+                    logger.LogError("Failed to generate text from image. Error: {HttpOperationException}", ex);
+                    
                     throw;
                 }
+            }
+            catch (ClientResultException ex)
+            {
+                logger.LogError("Failed to generate text from image. Error: {HttpOperationException}", 
+                    ex.GetRawResponse()?.Content.ToString() ?? ex.ToString());
+                
+                throw;
             }
         }
     }
