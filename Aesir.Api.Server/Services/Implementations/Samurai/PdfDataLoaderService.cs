@@ -233,7 +233,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
         using (var document = new Document(pdfPath))
         {
             var pdfFileEditor = new PdfFileEditor();
-
+// NEED TO DO ALL THIS IN PARALLEL.. its slow on big documents
             for (var pageNum = 1; pageNum <= document.Pages.Count; pageNum++)
             {
                 var parentDirectory = Path.GetDirectoryName(pdfPath) ?? string.Empty;
