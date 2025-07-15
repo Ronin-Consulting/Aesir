@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Aesir.Client.Models;
@@ -61,9 +62,18 @@ public class ChatService(
     /// </returns>
     public async IAsyncEnumerable<AesirChatStreamedResult?> ChatCompletionsStreamedAsync(AesirChatRequest request)
     {
-        var response =
-            _flurlClient.Request().AppendPathSegment("streamed").PostJsonAsync(request).Result;
+        // 1. Build the request as usual.
+        var flurlRequest = _flurlClient.Request().AppendPathSegment("streamed");
 
+        // 2. Use SendAsync to get the response as a stream.
+        // This is the key change. We manually create the JSON content and tell
+        // Flurl to return as soon as the response headers are read.
+        var response = await flurlRequest.SendAsync(
+            HttpMethod.Post,
+            new Flurl.Http.Content.CapturedJsonContent(JsonSerializer.Serialize(request)),
+            completionOption: HttpCompletionOption.ResponseHeadersRead
+        );
+        
         await using var responseStream = await response.GetStreamAsync();
         
         var asyncEnumerable = 
@@ -71,6 +81,7 @@ public class ChatService(
                 responseStream,
                 new JsonSerializerOptions()
                 {
+                    PropertyNameCaseInsensitive = true,
                     DefaultBufferSize = 128
                 }
             );
