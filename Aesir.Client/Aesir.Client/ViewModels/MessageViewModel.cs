@@ -43,7 +43,7 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// </remarks>
     [ObservableProperty] 
     private string _message = string.Empty;
-
+    
     /// <summary>
     /// Indicates whether the associated data or resource has been successfully loaded.
     /// </summary>
@@ -138,7 +138,7 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// <returns>
     /// The title of the first valid received message, if available; otherwise, an empty string.
     /// </returns>
-    public async Task<string> SetStreamedMessageAsync(IAsyncEnumerable<AesirChatStreamedResult?> message)
+    public virtual async Task<string> SetStreamedMessageAsync(IAsyncEnumerable<AesirChatStreamedResult?> message)
     {
         return await Task.Run(async () =>
         {

@@ -1,7 +1,12 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Messages;
+using Aesir.Client.Models;
 using Aesir.Client.Services;
+using Aesir.Common.Models;
+using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
@@ -11,7 +16,7 @@ namespace Aesir.Client.ViewModels;
 /// The AssistantMessageViewModel class represents the assistant's message in a conversation.
 /// It is responsible for handling the logic specific to assistant messages, including commands,
 /// content normalization, and link interactions.
-public class AssistantMessageViewModel(
+public partial class AssistantMessageViewModel(
     ILogger<AssistantMessageViewModel> logger,
     IMarkdownService markdownService,
     IContentProcessingService contentProcessingService)
@@ -28,7 +33,15 @@ public class AssistantMessageViewModel(
     private readonly IContentProcessingService _contentProcessingService = contentProcessingService ??
                                                                            throw new System.ArgumentNullException(
                                                                                nameof(contentProcessingService));
+    
+    private string _thoughtsContent = string.Empty;
 
+    [ObservableProperty] 
+    private string _thoughtsMessage = string.Empty;
+    
+    [ObservableProperty] 
+    private bool _isThinking;
+    
     /// <summary>
     /// Gets the role associated with the message represented by the view model.
     /// This property defines the type of the message, distinguishing it as belonging
@@ -36,7 +49,7 @@ public class AssistantMessageViewModel(
     /// role is defined in the base class as "Unknown".
     /// </summary>
     public override string Role => "assistant";
-
+    
     /// Creates the command responsible for triggering the regeneration of a message.
     /// This method overrides the base implementation to provide a specific command
     /// for handling the regenerate message operation, typically tied to an assistant's behavior.
@@ -59,22 +72,88 @@ public class AssistantMessageViewModel(
     {
         WeakReferenceMessenger.Default.Send(new RegenerateMessageMessage(this));
     }
-
-    /// <summary>
-    /// Normalizes the input string by processing it through the content processing service.
-    /// </summary>
-    /// <param name="input">The input string to be normalized.</param>
-    /// <returns>A normalized version of the input string.</returns>
-    protected override string NormalizeInput(string input)
-    {
-        return _contentProcessingService.ProcessThinkingModelContent(input);
-    }
-
+    
     /// Handles the event of a link being clicked within an assistant message.
     /// <param name="link">The URL of the link that was clicked.</param>
     /// <param name="attributes">A dictionary containing additional attributes associated with the link.</param>
     public void LinkClicked(string link, Dictionary<string, string> attributes)
     {
         _contentProcessingService.HandleLinkClick(link, attributes);
+    }
+    
+    public override async Task SetMessage(AesirChatMessage message)
+    {
+        _thoughtsContent = message.ThoughtsContent;
+
+        if (!string.IsNullOrWhiteSpace(_thoughtsContent))
+        {
+            var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(NormalizeInput(message.ThoughtsContent));
+            ThoughtsMessage = htmlMessage;
+        
+            IsThinking = true;
+        }
+        
+        await base.SetMessage(message);
+    }
+    
+    public override async Task<string> SetStreamedMessageAsync(IAsyncEnumerable<AesirChatStreamedResult?> message)
+    {
+        return await Task.Run(async () =>
+        {
+            var title = string.Empty;
+            var hasReceivedTitle = false;
+            Content = string.Empty;
+            await foreach (var result in message)
+            {
+                if (result is null)
+                {
+                    continue;
+                }
+                
+                //_logger.LogDebug("Received streamed message: {Result}", JsonSerializer.Serialize(result));
+
+                // Only capture the first non-empty title we receive
+                if (!hasReceivedTitle && !string.IsNullOrWhiteSpace(result.Title) && 
+                    result.Title != "Chat Session (Server)" && result.Title != "Chat Session (Client)")
+                {
+                    title = result.Title;
+                    hasReceivedTitle = true;
+                }
+                
+                var isThinking = result.IsThinking;
+                
+                if (isThinking)
+                {
+                    IsThinking = isThinking;
+
+                    _thoughtsContent += result.Delta.Content;
+                    
+                    _thoughtsContent = _thoughtsContent.TrimStart();
+                    
+                    var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(_thoughtsContent);
+                    
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        ThoughtsMessage = htmlMessage;
+                    });
+                }
+                else
+                {
+                    Content += result.Delta.Content;
+                
+                    Content = Content.TrimStart();
+                    
+                    var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(Content);
+                
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        Message = htmlMessage;
+                        IsLoaded = true;
+                    });
+                }
+            }
+            
+            return title;
+        });
     }
 }

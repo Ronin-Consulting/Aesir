@@ -159,6 +159,8 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
         Status = "Preparing main window...";
         await Task.Delay(TimeSpan.FromSeconds(2));
         
+        Status = "Launching...";
+        
         Progress = 100;
         
         await Task.Delay(TimeSpan.FromSeconds(2));

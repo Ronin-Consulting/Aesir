@@ -140,7 +140,7 @@ public class ChatService : BaseChatService
     /// </summary>
     /// <param name="request">The chat request containing conversation details and prompt settings.</param>
     /// <returns>An asynchronous stream of tuples where each tuple contains a content chunk and a boolean indicating whether the completion is complete.</returns>
-    protected override async IAsyncEnumerable<(string content, bool isComplete)> ExecuteStreamingChatCompletionAsync(
+    protected override async IAsyncEnumerable<(string content, bool isThinking, bool isComplete)> ExecuteStreamingChatCompletionAsync(
         AesirChatRequest request)
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
@@ -156,7 +156,7 @@ public class ChatService : BaseChatService
             //_logger.LogDebug("Received streaming content from Semantic Kernel: {Content}", streamResult.Content);
 
             var isComplete = streamResult is OpenAIStreamingChatMessageContent { FinishReason: ChatFinishReason.Stop };
-            yield return (streamResult.Content ?? string.Empty, isComplete);
+            yield return (streamResult.Content ?? string.Empty, false, isComplete);
         }
     }
 

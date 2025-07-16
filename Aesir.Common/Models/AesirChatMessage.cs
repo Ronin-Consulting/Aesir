@@ -20,6 +20,9 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     [JsonPropertyName("content")]
     public string Content { get; set; } = null!;
 
+    [JsonPropertyName("thoughts_content")]
+    public string? ThoughtsContent { get; set; }
+    
     /// <summary>
     /// Determines if the message content contains a file reference.
     /// </summary>

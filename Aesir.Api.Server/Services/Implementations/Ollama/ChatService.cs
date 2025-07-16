@@ -113,7 +113,8 @@ public class ChatService : BaseChatService
             Model = request.Model,
             Stream = false,
             Options = requestOptions,
-            Messages = messages
+            Messages = messages,
+            Think = false
         };
         
         var message = AesirChatMessage.NewAssistantMessage("");
@@ -167,8 +168,7 @@ public class ChatService : BaseChatService
     /// </summary>
     /// <param name="request">The chat request to process.</param>
     /// <returns>An asynchronous enumerable of tuples containing content chunks and a boolean indicating the completion status.</returns>
-    protected override async IAsyncEnumerable<(string content, bool isComplete)> ExecuteStreamingChatCompletionAsync(
-        AesirChatRequest request)
+    protected override async IAsyncEnumerable<(string content, bool isThinking, bool isComplete)> ExecuteStreamingChatCompletionAsync(AesirChatRequest request)
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = CreateChatHistory(request);
@@ -184,7 +184,17 @@ public class ChatService : BaseChatService
             //_logger.LogDebug("Received Chat Completion Response from Ollama backend: {Json}", JsonConvert.SerializeObject(completion));
 
             var isComplete = completion.InnerContent is ChatDoneResponseStream { Done: true };
-            yield return (completion.Content ?? string.Empty, isComplete);
+
+            var isThinking = false;
+            string? content = completion.Content;
+            if (completion.InnerContent is ChatResponseStream chatResponseStream)
+            {
+                isThinking = chatResponseStream.Message.Thinking != null;
+                
+                if(isThinking) content = chatResponseStream.Message.Thinking;
+            }
+
+            yield return (content ?? string.Empty, isThinking, isComplete);
         }
     }
 
@@ -198,12 +208,15 @@ public class ChatService : BaseChatService
     private async Task<OllamaPromptExecutionSettings> CreatePromptExecutionSettingsAsync(AesirChatRequest request)
     {
         await Task.CompletedTask;
-        
+
         var settings = new OllamaPromptExecutionSettings
         {
             ModelId = request.Model,
-            NumPredict = request.MaxTokens ?? 8192
+            NumPredict = request.MaxTokens ?? 8192,
+            ExtensionData = new Dictionary<string, object>()
         };
+        
+        settings.ExtensionData.Add("think", true);
         
         if (request.Conversation.Messages.Any(m => m.HasFile()))
         {

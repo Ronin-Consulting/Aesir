@@ -9,6 +9,9 @@
              x:Class="Aesir.Client.Controls.AssistantMessage"
              x:DataType="vm:AssistantMessageViewModel"
              >
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="AesirBackground" Opacity="0.16" Color="#54A9FF" />
+    </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="avalonia|MaterialIcon.progress">
             <Style.Animations>
@@ -19,8 +22,8 @@
                         <Setter Property="Height" Value="16"/>
                     </KeyFrame>
                     <KeyFrame Cue="100%">
-                        <Setter Property="Width" Value="22"/>
-                        <Setter Property="Height" Value="22"/>
+                        <Setter Property="Width" Value="24"/>
+                        <Setter Property="Height" Value="24"/>
                     </KeyFrame>
                 </Animation>
             </Style.Animations>
@@ -38,19 +41,41 @@
                     </Image.Source>
                 </Image>
             </Border>
-            <avalonia:MaterialIcon
-                IsVisible="{Binding !IsLoaded}"
-                Classes="progress" Kind="Circle" Foreground="{DynamicResource SemiColorTertiary}" />
-            <html:HtmlLabel
-                IsVisible="{Binding IsLoaded}"
-                DockPanel.Dock="Right"
-                Name="HtmlLabel"
-                Text="{Binding Message}" 
-                AutoSizeHeightOnly="True"
-                BaseStylesheet="* { color: #F9F9F9; line-height: 1.6;} li { margin-bottom: 1em; line-height: 24px; }"
-                Margin="0 0 0 0"
-                Padding="0"
+            <StackPanel Orientation="Horizontal" IsVisible="{Binding !IsLoaded}" Spacing="0">
+                <avalonia:MaterialIcon VerticalAlignment="Center" HorizontalAlignment="Left"
+                    Classes="progress" Kind="CircleSlice8" Foreground="{DynamicResource SemiColorTertiary}" />
+                <TextBlock Margin="4,0,0,0" Text="Thinking..." FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Right"></TextBlock>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Vertical" IsVisible="{Binding IsLoaded}" Spacing="0">
+                <Expander IsVisible="{Binding IsThinking}" 
+                          HorizontalAlignment="Stretch" 
+                          Background="{DynamicResource AesirBackground}"
+                          >
+                    <Expander.Header>
+                        <avalonia:MaterialIcon VerticalAlignment="Center" HorizontalAlignment="Right"
+                                               Kind="ThoughtBubbleOutline" 
+                                               Foreground="{DynamicResource SemiColorTertiary}" />
+                    </Expander.Header>
+                    <html:HtmlLabel
+                        IsVisible="{Binding IsLoaded}"
+                        Name="ThoughtsHtmlLabel"
+                        Text="{Binding ThoughtsMessage}" 
+                        AutoSizeHeightOnly="True"
+                        BaseStylesheet="* { color: #F9F9F9; line-height: 1.6;} li { margin-bottom: 1em; line-height: 24px; }"
+                        Margin="0 0 0 0"
+                        Padding="0"
+                    />
+                </Expander>
+                <html:HtmlLabel
+                    IsVisible="{Binding IsLoaded}"
+                    Name="MessageHtmlLabel"
+                    Text="{Binding Message}" 
+                    AutoSizeHeightOnly="True"
+                    BaseStylesheet="* { color: #F9F9F9; line-height: 1.6;} li { margin-bottom: 1em; line-height: 24px; }"
+                    Margin="0 0 0 0"
+                    Padding="0"
                 />
+            </StackPanel>
         </DockPanel>
         <StackPanel 
             Name="HoverPanel"

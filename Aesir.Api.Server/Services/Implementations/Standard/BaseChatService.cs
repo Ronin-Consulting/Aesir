@@ -126,7 +126,7 @@ public abstract class BaseChatService(
         }
 
         // Handle initialization errors without try/catch around yield
-        IAsyncEnumerable<(string content, bool isComplete)> streamingResults = null;
+        IAsyncEnumerable<(string content, bool isThinking, bool isComplete)> streamingResults = null;
 
         bool initializationError = false;
         AesirChatMessage errorMessage = AesirChatMessage.NewAssistantMessage("I apologize, but I encountered an error processing your request.");
@@ -154,23 +154,35 @@ public abstract class BaseChatService(
         // Process streaming results - only execute if no initialization error occurred
         if (streamingResults != null)
         {
-            await foreach (var (content, _) in streamingResults)
+            await foreach (var (content, isThinking, isComplete) in streamingResults)
             {
                 //_logger.LogDebug("Received streaming content: {Content}", content);
 
                 if (!string.IsNullOrEmpty(content))
                 {
-                    messageToSave.Content += content;
-
-                    var messageToSend = AesirChatMessage.NewAssistantMessage(content);
-
+                    var messageToSend = AesirChatMessage.NewAssistantMessage(string.Empty);
+                    
+                    if (isThinking)
+                    {
+                        messageToSave.ThoughtsContent += content;
+                        
+                        messageToSend.ThoughtsContent = content;
+                    }
+                    else
+                    {
+                        messageToSave.Content += content;
+                        
+                        messageToSend.Content = content;
+                    }
+                    
                     yield return new AesirChatStreamedResult()
                     {
                         Id = completionId,
                         ChatSessionId = request.ChatSessionId,
                         ConversationId = request.Conversation.Id,
                         Delta = messageToSend,
-                        Title = title
+                        Title = title,
+                        IsThinking = isThinking
                     };
                 }
             }
@@ -219,12 +231,20 @@ public abstract class BaseChatService(
     protected abstract Task<(string content, int promptTokens, int completionTokens)> ExecuteChatCompletionAsync(AesirChatRequest request);
 
     /// <summary>
-    /// Executes a streaming chat completion based on the provided request. This abstract method is implemented
-    /// by derived classes to process and return incremental chat responses as a stream.
+    /// Executes a streaming chat completion based on the provided request.
+    /// This abstract method must be implemented by derived classes to process the input
+    /// and provide incremental chat responses as a stream.
     /// </summary>
-    /// <param name="request">The chat request containing input data required for generating the streamed completion.</param>
-    /// <returns>An asynchronous enumerable of tuples where each tuple contains a piece of content and a boolean indicating if the stream is complete.</returns>
-    protected abstract IAsyncEnumerable<(string content, bool isComplete)> ExecuteStreamingChatCompletionAsync(AesirChatRequest request);
+    /// <param name="request">
+    /// The chat request containing the input details, such as user messages and context,
+    /// required for generating the streamed completion.
+    /// </param>
+    /// <returns>
+    /// An asynchronous enumerable of tuples where each tuple contains the generated content as a string,
+    /// a boolean indicating whether the system is still processing ("isThinking"),
+    /// and another boolean indicating if the stream is complete ("isComplete").
+    /// </returns>
+    protected abstract IAsyncEnumerable<(string content, bool isThinking, bool isComplete)> ExecuteStreamingChatCompletionAsync(AesirChatRequest request);
 
     /// <summary>
     /// Persists the chat session by saving or updating the session details in the chat history service.

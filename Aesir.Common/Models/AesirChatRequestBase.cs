@@ -67,4 +67,10 @@ public abstract class AesirChatRequestBase
     /// </summary>
     [JsonPropertyName("client_datetime")]
     public string ClientDateTime { get; set; } = DateTime.Now.ToString("F", new CultureInfo("en-US"));
+
+    /// <summary>
+    /// Gets or sets a value indicating whether "thinking" behavior should be enabled for this chat request.
+    /// </summary>
+    [JsonPropertyName("enable_thinking")]
+    public bool? EnableThinking { get; set; }
 }

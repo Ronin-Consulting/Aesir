@@ -36,4 +36,7 @@ public abstract class AesirChatStreamedResultBase
     /// </summary>
     [JsonPropertyName("delta")]
     public AesirChatMessage Delta { get; set; } = null!;
+    
+    [JsonPropertyName("is_thinking")]
+    public bool IsThinking { get; set; }
 }
