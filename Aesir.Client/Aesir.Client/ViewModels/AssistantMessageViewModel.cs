@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -67,6 +68,9 @@ public partial class AssistantMessageViewModel(
     /// </remarks>
     [ObservableProperty] 
     private bool _isThinking;
+
+    [ObservableProperty] 
+    private bool _isCollectingThoughts;
 
     /// <summary>
     /// Represents the role of the message, indicating its origin or purpose within the conversation context.
@@ -175,8 +179,6 @@ public partial class AssistantMessageViewModel(
                 
                 if (isThinking)
                 {
-                    IsThinking = isThinking;
-
                     _thoughtsContent += result.Delta.ThoughtsContent;
                     
                     _thoughtsContent = _thoughtsContent.TrimStart();
@@ -185,6 +187,9 @@ public partial class AssistantMessageViewModel(
                     
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
+                        IsThinking = isThinking;
+                        IsCollectingThoughts = true;
+                        
                         ThoughtsMessage = htmlMessage;
                         IsLoaded = true;
                     });
@@ -199,10 +204,15 @@ public partial class AssistantMessageViewModel(
                 
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
+                        IsCollectingThoughts = false;
+                        
                         Message = htmlMessage;
                         IsLoaded = true;
                     });
                 }
+                
+                // let ui catch up
+                await Task.Delay(TimeSpan.FromMilliseconds(50));
             }
             
             return title;
