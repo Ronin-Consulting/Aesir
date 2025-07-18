@@ -21,11 +21,9 @@ services:
       # X11 socket for GUI forwarding
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       # Optional: Mount config directory for persistence
-      - ./config:/app/config
+      - config:/app/config
       # Optional: Mount logs directory
-      - ./logs:/app/logs
-    networks:
-      - aesir-network
+      - logs:/app/logs
     depends_on:
       - aesir-api
     restart: unless-stopped
@@ -43,7 +41,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
     healthcheck:
-      test: [ "CMD", "curl", "--fail", "http://aesir/healthz" ]
+      test: [ "CMD", "curl", "--fail", "http://aesir-api/healthz" ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -64,7 +62,7 @@ services:
       - "5432:5432"
     volumes:
       - dbdata:/var/lib/postgresql/data
-    restart: always
+    restart: unless-stopped
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
@@ -75,12 +73,9 @@ services:
   reverse-proxy:
     image: traefik:latest
     restart: unless-stopped
-    depends_on:
-      pgdb:
-        condition: service_healthy
     command:
-      - "--log.level=DEBUG"
-      - "--accesslog=true"
+#      - "--log.level=DEBUG"
+#      - "--accesslog=true"
       - "--providers.docker.exposedbydefault=false"
       - "--api.insecure=true"
       - "--api.debug=true"
@@ -100,7 +95,7 @@ services:
       - letsencryptdata:/letsencrypt
   qdrant:
     image: qdrant/qdrant:latest
-    restart: always
+    restart: unless-stopped
     container_name: qdrant
     environment:
       - QDRANT__SERVICE__API_KEY=aesir_3a087fa5640958985025b0a03d2f6b0c80253884c5bd7c05f65f2fdf2404d7ab
