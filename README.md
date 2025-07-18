@@ -19,11 +19,11 @@
   - [x] Regenerate assistant message
   - [x] Edit user message
   - [ ] Play message
-- [ ] Support "Thinking" In Chat 
-- [ ] Implement RAG
+- [X] Support "Thinking" In Chat 
+- [X] Implement RAG
   - [x] Upload - Global Documents
   - [x] Upload - Conversation Documents
-  - [ ] Download (should we do this?)
+  - [ ] ~~Download (should we do this?)~~
   - [x] CRUD
   - [X] Citations
   - [X] Citation Viewer
