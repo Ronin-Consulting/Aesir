@@ -6,11 +6,12 @@ using Microsoft.SemanticKernel;
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 /// <summary>
-/// Serves as an abstract base for implementing chat services with predefined functionality and utility methods.
+/// Provides an abstract foundation for building chat service implementations with core utilities
+/// for handling conversational AI, logging, and chat history management.
 /// </summary>
-/// <param name="logger">The logging interface used for capturing and managing logs.</param>
-/// <param name="chatHistoryService">The service for handling storage and retrieval of chat history.</param>
-/// <param name="kernel">The semantic kernel powering AI-driven chat operations.</param>
+/// <param name="logger">The interface for logging operations and diagnostics.</param>
+/// <param name="chatHistoryService">The service for managing persistent storage and retrieval of chat histories.</param>
+/// <param name="kernel">The semantic kernel utilized for AI-based chat completion and response generation.</param>
 [Experimental("SKEXP0070")]
 public abstract class BaseChatService(
     ILogger logger,
@@ -19,34 +20,32 @@ public abstract class BaseChatService(
     : IChatService
 {
     /// <summary>
-    /// Represents the logger instance for recording and managing log information.
+    /// A protected instance of <see cref="ILogger"/> used for logging activities within the service.
     /// </summary>
     /// <remarks>
-    /// Used to log errors, warnings, and informational messages for debugging and monitoring purposes
-    /// within the chat service operations. Supports integration with various logging frameworks.
+    /// Facilitates the recording of critical information, such as errors, warnings, and application events,
+    /// to aid in troubleshooting, monitoring, and maintaining service operations.
     /// </remarks>
     protected readonly ILogger _logger = logger;
 
     /// <summary>
-    /// Represents the chat history service, which provides functionality for storing
-    /// and managing chat sessions.
+    /// Represents the chat history service used for managing and storing chat session data.
     /// </summary>
     /// <remarks>
-    /// This instance is used to persist chat session data, support retrieval of previous
-    /// sessions, and perform operations such as updating or deleting chat history records.
+    /// Facilitates operations such as persisting chat sessions, retrieving previous conversations,
+    /// updating records, and managing the overall chat history lifecycle. Provides an abstraction
+    /// for handling chat-related data across the application.
     /// </remarks>
     protected readonly IChatHistoryService _chatHistoryService = chatHistoryService;
 
     /// <summary>
-    /// Represents an instance of the Microsoft.SemanticKernel Kernel, which is utilized to execute
-    /// various functionalities, such as managing plugins, handling prompt execution settings,
-    /// and processing chat completion tasks in the context of the chat service implementation.
+    /// Represents an instance of the Microsoft.SemanticKernel Kernel utilized for managing and executing
+    /// AI-driven functionalities within the chat service.
     /// </summary>
     /// <remarks>
-    /// This member is primarily used by methods for chat-related operations, such as message
-    /// contents retrieval, streaming chat completion, and prompt execution settings creation.
-    /// It serves as a central component for integrating AI functionalities and orchestrating the
-    /// execution of tasks within the chat service ecosystem.
+    /// Provides core capabilities for tasks such as plugin management, prompt execution, and handling
+    /// chat-related operations, serving as the foundational component for integrating AI features
+    /// into the service workflow.
     /// </remarks>
     protected readonly Kernel _kernel = kernel;
 
@@ -54,13 +53,13 @@ public abstract class BaseChatService(
     /// Processes a chat completion request and generates a response based on the provided input.
     /// </summary>
     /// <param name="request">
-    /// The chat request containing the details required for generating a chat response, including the user input and conversation context.
+    /// The chat request containing the necessary information for generating a chat response, such as user input and conversation context.
     /// </param>
     /// <returns>
-    /// An <see cref="AesirChatResult"/> object containing the response to the chat request, including tokens consumed and the conversation context.
+    /// An <see cref="AesirChatResult"/> instance containing the chat response, including details such as tokens used and the updated conversation context.
     /// </returns>
     /// <exception cref="ArgumentNullException">
-    /// Thrown when the provided <paramref name="request"/> is null.
+    /// Thrown when the specified <paramref name="request"/> is null.
     /// </exception>
     public async Task<AesirChatResult> ChatCompletionsAsync(AesirChatRequest request)
     {
@@ -106,11 +105,17 @@ public abstract class BaseChatService(
     }
 
     /// <summary>
-    /// Streams chat completion results based on the provided chat request asynchronously.
+    /// Streams chat completions asynchronously based on the provided chat request.
     /// </summary>
-    /// <param name="request">An instance of <see cref="Aesir.Api.Server.Models.AesirChatRequest"/> containing the details of the chat request, including conversation messages and other metadata.</param>
-    /// <returns>An asynchronous stream of <see cref="Aesir.Api.Server.Models.AesirChatStreamedResult"/> representing the streamed chat completion results.</returns>
-    /// <exception cref="ArgumentNullException">Thrown if the <paramref name="request"/> parameter is null.</exception>
+    /// <param name="request">
+    /// An instance of <see cref="Aesir.Api.Server.Models.AesirChatRequest"/> containing the chat request details, such as the conversation messages and associated metadata.
+    /// </param>
+    /// <returns>
+    /// An asynchronous stream of <see cref="Aesir.Api.Server.Models.AesirChatStreamedResult"/> representing the incremental results of the chat completion process.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown if the <paramref name="request"/> parameter is null.
+    /// </exception>
     public async IAsyncEnumerable<AesirChatStreamedResult> ChatCompletionsStreamedAsync(AesirChatRequest request)
     {
         request = request ?? throw new ArgumentNullException(nameof(request));
@@ -129,7 +134,8 @@ public abstract class BaseChatService(
         IAsyncEnumerable<(string content, bool isThinking, bool isComplete)> streamingResults = null;
 
         bool initializationError = false;
-        AesirChatMessage errorMessage = AesirChatMessage.NewAssistantMessage("I apologize, but I encountered an error processing your request.");
+        AesirChatMessage errorMessage =
+            AesirChatMessage.NewAssistantMessage("I apologize, but I encountered an error processing your request.");
 
         try
         {
@@ -161,20 +167,20 @@ public abstract class BaseChatService(
                 if (!string.IsNullOrEmpty(content))
                 {
                     var messageToSend = AesirChatMessage.NewAssistantMessage(string.Empty);
-                    
+
                     if (isThinking)
                     {
                         messageToSave.ThoughtsContent += content;
-                        
+
                         messageToSend.ThoughtsContent = content;
                     }
                     else
                     {
                         messageToSave.Content += content;
-                        
+
                         messageToSend.Content = content;
                     }
-                    
+
                     yield return new AesirChatStreamedResult()
                     {
                         Id = completionId,
@@ -186,20 +192,31 @@ public abstract class BaseChatService(
                     };
                 }
             }
-            
+
             request.Conversation.Messages.Add(messageToSave);
             await PersistChatSessionAsync(request, request.Conversation, title);
         }
     }
 
     /// <summary>
-    /// Creates an error result for a streamed chat response.
+    /// Creates an error result for a streamed chat response with the specified details.
     /// </summary>
-    /// <param name="completionId">The unique identifier for the completion operation.</param>
-    /// <param name="request">The chat request containing session and conversation details.</param>
-    /// <param name="errorMessage">The error message to include in the result.</param>
-    /// <param name="title">The descriptive title of the error message.</param>
-    /// <returns>An instance of <see cref="AesirChatStreamedResult"/> containing the error details.</returns>
+    /// <param name="completionId">
+    /// The unique identifier for the chat completion request that triggered the error.
+    /// </param>
+    /// <param name="request">
+    /// The chat request object containing session and conversation-specific metadata.
+    /// </param>
+    /// <param name="errorMessage">
+    /// The error message that provides details about the issue encountered.
+    /// </param>
+    /// <param name="title">
+    /// The title summarizing the context or nature of the error.
+    /// </param>
+    /// <returns>
+    /// An instance of <see cref="AesirChatStreamedResult"/> containing information about the error,
+    /// including the identifiers and message details.
+    /// </returns>
     private static AesirChatStreamedResult CreateErrorResult(
         string completionId,
         AesirChatRequest request,
@@ -217,42 +234,71 @@ public abstract class BaseChatService(
     }
 
     /// <summary>
-    /// Retrieves a title based on the content of the user's message contained within the specified chat request.
+    /// Retrieves a title derived from the user's message contained in the specified chat request.
     /// </summary>
-    /// <param name="request">The chat request containing the user's message and associated context.</param>
-    /// <returns>A task that represents the asynchronous operation. The task result contains the title derived from the user's message.</returns>
+    /// <param name="request">
+    /// The chat request containing the user's message and any associated contextual information.
+    /// </param>
+    /// <returns>
+    /// A task that represents the asynchronous operation, with the task result containing the title generated from the user's message.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when the provided <paramref name="request"/> is null.
+    /// </exception>
     protected abstract Task<string> GetTitleForUserMessageAsync(AesirChatRequest request);
 
     /// <summary>
     /// Executes the process of generating a chat-based completion based on the provided request.
     /// </summary>
-    /// <param name="request">The chat request containing parameters and input for generating the chat response.</param>
-    /// <returns>A tuple containing the content of the response, the number of prompt tokens used, and the number of completion tokens generated.</returns>
-    protected abstract Task<(string content, int promptTokens, int completionTokens)> ExecuteChatCompletionAsync(AesirChatRequest request);
-
-    /// <summary>
-    /// Executes a streaming chat completion based on the provided request.
-    /// This abstract method must be implemented by derived classes to process the input
-    /// and provide incremental chat responses as a stream.
-    /// </summary>
     /// <param name="request">
-    /// The chat request containing the input details, such as user messages and context,
-    /// required for generating the streamed completion.
+    /// The chat request containing parameters and input for generating the chat response.
     /// </param>
     /// <returns>
-    /// An asynchronous enumerable of tuples where each tuple contains the generated content as a string,
-    /// a boolean indicating whether the system is still processing ("isThinking"),
-    /// and another boolean indicating if the stream is complete ("isComplete").
+    /// A tuple containing the response content, the number of prompt tokens used, and the number of completion tokens generated.
     /// </returns>
-    protected abstract IAsyncEnumerable<(string content, bool isThinking, bool isComplete)> ExecuteStreamingChatCompletionAsync(AesirChatRequest request);
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when the provided <paramref name="request"/> is null.
+    /// </exception>
+    protected abstract Task<(string content, int promptTokens, int completionTokens)> ExecuteChatCompletionAsync(
+        AesirChatRequest request);
 
     /// <summary>
-    /// Persists the chat session by saving or updating the session details in the chat history service.
+    /// Executes a streaming chat completion based on the provided request, yielding incremental responses
+    /// as a stream of content along with status indicators.
     /// </summary>
-    /// <param name="request">The chat request containing information about the current chat session.</param>
-    /// <param name="conversation">The conversation object representing the messages in the chat session.</param>
-    /// <param name="title">The title of the chat session.</param>
-    /// <returns>A task that represents the asynchronous operation of persisting the chat session.</returns>
+    /// <param name="request">
+    /// The chat request containing user input details and conversation context necessary for generating
+    /// the streamed chat responses.
+    /// </param>
+    /// <returns>
+    /// An asynchronous enumerable of tuples, where each tuple consists of the generated content as a string,
+    /// a boolean indicating if the system is processing ("isThinking"), and a boolean indicating if the stream
+    /// is fully completed ("isComplete").
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown if the provided <paramref name="request"/> is null.
+    /// </exception>
+    protected abstract IAsyncEnumerable<(string content, bool isThinking, bool isComplete)>
+        ExecuteStreamingChatCompletionAsync(AesirChatRequest request);
+
+    /// <summary>
+    /// Persists the chat session by saving or updating the session's details in the chat history service.
+    /// </summary>
+    /// <param name="request">
+    /// The chat request containing information about the current session, including user and session details.
+    /// </param>
+    /// <param name="conversation">
+    /// The conversation object that includes the collection of messages exchanged during the chat session.
+    /// </param>
+    /// <param name="title">
+    /// The title of the chat session, used for identification and display purposes.
+    /// </param>
+    /// <returns>
+    /// A task representing the asynchronous operation of persisting the chat session.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the <paramref name="request.ChatSessionId"/> is null.
+    /// </exception>
     protected async Task PersistChatSessionAsync(AesirChatRequest request, AesirConversation conversation, string title)
     {
         await _chatHistoryService.UpsertChatSessionAsync(new AesirChatSession()

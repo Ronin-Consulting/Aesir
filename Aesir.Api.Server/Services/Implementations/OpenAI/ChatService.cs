@@ -11,33 +11,34 @@ using OpenAI.Chat;
 namespace Aesir.Api.Server.Services.Implementations.OpenAI;
 
 /// <summary>
-/// Implements chat completion functionality utilizing the OpenAI backend.
-/// Provides support for generating both full and streaming responses to user input.
+/// Represents a chat service implementation utilizing OpenAI for processing user input and generating responses.
+/// Extends functionality from the base chat service to support additional features and integrations.
 /// </summary>
 /// <remarks>
-/// This service relies on OpenAI API credentials configured in the application's settings.
-/// It incorporates chat history management to persist user conversations, which can be leveraged
-/// for contextually-aware responses. The service also integrates with a document collection service,
-/// enabling the AI to process and use user-uploaded documents during conversations.
+/// This class facilitates chat-based conversations, allowing for streamlined integration with the OpenAI backend.
+/// It supports full and streaming response capabilities and leverages chat history for context awareness.
+/// The service also has the ability to process user-uploaded documents to provide more informed responses.
 /// </remarks>
 [Experimental("SKEXP0070")]
 public class ChatService : BaseChatService
 {
     /// <summary>
-    /// Service responsible for handling chat completion operations, including generating
-    /// responses to user messages and streaming chat completions, leveraging the OpenAI backend.
+    /// Instance of the chat completion service used to manage chat-related operations, such as
+    /// generating responses to user inputs and facilitating real-time chat completion processes.
     /// </summary>
     private readonly IChatCompletionService _chatCompletionService;
 
     /// <summary>
-    /// A service utilized within the chat framework to manage document collections related to conversations.
-    /// Provides functionality to retrieve, process, or search through uploaded documents during a conversation.
+    /// Service used for managing document collections associated with conversations,
+    /// enabling functionality such as retrieving, processing, and searching through
+    /// conversation-specific documents.
     /// </summary>
     private readonly IConversationDocumentCollectionService _conversationDocumentCollectionService;
 
     /// <summary>
-    /// Provides access to prompt generation logic, enabling the creation and retrieval of prompts
-    /// necessary for various AI-driven operations, including chat completions and title generation.
+    /// Provides an implementation of prompt generation functionalities used for constructing
+    /// and accessing prompts essential to AI-driven workflows, such as chat completion and
+    /// other conversational AI operations.
     /// </summary>
     private static readonly IPromptProvider PromptProvider = new DefaultPromptProvider();
 
@@ -96,20 +97,21 @@ public class ChatService : BaseChatService
             _logger.LogError(ex, "Error generating title using Semantic Kernel IChatCompletionService");
         }
 
-        return request.Conversation.Messages.Last().Content[..Math.Min(50, request.Conversation.Messages.Last().Content.Length)] + "...";
+        return request.Conversation.Messages.Last()
+            .Content[..Math.Min(50, request.Conversation.Messages.Last().Content.Length)] + "...";
     }
 
     /// <summary>
-    /// Executes a chat completion request and returns the content and token usage.
+    /// Executes a chat completion request and retrieves the response content, including token usage details.
     /// </summary>
-    /// <param name="request">The chat request to process.</param>
-    /// <returns>A tuple containing the response content, prompt tokens, and completion tokens.</returns>
+    /// <param name="request">The chat request containing the required data for processing the chat completion action.</param>
+    /// <returns>A task representing the asynchronous operation, containing a tuple with the response content, the number of prompt tokens, and the number of completion tokens.</returns>
     protected override async Task<(string content, int promptTokens, int completionTokens)> ExecuteChatCompletionAsync(
         AesirChatRequest request)
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = CreateChatHistory(request.Conversation.Messages);
-        
+
         var completionResults = await _chatCompletionService.GetChatMessageContentsAsync(
             chatHistory,
             settings,
@@ -136,12 +138,13 @@ public class ChatService : BaseChatService
     }
 
     /// <summary>
-    /// Executes a streaming chat completion request and returns content chunks with completion status.
+    /// Executes a streaming chat completion request and yields content chunks with their completion statuses.
     /// </summary>
-    /// <param name="request">The chat request containing conversation details and prompt settings.</param>
-    /// <returns>An asynchronous stream of tuples where each tuple contains a content chunk and a boolean indicating whether the completion is complete.</returns>
-    protected override async IAsyncEnumerable<(string content, bool isThinking, bool isComplete)> ExecuteStreamingChatCompletionAsync(
-        AesirChatRequest request)
+    /// <param name="request">The chat request containing conversations, messages, and prompt settings.</param>
+    /// <returns>An asynchronous stream of tuples, where each tuple includes a content chunk, a boolean indicating whether the system is "thinking," and a boolean indicating if completion is final.</returns>
+    protected override async IAsyncEnumerable<(string content, bool isThinking, bool isComplete)>
+        ExecuteStreamingChatCompletionAsync(
+            AesirChatRequest request)
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = CreateChatHistory(request.Conversation.Messages);
@@ -162,11 +165,12 @@ public class ChatService : BaseChatService
 
     /// <summary>
     /// Creates prompt execution settings for the OpenAI model based on the provided chat request.
-    /// If the conversation includes file attachments, configures the settings to enable document search
-    /// functionality leveraging function calling capabilities.
+    /// Configures the settings with parameters such as model ID, token limits, and optionally
+    /// adjusts parameters like temperature or top-p based on the request. Enables document search
+    /// capabilities if the conversation contains file attachments.
     /// </summary>
-    /// <param name="request">The chat request containing parameters for model configuration, including model ID, temperature, top-p, and maximum tokens.</param>
-    /// <returns>An instance of <see cref="OpenAIPromptExecutionSettings"/> configured with the details from the chat request.</returns>
+    /// <param name="request">The chat request containing details for configuring prompt execution, such as model ID, temperature, top-p, maximum tokens, and conversation metadata.</param>
+    /// <returns>A task representing the async operation, with a result of <see cref="OpenAIPromptExecutionSettings"/> configured based on the provided request.</returns>
     private async Task<OpenAIPromptExecutionSettings> CreatePromptExecutionSettingsAsync(AesirChatRequest request)
     {
         await Task.CompletedTask;
@@ -182,13 +186,13 @@ public class ChatService : BaseChatService
             settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
 
             var conversationId = request.Conversation.Id;
-            
+
             var args = ConversationDocumentCollectionArgs.Default;
             args.SetConversationId(conversationId);
-            
+
             _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(args));
         }
-        
+
         if (request.Temperature.HasValue)
             settings.Temperature = (float?)request.Temperature;
         else if (request.TopP.HasValue)
@@ -201,7 +205,7 @@ public class ChatService : BaseChatService
     /// Creates a chat history from a collection of Aesir chat messages.
     /// </summary>
     /// <param name="messages">The collection of Aesir chat messages to convert into a chat history.</param>
-    /// <returns>A <see cref="ChatHistory"/> object representing the converted messages for use with the Semantic Kernel.</returns>
+    /// <returns>A <see cref="ChatHistory"/> object representing the chat history derived from the provided messages.</returns>
     private static ChatHistory CreateChatHistory(IEnumerable<AesirChatMessage> messages)
     {
         var chatHistory = new ChatHistory();
