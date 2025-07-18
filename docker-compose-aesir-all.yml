@@ -15,7 +15,7 @@ services:
         - linux/arm64
     container_name: aesir-client-desktop
     environment:
-      - DISPLAY=${DISPLAY:-:0}
+      - DISPLAY=:1
       - ASPNETCORE_ENVIRONMENT=Development
     volumes:
       # X11 socket for GUI forwarding
