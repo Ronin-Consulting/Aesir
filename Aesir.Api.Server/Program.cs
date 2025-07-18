@@ -5,6 +5,8 @@ using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Services;
 using Aesir.Api.Server.Services.Implementations.Standard;
 using FluentMigrator.Runner;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 using OllamaSharp;
 using OpenAI;
 using AesirOllama = Aesir.Api.Server.Services.Implementations.Ollama;
@@ -58,7 +60,27 @@ public class Program
         {
             // should be transient to always get fresh kernel
             builder.Services.AddTransient<IModelsService, AesirOllama.ModelsService>();
-            builder.Services.AddTransient<IChatService, AesirOllama.ChatService>();
+            builder.Services.AddTransient<IChatService>(serviceProvider =>
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<AesirOllama.ChatService>>();
+                var ollamApiClient = serviceProvider.GetRequiredService<OllamaApiClient>();
+                var kernel = serviceProvider.GetRequiredService<Kernel>();
+                var chatCompletionService = serviceProvider.GetRequiredService<IChatCompletionService>();
+                var chatHistoryService = serviceProvider.GetRequiredService<IChatHistoryService>();
+                var conversationDocumentCollectionService = serviceProvider.GetRequiredService<IConversationDocumentCollectionService>();
+
+                var enableThinking = builder.Configuration.GetValue<bool?>("Inference:Ollama:EnableChatModelThinking");
+                
+                return new AesirOllama.ChatService(
+                    logger, 
+                    ollamApiClient, 
+                    kernel, 
+                    chatCompletionService, 
+                    chatHistoryService,
+                    conversationDocumentCollectionService,
+                    enableThinking ?? false
+                );
+            });
             
             builder.Services.AddTransient<AesirOllama.VisionModelConfig>(serviceProvider =>
             {

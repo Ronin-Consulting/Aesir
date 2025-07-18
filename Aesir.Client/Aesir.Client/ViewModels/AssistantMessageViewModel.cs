@@ -212,7 +212,7 @@ public partial class AssistantMessageViewModel(
                 }
                 
                 // let ui catch up
-                await Task.Delay(TimeSpan.FromMilliseconds(50));
+                await Task.Delay(TimeSpan.FromMilliseconds(30));
             }
             
             return title;

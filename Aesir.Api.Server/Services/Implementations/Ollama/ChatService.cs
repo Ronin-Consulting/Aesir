@@ -44,6 +44,8 @@ public class ChatService : BaseChatService
     /// </summary>
     private readonly IConversationDocumentCollectionService _conversationDocumentCollectionService;
 
+    private readonly bool _enableThinking;
+
     /// <summary>
     /// The maximum number of tokens allowed for generating a title during a chat completion.
     /// This limit controls the token budget used when creating a concise and meaningful title
@@ -78,12 +80,15 @@ public class ChatService : BaseChatService
         Kernel kernel,
         IChatCompletionService chatCompletionService,
         IChatHistoryService chatHistoryService,
-        IConversationDocumentCollectionService conversationDocumentCollectionService)
+        IConversationDocumentCollectionService conversationDocumentCollectionService,
+        bool enableThinking = false)
         : base(logger, chatHistoryService, kernel)
     {
+        _enableThinking = enableThinking;
         _api = api;
         _chatCompletionService = chatCompletionService;
         _conversationDocumentCollectionService = conversationDocumentCollectionService;
+        _enableThinking = enableThinking;
     }
 
     /// <summary>
@@ -145,8 +150,8 @@ public class ChatService : BaseChatService
         );
 
         var content = string.Empty;
-        int promptTokens = 0;
-        int completionTokens = 0;
+        var promptTokens = 0;
+        var completionTokens = 0;
         
         foreach (var completion in results)
         {
@@ -216,7 +221,8 @@ public class ChatService : BaseChatService
             ExtensionData = new Dictionary<string, object>()
         };
         
-        settings.ExtensionData.Add("think", true);
+        if(_enableThinking)
+            settings.ExtensionData.Add("think", true);
         
         if (request.Conversation.Messages.Any(m => m.HasFile()))
         {

@@ -70,11 +70,11 @@ To use OpenAI as the backend:
 3. Optionally configure organization ID and preferred models
 
 ### LLM Models Tested
-1. **cogito:32b-v1-preview-qwen-q4_K_M - This one is the best**
-2. cogito:32b
-3. qwen2.5:32b
-4. qwen2.5:14b-instruct-q6_K
-5. gemma3n:latest - NEW not tried yet
+1. **cogito:32b-v1-preview-qwen-q4_K_M - This one is the best non-reasoning**
+2. **qwen3:32b-q4_K_M - The best reasoning/thinking model**
+
+Note: 
+1. Tried deepseek-r1:32b-qwen-distill-q4_K_M its great! But sad with tools. Looks like a bug in Ollama.
 
 ### Embedding Models Tested
 1. mxbai-embed-large:latest
