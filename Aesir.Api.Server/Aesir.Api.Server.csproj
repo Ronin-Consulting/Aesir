@@ -12,7 +12,7 @@
     </PropertyGroup>
     
     <ItemGroup>
-        <PackageReference Include="Aspose.PDF.Drawing" Version="25.6.0" />
+        <PackageReference Include="Aspose.PDF.Drawing" Version="25.7.0" />
         <PackageReference Include="Dapper" Version="2.1.66" />
         <PackageReference Include="dotnet-stop-words" Version="1.1.0" />
         <PackageReference Include="FluentMigrator" Version="7.1.0" />
@@ -36,6 +36,7 @@
         <PackageReference Include="PdfPig" Version="0.1.10" />
         <PackageReference Include="Pgvector" Version="0.3.2" />
         <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
+        <PackageReference Include="Qdrant.Client" Version="1.15.0" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.10" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3" />
         <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="9.0.3" />

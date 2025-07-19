@@ -5,10 +5,9 @@ using Aesir.Api.Server.Services.Implementations.Standard;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Connectors.PgVector;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
-using Npgsql;
 using OllamaSharp;
+using Qdrant.Client;
 using SamurAI = Aesir.Api.Server.Services.Implementations.Samurai;
 
 namespace Aesir.Api.Server.Extensions;
@@ -88,21 +87,29 @@ public static class ServiceCollectionExtensions
             EmbeddingGenerator = embeddingGenerator
         };
         
-        kernelBuilder.Services.AddQdrantCollection<Guid, AesirConversationDocumentTextData<Guid>>(
-            name: "aesir_conversation_document",
-            host: "qdrant",
-            port: 6334,
-            https: false,
-            "aesir_3a087fa5640958985025b0a03d2f6b0c80253884c5bd7c05f65f2fdf2404d7ab",
-            collectionOptions);
+        Func<IServiceProvider, QdrantClient>? clientProvider = provider =>
+        {
+            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            
+            return new QdrantClient(
+                host: "qdrant", port: 6334,
+                https: false, apiKey: "aesir_3a087fa5640958985025b0a03d2f6b0c80253884c5bd7c05f65f2fdf2404d7ab",
+                loggerFactory: loggerFactory);
+        };
+
+        Func<IServiceProvider, QdrantCollectionOptions>? optionsProvider = provider => collectionOptions;
         
-        kernelBuilder.Services.AddQdrantCollection<Guid, AesirGlobalDocumentTextData<Guid>>(
+        kernelBuilder.Services.AddKeyedQdrantCollection<Guid, AesirConversationDocumentTextData<Guid>>(
+            serviceKey: null,
+            name: "aesir_conversation_document",
+            clientProvider,
+            optionsProvider);
+        
+        kernelBuilder.Services.AddKeyedQdrantCollection<Guid, AesirGlobalDocumentTextData<Guid>>(
+            serviceKey: null,
             name: "aesir_global_document",
-            host: "qdrant",
-            port: 6334,
-            https: false,
-            "aesir_3a087fa5640958985025b0a03d2f6b0c80253884c5bd7c05f65f2fdf2404d7ab",
-            collectionOptions);
+            clientProvider,
+            optionsProvider);
         
         services.AddSingleton(new UniqueKeyGenerator<Guid>(Guid.NewGuid));
         

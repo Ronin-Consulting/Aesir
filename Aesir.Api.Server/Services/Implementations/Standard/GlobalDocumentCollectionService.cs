@@ -17,7 +17,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
     /// <summary>
     /// Specifies the maximum number of search results to return when querying global documents.
     /// </summary>
-    private const int TopResults = 5;
+    private const int TopResults = 8;
 
     /// <summary>
     /// A private instance of vector-based text search functionality for global document text data.
@@ -232,7 +232,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
                 Description = "Executes a hybrid search combining exact keyword matching with semantic relevance for the given query. Ideal for retrieving targeted content from local or indexed data sources on edge devices. Returns a collection of results, each including a name (e.g., title or identifier), value (e.g., snippet or full content), and link (e.g., URI or reference) for the matched items. Use 'count' to limit results and 'skip' for pagination.",
                 Parameters = [
                     new KernelParameterMetadata("query") { Description = "The search query string, supporting keywords, phrases, or natural language input for hybrid matching.", ParameterType = typeof(string), IsRequired = true },
-                    new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 5).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 5 },
+                    new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 8).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 8 },
                     new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
                 ],
                 ReturnParameter = new KernelReturnParameterMetadata { ParameterType = typeof(KernelSearchResults<TextSearchResult>), Description = "A collection of search results, where each TextSearchResult contains properties like Name, Value, and Link." },
@@ -252,7 +252,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         categoryFilter.Equality(nameof(AesirGlobalDocumentTextData<Guid>.Category), categoryId);
         var globalDocumentTextSearchOptions = new TextSearchOptions
         {
-            Top = 10, 
+            Top = TopResults, 
             Filter = categoryFilter
         };
             
