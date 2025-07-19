@@ -41,7 +41,7 @@
             <StackPanel Orientation="Horizontal" IsVisible="{Binding !IsLoaded}" Spacing="0">
                 <avalonia:MaterialIcon VerticalAlignment="Center" HorizontalAlignment="Left"
                     Classes="progress" Kind="CircleSlice8" Foreground="{DynamicResource SemiColorTertiary}" />
-                <TextBlock Margin="4,0,0,0" Text="Thinking..." FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Right"></TextBlock>
+                <TextBlock Margin="4,0,0,0" Text="Thinking..." FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Right"></TextBlock>
             </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Vertical" IsVisible="{Binding IsLoaded}" Spacing="0">
                 <Expander IsVisible="{Binding IsThinking}" 
@@ -55,7 +55,7 @@
                                                        Kind="CircleSlice8"
                                                        Classes="progress"
                                                        Foreground="{DynamicResource SemiColorTertiary}" />
-                                <TextBlock Margin="4,0,0,0" Text="Collecting Thoughts..." FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Right"></TextBlock>
+                                <TextBlock Margin="4,0,0,0" Text="Collecting Thoughts..." FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Right"></TextBlock>
                             </StackPanel>
                             <avalonia:MaterialIcon VerticalAlignment="Center" HorizontalAlignment="Right"
                                                    IsVisible="{Binding !IsCollectingThoughts}"

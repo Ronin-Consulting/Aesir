@@ -12,57 +12,53 @@ using Microsoft.Extensions.Logging;
 namespace Aesir.Client.ViewModels;
 
 /// <summary>
-/// Represents the ViewModel for managing user messages in the application.
-/// Extends the <see cref="MessageViewModel"/> to provide specific functionality for user-generated messages.
+/// Represents the ViewModel specifically designed for handling messages created by users.
+/// Inherits from <see cref="MessageViewModel"/> to provide additional user-specific message functionality.
 /// </summary>
 public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, IMarkdownService markdownService)
     : MessageViewModel(logger, markdownService)
 {
     /// <summary>
-    /// Indicates whether the current message is in an editable state.
+    /// Specifies whether the user message is currently being edited.
     /// </summary>
     [ObservableProperty] private bool _isEditing;
 
     /// <summary>
-    /// Represents the raw message content in string format. This property is used to store and manipulate
-    /// the unprocessed textual message data for a user.
+    /// Stores the raw, unprocessed text of the message. This field holds the original content
+    /// before any formatting, parsing, or modifications are applied.
     /// </summary>
     [ObservableProperty] private string _rawMessage = string.Empty;
 
     /// <summary>
-    /// Represents the name of a file associated with the user message.
+    /// Stores the name of a file associated with a user message within the view model.
     /// </summary>
     [ObservableProperty] private string? _fileName;
 
     /// <summary>
-    /// Represents an instance of the markdown service used to process and render markdown content as HTML.
+    /// An instance of the markdown service used to convert markdown text into rendered HTML content.
     /// </summary>
     private readonly IMarkdownService _markdownService1 = markdownService;
 
     /// <summary>
-    /// Gets the role associated with the message view model.
+    /// Represents the role of the message sender.
     /// </summary>
-    /// <remarks>
-    /// Overrides the base implementation to provide a specific role for the user message.
-    /// This property returns "user" to indicate that the message originates from a user.
-    /// </remarks>
     public override string Role => "user";
 
     /// <summary>
-    /// Creates an <see cref="ICommand"/> that executes the regenerate message functionality.
+    /// Creates a command to execute the regenerate message functionality.
     /// </summary>
-    /// <returns>A command that triggers the regenerate message operation.</returns>
+    /// <returns>An <see cref="ICommand"/> that initiates the regenerate message operation.</returns>
     protected override ICommand CreateRegenerateMessageCommand()
     {
         return new RelayCommand(RegenerateMessage);
     }
 
     /// <summary>
-    /// Processes and sets the message content by handling associated files, normalizing input,
-    /// and rendering the content to HTML using a markdown service.
+    /// Sets the message content by processing the input, including handling associated files,
+    /// extracting content, and rendering it as HTML using a markdown service.
     /// </summary>
-    /// <param name="message">The <see cref="AesirChatMessage"/> instance containing the message data to process.</param>
-    /// <returns>A task that represents the asynchronous operation. Upon completion, updates the view model's properties with the processed message content.</returns>
+    /// <param name="message">The <see cref="Aesir.Common.Models.AesirChatMessage"/> instance containing the message data to be processed and displayed.</param>
+    /// <returns>A task representing the asynchronous operation of setting and rendering the message content.</returns>
     public override async Task SetMessage(AesirChatMessage message)
     {
         if (message.HasFile())
@@ -72,20 +68,22 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
 
         Content = message.GetContentWithoutFileName() ?? throw new InvalidOperationException();
 
-        var htmlMessage = await _markdownService1.RenderMarkdownAsHtmlAsync(NormalizeInput(Content));
+        var htmlMessage = await _markdownService1.RenderMarkdownAsHtmlAsync(Content);
         Message = htmlMessage;
 
         IsLoaded = true;
     }
 
+    /// <summary>
     /// Updates the message content and its rendered HTML representation after being edited by the user.
+    /// </summary>
     /// <param name="rawMessage">The raw user input for the message content.</param>
     /// <returns>A task that represents the asynchronous operation of updating the message content.</returns>
     public async Task SetMessageAfterEdit(string rawMessage)
     {
         Content = rawMessage;
 
-        var htmlMessage = await _markdownService1.RenderMarkdownAsHtmlAsync(NormalizeInput(rawMessage));
+        var htmlMessage = await _markdownService1.RenderMarkdownAsHtmlAsync(rawMessage);
         Message = htmlMessage;
 
         IsLoaded = true;
@@ -102,11 +100,12 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
         return AsUserMessage();
     }
 
-    /// Converts the current message's content into a user-specific AesirChatMessage object.
-    /// If a file name is associated with the message, it includes the file name within a specific tag in the content.
+    /// <summary>
+    /// Converts the current message into a user-specific <see cref="AesirChatMessage"/> object.
+    /// </summary>
     /// <returns>
-    /// An AesirChatMessage object with the role set to "user" and the content set to the current message's content.
-    /// If a file name is present, the content will include the file name in a specific format.
+    /// An <see cref="AesirChatMessage"/> instance with the role set to "user" and content consisting of the current message content.
+    /// If a file name is associated with the message, it appends the file name within a file tag to the content.
     /// </returns>
     public AesirChatMessage AsUserMessage()
     {
@@ -120,10 +119,11 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
         return AesirChatMessage.NewUserMessage(content);
     }
 
-    /// Converts HTML unordered list tags (<ul/> and <li/>) to plain text bullet point lists using a dash (-) to represent each list item.
-    /// The method processes each <ul/> block separately, removing the <ul> and </ul> tags, and replacing <li/> tags with a dash (-) prefix.
-    /// <param name="html">The input HTML string containing unordered lists.</param>
-    /// <returns>A plain text representation of the input HTML with unordered lists converted to bullet point lists.</returns>
+    /// <summary>
+    /// Converts HTML unordered list elements to plain text bullet point lists using a dash (-) as the bullet symbol.
+    /// </summary>
+    /// <param name="html">The input HTML string containing unordered list elements (<ul> and <li> tags).</param>
+    /// <returns>A plain text string where the unordered list elements are represented as bullet point lists.</returns>
     public string ConvertUnorderedListTagsToBulletLists(string html)
     {
         var result = html;
@@ -157,10 +157,10 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
     }
 
     /// <summary>
-    /// Converts HTML ordered list tags (<ol/> and <li/>) into plain text numbered lists with numerical prefixes.
+    /// Converts ordered list tags in an HTML string into plain text numbered lists with numerical prefixes.
     /// </summary>
-    /// <param name="html">The HTML string containing ordered list tags to be converted.</param>
-    /// <returns>A string where ordered list tags are replaced with corresponding numbered lists in plain text format.</returns>
+    /// <param name="html">The HTML string containing ordered list tags to be processed.</param>
+    /// <returns>A string in which ordered list tags are replaced by plain text numbered lists.</returns>
     public string ConvertOrderedListTagsToNumberedLists(string html)
     {
         var result = html;
@@ -209,7 +209,9 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
         return result;
     }
 
+    /// <summary>
     /// Converts the provided HTML string into a plain text format, replacing specific HTML tags with textual equivalents.
+    /// </summary>
     /// <param name="html">The HTML string to be converted into plain text.</param>
     /// <returns>A plain text representation of the HTML input, with lists converted and paragraph tags removed.</returns>
     public string ConvertFromHtml(string html)
@@ -228,15 +230,13 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
         return result.TrimEnd('\n');
     }
 
-    /// Sends a message to regenerate the user's chat message. The method utilizes
-    /// the WeakReferenceMessenger to dispatch a `RegenerateMessageMessage`, passing
-    /// the current view model instance as the message content.
-    /// This allows external components that are subscribed to the `RegenerateMessageMessage`
-    /// to react and handle the regeneration of the user's message as needed.
-    /// Usage of this method assumes that the receiving components properly handle the message
-    /// and reprocess the user's input or regenerate the content accordingly.
-    /// This method does not perform any UI update on its own nor does it modify the state of the
-    /// view model directly. It only sends the regeneration request to be handled elsewhere.
+    /// <summary>
+    /// Sends a message to request the regeneration of the user's current message.
+    /// Utilizes <see cref="WeakReferenceMessenger"/> to dispatch a <see cref="RegenerateMessageMessage"/>,
+    /// which contains the current instance of the ViewModel as its content.
+    /// External components subscribed to this message can handle the regeneration process
+    /// for the user message as needed.
+    /// </summary>
     private void RegenerateMessage()
     {
         WeakReferenceMessenger.Default.Send(new RegenerateMessageMessage(this));

@@ -14,10 +14,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
 
-/// Represents the assistant's message in a conversation, inheriting functionality from the MessageViewModel class.
-/// This class is specifically tailored for handling assistant-related operations such as regenerating responses,
-/// processing streamed messages, and dealing with user interactions like link clicks. It incorporates logging,
-/// markdown rendering, and content processing services to enhance its capabilities and ensure a dynamic user experience.
+/// Represents the assistant's message in a conversation, deriving from the MessageViewModel class.
+/// This class handles assistant-specific functionalities such as managing regenerated responses, processing streamed content,
+/// and supporting interactions like handling link clicks. It leverages logging, markdown formatting, and advanced content
+/// processing services to ensure a responsive and engaging user interaction experience.
 public partial class AssistantMessageViewModel(
     ILogger<AssistantMessageViewModel> logger,
     IMarkdownService markdownService,
@@ -25,37 +25,37 @@ public partial class AssistantMessageViewModel(
     : MessageViewModel(logger, markdownService)
 {
     /// <summary>
-    /// A readonly instance of the <see cref="IContentProcessingService"/> used to manage
-    /// content handling operations within the assistant message view model.
+    /// A readonly instance of the <see cref="IContentProcessingService"/> utilized for managing
+    /// content processing tasks related to the assistant message view model functionality.
     /// </summary>
     /// <remarks>
-    /// This service facilitates functions such as processing content models and managing
-    /// interactions, including actions triggered by user-initiated events like link clicks
-    /// within the assistant messaging context.
+    /// This instance supports operations such as processing and managing content behaviors
+    /// and handles interactions resulting from user-triggered events, such as link clicks.
     /// </remarks>
     private readonly IContentProcessingService _contentProcessingService = contentProcessingService ??
                                                                            throw new System.ArgumentNullException(
                                                                                nameof(contentProcessingService));
 
     /// <summary>
-    /// A private field that stores the raw, unprocessed content of the assistant's internal thoughts
-    /// extracted from an associated <see cref="AesirChatMessage"/>.
+    /// A private field that stores the raw content representing the assistant's internal thoughts
+    /// extracted from incoming messages such as <see cref="AesirChatMessage"/>.
     /// </summary>
     /// <remarks>
-    /// This field is dynamically updated as the assistant's streamed message evolves or when a new message
-    /// is assigned. It represents the intermediate state of reasoning before being processed or rendered
-    /// into a user-presentable format, such as HTML, for display in the user interface.
+    /// This field is updated dynamically during the lifecycle of a message, either when assigning
+    /// new content or streaming partial updates. It serves as a pre-rendered state of the assistant's
+    /// reasoning process before being processed into a user-facing representation.
     /// </remarks>
     private string _thoughtsContent = string.Empty;
 
     /// <summary>
-    /// A private, observable string property used to store the assistant's internal thoughts
-    /// or reasoning related to the message being processed or displayed in the ViewModel.
+    /// A private observable string property that holds the assistant's internal thoughts
+    /// or reasoning associated with the current message being processed or displayed.
     /// </summary>
     /// <remarks>
-    /// This property provides additional context or insight regarding the assistant's
-    /// response generation process. It serves as a means to capture and reflect
-    /// reasoning or supplementary details intrinsic to the current interaction.
+    /// This property is intended to provide additional insights or supplementary information
+    /// regarding the assistant's thought process during response generation. It captures
+    /// contextual reasoning that may enhance the understanding of the assistant's behavior
+    /// within the ongoing interaction.
     /// </remarks>
     [ObservableProperty] private string _thoughtsMessage = string.Empty;
 
@@ -63,18 +63,18 @@ public partial class AssistantMessageViewModel(
     /// A private field indicating whether the assistant is currently engaged in a thinking or processing state.
     /// </summary>
     /// <remarks>
-    /// This field tracks the assistant's active computation status, allowing for appropriate updates to UI elements
-    /// or behaviors that are contingent on the assistant's processing state.
+    /// This field tracks the assistant's active computation status, enabling responsive updates to the user interface
+    /// or related application behaviors that depend on the assistant's processing activity.
     /// </remarks>
     [ObservableProperty] private bool _isThinking;
 
     /// <summary>
-    /// A private, observable field indicating whether the assistant is actively engaged
-    /// in generating or formulating its next response during a conversation or interaction.
+    /// A private, observable field indicating whether the assistant is in the process of
+    /// formulating or generating its response during an interaction.
     /// </summary>
     /// <remarks>
-    /// This property is typically updated to reflect the assistant's ongoing thinking or
-    /// message composition state, which may be relevant for UI updates or interaction workflow.
+    /// Changes to this field signify the assistant's active state of thought collection,
+    /// typically used to modify UI elements or manage interaction workflows.
     /// </remarks>
     [ObservableProperty] private bool _isCollectingThoughts;
 
@@ -82,60 +82,58 @@ public partial class AssistantMessageViewModel(
     /// Represents the role of the message sender within the conversation context.
     /// </summary>
     /// <remarks>
-    /// The <see cref="Role"/> property specifies the identity or purpose of the sender
-    /// (e.g., "assistant") to distinguish the assistant's messages from other types in the conversation.
+    /// Specifies the identity or purpose of the sender, such as "assistant," to differentiate
+    /// this sender's messages from others in the messaging flow.
     /// </remarks>
     public override string Role => "assistant";
 
-    /// Generates the command responsible for initiating the regeneration of a message.
-    /// This method ensures the appropriate command behavior is encapsulated to
-    /// enable seamless handling of the regeneration process within the assistant's context.
+    /// Generates a command responsible for triggering a message regeneration process.
+    /// This method encapsulates the behavior required to facilitate the regeneration
+    /// workflow within the assistant's operational context.
     /// <returns>
-    /// An instance of ICommand that contains the logic necessary to execute the regeneration
-    /// of a message when invoked.
+    /// An ICommand instance containing the logic to execute the regeneration of a
+    /// message when invoked.
     /// </returns>
     protected override ICommand CreateRegenerateMessageCommand()
     {
         return new RelayCommand(RegenerateMessage);
     }
 
-    /// Triggers the regeneration process for the assistant's message by sending a
-    /// message of type RegenerateMessageMessage. This method facilitates the
-    /// recalculation or updating of the assistant's response within the context
-    /// of the current message instance.
+    /// Initiates the regeneration of the assistant's message by triggering the necessary
+    /// messaging framework to send a `RegenerateMessageMessage` that corresponds to the
+    /// current message instance. This method is responsible for updating or recalculating
+    /// the assistant's response dynamically within the existing conversation context.
     private void RegenerateMessage()
     {
         WeakReferenceMessenger.Default.Send(new RegenerateMessageMessage(this));
     }
 
-    /// Handles the event where a link within the assistant message is clicked.
-    /// This method delegates the processing of the clicked link to the content processing service,
-    /// ensuring the link and its associated attributes are managed appropriately.
-    /// <param name="link">The URL of the clicked link.</param>
-    /// <param name="attributes">A dictionary containing additional attributes or metadata associated with the link.</param>
+    /// Handles the event triggered when a hyperlink within the assistant's message is clicked.
+    /// This method processes the link and its associated metadata using the content processing service.
+    /// <param name="link">The URL of the clicked hyperlink.</param>
+    /// <param name="attributes">A dictionary containing key-value pairs representing additional metadata for the link.</param>
     public void LinkClicked(string link, Dictionary<string, string> attributes)
     {
         _contentProcessingService.HandleLinkClick(link, attributes);
     }
 
-    /// Sets the provided message into the view model while ensuring the relevant processing,
-    /// such as content conversion and state adjustments, is performed.
-    /// This method updates the view model's data using the specified input message
-    /// and invokes the base method for further processing.
+    /// Sets the specified message into the view model, performing any required
+    /// adjustments such as content formatting, state updates, and processing logic,
+    /// while ensuring base functionality is invoked as part of the operation.
     /// <param name="message">
-    /// An instance of <see cref="AesirChatMessage"/> containing the data to be processed
-    /// and displayed by the assistant.
+    /// An instance of <see cref="AesirChatMessage"/> containing the data to be integrated
+    /// and displayed within the assistant view model.
     /// </param>
     /// <returns>
-    /// A <see cref="Task"/> representing the asynchronous operation of setting the message.
+    /// A <see cref="Task"/> representing the asynchronous execution of the message-setting logic.
     /// </returns>
     public override async Task SetMessage(AesirChatMessage message)
     {
-        _thoughtsContent = message.ThoughtsContent;
+        _thoughtsContent = message.ThoughtsContent ?? string.Empty;
 
         if (!string.IsNullOrWhiteSpace(_thoughtsContent))
         {
-            var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(NormalizeInput(message.ThoughtsContent));
+            var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(_thoughtsContent);
             ThoughtsMessage = htmlMessage;
 
             IsThinking = true;
@@ -144,16 +142,16 @@ public partial class AssistantMessageViewModel(
         await base.SetMessage(message);
     }
 
-    /// Asynchronously processes a streamed message and updates the state of the view model accordingly.
-    /// This method executes the logic necessary for handling chunks of streamed content,
-    /// extracting relevant metadata such as the title and processing the message based on specified conditions.
+    /// Asynchronously processes a streamed message and updates the corresponding view model state.
+    /// This method handles incoming message chunks, performs necessary transformations, and extracts key information,
+    /// such as a title, from the data stream to update the view model accordingly.
     /// <param name="message">
-    /// An asynchronous stream of <c>AesirChatStreamedResult?</c> objects representing parts of the streamed message
-    /// along with their respective metadata and processing states.
+    /// An asynchronous stream of <c>AesirChatStreamedResult?</c> objects that provides message segments
+    /// along with relevant metadata for processing.
     /// </param>
     /// <returns>
-    /// A <c>Task</c> that represents the asynchronous operation, with the task result containing a string
-    /// that represents the title extracted from the first applicable streamed message segment, if any.
+    /// A <c>Task</c> that represents the asynchronous operation. The result is a string containing
+    /// the title derived from the first relevant chunk of the streamed message, if applicable.
     /// </returns>
     public override async Task<string> SetStreamedMessageAsync(IAsyncEnumerable<AesirChatStreamedResult?> message)
     {
