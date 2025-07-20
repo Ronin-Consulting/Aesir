@@ -3,6 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:u="https://irihi.tech/ursa"
     xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
     xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
     xmlns:controls="clr-namespace:Aesir.Client.Controls"
@@ -31,7 +32,17 @@
             <DockPanel
                 Margin="10, 10, 14, 10"
                 LastChildFill="True">
-                <Button DockPanel.Dock="Right" ToolTip.Tip="New Chat" Command="{Binding ToggleNewChat}">
+                <u:IconButton DockPanel.Dock="Right" HorizontalAlignment="Left" IconPlacement="Left" Content="Tools" Command="{Binding ShowTools}">
+                   <u:IconButton.Icon>
+                        <avalonia:MaterialIcon Kind="Wrench" Width="20" Height="20" />
+                    </u:IconButton.Icon>
+                </u:IconButton>
+                <u:IconButton DockPanel.Dock="Right" HorizontalAlignment="Left" IconPlacement="Left" Content="Agents" Margin="0,0,10,0" Command="{Binding ShowAgents}">
+                    <u:IconButton.Icon>
+                        <avalonia:MaterialIcon Kind="AccountMultiple" Width="20" Height="20" />
+                    </u:IconButton.Icon>
+                </u:IconButton>
+                <Button DockPanel.Dock="Right" ToolTip.Tip="New Chat" Command="{Binding ToggleNewChat}" Margin="0,0,10,0">
                     <avalonia:MaterialIcon Kind="CommentAdd" Width="20" Height="20" />
                 </Button>
                 <Panel />

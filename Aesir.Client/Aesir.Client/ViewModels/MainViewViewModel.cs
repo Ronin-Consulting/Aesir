@@ -152,6 +152,16 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     public ICommand ToggleNewChat { get; }
 
     /// <summary>
+    /// Represents a command that shows a agents view
+    /// </summary>
+    public ICommand ShowAgents { get; }
+
+    /// <summary>
+    /// Represents a command that shows a tools view
+    /// </summary>
+    public ICommand ShowTools { get; }
+
+    /// <summary>
     /// Represents a command used to toggle the state of the microphone in the application.
     /// When executed, it enables or disables the microphone, altering its active operational state.
     /// </summary>
@@ -216,6 +226,11 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     /// </summary>
     private readonly ILogger<MainViewViewModel> _logger;
 
+    /// <summary>
+    /// 
+    /// </summary>
+    private readonly INavigationService _navigationService;
+
     /// Represents the view model for the main view in the application.
     /// Handles core application state and provides commands for toggling chat history, starting a new chat, and controlling the microphone.
     /// Integrates services for speech recognition, chat session management, and file upload interactions.
@@ -224,16 +239,20 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         ISpeechService speechService,
         IChatSessionManager chatSessionManager,
         ILogger<MainViewViewModel> logger,
-        FileToUploadViewModel fileToUploadViewModel)
+        FileToUploadViewModel fileToUploadViewModel,
+        INavigationService navigationService)
     {
         _appState = appState ?? throw new ArgumentNullException(nameof(appState));
         _speechService = speechService;
         _chatSessionManager = chatSessionManager ?? throw new ArgumentNullException(nameof(chatSessionManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _navigationService = navigationService;
 
         ToggleChatHistory = new RelayCommand(() => PanelOpen = !PanelOpen);
         ToggleNewChat = new RelayCommand(ExecuteNewChat);
         ToggleMicrophone = new RelayCommand(ExecuteToggleMicrophone);
+        ShowAgents = new RelayCommand(ExecuteShowAgents);
+        ShowTools = new RelayCommand(ExecuteShowTools);
 
         SelectedFile = fileToUploadViewModel ?? throw new ArgumentNullException(nameof(fileToUploadViewModel));
         SelectedFile.IsActive = true;
@@ -287,6 +306,16 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
             ErrorMessage = "Failed to toggle microphone. Please try again.";
             MicOn = false;
         }
+    }
+
+    private void ExecuteShowAgents()
+    {
+        _navigationService.NavigateToAgents();
+    }
+
+    private void ExecuteShowTools()
+    {
+        _navigationService.NavigateToTools();
     }
 
     /// <summary>
