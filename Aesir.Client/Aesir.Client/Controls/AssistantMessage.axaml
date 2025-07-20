@@ -5,27 +5,11 @@
              xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:html="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
              xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+             xmlns:controls="clr-namespace:Aesir.Client.Controls"
              mc:Ignorable="d"
              x:Class="Aesir.Client.Controls.AssistantMessage"
              x:DataType="vm:AssistantMessageViewModel"
              >
-    <UserControl.Styles>
-        <Style Selector="avalonia|MaterialIcon.progress">
-            <Style.Animations>
-                <Animation Duration="0:0:1" Easing="BounceEaseIn" 
-                           IterationCount="INFINITE" PlaybackDirection="AlternateReverse"> 
-                    <KeyFrame Cue="0%">
-                        <Setter Property="Width" Value="16"/>
-                        <Setter Property="Height" Value="16"/>
-                    </KeyFrame>
-                    <KeyFrame Cue="100%">
-                        <Setter Property="Width" Value="28"/>
-                        <Setter Property="Height" Value="28"/>
-                    </KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
-    </UserControl.Styles>
     <StackPanel 
         Name="MessagePanel"
         HorizontalAlignment="Left"
@@ -38,10 +22,10 @@
                     </Image.Source>
                 </Image>
             </Border>
-            <StackPanel Orientation="Horizontal" IsVisible="{Binding !IsLoaded}" Spacing="0">
-                <avalonia:MaterialIcon VerticalAlignment="Center" HorizontalAlignment="Left"
-                    Classes="progress" Kind="CircleSlice8" Foreground="{DynamicResource SemiColorTertiary}" />
-                <TextBlock Margin="4,0,0,0" Text="Thinking..." FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Right"></TextBlock>
+            <StackPanel DockPanel.Dock="Right" Margin="0,4,0,0" Orientation="Horizontal" IsVisible="{Binding !IsLoaded}" Spacing="0">
+                <avalonia:MaterialIcon Margin="16,0,0,0" Width="24" Height="24" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                       Kind="ThoughtBubbleOutline" Foreground="{DynamicResource SemiColorTertiary}" />
+                <controls:ThinkingLabel Margin="4,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Right" />
             </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Vertical" IsVisible="{Binding IsLoaded}" Spacing="0">
                 <Expander IsVisible="{Binding IsThinking}" 
@@ -51,13 +35,12 @@
                     <Expander.Header>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
                             <StackPanel IsVisible="{Binding IsCollectingThoughts}" Orientation="Horizontal" HorizontalAlignment="Left">
-                                <avalonia:MaterialIcon VerticalAlignment="Center" HorizontalAlignment="Right"
-                                                       Kind="CircleSlice8"
-                                                       Classes="progress"
+                                <avalonia:MaterialIcon Width="24" Height="24" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                                       Kind="ThoughtBubbleOutline"
                                                        Foreground="{DynamicResource SemiColorTertiary}" />
-                                <TextBlock Margin="4,0,0,0" Text="Collecting Thoughts..." FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Right"></TextBlock>
+                                <controls:ThoughtsLabel Margin="4,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Right" />
                             </StackPanel>
-                            <avalonia:MaterialIcon VerticalAlignment="Center" HorizontalAlignment="Right"
+                            <avalonia:MaterialIcon Width="24" Height="24" VerticalAlignment="Center" HorizontalAlignment="Right"
                                                    IsVisible="{Binding !IsCollectingThoughts}"
                                                    Kind="ThoughtBubbleOutline" 
                                                    Foreground="{DynamicResource SemiColorTertiary}" />
