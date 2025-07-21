@@ -59,6 +59,7 @@ RUN apt-get update && apt-get install -y \
     # Audio (optional, for potential future features)
     libasound2 \
     libpulse0 \
+    uuid-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
