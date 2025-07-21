@@ -1,7 +1,8 @@
 # Use multi-stage build for smaller final image
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-jammy AS build
-ARG TARGETPLATFORM
-ARG BUILDPLATFORM
+#FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-jammy AS build
+#ARG TARGETPLATFORM
+#ARG BUILDPLATFORM
+FROM mcr.microsoft.com/dotnet/sdk:8.0-jammy AS build
 
 WORKDIR /src
 
@@ -26,41 +27,7 @@ RUN dotnet publish "Aesir.Client.Desktop.csproj" -c Release -o /app/publish \
 FROM mcr.microsoft.com/dotnet/runtime:8.0-jammy AS runtime
 
 # Install X11 and graphics libraries for Avalonia + PDF support
-RUN apt-get update && apt-get install -y \
-    # X11 and graphics libraries
-    libx11-6 \
-    libx11-dev \
-    libxrandr2 \
-    libxinerama1 \
-    libxcursor1 \
-    libxi6 \
-    libxext6 \
-    libxfixes3 \
-    libxrender1 \
-    libxdamage1 \
-    libxcomposite1 \
-    libgl1-mesa-glx \
-    libglu1-mesa \
-    libdrm2 \
-    # Graphics and PDF processing libraries
-    libgdiplus \
-    libfontconfig1 \
-    libfreetype6 \
-    libharfbuzz0b \
-    libcairo2 \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libgdk-pixbuf-2.0-0 \
-    libgtk-3-0 \
-    # Fonts for markdown rendering
-    fonts-liberation \
-    fonts-dejavu-core \
-    fontconfig \
-    # Audio (optional, for potential future features)
-    libasound2 \
-    libpulse0 \
-    uuid-dev \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libx11-6 libfontconfig1 libice6 libsm6 libxext6 libxrender1 libxi6 && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN groupadd -r avalonia && useradd -r -g avalonia -m avalonia
@@ -80,9 +47,6 @@ USER avalonia
 # Set environment variables
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 ENV DOTNET_RUNNING_IN_CONTAINER=true
-
-# Expose the application (if needed for future features)
-EXPOSE 8080
 
 # Entry point
 ENTRYPOINT ["dotnet", "Aesir.Client.Desktop.dll"]
