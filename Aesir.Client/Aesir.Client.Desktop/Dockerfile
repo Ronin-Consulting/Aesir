@@ -26,8 +26,12 @@ RUN dotnet publish "Aesir.Client.Desktop.csproj" -c Release -o /app/publish \
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/runtime:8.0-jammy AS runtime
 
-# Install X11 and graphics libraries for Avalonia + PDF support
-RUN apt-get update && apt-get install -y libx11-6 libfontconfig1 libice6 libsm6 libxext6 libxrender1 libxi6 && rm -rf /var/lib/apt/lists/*
+# Install X11 and graphics libraries for Avalonia
+RUN apt-get update && apt-get install -y \
+    libx11-6 libfontconfig1 libice6 libsm6 libxext6 libxrender1 libxi6 \
+    libfreetype6 libunwind8 libxfixes3 libgl1 \
+    && rm -rf /var/lib/apt/lists/*
+
 
 # Create non-root user
 RUN groupadd -r avalonia && useradd -r -g avalonia -m avalonia
@@ -43,10 +47,6 @@ RUN chown -R avalonia:avalonia /app
 
 # Switch to non-root user
 USER avalonia
-
-# Set environment variables
-ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
-ENV DOTNET_RUNNING_IN_CONTAINER=true
 
 # Entry point
 ENTRYPOINT ["dotnet", "Aesir.Client.Desktop.dll"]
