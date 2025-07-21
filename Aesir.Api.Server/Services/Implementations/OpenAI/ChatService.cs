@@ -175,6 +175,12 @@ public class ChatService : BaseChatService
     {
         await Task.CompletedTask;
 
+        var systemPromptVariables = new Dictionary<string, object>
+        {
+            ["currentDateTime"] = request.ClientDateTime,
+            ["toolsEnabled"] = false
+        };
+        
         var settings = new OpenAIPromptExecutionSettings
         {
             ModelId = request.Model,
@@ -191,6 +197,8 @@ public class ChatService : BaseChatService
             args.SetConversationId(conversationId);
 
             _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(args));
+            
+            systemPromptVariables["toolsEnabled"] = true;
         }
 
         if (request.Temperature.HasValue)
@@ -198,6 +206,8 @@ public class ChatService : BaseChatService
         else if (request.TopP.HasValue)
             settings.TopP = (float?)request.TopP;
 
+        RenderSystemPrompt(request.Conversation, systemPromptVariables);
+        
         return settings;
     }
 

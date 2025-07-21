@@ -1,6 +1,0 @@
-﻿services:
-  aesir.server:
-    image: aesir.server
-    build:
-      context: .
-      dockerfile: Aesir.Server/Dockerfile

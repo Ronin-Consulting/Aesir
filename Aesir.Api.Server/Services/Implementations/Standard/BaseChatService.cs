@@ -6,12 +6,12 @@ using Microsoft.SemanticKernel;
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 /// <summary>
-/// Provides an abstract foundation for building chat service implementations with core utilities
-/// for handling conversational AI, logging, and chat history management.
+/// Serves as an abstract base class for managing chat services, providing essential functionalities
+/// such as chat completions, chat history persistence, and integration with a semantic kernel.
 /// </summary>
-/// <param name="logger">The interface for logging operations and diagnostics.</param>
-/// <param name="chatHistoryService">The service for managing persistent storage and retrieval of chat histories.</param>
-/// <param name="kernel">The semantic kernel utilized for AI-based chat completion and response generation.</param>
+/// <param name="logger">The logger instance used for recording application events and debugging information.</param>
+/// <param name="chatHistoryService">The service responsible for persisting and retrieving chat session histories.</param>
+/// <param name="kernel">The semantic kernel utilized for processing chat completion requests and generating AI responses.</param>
 [Experimental("SKEXP0070")]
 public abstract class BaseChatService(
     ILogger logger,
@@ -20,32 +20,29 @@ public abstract class BaseChatService(
     : IChatService
 {
     /// <summary>
-    /// A protected instance of <see cref="ILogger"/> used for logging activities within the service.
+    /// A protected instance of <see cref="ILogger"/> utilized for logging operations within the service.
     /// </summary>
     /// <remarks>
-    /// Facilitates the recording of critical information, such as errors, warnings, and application events,
-    /// to aid in troubleshooting, monitoring, and maintaining service operations.
+    /// Supports capturing and recording of events such as errors, exceptions, and other operational details,
+    /// which aids in diagnostics, system monitoring, and application maintenance.
     /// </remarks>
     protected readonly ILogger _logger = logger;
 
     /// <summary>
-    /// Represents the chat history service used for managing and storing chat session data.
+    /// A protected instance of <see cref="IChatHistoryService"/> used for managing operations related to chat history.
     /// </summary>
     /// <remarks>
-    /// Facilitates operations such as persisting chat sessions, retrieving previous conversations,
-    /// updating records, and managing the overall chat history lifecycle. Provides an abstraction
-    /// for handling chat-related data across the application.
+    /// Provides functionalities for persisting, retrieving, and managing chat session data.
+    /// Ensures that chat history is accessible and up-to-date for various application components.
     /// </remarks>
     protected readonly IChatHistoryService _chatHistoryService = chatHistoryService;
 
     /// <summary>
-    /// Represents an instance of the Microsoft.SemanticKernel Kernel utilized for managing and executing
-    /// AI-driven functionalities within the chat service.
+    /// A protected instance of the <see cref="Kernel"/> class used for managing AI-driven operations within the service.
     /// </summary>
     /// <remarks>
-    /// Provides core capabilities for tasks such as plugin management, prompt execution, and handling
-    /// chat-related operations, serving as the foundational component for integrating AI features
-    /// into the service workflow.
+    /// Serves as the core engine for enabling functionalities such as plugin execution, prompt handling,
+    /// and supporting various AI-related workflows essential to the chat service's operations.
     /// </remarks>
     protected readonly Kernel _kernel = kernel;
 
@@ -56,7 +53,7 @@ public abstract class BaseChatService(
     /// The chat request containing the necessary information for generating a chat response, such as user input and conversation context.
     /// </param>
     /// <returns>
-    /// An <see cref="AesirChatResult"/> instance containing the chat response, including details such as tokens used and the updated conversation context.
+    /// An <see cref="AesirChatResult"/> instance containing the chat response, which includes details such as tokens used and the updated conversation context.
     /// </returns>
     /// <exception cref="ArgumentNullException">
     /// Thrown when the specified <paramref name="request"/> is null.
@@ -64,7 +61,7 @@ public abstract class BaseChatService(
     public async Task<AesirChatResult> ChatCompletionsAsync(AesirChatRequest request)
     {
         request = request ?? throw new ArgumentNullException(nameof(request));
-        request.SetClientDateTimeInSystemMessage();
+        //request.SetClientDateTimeInSystemMessage();
 
         var response = new AesirChatResult()
         {
@@ -108,18 +105,18 @@ public abstract class BaseChatService(
     /// Streams chat completions asynchronously based on the provided chat request.
     /// </summary>
     /// <param name="request">
-    /// An instance of <see cref="Aesir.Api.Server.Models.AesirChatRequest"/> containing the chat request details, such as the conversation messages and associated metadata.
+    /// An instance of <see cref="Aesir.Api.Server.Models.AesirChatRequest"/> containing the chat request details, including conversation messages and metadata.
     /// </param>
     /// <returns>
-    /// An asynchronous stream of <see cref="Aesir.Api.Server.Models.AesirChatStreamedResult"/> representing the incremental results of the chat completion process.
+    /// An asynchronous stream of <see cref="Aesir.Api.Server.Models.AesirChatStreamedResult"/> representing incremental results of the chat completion process.
     /// </returns>
     /// <exception cref="ArgumentNullException">
-    /// Thrown if the <paramref name="request"/> parameter is null.
+    /// Thrown when the specified <paramref name="request"/> is null.
     /// </exception>
     public async IAsyncEnumerable<AesirChatStreamedResult> ChatCompletionsStreamedAsync(AesirChatRequest request)
     {
         request = request ?? throw new ArgumentNullException(nameof(request));
-        request.SetClientDateTimeInSystemMessage();
+        //request.SetClientDateTimeInSystemMessage();
 
         var completionId = Guid.NewGuid().ToString();
         var messageToSave = AesirChatMessage.NewAssistantMessage("");
@@ -202,20 +199,20 @@ public abstract class BaseChatService(
     /// Creates an error result for a streamed chat response with the specified details.
     /// </summary>
     /// <param name="completionId">
-    /// The unique identifier for the chat completion request that triggered the error.
+    /// The unique identifier for the request responsible for triggering the error.
     /// </param>
     /// <param name="request">
-    /// The chat request object containing session and conversation-specific metadata.
+    /// The chat request object that contains metadata associated with the session or conversation.
     /// </param>
     /// <param name="errorMessage">
-    /// The error message that provides details about the issue encountered.
+    /// The error message that specifies the details of the encountered issue.
     /// </param>
     /// <param name="title">
-    /// The title summarizing the context or nature of the error.
+    /// The title providing a summary or context for the error.
     /// </param>
     /// <returns>
-    /// An instance of <see cref="AesirChatStreamedResult"/> containing information about the error,
-    /// including the identifiers and message details.
+    /// An instance of <see cref="AesirChatStreamedResult"/> representing the error details,
+    /// including identifiers and corresponding error message information.
     /// </returns>
     private static AesirChatStreamedResult CreateErrorResult(
         string completionId,
@@ -234,13 +231,13 @@ public abstract class BaseChatService(
     }
 
     /// <summary>
-    /// Retrieves a title derived from the user's message contained in the specified chat request.
+    /// Retrieves a title based on the user's message included in the specified chat request.
     /// </summary>
     /// <param name="request">
-    /// The chat request containing the user's message and any associated contextual information.
+    /// The chat request containing the user's message and additional contextual details.
     /// </param>
     /// <returns>
-    /// A task that represents the asynchronous operation, with the task result containing the title generated from the user's message.
+    /// A task that represents the asynchronous operation, resulting in a string that serves as the title derived from the user's message.
     /// </returns>
     /// <exception cref="ArgumentNullException">
     /// Thrown when the provided <paramref name="request"/> is null.
@@ -251,13 +248,13 @@ public abstract class BaseChatService(
     /// Executes the process of generating a chat-based completion based on the provided request.
     /// </summary>
     /// <param name="request">
-    /// The chat request containing parameters and input for generating the chat response.
+    /// The instance of <see cref="AesirChatRequest"/> containing the parameters and input for generating the chat response.
     /// </param>
     /// <returns>
-    /// A tuple containing the response content, the number of prompt tokens used, and the number of completion tokens generated.
+    /// A tuple containing the generated response content as a string, the number of tokens used for the prompt, and the number of tokens generated in the completion.
     /// </returns>
     /// <exception cref="ArgumentNullException">
-    /// Thrown when the provided <paramref name="request"/> is null.
+    /// Thrown when the specified <paramref name="request"/> is null.
     /// </exception>
     protected abstract Task<(string content, int promptTokens, int completionTokens)> ExecuteChatCompletionAsync(
         AesirChatRequest request);
@@ -309,5 +306,27 @@ public abstract class BaseChatService(
             UpdatedAt = request.ChatSessionUpdatedAt.ToUniversalTime(),
             UserId = request.User
         });
+    }
+
+    /// <summary>
+    /// Renders the system prompt within the conversation by applying the provided arguments to the system message template.
+    /// </summary>
+    /// <param name="conversation">
+    /// The conversation containing the messages, including the system message that needs to be rendered with the given arguments.
+    /// </param>
+    /// <param name="arguments">
+    /// A dictionary of key-value pairs representing the variables to replace in the system message template.
+    /// </param>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when there is no system message present in the provided conversation.
+    /// </exception>
+    protected void RenderSystemPrompt(AesirConversation conversation, Dictionary<string, object> arguments)
+    {
+        var systemPromptMessage = conversation.Messages.First(m => m.Role == "system");
+        var systemPromptTemplate = new PromptTemplate(
+            systemPromptMessage.Content
+        );
+
+        systemPromptMessage.Content = systemPromptTemplate.Render(arguments);
     }
 }

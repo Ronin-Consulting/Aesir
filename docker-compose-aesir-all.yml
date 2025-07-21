@@ -1,0 +1,126 @@
+volumes:
+  config:
+  logs:
+  dbdata:
+  letsencryptdata:
+  qdrant_storage:
+
+services:
+  aesir-client-desktop:
+    build:
+      context: .
+      dockerfile: Aesir.Client/Aesir.Client.Desktop/Dockerfile
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    container_name: aesir-client-desktop
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - ASPNETCORE_ENVIRONMENT=Development
+    volumes:
+      # X11 socket for GUI forwarding
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # Optional: Mount config directory for persistence
+      - config:/app/config
+      # Optional: Mount logs directory
+      - logs:/app/logs
+    depends_on:
+      - aesir-api
+    restart: unless-stopped
+    # Uncomment if you need to override the default command
+    # command: dotnet Aesir.Client.Desktop.dll
+  aesir-api:
+    image: aesir.api.server
+    build:
+      context: .
+      dockerfile: Aesir.Api.Server/Dockerfile
+    depends_on:
+      pgdb:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+    healthcheck:
+      test: [ "CMD", "curl", "--fail", "http://aesir-api/healthz" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.aesir.rule=Host(`aesir.localhost`)"
+      - "traefik.http.routers.aesir.entrypoints=web"
+      - "traefik.http.routers.aesir.entrypoints=websecure"
+      - "traefik.http.routers.aesir.tls=true"
+      - "traefik.http.routers.aesir.tls.certresolver=letsencryptresolver"
+      - "traefik.http.routers.aesir.service=aesir"
+      - "traefik.http.services.aesir.loadbalancer.server.port=80"
+  pgdb:
+    environment:
+      POSTGRES_PASSWORD: RaGn4r0k!!
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      - "traefik.enable=false"
+  reverse-proxy:
+    image: traefik:latest
+    restart: unless-stopped
+    command:
+#      - "--log.level=DEBUG"
+#      - "--accesslog=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--api.insecure=true"
+      - "--api.debug=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencryptresolver.acme.email=postmaster@www.localhost"
+      - "--certificatesresolvers.letsencryptresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge.entrypoint=web"
+    ports:
+      - "443:443"
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - letsencryptdata:/letsencrypt
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    container_name: qdrant
+    environment:
+      - QDRANT__SERVICE__API_KEY=aesir_3a087fa5640958985025b0a03d2f6b0c80253884c5bd7c05f65f2fdf2404d7ab
+    ports:
+      - 6333:6333
+      - 6334:6334
+    expose:
+      - 6333
+      - 6334
+      - 6335
+    configs:
+      - source: qdrant_config
+        target: /qdrant/config/production.yaml
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qdrant.rule=Host(`qdrant.localhost`)"
+      - "traefik.http.routers.qdrant.entrypoints=web"
+      - "traefik.http.routers.qdrant.entrypoints=websecure"
+      - "traefik.http.routers.qdrant.tls=true"
+      - "traefik.http.routers.qdrant.tls.certresolver=letsencryptresolver"
+      - "traefik.http.services.qdrant.loadbalancer.server.port=6333"
+
+configs:
+  qdrant_config:
+    content: |
+      log_level: INFO

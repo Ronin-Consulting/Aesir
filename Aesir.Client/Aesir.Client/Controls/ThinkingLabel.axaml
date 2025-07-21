@@ -1,0 +1,219 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Aesir.Client.Controls.ThinkingLabel">
+    <!-- Thinking... -->
+    <StackPanel Orientation="Horizontal">
+        <TextBlock Text="T" FontSize="12">
+            <TextBlock.Styles>
+                <Style Selector="TextBlock">
+                    <Style.Animations>
+                        <Animation Duration="0:0:2" IterationCount="Infinite" Delay="0:0:0">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                            <KeyFrame Cue="50%">
+                                <Setter Property="Opacity" Value="1" />
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </TextBlock.Styles>
+        </TextBlock>
+        <TextBlock Text="h" FontSize="12">
+            <TextBlock.Styles>
+                <Style Selector="TextBlock">
+                    <Style.Animations>
+                        <Animation Duration="0:0:2" IterationCount="Infinite" Delay="0:0:0.1">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                            <KeyFrame Cue="50%">
+                                <Setter Property="Opacity" Value="1" />
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </TextBlock.Styles>
+        </TextBlock>
+        <TextBlock Text="i" FontSize="12">
+            <TextBlock.Styles>
+                <Style Selector="TextBlock">
+                    <Style.Animations>
+                        <Animation Duration="0:0:2" IterationCount="Infinite" Delay="0:0:0.2">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                            <KeyFrame Cue="50%">
+                                <Setter Property="Opacity" Value="1" />
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </TextBlock.Styles>
+        </TextBlock>
+        <TextBlock Text="n" FontSize="12">
+            <TextBlock.Styles>
+                <Style Selector="TextBlock">
+                    <Style.Animations>
+                        <Animation Duration="0:0:2" IterationCount="Infinite" Delay="0:0:0.3">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                            <KeyFrame Cue="50%">
+                                <Setter Property="Opacity" Value="1" />
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </TextBlock.Styles>
+        </TextBlock>
+        <TextBlock Text="k" FontSize="12">
+            <TextBlock.Styles>
+                <Style Selector="TextBlock">
+                    <Style.Animations>
+                        <Animation Duration="0:0:2" IterationCount="Infinite" Delay="0:0:0.4">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                            <KeyFrame Cue="50%">
+                                <Setter Property="Opacity" Value="1" />
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </TextBlock.Styles>
+        </TextBlock>
+        <TextBlock Text="i" FontSize="12">
+            <TextBlock.Styles>
+                <Style Selector="TextBlock">
+                    <Style.Animations>
+                        <Animation Duration="0:0:2" IterationCount="Infinite" Delay="0:0:0.5">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                            <KeyFrame Cue="50%">
+                                <Setter Property="Opacity" Value="1" />
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </TextBlock.Styles>
+        </TextBlock>
+        <TextBlock Text="n" FontSize="12">
+            <TextBlock.Styles>
+                <Style Selector="TextBlock">
+                    <Style.Animations>
+                        <Animation Duration="0:0:2" IterationCount="Infinite" Delay="0:0:0.6">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                            <KeyFrame Cue="50%">
+                                <Setter Property="Opacity" Value="1" />
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </TextBlock.Styles>
+        </TextBlock>
+        <TextBlock Text="g" FontSize="12">
+            <TextBlock.Styles>
+                <Style Selector="TextBlock">
+                    <Style.Animations>
+                        <Animation Duration="0:0:2" IterationCount="Infinite" Delay="0:0:0.7">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                            <KeyFrame Cue="50%">
+                                <Setter Property="Opacity" Value="1" />
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </TextBlock.Styles>
+        </TextBlock>
+        <TextBlock Text="." FontSize="12">
+            <TextBlock.Styles>
+                <Style Selector="TextBlock">
+                    <Style.Animations>
+                        <Animation Duration="0:0:2" IterationCount="Infinite" Delay="0:0:0.8">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                            <KeyFrame Cue="50%">
+                                <Setter Property="Opacity" Value="1" />
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </TextBlock.Styles>
+        </TextBlock>
+        <TextBlock Text="." FontSize="12">
+            <TextBlock.Styles>
+                <Style Selector="TextBlock">
+                    <Style.Animations>
+                        <Animation Duration="0:0:2" IterationCount="Infinite" Delay="0:0:0.9">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                            <KeyFrame Cue="50%">
+                                <Setter Property="Opacity" Value="1" />
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </TextBlock.Styles>
+        </TextBlock>
+        <TextBlock Text="." FontSize="12">
+            <TextBlock.Styles>
+                <Style Selector="TextBlock">
+                    <Style.Animations>
+                        <Animation Duration="0:0:2" IterationCount="Infinite" Delay="0:0:0.10">
+                            <KeyFrame Cue="0%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                            <KeyFrame Cue="50%">
+                                <Setter Property="Opacity" Value="1" />
+                            </KeyFrame>
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </TextBlock.Styles>
+        </TextBlock>
+    </StackPanel>
+</UserControl>
