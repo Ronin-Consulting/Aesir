@@ -25,6 +25,8 @@
         <PackageReference Include="Semi.Avalonia.TreeDataGrid" Version="11.0.10.4" />
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.7" />
         <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.7" />
+        <PackageReference Include="SkiaSharp" Version="3.119.0" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.0" />
     </ItemGroup>
 
     <ItemGroup>
