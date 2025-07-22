@@ -15,6 +15,9 @@ services:
     volumes:
       # X11 socket for GUI forwarding
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    # Grant access to X11 - this is important for GUI apps
+    security_opt:
+      - seccomp:unconfined
     depends_on:
       - aesir-api
     # Uncomment if you need to override the default command

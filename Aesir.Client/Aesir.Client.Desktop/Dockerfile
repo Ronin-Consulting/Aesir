@@ -41,11 +41,6 @@ COPY --from=build /app/publish .
 # Change ownership to non-root user
 RUN chown -R avalonia:avalonia /app
 
-# Set environment variables for better compatibility
-ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-ENV FONTCONFIG_PATH=/etc/fonts
-ENV LD_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu:$LD_LIBRARY_PATH
-
 # Switch to non-root user
 USER avalonia
 
