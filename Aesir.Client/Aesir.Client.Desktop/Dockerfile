@@ -32,7 +32,7 @@ COPY . .
 # Build and publish
 WORKDIR "/src/Aesir.Client/Aesir.Client.Desktop"
 RUN dotnet publish "Aesir.Client.Desktop.csproj" -c Release -o /app/publish \
-    --no-restore --self-contained true
+    --no-restore --self-contained false
 
 FROM base AS final
 WORKDIR /app
