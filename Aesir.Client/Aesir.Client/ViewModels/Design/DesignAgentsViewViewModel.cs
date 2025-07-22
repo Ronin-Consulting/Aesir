@@ -13,6 +13,7 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
     {
         ShowChat = new RelayCommand(() => { });
         ShowTools = new RelayCommand(() => { });
+        ShowAddAgent = new RelayCommand(() => { });
         
         var agents = new List<AesirAgent> 
         {

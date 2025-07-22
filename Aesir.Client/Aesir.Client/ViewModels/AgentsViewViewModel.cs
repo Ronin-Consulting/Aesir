@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using Aesir.Client.Messages;
 using Aesir.Client.Services;
 using Aesir.Common.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
@@ -21,6 +23,11 @@ public class AgentsViewViewModel : ObservableRecipient
     /// Represents a command that shows a tools view
     /// </summary>
     public ICommand ShowTools { get; protected set; }
+    
+    /// <summary>
+    /// epresents a command that shows an add agent view
+    /// </summary>
+    public ICommand ShowAddAgent { get; protected set; }
     
     /// <summary>
     /// Represents the agents loaded from the system
@@ -73,6 +80,7 @@ public class AgentsViewViewModel : ObservableRecipient
 
         ShowChat = new RelayCommand(ExecuteShowChat);
         ShowTools = new RelayCommand(ExecuteShowTools);
+        ShowAddAgent = new RelayCommand(ExecuteShowAddAgent);
         
         // TODO load this on activate
         Agents = new ObservableCollection<AesirAgent>([
@@ -119,30 +127,16 @@ public class AgentsViewViewModel : ObservableRecipient
         _navigationService.NavigateToTools();
     }
 
+    private void ExecuteShowAddAgent()
+    {
+        WeakReferenceMessenger.Default.Send(new ShowAgentDetailMessage(null));
+    }
+
     private void OnAgentSelected(AesirAgent? selectedAgent)
     {
         if (selectedAgent != null)
         {
-            // Do something with the selected agent
-            Console.WriteLine($"Selected agent: {selectedAgent.Name}");
-            
-            /*var options = new DrawerOptions()
-            {
-                Position = Position.Right,
-                Buttons = DialogButton.None,
-                CanLightDismiss = true,
-                IsCloseButtonVisible = true,
-                Title = "Citation Viewer",
-                CanResize = false
-            };
-            
-            var result = await Drawer.ShowModal<PdfViewerControl, PdfViewerControlViewModel>(
-                viewModel, options: options);
-
-            if (result == DialogResult.None)
-                throw new ApplicationException("PdfViewerService.ShowPdfAsync failed.");*/
-            
-            // TODO notify the view to display editor
+            WeakReferenceMessenger.Default.Send(new ShowAgentDetailMessage(selectedAgent));
         }
     }
 }

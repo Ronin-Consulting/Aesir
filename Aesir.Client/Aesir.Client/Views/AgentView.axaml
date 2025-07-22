@@ -1,0 +1,134 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:u="https://irihi.tech/ursa"
+    xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+    xmlns:dvm="clr-namespace:Aesir.Client.ViewModels.Design"
+    xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+    mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
+    x:Class="Aesir.Client.Views.AgentView"
+    x:DataType="vm:AgentViewViewModel">
+    
+    <Design.DataContext>    
+        <dvm:DesignAgentViewViewModel />
+    </Design.DataContext>
+    
+    <Grid
+        MinWidth="400"
+        Margin="24"
+        RowDefinitions="Auto, *, Auto">
+        <!-- Header -->
+        <TextBlock
+            Grid.Row="0"
+            Margin="8"
+            FontSize="16"
+            FontWeight="600"
+            Text="Agent Detail" />
+        
+        <!-- Form Body -->
+        <u:Form
+            Grid.Row="1"
+            Margin="24"
+            HorizontalAlignment="Stretch"
+            LabelPosition="Top">
+            <u:Form.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
+                </ItemsPanelTemplate>
+            </u:Form.ItemsPanel>
+            <u:FormItem Label="Name" Grid.ColumnSpan="3">
+                <TextBox />
+            </u:FormItem>
+            <u:FormItem
+                Grid.Row="1"
+                Grid.Column="0"
+                Label="Source">
+                <ComboBox Width="150">
+                    <ComboBoxItem>Ollama</ComboBoxItem>
+                    <ComboBoxItem>OpenAI</ComboBoxItem>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem
+                Grid.Row="1"
+                Grid.Column="2"
+                Label="Prompt"
+                Margin="32,8,0,8">
+                <ComboBox Width="150">
+                    <ComboBoxItem>Business</ComboBoxItem>
+                    <ComboBoxItem>Military</ComboBoxItem>
+                    <ComboBoxItem>Custom</ComboBoxItem>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="3" 
+                Grid.ColumnSpan="3"
+                Label="Chat Model" >
+                <ComboBox HorizontalAlignment="Stretch">
+                    <ComboBoxItem>gpt-4.1-2025-04-14</ComboBoxItem>
+                    <ComboBoxItem>qwen3:32b-q4_K_M</ComboBoxItem>
+                    <ComboBoxItem>cogito:32b-v1-preview-qwen-q4_K_M</ComboBoxItem>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="4" 
+                Grid.ColumnSpan="3"
+                Label="Embedding Model" >
+                <ComboBox HorizontalAlignment="Stretch">
+                    <ComboBoxItem>text-embedding-3-large</ComboBoxItem>
+                    <ComboBoxItem>mxbai-embed-large:latest</ComboBoxItem>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="5" 
+                Grid.ColumnSpan="3"
+                Label="Vision Model" >
+                <ComboBox HorizontalAlignment="Stretch">
+                    <ComboBoxItem>gpt-4.1-2025-04-14</ComboBoxItem>
+                    <ComboBoxItem>gemma3:12b</ComboBoxItem>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="6" 
+                Grid.ColumnSpan="3"
+                Label="Tools" >
+                <u:MultiComboBox
+                    Watermark="Select Available Tools"
+                    MaxHeight="200"
+                    HorizontalAlignment="Stretch"
+                    SelectedItems="{Binding SelectedTools}"
+                    ItemsSource="{Binding AvailableTools}" />
+            </u:FormItem>
+        </u:Form>
+        
+        <!-- Buttons -->
+        <DockPanel
+            Grid.Row="2"
+            Margin="24 0 24 0">
+            <StackPanel
+                DockPanel.Dock="Left"
+                Orientation="Horizontal"
+                Spacing="8">
+                <Button
+                    Content="Save"
+                    IsEnabled="true"
+                    Theme="{DynamicResource SolidButton}"
+                    Command="{Binding SaveCommand}" />
+                <Button
+                    Classes="Tertiary"
+                    Content="Cancel"
+                    Theme="{DynamicResource SolidButton}"
+                    Command="{Binding CancelCommand}" />
+            </StackPanel>
+            <Button
+                DockPanel.Dock="Right"
+                HorizontalAlignment="Right"
+                Classes="Danger"
+                Content="Delete"
+                Theme="{DynamicResource SolidButton}"
+                Command="{Binding DeleteCommand}" />
+        </DockPanel>
+    </Grid>
+    
+</UserControl>

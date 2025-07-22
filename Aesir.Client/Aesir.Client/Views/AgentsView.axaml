@@ -21,7 +21,7 @@
                        VerticalAlignment="Center"
                        Classes="H4" Theme="{StaticResource TitleTextBlock}"
                        DockPanel.Dock="Left">
-                <Run>AESIR AI</Run>
+                <Run>AESIR AI - Agents</Run>
             </TextBlock>
             <DockPanel DockPanel.Dock="Right">
                 <u:IconButton DockPanel.Dock="Right" HorizontalAlignment="Left" IconPlacement="Left" Content="Tools" Command="{Binding ShowTools}">
@@ -37,13 +37,23 @@
                 <Panel />
             </DockPanel>
         </DockPanel>
-        <Border BorderThickness="0,1,0,0" DockPanel.Dock="Bottom">
+        <Border BorderThickness="0,1,0,00" DockPanel.Dock="Bottom">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Bottom" 
-                           Margin="20,0,20,0" 
-                           HorizontalAlignment="Left"
-                           Text="{Binding Agents.Count, StringFormat='Displaying {0} agents'}" />
-                <DataGrid Margin="20" ItemsSource="{Binding Agents}" 
+                <DockPanel 
+                    DockPanel.Dock="Bottom"
+                    Margin="20,0,20,15">
+                    <u:IconButton DockPanel.Dock="Right" HorizontalAlignment="Left" 
+                                  IconPlacement="Left" Content="Add Agent" 
+                                  Command="{Binding ShowAddAgent}">
+                        <u:IconButton.Icon>
+                            <avalonia:MaterialIcon Kind="PlusBox" Width="20" Height="20" />
+                        </u:IconButton.Icon>
+                    </u:IconButton>
+                    <TextBlock
+                        DockPanel.Dock="Left"
+                        Text="{Binding Agents.Count, StringFormat='Displaying {0} agents'}" />
+                </DockPanel>
+                <DataGrid Margin="20 20 20 10" ItemsSource="{Binding Agents}" 
                           IsReadOnly="True" 
                           GridLinesVisibility="None"
                           BorderThickness="1" BorderBrush="DimGray"
