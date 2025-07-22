@@ -15,6 +15,7 @@ services:
     volumes:
       # X11 socket for GUI forwarding
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    network_mode: host
     # Grant access to X11 - this is important for GUI apps
     security_opt:
       - seccomp:unconfined
@@ -47,6 +48,8 @@ services:
       - "traefik.http.routers.aesir.tls.certresolver=letsencryptresolver"
       - "traefik.http.routers.aesir.service=aesir"
       - "traefik.http.services.aesir.loadbalancer.server.port=80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   pgdb:
     environment:
       POSTGRES_PASSWORD: RaGn4r0k!!
