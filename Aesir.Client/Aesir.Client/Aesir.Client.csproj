@@ -14,7 +14,8 @@
         <PackageReference Include="Avalonia" Version="11.3.2" />
         <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.2" />
         <PackageReference Include="Avalonia.HtmlRenderer" Version="11.2.0" />
-        <PackageReference Include="Avalonia.Svg.Skia" Version="11.3.0" />
+        <PackageReference Include="Avalonia.Skia" Version="11.3.2" />
+        <PackageReference Include="Avalonia.Svg.Skia" Version="11.2.7" />
         <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.2" />
         <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.2" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
@@ -40,6 +41,10 @@
         <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.2.1.9" />
         <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.2.1.9" />
         <PackageReference Include="Semi.Avalonia.TreeDataGrid" Version="11.0.10.4" />
+        <PackageReference Include="ShimSkiaSharp" Version="2.0.0.8" />
+        <PackageReference Include="SkiaSharp" Version="2.88.9" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.9" />
+        <PackageReference Include="Svg.Skia" Version="2.0.0.8" />
         <PackageReference Include="System.Net.Http.Json" Version="9.0.7" />
     </ItemGroup>
     

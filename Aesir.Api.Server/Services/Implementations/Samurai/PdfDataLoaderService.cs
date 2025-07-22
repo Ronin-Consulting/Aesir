@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using Aesir.Api.Server.Extensions;
@@ -235,90 +236,104 @@ public class PdfDataLoaderService<TKey, TRecord>(
         var license = new License();
         license.SetLicense("Aspose.PDFfor.NET.lic");
 
-        var rawContents = new List<RawContent>();
+        // Using a ConcurrentDictionary to store the results of each page in a thread-safe way.
+        // The key is the page number, which allows us to reassemble the results in order later.
+        var pageResults = new ConcurrentDictionary<int, List<RawContent>>();
 
-        // ReSharper disable once ConvertToUsingDeclaration
+        var pageCount = 0;
         using (var document = new Document(pdfPath))
         {
-            var pdfFileEditor = new PdfFileEditor();
-// NEED TO DO ALL THIS IN PARALLEL.. its slow on big documents
-            for (var pageNum = 1; pageNum <= document.Pages.Count; pageNum++)
-            {
-                var parentDirectory = Path.GetDirectoryName(pdfPath) ?? string.Empty;
-                
-                var pageFile = 
-                    Path.Combine(parentDirectory, 
-                        $"{Path.GetFileNameWithoutExtension(pdfPath)}_{pageNum}{Path.GetExtension(pdfPath)}"
-                    );
-                
-                pdfFileEditor.Extract(pdfPath, [pageNum], pageFile);
+            pageCount = document.Pages.Count;
+        }
 
-                // ReSharper disable once ConvertToUsingDeclaration
-                using (var pageDocument = new Document(pageFile))
+        Parallel.For(1, pageCount + 1, pageNum =>
+        {
+            // A local list to hold the content (text and images) for the current page.
+            var currentPageContents = new List<RawContent>();
+            var parentDirectory = Path.GetDirectoryName(pdfPath) ?? string.Empty;
+
+            var pageFile =
+                Path.Combine(parentDirectory,
+                    $"{Path.GetFileNameWithoutExtension(pdfPath)}_{pageNum}{Path.GetExtension(pdfPath)}"
+                );
+            var pdfFileEditor = new PdfFileEditor();
+            pdfFileEditor.Extract(pdfPath, [pageNum], pageFile);
+
+            // ReSharper disable once ConvertToUsingDeclaration
+            using (var pageDocument = new Document(pageFile))
+            {
+                var imageFolder = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+                var mdFilename = Path.Combine(parentDirectory, $"{Path.GetFileNameWithoutExtension(pageFile)}.md");
+
+                var hasImages = pageDocument.Pages.First().Resources.Images.Count > 0;
+
+                var textSearchOptions = new TextSearchOptions(true)
                 {
-                    var imageFolder = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-                    var mdFilename =  Path.Combine(parentDirectory, $"{Path.GetFileNameWithoutExtension(pageFile)}.md");
-                    
-                    var hasImages = pageDocument.Pages.First().Resources.Images.Count > 0;
-                    
-                    var textAbsorber = new TextAbsorber();
-                    pageDocument.Pages.First().Accept(textAbsorber);
-                    
-                    var hasText = !string.IsNullOrWhiteSpace(textAbsorber.Text);
-                    
-                    if (!hasText && hasImages)
+                    IgnoreResourceFontErrors = true,
+                    LogTextExtractionErrors = true,
+                    UseFontEngineEncoding = true
+                };
+                var textAbsorber = new TextAbsorber(textSearchOptions);
+                pageDocument.Pages.First().Accept(textAbsorber);
+
+                var hasText = !string.IsNullOrWhiteSpace(textAbsorber.Text);
+
+                if (!hasText && hasImages)
+                {
+                    var page = pageDocument.Pages.First();
+                    if (page.Resources.Images.Count <= 0) return;
+
+                    foreach (var image in page.Resources.Images)
                     {
-                        var page = pageDocument.Pages.First();
-                        if (page.Resources.Images.Count <= 0) continue;
-                        
-                        foreach (var image in page.Resources.Images)
-                        {
-                            using var ms = new MemoryStream();
-                            image.Save(ms, ImageFormat.Png);
-                            rawContents.Add(new RawContent
-                            {
-                                PageNumber = pageNum,
-                                Image = ms.ToArray()
-                            });
-                        }
-                    }
-                    else
-                    {
-                        // Create an instance of MarkdownSaveOptions to configure the Markdown export settings
-                        var saveOptions = new MarkdownSaveOptions
-                        {
-                            // Set to false to prevent the use of HTML <img> tags for images in the Markdown output
-                            UseImageHtmlTag = false,
-                            // Specify the directory name where resources (like images) will be stored
-                            ResourcesDirectoryName = imageFolder
-                        };
-                    
-                        // Save PDF document in Markdown format to the specified output file path using the defined save options   
-                        pageDocument.Save(mdFilename, saveOptions);
-                    
-                        // Now pull the markdown into the RawContent
-                        rawContents.Add(new RawContent
+                        using var ms = new MemoryStream();
+                        image.Save(ms, ImageFormat.Png);
+                        currentPageContents.Add(new RawContent
                         {
                             PageNumber = pageNum,
-                            Text = File.ReadAllText(mdFilename)
+                            Image = ms.ToArray()
                         });
-                    
-                        // now load the images
-                        var imageFiles = Directory.EnumerateFiles(imageFolder);
-                        rawContents.AddRange(
-                            imageFiles.Select(imageFile => 
-                                new RawContent { PageNumber = pageNum, Image = File.ReadAllBytes(imageFile) }
-                            )
-                        );
-
-                        DeleteDirectoryQuietly(imageFolder);
-                        DeleteFileQuietly(mdFilename);  
                     }
                 }
+                else
+                {
+                    var saveOptions = new MarkdownSaveOptions
+                    {
+                        UseImageHtmlTag = false,
+                        ResourcesDirectoryName = imageFolder
+                    };
 
-                DeleteFileQuietly(pageFile);
+                    pageDocument.Save(mdFilename, saveOptions);
+
+                    currentPageContents.Add(new RawContent
+                    {
+                        PageNumber = pageNum,
+                        Text = File.ReadAllText(mdFilename)
+                    });
+
+                    var imageFiles = Directory.EnumerateFiles(imageFolder);
+                    currentPageContents.AddRange(
+                        imageFiles.Select(imageFile =>
+                            new RawContent { PageNumber = pageNum, Image = File.ReadAllBytes(imageFile) }
+                        )
+                    );
+
+                    DeleteDirectoryQuietly(imageFolder);
+                    DeleteFileQuietly(mdFilename);
+                }
             }
-        }
+
+            DeleteFileQuietly(pageFile);
+
+            // Add the list of contents for the current page to the concurrent dictionary.
+            pageResults[pageNum] = currentPageContents;
+        });
+
+        // After the parallel loop, create the final ordered list.
+        // We sort the results by page number (the dictionary key) and then flatten the lists into one.
+        var rawContents = pageResults
+            .OrderBy(kvp => kvp.Key)
+            .SelectMany(kvp => kvp.Value)
+            .ToList();
 
         return rawContents;
 

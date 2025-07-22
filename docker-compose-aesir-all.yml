@@ -1,6 +1,4 @@
 volumes:
-  config:
-  logs:
   dbdata:
   letsencryptdata:
   qdrant_storage:
@@ -10,9 +8,6 @@ services:
     build:
       context: .
       dockerfile: Aesir.Client/Aesir.Client.Desktop/Dockerfile
-      platforms:
-        - linux/amd64
-        - linux/arm64
     container_name: aesir-client-desktop
     environment:
       - DISPLAY=${DISPLAY:-:0}
@@ -20,13 +15,12 @@ services:
     volumes:
       # X11 socket for GUI forwarding
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      # Optional: Mount config directory for persistence
-      - config:/app/config
-      # Optional: Mount logs directory
-      - logs:/app/logs
+    network_mode: host
+    # Grant access to X11 - this is important for GUI apps
+    security_opt:
+      - seccomp:unconfined
     depends_on:
       - aesir-api
-    restart: unless-stopped
     # Uncomment if you need to override the default command
     # command: dotnet Aesir.Client.Desktop.dll
   aesir-api:
@@ -54,6 +48,8 @@ services:
       - "traefik.http.routers.aesir.tls.certresolver=letsencryptresolver"
       - "traefik.http.routers.aesir.service=aesir"
       - "traefik.http.services.aesir.loadbalancer.server.port=80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   pgdb:
     environment:
       POSTGRES_PASSWORD: RaGn4r0k!!

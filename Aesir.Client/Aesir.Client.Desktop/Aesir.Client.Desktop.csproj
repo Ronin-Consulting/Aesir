@@ -18,13 +18,14 @@
         <PackageReference Include="Material.Icons.Avalonia" Version="2.4.1" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.7" />
         <PackageReference Include="NLog.Extensions.Logging" Version="6.0.1" />
-        <PackageReference Include="PDFtoImage" Version="5.1.1" />
+        <PackageReference Include="PDFtoImage" Version="4.1.1" />
         <PackageReference Include="Semi.Avalonia" Version="11.2.1.9" />
         <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.2.1.9" />
         <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.2.1.9" />
         <PackageReference Include="Semi.Avalonia.TreeDataGrid" Version="11.0.10.4" />
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.7" />
         <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.7" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.9" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,9 +1,24 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 RUN apt-get update && apt-get install -y \
     libgdiplus \
     libc6-dev
 RUN ln -s /usr/lib/libgdiplus.so /usr/lib/gdiplus.dll
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gnupg \
+        ca-certificates \
+        cabextract \
+    && sed -i 's/Components: main/Components: main contrib/' /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
+    && echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections \
+    && apt-get install -y --no-install-recommends \
+        ttf-mscorefonts-installer \
+        fontconfig \
+    && fc-cache -fv \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 USER $APP_UID
 WORKDIR /app
 EXPOSE 80
