@@ -17,7 +17,7 @@
     
     <Grid
         MinWidth="400"
-        Margin="24"
+        Margin="8"
         RowDefinitions="Auto, *, Auto">
         <!-- Header -->
         <TextBlock
@@ -30,7 +30,7 @@
         <!-- Form Body -->
         <u:Form
             Grid.Row="1"
-            Margin="24"
+            Margin="8"
             HorizontalAlignment="Stretch"
             LabelPosition="Top">
             <u:Form.ItemsPanel>
@@ -105,29 +105,41 @@
         <!-- Buttons -->
         <DockPanel
             Grid.Row="2"
-            Margin="24 0 24 0">
+            Margin="8">
             <StackPanel
                 DockPanel.Dock="Left"
                 Orientation="Horizontal"
                 Spacing="8">
-                <Button
+                <u:IconButton 
+                    HorizontalAlignment="Right"
                     Content="Save"
-                    IsEnabled="true"
-                    Theme="{DynamicResource SolidButton}"
-                    Command="{Binding SaveCommand}" />
-                <Button
+                    IconPlacement="Left" 
+                    Command="{Binding SaveCommand}">
+                    <u:IconButton.Icon>
+                        <avalonia:MaterialIcon Kind="CheckBold" Width="20" Height="20" />
+                    </u:IconButton.Icon>
+                </u:IconButton>
+                <u:IconButton 
+                    HorizontalAlignment="Right"
                     Classes="Tertiary"
                     Content="Cancel"
-                    Theme="{DynamicResource SolidButton}"
-                    Command="{Binding CancelCommand}" />
+                    IconPlacement="Left" 
+                    Command="{Binding CancelCommand}">
+                    <u:IconButton.Icon>
+                        <avalonia:MaterialIcon Kind="Cancel" Width="20" Height="20" />
+                    </u:IconButton.Icon>
+                </u:IconButton>
             </StackPanel>
-            <Button
-                DockPanel.Dock="Right"
+            <u:IconButton 
                 HorizontalAlignment="Right"
                 Classes="Danger"
                 Content="Delete"
-                Theme="{DynamicResource SolidButton}"
-                Command="{Binding DeleteCommand}" />
+                IconPlacement="Left" 
+                Command="{Binding DeleteCommand}">
+                <u:IconButton.Icon>
+                    <avalonia:MaterialIcon Kind="Delete" Width="20" Height="20" />
+                </u:IconButton.Icon>
+            </u:IconButton>
         </DockPanel>
     </Grid>
     
