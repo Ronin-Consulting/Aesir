@@ -39,15 +39,20 @@
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem Label="Name" Grid.ColumnSpan="3">
-                <TextBox />
+                <TextBox Text="{Binding FormModel.Name}" />
             </u:FormItem>
             <u:FormItem
                 Grid.Row="1"
                 Grid.Column="0"
                 Label="Source">
-                <ComboBox Width="150">
-                    <ComboBoxItem>Ollama</ComboBoxItem>
-                    <ComboBoxItem>OpenAI</ComboBoxItem>
+                <ComboBox Width="150"
+                          ItemsSource="{Binding AvailableSources}"
+                          SelectedItem="{Binding FormModel.Source}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
                 </ComboBox>
             </u:FormItem>
             <u:FormItem
@@ -55,38 +60,56 @@
                 Grid.Column="2"
                 Label="Prompt"
                 Margin="32,8,0,8">
-                <ComboBox Width="150">
-                    <ComboBoxItem>Business</ComboBoxItem>
-                    <ComboBoxItem>Military</ComboBoxItem>
-                    <ComboBoxItem>Custom</ComboBoxItem>
+                <ComboBox Width="150"
+                          ItemsSource="{Binding AvailablePrompts}"
+                          SelectedItem="{Binding FormModel.Prompt}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
                 </ComboBox>
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="3" 
                 Grid.ColumnSpan="3"
                 Label="Chat Model" >
-                <ComboBox HorizontalAlignment="Stretch">
-                    <ComboBoxItem>gpt-4.1-2025-04-14</ComboBoxItem>
-                    <ComboBoxItem>qwen3:32b-q4_K_M</ComboBoxItem>
-                    <ComboBoxItem>cogito:32b-v1-preview-qwen-q4_K_M</ComboBoxItem>
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding AvailableChatModels}"
+                          SelectedItem="{Binding FormModel.ChatModel}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
                 </ComboBox>
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="4" 
                 Grid.ColumnSpan="3"
                 Label="Embedding Model" >
-                <ComboBox HorizontalAlignment="Stretch">
-                    <ComboBoxItem>text-embedding-3-large</ComboBoxItem>
-                    <ComboBoxItem>mxbai-embed-large:latest</ComboBoxItem>
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding AvailableEmbeddingModels}"
+                          SelectedItem="{Binding FormModel.EmbeddingModel}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
                 </ComboBox>
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="5" 
                 Grid.ColumnSpan="3"
                 Label="Vision Model" >
-                <ComboBox HorizontalAlignment="Stretch">
-                    <ComboBoxItem>gpt-4.1-2025-04-14</ComboBoxItem>
-                    <ComboBoxItem>gemma3:12b</ComboBoxItem>
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding AvailableVisionModels}"
+                          SelectedItem="{Binding FormModel.VisionModel}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
                 </ComboBox>
             </u:FormItem>
             <u:FormItem 
@@ -97,7 +120,7 @@
                     Watermark="Select Available Tools"
                     MaxHeight="200"
                     HorizontalAlignment="Stretch"
-                    SelectedItems="{Binding SelectedTools}"
+                    SelectedItems="{Binding FormModel.Tools}"
                     ItemsSource="{Binding AvailableTools}" />
             </u:FormItem>
         </u:Form>

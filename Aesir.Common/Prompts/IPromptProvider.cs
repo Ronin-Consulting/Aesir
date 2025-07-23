@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Aesir.Common.Models;
 
 namespace Aesir.Common.Prompts;
@@ -11,7 +12,10 @@ public interface IPromptProvider
 
 public enum PromptContext
 {
+    [Description("Business")]
     Business,
+    [Description("Military")]
     Military,
+    [Description("Ocr")]
     Ocr
 }
