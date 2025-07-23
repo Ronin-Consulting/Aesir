@@ -11,6 +11,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Aesir.Client.ViewModels;
 using Aesir.Client.Views;
+using Avalonia.Controls;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using Flurl.Http;
 using Flurl.Http.Configuration;
@@ -33,8 +34,24 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Skip the normal host/DI pipeline when the previewer is running
+        if (Design.IsDesignMode)
+        {
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime designDesktop)
+            {
+                var designServiceProvider = ConfigureDesignServices(this);
+                
+                var designModel = designServiceProvider.GetService<MainViewViewModel>();
+                designDesktop.MainWindow = new MainWindow().WithViewModel(designModel);
+            }
+
+            base.OnFrameworkInitializationCompleted();
+            return;
+        }
+
         var serviceProvider = ConfigureServices(this);
-        var mainViewModel = serviceProvider.GetService<MainViewViewModel>();
+//        var mainViewModel = serviceProvider.GetService<MainViewViewModel>();
+        var mainWindowViewModel = serviceProvider.GetService<MainWindowViewModel>();
         
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -43,7 +60,7 @@ public partial class App : Application
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            singleViewPlatform.MainView = new MainWindow().WithViewModel(mainViewModel!);
+            singleViewPlatform.MainView = new MainWindow().WithViewModel(mainWindowViewModel!);
         }
         
         base.OnFrameworkInitializationCompleted();
@@ -74,6 +91,7 @@ public partial class App : Application
 
             return appState;
         });
+        AppServices.AddSingleton<MainWindowViewModel>();
         AppServices.AddSingleton<MainViewViewModel>();
         AppServices.AddSingleton<ChatHistoryViewModel>();
         AppServices.AddSingleton<ISpeechService,NoOpSpeechService>();
@@ -84,6 +102,7 @@ public partial class App : Application
         AppServices.AddSingleton<IDocumentCollectionService, DocumentCollectionService>();
         AppServices.AddSingleton<IChatSessionManager, ChatSessionManager>();
         AppServices.AddSingleton<IContentProcessingService, ContentProcessingService>();
+        AppServices.AddSingleton<INavigationService, NavigationService>();
         
         AppServices.AddTransient<SystemMessageViewModel>();
         AppServices.AddTransient<UserMessageViewModel>();
@@ -91,6 +110,8 @@ public partial class App : Application
         AppServices.AddTransient<ChatHistoryButtonViewModel>();
         AppServices.AddTransient<FileToUploadViewModel>();
         AppServices.AddTransient<SplashViewModel>();
+        AppServices.AddTransient<ToolsViewViewModel>();
+        AppServices.AddTransient<AgentsViewViewModel>();
         
         var delay = Backoff.DecorrelatedJitterBackoffV2(
             medianFirstRetryDelay: TimeSpan.FromSeconds(1), retryCount: 5, fastFirst: true);
@@ -118,6 +139,34 @@ public partial class App : Application
         Ioc.Default.ConfigureServices(serviceProvider);
 
         _iocConfigured = true;
+        
+        return serviceProvider;
+    }
+
+    private static ServiceProvider ConfigureDesignServices(Application? application)
+    {
+        var serviceProvider = new ServiceCollection()
+            .AddSingleton<ApplicationState>(p =>
+            {
+                var appState = new ApplicationState(
+                    new NoOpModelService(),
+                    new NoOpChatHistoryService()
+                )
+                {
+                    IsActive = true
+                };
+
+                return appState;
+            })
+            .AddSingleton<ISpeechService, NoOpSpeechService>()
+            .AddSingleton<IChatSessionManager, NoOpChatSessionManager>()
+            .AddSingleton<INavigationService, NoOpNavigationService>()
+            .AddLogging()
+            .AddSingleton<FileToUploadViewModel>()
+            // …add ONLY what the open XAML needs
+            .BuildServiceProvider();
+
+        Ioc.Default.ConfigureServices(serviceProvider);
         
         return serviceProvider;
     }

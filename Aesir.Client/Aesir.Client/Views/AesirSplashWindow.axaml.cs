@@ -22,7 +22,7 @@ public partial class AesirSplashWindow : SplashWindow
     {
         if (DialogResult is not true) return null;
         
-        var model = Ioc.Default.GetRequiredService<MainViewViewModel>();
+        var model = Ioc.Default.GetRequiredService<MainWindowViewModel>();
         return new MainWindow().WithViewModel(model);
     }
 }

@@ -4,8 +4,10 @@
               xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
               xmlns:u="https://irihi.tech/ursa"
               xmlns:views="clr-namespace:Aesir.Client.Views"
+              xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
               mc:Ignorable="d"
               x:Class="Aesir.Client.Views.MainWindow"
+              x:DataType="vm:MainWindowViewModel"
               Icon="/Assets/logo.ico"
               Title="AESIR"
               MinHeight="800"
@@ -13,10 +15,11 @@
               MinWidth="1280"
               Width="1280"
               WindowStartupLocation="CenterScreen"
->
+>   
     <u:UrsaWindow.RightContent>
     </u:UrsaWindow.RightContent>
     <u:UrsaWindow.LeftContent>
     </u:UrsaWindow.LeftContent>
-    <views:MainView Margin="0 0 0 0"/>
+ 
+    <ContentControl Margin="0 0 0 0" Content="{Binding CurrentViewModel}"></ContentControl>
 </u:UrsaWindow>

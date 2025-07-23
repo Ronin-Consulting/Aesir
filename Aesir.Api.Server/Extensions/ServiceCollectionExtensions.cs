@@ -5,7 +5,10 @@ using Aesir.Api.Server.Services.Implementations.Standard;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Plugins.Web.Google;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
+using Microsoft.SemanticKernel.Plugins.Web;
+using Npgsql;
 using OllamaSharp;
 using Qdrant.Client;
 using SamurAI = Aesir.Api.Server.Services.Implementations.Samurai;
@@ -199,6 +202,13 @@ public static class ServiceCollectionExtensions
 
             kernelBuilder.Plugins.Add(plugin);
         }
+
+        var googleConnector = new GoogleConnector(
+            searchEngineId: "64cf6ca85e9454a44", //Environment.GetEnvironmentVariable("CSE_ID"),
+            apiKey: "AIzaSyByEQBfXtNjdxIGlpeLRz0C1isORMnsHNU"); //Environment.GetEnvironmentVariable("GOOGLE_KEY"))
+        
+        kernelBuilder.Plugins.Add(
+            KernelPluginFactory.CreateFromObject(new WebSearchEnginePlugin(googleConnector), pluginName: "Web"));
 
         return services;
     }
