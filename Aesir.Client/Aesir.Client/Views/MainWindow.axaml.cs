@@ -16,12 +16,24 @@ public partial class MainWindow : UrsaWindow
         
         NotificationManager = new WindowNotificationManager(this) { MaxItems = 3 };
 
-        // this is the most compatible approach; we need to test on Linux
+        // this is the most compatible approach;
         ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.PreferSystemChrome;
         ExtendClientAreaToDecorationsHint = false;
         
-        if (OperatingSystem.IsWindows())
+        if (OperatingSystem.IsWindows() ||  OperatingSystem.IsLinux())
         {
+            IsFullScreenButtonVisible = false;
+            IsManagedResizerVisible = false;
+            IsCloseButtonVisible = false;
+            IsMinimizeButtonVisible = false;
+            IsRestoreButtonVisible = false;
+        }
+        
+        if (OperatingSystem.IsLinux())
+        {
+            ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.SystemChrome;
+            ExtendClientAreaToDecorationsHint = false;
+            
             IsFullScreenButtonVisible = false;
             IsManagedResizerVisible = false;
             IsCloseButtonVisible = false;
