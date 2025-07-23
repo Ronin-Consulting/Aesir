@@ -4,6 +4,7 @@
              xmlns:local="using:Aesir.Client"
              xmlns:semi="https://irihi.tech/semi"
              xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
+             xmlns:conv="using:Aesir.Client.Converters"
              x:Class="Aesir.Client.App"
              RequestedThemeVariant="Dark"
              >
@@ -24,4 +25,8 @@
             <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBlack}"></Setter>
         </Style>
     </Application.Styles>
+    
+    <Application.Resources>
+        <conv:EnumDescriptionConverter x:Key="EnumDescConverter" />
+    </Application.Resources>
 </Application>

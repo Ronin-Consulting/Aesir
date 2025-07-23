@@ -5,6 +5,7 @@ using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -90,9 +91,9 @@ public class AgentsViewViewModel : ObservableRecipient
                 ChatModel = "gpt-4.1-2025-04-14",
                 EmbeddingModel = "text-embedding-3-large",
                 VisionModel = "gpt-4.1-2025-04-14",
-                Source = "OpenAI",
-                Tools = "ChatDocSearch_GetHybridKeywordSearchResults, ChatDocSearch_GetTextSearchResults",
-                Prompt = "Military"
+                Source = ModelSource.OpenAI,
+                Tools = new List<string>() { "RAG" },
+                Prompt = PromptContext.Military
             },
             new AesirAgent
             {
@@ -100,9 +101,9 @@ public class AgentsViewViewModel : ObservableRecipient
                 ChatModel = "qwen3:32b-q4_K_M",
                 EmbeddingModel = "mxbai-embed-large:latest",
                 VisionModel = "gemma3:12b",
-                Source = "Ollama",
-                Tools = "ChatDocSearch_GetHybridKeywordSearchResults, ChatDocSearch_GetTextSearchResults",
-                Prompt = "Military"
+                Source = ModelSource.Ollama,
+                Tools = new List<string>() { "RAG" },
+                Prompt = PromptContext.Military
             },
             new AesirAgent
             {
@@ -110,9 +111,9 @@ public class AgentsViewViewModel : ObservableRecipient
                 ChatModel = "cogito:32b-v1-preview-qwen-q4_K_M",
                 EmbeddingModel = "mxbai-embed-large:latest",
                 VisionModel = "gemma3:12b",
-                Source = "Ollama",
-                Tools = "ChatDocSearch_GetHybridKeywordSearchResults, ChatDocSearch_GetTextSearchResults",
-                Prompt = "Business"
+                Source =ModelSource.Ollama,
+                Tools = new List<string>() { "RAG" },
+                Prompt = PromptContext.Business
             }
         ]);
     }

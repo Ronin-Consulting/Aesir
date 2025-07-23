@@ -1,9 +1,7 @@
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Aesir.Client.Services.Implementations.NoOp;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Aesir.Client.ViewModels.Design;
 
@@ -11,7 +9,13 @@ public class DesignAgentViewViewModel : AgentViewViewModel
 {   
     public DesignAgentViewViewModel() : base(new AesirAgent()
     {
-        // TODO
+        Name = "My Test Agent",
+        Source = ModelSource.Ollama,
+        Prompt = PromptContext.Military,
+        ChatModel = "qwen3:32b-q4_K_M",
+        EmbeddingModel = "mxbai-embed-large:latest",
+        VisionModel = "gemma3:12b",
+        Tools = new ObservableCollection<string>()
     })
     {
         AvailableTools = new ObservableCollection<string>()
@@ -19,7 +23,6 @@ public class DesignAgentViewViewModel : AgentViewViewModel
             "RAG",
             "Web"
         };
-        SelectedTools = new ObservableCollection<string>();
         IsDirty = false;
         SaveCommand = new RelayCommand(() => { });
         CancelCommand = new RelayCommand(() => { });
