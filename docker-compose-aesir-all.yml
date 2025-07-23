@@ -69,16 +69,19 @@ services:
   reverse-proxy:
     image: traefik:latest
     restart: unless-stopped
+    depends_on:
+      pgdb:
+        condition: service_healthy
     command:
-#      - "--log.level=DEBUG"
-#      - "--accesslog=true"
+      - "--log.level=DEBUG"
+      - "--accesslog=true"
       - "--providers.docker.exposedbydefault=false"
       - "--api.insecure=true"
       - "--api.debug=true"
       - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencryptresolver.acme.email=postmaster@www.localhost"
+      - "--certificatesresolvers.letsencryptresolver.acme.email=info@ronin.consulting"
       - "--certificatesresolvers.letsencryptresolver.acme.storage=/letsencrypt/acme.json"
       - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge=true"
       - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge.entrypoint=web"
