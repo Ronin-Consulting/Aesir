@@ -8,7 +8,6 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Plugins.Web.Google;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Plugins.Web;
-using Npgsql;
 using OllamaSharp;
 using Qdrant.Client;
 using SamurAI = Aesir.Api.Server.Services.Implementations.Samurai;

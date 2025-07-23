@@ -41,17 +41,15 @@ public partial class App : Application
             {
                 var designServiceProvider = ConfigureDesignServices(this);
                 
-                var designModel = designServiceProvider.GetService<MainViewViewModel>();
+                var designModel = designServiceProvider.GetService<MainWindowViewModel>();
                 designDesktop.MainWindow = new MainWindow().WithViewModel(designModel);
             }
-
+        
             base.OnFrameworkInitializationCompleted();
             return;
         }
 
         var serviceProvider = ConfigureServices(this);
-//        var mainViewModel = serviceProvider.GetService<MainViewViewModel>();
-        var mainWindowViewModel = serviceProvider.GetService<MainWindowViewModel>();
         
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -60,6 +58,7 @@ public partial class App : Application
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
+            var mainWindowViewModel = serviceProvider.GetService<MainWindowViewModel>();
             singleViewPlatform.MainView = new MainWindow().WithViewModel(mainWindowViewModel!);
         }
         
