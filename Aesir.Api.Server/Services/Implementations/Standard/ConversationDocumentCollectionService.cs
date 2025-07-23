@@ -147,6 +147,8 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             throw new InvalidDataException($"FileName is required metadata.");
         }
 
+        await _vectorStoreRecordCollection.EnsureCollectionExistsAsync(cancellationToken);
+        
         if (!fileMetaData.TryGetValue("ConversationId", out var metaValue))
             throw new ArgumentException("File metadata must contain a ConversationId property");
 
@@ -189,6 +191,8 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         if (args == null || !args.TryGetValue("ConversationId", out var argValue))
             throw new ArgumentException("Args must contain a ConversationId property");
 
+        await _vectorStoreRecordCollection.EnsureCollectionExistsAsync(cancellationToken);
+        
         var conversationId = (string)argValue;
 
         var retrievalOptions = new FilteredRecordRetrievalOptions<AesirConversationDocumentTextData<Guid>>()
