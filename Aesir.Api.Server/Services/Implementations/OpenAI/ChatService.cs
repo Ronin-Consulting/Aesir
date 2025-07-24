@@ -178,7 +178,8 @@ public class ChatService : BaseChatService
         var systemPromptVariables = new Dictionary<string, object>
         {
             ["currentDateTime"] = request.ClientDateTime,
-            ["toolsEnabled"] = false
+            ["webSearchtoolsEnabled"] = false,
+            ["docSearchToolsEnabled"] = false
         };
         
         var settings = new OpenAIPromptExecutionSettings
@@ -186,6 +187,15 @@ public class ChatService : BaseChatService
             ModelId = request.Model,
             MaxTokens = request.MaxTokens
         };
+
+        var globalPluginsExist = _kernel.Plugins.Count > 0;
+        if (globalPluginsExist)
+        {
+            settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
+            
+            // for now web search at some point we use tool name
+            systemPromptVariables["webSearchtoolsEnabled"] = true;
+        }
 
         if (request.Conversation.Messages.Any(m => m.HasFile()))
         {
@@ -198,7 +208,7 @@ public class ChatService : BaseChatService
 
             _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(args));
             
-            systemPromptVariables["toolsEnabled"] = true;
+            systemPromptVariables["docSearchToolsEnabled"] = true;
         }
 
         if (request.Temperature.HasValue)

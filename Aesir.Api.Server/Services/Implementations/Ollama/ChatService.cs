@@ -220,7 +220,8 @@ public class ChatService : BaseChatService
         var systemPromptVariables = new Dictionary<string, object>
         {
             ["currentDateTime"] = request.ClientDateTime,
-            ["toolsEnabled"] = false
+            ["webSearchtoolsEnabled"] = false,
+            ["docSearchToolsEnabled"] = false
         };
 
         var settings = new OllamaPromptExecutionSettings
@@ -233,6 +234,15 @@ public class ChatService : BaseChatService
         if (_enableThinking)
             settings.ExtensionData.Add("think", true);
 
+        var globalPluginsExist = _kernel.Plugins.Count > 0;
+        if (globalPluginsExist)
+        {
+            settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
+            
+            // for now web search at some point we use tool name
+            systemPromptVariables["webSearchtoolsEnabled"] = true;
+        }
+        
         if (request.Conversation.Messages.Any(m => m.HasFile()))
         {
             settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
@@ -243,7 +253,7 @@ public class ChatService : BaseChatService
             args.SetConversationId(conversationId);
             _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(args));
 
-            systemPromptVariables["toolsEnabled"] = true;
+            systemPromptVariables["docSearchToolsEnabled"] = true;
         }
 
         if (request.Temperature.HasValue)

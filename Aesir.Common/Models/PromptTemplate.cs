@@ -44,6 +44,21 @@ public class PromptTemplate
     /// </returns>
     public string Render(Dictionary<string, object>? variables = null)
     {
+        // our helpers... as this grows we should pull this out
+        Handlebars.RegisterHelper("or", (writer, context, parameters) =>
+        {
+            foreach (var param in parameters)
+            {
+                // Check if the parameter is truthy (non-null, non-false, non-empty, etc.)
+                if (HandlebarsUtils.IsTruthy(param))
+                {
+                    writer.Write(true); // Output true to trigger the if block
+                    return;
+                }
+            }
+            writer.Write(false); // All falsey, so output false
+        });
+        
         var template = Handlebars.Compile(Content);
         
         var allVariables = Variables.ToDictionary(kvp => kvp.Key, object (kvp) => kvp.Value);

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services;
 using Aesir.Api.Server.Services.Implementations.Standard;
@@ -32,15 +33,7 @@ public static class ServiceCollectionExtensions
         var embeddingModelId = useOpenAi
             ? configuration.GetSection("Inference:OpenAI:EmbeddingModel").Value
             : configuration.GetSection("Inference:Ollama:EmbeddingModel").Value;
-
-        // UNCOMMENT TO ENABLE PG VECTOR
-        // var connectionString = configuration.GetConnectionString("DefaultConnection");
-        //
-        // var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-        // dataSourceBuilder.UseVector();
-
-        //services.AddSingleton(dataSourceBuilder.Build());
-
+        
         var kernelBuilder = services.AddKernel();
 
         if (useOpenAi)
@@ -63,23 +56,6 @@ public static class ServiceCollectionExtensions
 
             kernelBuilder.AddOllamaEmbeddingGenerator(ollamaClient);
         }
-        
-        // UNCOMMENT TO ENABLE PG VECTOR
-        // var vsOptions = new PostgresVectorStoreOptions
-        // {
-        //     Schema = "aesir",
-        //     EmbeddingGenerator = embeddingGenerator
-        // };
-        // services.AddPostgresVectorStore(vsOptions);
-        //
-        // var rcOptions = new PostgresCollectionOptions
-        // {
-        //     Schema = "aesir",
-        //     EmbeddingGenerator = embeddingGenerator
-        // };
-        // services.AddPostgresCollection<Guid, AesirConversationDocumentTextData<Guid>>("aesir_conversation_document",
-        //     rcOptions);
-        // services.AddPostgresCollection<Guid, AesirGlobalDocumentTextData<Guid>>("aesir_global_document", rcOptions);
         
         var embeddingGenerator = services.BuildServiceProvider()
             .GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
@@ -205,9 +181,20 @@ public static class ServiceCollectionExtensions
         var googleConnector = new GoogleConnector(
             searchEngineId: "64cf6ca85e9454a44", //Environment.GetEnvironmentVariable("CSE_ID"),
             apiKey: "AIzaSyByEQBfXtNjdxIGlpeLRz0C1isORMnsHNU"); //Environment.GetEnvironmentVariable("GOOGLE_KEY"))
+
+        var webSearchPlugin = new WebSearchEnginePlugin(googleConnector);
         
+        var methods = webSearchPlugin.GetType().GetMethods(
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+        
+        // only use the Search Results one because it has metadata...
+        var functions = 
+            (from method in methods where method.Name.StartsWith("GetSearchResults") 
+                select KernelFunctionFactory.CreateFromMethod(method, webSearchPlugin)).ToList();
+
         kernelBuilder.Plugins.Add(
-            KernelPluginFactory.CreateFromObject(new WebSearchEnginePlugin(googleConnector), pluginName: "Web"));
+            KernelPluginFactory.CreateFromFunctions("Web", functions)
+        );
 
         return services;
     }

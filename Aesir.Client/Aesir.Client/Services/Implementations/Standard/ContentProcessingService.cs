@@ -93,6 +93,12 @@ public class ContentProcessingService(
                 return;
             }
 
+            // only process "file" uri ... if not "file" then just return... 
+            if (!Uri.TryCreate(link, UriKind.Absolute, out var uri) || uri.Scheme != "file")
+            {
+                return;
+            }
+            
             _pdfViewerService.ShowPdfAsync(link);
         }
         catch (Exception ex)
