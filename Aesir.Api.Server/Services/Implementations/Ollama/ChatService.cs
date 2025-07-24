@@ -143,7 +143,7 @@ public class ChatService : BaseChatService
         AesirChatRequest request)
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
-        var chatHistory = CreateChatHistory(request);
+        var chatHistory = await CreateChatHistoryAsync(request);
 
         var results = await _chatCompletionService.GetChatMessageContentsAsync(
             chatHistory,
@@ -179,7 +179,7 @@ public class ChatService : BaseChatService
         ExecuteStreamingChatCompletionAsync(AesirChatRequest request)
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
-        var chatHistory = CreateChatHistory(request);
+        var chatHistory = await CreateChatHistoryAsync(request);
 
         var results = _chatCompletionService.GetStreamingChatMessageContentsAsync(
             chatHistory,
@@ -271,10 +271,21 @@ public class ChatService : BaseChatService
     /// </summary>
     /// <param name="request">The chat request containing conversation messages.</param>
     /// <returns>A chat history constructed from the conversation messages within the provided chat request.</returns>
-    private static ChatHistory CreateChatHistory(AesirChatRequest request)
+    private async Task<ChatHistory> CreateChatHistoryAsync(AesirChatRequest request)
     {
+        var chatHistoryReducer = new ChatHistorySummarizationReducer(
+            _chatCompletionService, 8, 5);
+        
         var chatHistory = new ChatHistory();
         chatHistory.AddRange(request.Conversation.Messages.Select(ConvertToSemanticKernelMessage));
+
+        var reduced = await chatHistoryReducer.ReduceAsync(chatHistory);
+
+        if (reduced == null) return chatHistory;
+        
+        chatHistory = [];
+        chatHistory.AddRange(reduced);
+
         return chatHistory;
     }
 
