@@ -112,7 +112,12 @@ public class Program
 
                 var httpClient = httpClientFactory.CreateClient(ollamaClientName);
 
-                return new OllamaApiClient(httpClient);
+                // I don't like this... but need default model to do chat history summarization later..
+                // because Semantic Kernel is inflexible in this area
+                var modelNames = 
+                    builder.Configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>();
+                
+                return new OllamaApiClient(httpClient, modelNames?.FirstOrDefault() ?? string.Empty);
             });
         }
 
