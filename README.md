@@ -40,15 +40,15 @@
   - [X] Implement Computer Vision
     - [X] Support for Local Vision Models
     - [X] Support for Hosted Vision Models
+- [x] Implement Chat History
+  - [x] CRUD
+  - [x] Search
 - [ ] Tools/MCP Integration
 - [ ] AI Agents
 - [ ] Implement Microphone
   - [ ] Record
   - [ ] Stop
   - [ ] Play
-- [x] Implement Chat History
-  - [x] CRUD
-  - [x] Search
 - [ ] Implement User Settings
   - [ ] Change name
   - [ ] Change profile picture
