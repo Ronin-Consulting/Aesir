@@ -1,8 +1,11 @@
 using System;
 using Aesir.Client.Messages;
+using Aesir.Client.Services;
+using Aesir.Client.Services.Implementations.NoOp;
 using Aesir.Client.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Threading;
+using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Messaging;
 using Ursa.Common;
 using Ursa.Controls;
@@ -11,7 +14,7 @@ using Ursa.Controls.Options;
 namespace Aesir.Client.Views;
 
 public partial class AgentsView : UserControl, IRecipient<ShowAgentDetailMessage>
-{       
+{   
     public AgentsView()
     {
         InitializeComponent();
@@ -25,8 +28,8 @@ public partial class AgentsView : UserControl, IRecipient<ShowAgentDetailMessage
         {
             try
             {
-                var viewModel = new AgentViewViewModel(detailMessage.Agent);
-                viewModel.Agent = detailMessage.Agent;
+                var notificationService = Ioc.Default.GetService<INotificationService>()!;
+                var viewModel = new AgentViewViewModel(detailMessage.Agent, notificationService);
 
                 var options = new DrawerOptions()
                 {

@@ -2,6 +2,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.Windows.Input;
+using Aesir.Client.Services;
+using Aesir.Client.Services.Implementations.NoOp;
 using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -12,7 +14,9 @@ namespace Aesir.Client.ViewModels;
 
 public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
 {
-    public AesirAgent Agent { get; set; }
+    private AesirAgent _agent;
+    
+    private INotificationService _notificationService;
     
     [ObservableProperty] private AgentFormDataModel _formModel;
     
@@ -38,9 +42,11 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     
     public event EventHandler<object?>? RequestClose;
 
-    public AgentViewViewModel(AesirAgent agent)
+    public AgentViewViewModel(AesirAgent agent, INotificationService notificationService)
     {
-        Agent = agent;
+        _agent = agent;
+        _notificationService = notificationService;
+        
         FormModel = new()
         {
             Name = agent.Name,
@@ -84,7 +90,9 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     {
         if (FormModel.Validate())
         {
-            // TODO - save, toast?
+            // TODO - apply FormModel to AesirAgent, store
+            // TODO toast?
+            _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' updated");
             Close();
         }
     }
