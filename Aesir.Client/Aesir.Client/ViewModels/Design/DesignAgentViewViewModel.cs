@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Aesir.Client.Services.Implementations.NoOp;
 using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using CommunityToolkit.Mvvm.Input;
@@ -16,7 +17,7 @@ public class DesignAgentViewViewModel : AgentViewViewModel
         EmbeddingModel = "mxbai-embed-large:latest",
         VisionModel = "gemma3:12b",
         Tools = new ObservableCollection<string>()
-    })
+    }, new NoOpNotificationService())
     {
         AvailableTools = new ObservableCollection<string>()
         {
