@@ -41,6 +41,7 @@
     - [X] Support for Local Vision Models
     - [X] Support for Hosted Vision Models
 - [ ] Tools/MCP Integration
+- [ ] AI Agents
 - [ ] Implement Microphone
   - [ ] Record
   - [ ] Stop
