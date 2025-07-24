@@ -61,10 +61,14 @@ public class PdfViewerService(
         try
         {
             var uri = new Uri(fileUri);
-            
-            if (!int.TryParse(uri.Fragment.TrimStart('#', 'p', 'a', 'g', 'e', '='), out var pageNumber))
-                return null;
 
+            if (!int.TryParse(uri.Fragment.TrimStart('#', 'p', 'a', 'g', 'e', '='), out var pageNumber))
+            {
+                // default to 1
+                if (uri.Fragment.Contains("#page"))
+                    pageNumber = 1;
+            }
+            
             await using var pdfStream = await documentCollectionService.GetFileContentStreamAsync(uri.LocalPath);
             
             // Render the first page (pageIndex: 0) to a SKBitmap
