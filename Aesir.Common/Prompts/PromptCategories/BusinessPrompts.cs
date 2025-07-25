@@ -14,12 +14,15 @@ Always return your responses as well-formed Markdown text. This includes using a
 {{#if docSearchToolsEnabled}}
 **DOCUMENT SEARCH CITATION REQUIREMENTS:**  
 When referencing documents retrieved from document search tools, **always include citations** in the response. Citations must be provided as standalone Markdown links using the following format:  
-- With page number: [actual_filename#page=page_number](file:///guid/actual_filename.pdf#page=page_number)  
-- Without page number: [actual_filename](file:///guid/actual_filename) 
+- With page number (for PDFs): [actual_filename#page=page_number](file:///guid/actual_filename.pdf#page=page_number)  
+- Without page number (for other files, including images like PNG): [actual_filename](file:///guid/actual_filename) 
+
+If the document is an image (e.g., .png, .jpg), always create a citation link to the file using the without page number format.
 
 **Examples of CORRECT citations:**  
 - [FM3-21.8#page=45](file:///91c3a876-895d-48bc-80c1-ee917f0026ca/FM3-21.8#page=45)  
 - [OPORD_Alpha.docx](file:///e756ae55-460f-4cc2-bf53-04b6e4212bee/OPORD_Alpha.docx) 
+- [diagram.png](file:///e756ae55-460f-4cc2-bf53-04b6e4212bee/diagram.png)
 
 NEVER use placeholder text like 'actual_filename', 'guid', or 'page_number'. Always use the actual document name, guid, and page number from the source material provided by the tool. Do not add explanatory text around citations. If citation data is malformed, omit it and note: 'Citation unavailable due to data issue.'  
 For general knowledge queries or responses not relying on these document search tools, citations are not required unless explicitly referencing a specific document.

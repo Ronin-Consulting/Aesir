@@ -8,18 +8,6 @@ namespace Aesir.Client.Services;
 public interface IContentProcessingService
 {
     /// <summary>
-    /// Processes the provided input string by removing content enclosed within &lt;think&gt; tags,
-    /// including the tags themselves. Handles potential formatting issues such as unclosed or nested
-    /// tags, gracefully ensuring robust processing.
-    /// </summary>
-    /// <param name="input">The string containing content to be processed for &lt;think&gt; tags.</param>
-    /// <returns>
-    /// A string with all &lt;think&gt; tags and their enclosed content removed. If the input is null,
-    /// empty, or contains no &lt;think&gt; tags, the original input string is returned.
-    /// </returns>
-    string ProcessThinkingModelContent(string input);
-
-    /// <summary>
     /// Handles the event of a link being clicked, performing processing
     /// based on the specified link and its associated attributes.
     /// </summary>

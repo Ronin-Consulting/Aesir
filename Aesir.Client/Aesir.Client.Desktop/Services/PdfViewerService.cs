@@ -63,17 +63,21 @@ public class PdfViewerService(
             var uri = new Uri(fileUri);
 
             if (!int.TryParse(uri.Fragment.TrimStart('#', 'p', 'a', 'g', 'e', '='), out var pageNumber))
-            {
-                // default to 1
-                if (uri.Fragment.Contains("#page"))
-                    pageNumber = 1;
+            { 
+                pageNumber = 1;
             }
             
-            await using var pdfStream = await documentCollectionService.GetFileContentStreamAsync(uri.LocalPath);
+            await using var fileContentStream = await documentCollectionService.GetFileContentStreamAsync(uri.LocalPath);
+            
+            // If the file is PNG, load it directly
+            if (Path.GetExtension(uri.LocalPath).Equals(".png", StringComparison.OrdinalIgnoreCase))
+            {
+                return new Bitmap(fileContentStream);
+            }
             
             // Render the first page (pageIndex: 0) to a SKBitmap
 #pragma warning disable CA1416
-            var skBitmap = PDFtoImage.Conversion.ToImage(pdfStream, pageNumber - 1);
+            var skBitmap = PDFtoImage.Conversion.ToImage(fileContentStream, pageNumber - 1);
 #pragma warning restore CA1416
 
             // Convert SKBitmap to an Avalonia Bitmap
