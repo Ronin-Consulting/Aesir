@@ -28,10 +28,10 @@ public class VisionService(
     /// Extracts text content from a provided image asynchronously.
     /// </summary>
     /// <param name="image">The image data provided as a read-only memory byte array.</param>
-    /// <param name="mimeType">The MIME type of the image (e.g., "image/png", "image/jpeg").</param>
+    /// <param name="contentType">The MIME type of the image (e.g., "image/png", "image/jpeg").</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>Returns the text extracted from the image as a plain string.</returns>
-    public async Task<string> GetImageTextAsync(ReadOnlyMemory<byte> image, string mimeType,
+    public async Task<string> GetImageTextAsync(ReadOnlyMemory<byte> image, string contentType,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_visionModel))
@@ -40,8 +40,8 @@ public class VisionService(
         var chatHistory = new ChatHistory();
         chatHistory.AddSystemMessage(PromptProvider.GetSystemPrompt(PromptContext.Ocr).Content);
         chatHistory.AddUserMessage([
-            new TextContent("Extract and return only the text visible in the provided image as plain text."),
-            new ImageContent(image, mimeType),
+            new TextContent("Analyze this image."),
+            new ImageContent(image, contentType),
         ]);
 
         var settings = new OpenAIPromptExecutionSettings
@@ -56,16 +56,4 @@ public class VisionService(
 
         return string.Join("\n", result.Select(x => x.Content));
     }
-}
-
-/// <summary>
-/// Configuration class for specifying settings and parameters for the vision AI model,
-/// such as the model identifier used by the VisionService.
-/// </summary>
-public class VisionModelConfig
-{
-    /// <summary>
-    /// Represents the identifier of the vision model configured for processing images and extracting textual information.
-    /// </summary>
-    public required string ModelId { get; set; }
 }

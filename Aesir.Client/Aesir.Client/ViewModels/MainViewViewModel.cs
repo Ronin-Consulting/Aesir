@@ -596,7 +596,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     {
         try
         {
-            var files = await OpenPdfFilePickerAsync();
+            var files = await OpenFilePickerAsync();
 
             if (files.Count >= 1)
             {
@@ -612,15 +612,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
-    /// Opens a PDF file picker dialog asynchronously, allowing the user to select PDF files from the file system.
-    /// Utilizes the application's storage provider to present a file picker that filters for files with a ".pdf" extension
-    /// and corresponding MIME type. In cases where the storage provider is unavailable or an error occurs during the operation,
-    /// an empty list of files is returned, and the error is logged.
-    /// <returns>
-    /// A task representing the asynchronous operation. The task result is a read-only list of selected storage files.
-    /// Returns an empty list if no files are selected or if an error occurs during the process.
-    /// </returns>
-    private async Task<IReadOnlyList<IStorageFile>> OpenPdfFilePickerAsync()
+    private async Task<IReadOnlyList<IStorageFile>> OpenFilePickerAsync()
     {
         try
         {
@@ -633,22 +625,22 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
 
             return await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "Upload PDF",
+                Title = "Upload File",
                 AllowMultiple = false,
                 FileTypeFilter =
                 [
-                    new FilePickerFileType("PDF Documents")
+                    new FilePickerFileType("Documents")
                     {
-                        Patterns = ["*.pdf"],
-                        MimeTypes = ["application/pdf"],
-                        AppleUniformTypeIdentifiers = ["com.adobe.pdf"]
+                        Patterns = ["*.pdf", "*.png"],
+                        MimeTypes = ["application/pdf", "image/png"],
+                        AppleUniformTypeIdentifiers = ["com.adobe.pdf", "public.png"]
                     }
                 ]
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to open PDF file picker");
+            _logger.LogError(ex, "Failed to open file picker");
             return Array.Empty<IStorageFile>();
         }
     }

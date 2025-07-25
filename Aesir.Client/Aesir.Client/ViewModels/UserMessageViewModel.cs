@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Messages;
@@ -7,6 +8,7 @@ using Aesir.Common.Models;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Material.Icons;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
@@ -34,6 +36,9 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
     /// </summary>
     [ObservableProperty] private string? _fileName;
 
+    [ObservableProperty] 
+    private MaterialIconKind _fileIconKind = MaterialIconKind.FileDocument;
+    
     /// <summary>
     /// An instance of the markdown service used to convert markdown text into rendered HTML content.
     /// </summary>
@@ -64,6 +69,11 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
         if (message.HasFile())
         {
             FileName = message.GetFileName();
+            
+            if (Path.GetExtension(FileName ?? string.Empty).Equals(".png", StringComparison.OrdinalIgnoreCase))
+            {
+                FileIconKind = MaterialIconKind.FileImage;
+            }
         }
 
         Content = message.GetContentWithoutFileName() ?? throw new InvalidOperationException();

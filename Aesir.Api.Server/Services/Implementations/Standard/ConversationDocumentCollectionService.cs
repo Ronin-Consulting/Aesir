@@ -73,6 +73,8 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// </remarks>
     private readonly IPdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> _pdfDataLoader;
 
+    private readonly IImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> _imageDataLoader;
+
     /// <summary>
     /// Logger instance for the <see cref="ConversationDocumentCollectionService"/> class.
     /// </summary>
@@ -91,6 +93,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         IKeywordHybridSearchable<AesirConversationDocumentTextData<Guid>>? conversationDocumentHybridSearch,
         VectorStoreCollection<Guid, AesirConversationDocumentTextData<Guid>> vectorStoreRecordCollection,
         IPdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> pdfDataLoader,
+        IImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> imageDataLoader,
         ILogger<ConversationDocumentCollectionService> logger
     )
     {
@@ -98,6 +101,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         _conversationDocumentHybridSearch = conversationDocumentHybridSearch;
         _vectorStoreRecordCollection = vectorStoreRecordCollection;
         _pdfDataLoader = pdfDataLoader;
+        _imageDataLoader = imageDataLoader;
         _logger = logger;
     }
 
@@ -112,25 +116,41 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     public async Task LoadDocumentAsync(string documentPath, IDictionary<string, object>? fileMetaData,
         CancellationToken cancellationToken)
     {
-        // for now enforce only PDFs
-        if (!documentPath.ValidFileContentType(SupportedFileContentTypes.PdfContentType, out var actualContentType))
+        // for now enforce only PDFs and PNGs
+        if (!documentPath.ValidFileContentType(SupportedFileContentTypes.PdfContentType, out var actualContentType) && 
+            !documentPath.ValidFileContentType(SupportedFileContentTypes.PngContentType, out actualContentType))
         {
             throw new InvalidDataException($"Invalid file content type: {actualContentType}");
         }
-
+        
         if (fileMetaData == null || !fileMetaData.TryGetValue("FileName", out var fileNameMetaData))
         {
             throw new InvalidDataException($"FileName is required metadata.");
         }
-        
-        var request = new LoadPdfRequest()
+
+        if (actualContentType == SupportedFileContentTypes.PdfContentType)
         {
-            PdfLocalPath = documentPath,
-            PdfFileName = fileNameMetaData.ToString(),
-            BetweenBatchDelayInMs = 10,
-            Metadata = fileMetaData
-        };
-        await _pdfDataLoader.LoadPdfAsync(request, cancellationToken);
+            var pdfRequest = new LoadPdfRequest()
+            {
+                PdfLocalPath = documentPath,
+                PdfFileName = fileNameMetaData.ToString(),
+                BetweenBatchDelayInMs = 10,
+                Metadata = fileMetaData
+            };
+            await _pdfDataLoader.LoadPdfAsync(pdfRequest, cancellationToken);   
+        }
+
+        if (actualContentType == SupportedFileContentTypes.PngContentType)
+        {
+            var imageRequest = new LoadImageRequest()
+            {
+                ImageLocalPath = documentPath,
+                ImageFileName = fileNameMetaData.ToString(),
+                Metadata = fileMetaData
+            };
+            
+            await _imageDataLoader.LoadImageAsync(imageRequest, cancellationToken);
+        }
     }
 
     /// <summary>

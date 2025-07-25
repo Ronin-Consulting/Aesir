@@ -1,4 +1,5 @@
 using Aesir.Api.Server.Services;
+using Aesir.Api.Server.Services.Implementations.Standard;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Aesir.Api.Server.Controllers;
@@ -210,8 +211,8 @@ public class DocumentCollectionController(
             return (false, "File size exceeds 100MB limit.", null);
 
         var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (fileExtension != ".pdf")
-            return (false, "Only PDF files are allowed.", null);
+        if (fileExtension != ".pdf" && fileExtension != ".png")
+            return (false, "Only PDF files and PNG files are allowed.", null);
 
         var tempFilePath = Path.GetTempFileName() + fileExtension;
 

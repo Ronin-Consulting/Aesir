@@ -214,7 +214,7 @@ public partial class AssistantMessageViewModel(
                 }
 
                 // let ui catch up drawing
-                await Task.Delay(TimeSpan.FromMilliseconds(30));
+                await Task.Delay(TimeSpan.FromMilliseconds(35));
             }
 
             return title;

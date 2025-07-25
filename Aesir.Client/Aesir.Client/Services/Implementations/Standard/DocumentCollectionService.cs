@@ -8,9 +8,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.Services.Implementations.Standard;
 
-/// Provides services for managing document collections, including file uploads, deletions, and retrievals.
-/// Handles operations such as uploading files to specific contexts, retrieving file content streams, and deleting files.
-/// Uses Flurl for HTTP client operations and integrates with logging and configuration systems.
+/// Provides functionality for managing document-related operations, including handling file uploads,
+/// downloads, and deletions for specific contexts such as conversations or global categories.
+/// Leverages Flurl for HTTP operations, integrates with logging for error tracking,
+/// and adheres to configuration-defined settings for service behavior.
 public class DocumentCollectionService(
     ILogger<DocumentCollectionService> logger,
     IConfiguration configuration,
@@ -18,32 +19,34 @@ public class DocumentCollectionService(
     : IDocumentCollectionService
 {
     /// <summary>
-    /// Specifies the maximum file size, in bytes, that can be uploaded or processed by the service.
+    /// Defines the maximum file size, in bytes, allowed for file uploads or processing within the application.
     /// </summary>
     /// <remarks>
-    /// The maximum file size is set to a constant value of 104857600 bytes, which is equivalent to 100 MB.
-    /// Attempts to upload a file exceeding this size will result in an <see cref="InvalidOperationException"/>.
+    /// This value serves as an upper limit to prevent excessively large files from being uploaded or processed,
+    /// ensuring efficient resource usage and system stability. Exceeding this limit will result in validation
+    /// errors or an <see cref="InvalidOperationException"/>.
     /// </remarks>
     private const long MaxFileSizeBytes = 104857600; // 100MB
 
     /// <summary>
-    /// Specifies the allowed file extension for files being validated or uploaded.
-    /// Only files with this specific extension are permitted for processing in the system.
+    /// Specifies the allowed file extensions for files being validated or uploaded.
+    /// Only files with extensions listed in this array are permitted for processing by the service.
     /// </summary>
     /// <remarks>
-    /// The value of this variable is used to enforce file format restrictions,
-    /// ensuring that only files matching the predefined extension can be handled.
-    /// Currently, the allowed file extension is restricted to ".pdf".
+    /// This array defines the file format restrictions applicable to file operations within the service.
+    /// Currently, the allowed file extensions are ".pdf" and ".png".
+    /// Attempts to process files with extensions not included in this array will result in an error.
     /// </remarks>
-    private const string AllowedFileExtension = ".pdf";
+    private static readonly string[] AllowedFileExtensions = [".pdf", ".png"];
 
     /// <summary>
-    /// Represents the Flurl client instance used to perform HTTP operations with predefined base configuration.
-    /// This client is responsible for creating and managing requests to various endpoints,
-    /// facilitating operations such as file uploads, file deletions, and retrieving file content streams.
-    /// Configured to use the base URL retrieved from the application's configuration for
-    /// interaction with the Document Collection service.
+    /// Represents the Flurl client instance used for executing HTTP requests to the Document Collection service.
     /// </summary>
+    /// <remarks>
+    /// This client is configured with a base URL derived from the application's configuration settings.
+    /// It is utilized to perform operations such as uploading, deleting, and retrieving file content.
+    /// The instance is managed through an <see cref="IFlurlClientCache"/> to enable efficient reuse of the HTTP client across requests.
+    /// </remarks>
     private readonly IFlurlClient _flurlClient = flurlClientCache
         .GetOrAdd("DocumentCollectionClient",
             configuration.GetValue<string>("Inference:DocumentCollections"));
@@ -52,9 +55,9 @@ public class DocumentCollectionService(
     /// Retrieves the content of a specified file from the server as a stream.
     /// </summary>
     /// <param name="filename">The name of the file whose content is to be retrieved.</param>
-    /// <returns>A task representing the asynchronous operation. The task result contains a <see cref="Stream"/> for the file content.</returns>
-    /// <exception cref="FileNotFoundException">Thrown if the file with the specified name is not found on the server.</exception>
-    /// <exception cref="Exception">Thrown if there is an error retrieving the file content from the server.</exception>
+    /// <returns>A task representing the asynchronous operation. The task result contains a <see cref="Stream"/> representing the file content.</returns>
+    /// <exception cref="FileNotFoundException">Thrown if the server does not locate the specified file.</exception>
+    /// <exception cref="Exception">Thrown when an error occurs while retrieving the file content from the server.</exception>
     public async Task<Stream> GetFileContentStreamAsync(string filename)
     {
         try
@@ -109,9 +112,10 @@ public class DocumentCollectionService(
         }
 
         var fileExtension = Path.GetExtension(filePath).ToLowerInvariant();
-        if (fileExtension != AllowedFileExtension)
+        if (!Array.Exists(AllowedFileExtensions, ext => ext == fileExtension))
         {
-            throw new NotSupportedException($"Only PDF files are allowed: {filePath}");
+            throw new NotSupportedException(
+                $"Only allowed file types ({string.Join(", ", AllowedFileExtensions)}) are supported: {filePath}");
         }
     }
 
@@ -127,11 +131,12 @@ public class DocumentCollectionService(
     {
         await using var fileStream = File.OpenRead(filePath);
         var fileName = Path.GetFileName(filePath);
+        var contentType = GetContentTypeForFile(filePath);
 
         var response = await _flurlClient
             .Request(pathSegments)
             .PostMultipartAsync(mp =>
-                mp.AddFile("file", fileStream, fileName, "application/pdf"));
+                mp.AddFile("file", fileStream, fileName, contentType));
 
         if (!response.ResponseMessage.IsSuccessStatusCode)
         {
@@ -143,10 +148,10 @@ public class DocumentCollectionService(
 
     /// <summary>
     /// Deletes a file from the server using the specified path segments.
-    /// Throws an exception if the deletion fails.
     /// </summary>
-    /// <param name="pathSegments">The path segments that identify the file to be deleted on the server.</param>
-    /// <returns>A task representing the asynchronous operation which returns the HTTP response for the delete operation.</returns>
+    /// <param name="pathSegments">An array of path segments that specify the location of the file to be deleted on the server.</param>
+    /// <returns>A task representing the asynchronous operation. The task result contains an <see cref="IFlurlResponse"/> that represents the HTTP response for the delete operation.</returns>
+    /// <exception cref="Exception">Thrown if the HTTP response status indicates a failure to delete the file.</exception>
     private async Task<IFlurlResponse> DeleteFileAsync(params string[] pathSegments)
     {
         var response = await _flurlClient
@@ -161,12 +166,16 @@ public class DocumentCollectionService(
         return response;
     }
 
-    /// Executes a given asynchronous operation with exception handling, logging errors based on
-    /// the type of exception, and rethrowing them with additional context when necessary.
+    /// <summary>
+    /// Executes a given asynchronous operation with exception handling. Logs errors based on the type of exception
+    /// and rethrows them with additional context when necessary.
+    /// </summary>
     /// <param name="operation">The asynchronous operation to be executed.</param>
     /// <param name="operationName">The name of the operation, used for error logging and exception messages.</param>
-    /// <param name="filePath">The file path associated with the operation, used for context in error reporting.</param>
-    /// <returns>A Task representing the asynchronous operation.</returns>
+    /// <param name="filePath">The file path associated with the operation, used for additional context in error reporting.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <exception cref="FlurlHttpException">Thrown when an HTTP error occurs during the execution of the operation.</exception>
+    /// <exception cref="Exception">Thrown when an unexpected error occurs, with additional context for the operation and file path.</exception>
     private async Task ExecuteWithExceptionHandlingAsync(Func<Task> operation, string operationName, string filePath)
     {
         try
@@ -187,11 +196,13 @@ public class DocumentCollectionService(
     }
 
     /// <summary>
-    /// Asynchronously uploads a conversation-related file to the designated location.
+    /// Asynchronously uploads a file associated with a specific conversation to the intended storage location.
     /// </summary>
-    /// <param name="filePath">The path to the file that needs to be uploaded.</param>
-    /// <param name="conversationId">The unique identifier of the conversation the file belongs to.</param>
+    /// <param name="filePath">The full path to the file that is to be uploaded.</param>
+    /// <param name="conversationId">The unique identifier of the conversation to which the file is associated.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
+    /// <exception cref="ArgumentException">Thrown if the provided file path or conversation ID is invalid.</exception>
+    /// <exception cref="Exception">Thrown if an error occurs during the file upload process.</exception>
     public async Task UploadConversationFileAsync(string filePath, string conversationId)
     {
         await ExecuteWithExceptionHandlingAsync(async () =>
@@ -207,6 +218,7 @@ public class DocumentCollectionService(
     /// <param name="fileName">The name of the file to be deleted.</param>
     /// <param name="conversationId">The unique identifier of the conversation associated with the file.</param>
     /// <returns>A task representing the asynchronous operation of deleting the file.</returns>
+    /// <exception cref="Exception">Thrown if an error occurs during the deletion process.</exception>
     public async Task DeleteUploadedConversationFileAsync(string fileName, string conversationId)
     {
         await ExecuteWithExceptionHandlingAsync(
@@ -220,6 +232,9 @@ public class DocumentCollectionService(
     /// <param name="filePath">The path of the file to be uploaded.</param>
     /// <param name="categoryId">The identifier of the category to which the file will be associated.</param>
     /// <returns>A task that represents the asynchronous upload operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if the file path or category ID is null or empty.</exception>
+    /// <exception cref="IOException">Thrown if an I/O error occurs during file upload.</exception>
+    /// <exception cref="Exception">Thrown if there is an unexpected error during the upload process.</exception>
     public async Task UploadGlobalFileAsync(string filePath, string categoryId)
     {
         await ExecuteWithExceptionHandlingAsync(async () =>
@@ -235,9 +250,48 @@ public class DocumentCollectionService(
     /// <param name="fileName">The name of the file to be deleted.</param>
     /// <param name="categoryId">The unique identifier of the category associated with the file.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
+    /// <exception cref="Exception">Thrown if an error occurs while attempting to delete the file.</exception>
     public async Task DeleteUploadedGlobalFileAsync(string fileName, string categoryId)
     {
         await ExecuteWithExceptionHandlingAsync(
             async () => { await DeleteFileAsync("globals", categoryId, "files", fileName); }, "delete file", fileName);
+    }
+    
+    /// <summary>
+    /// Determines the content type for a file based on its extension.
+    /// </summary>
+    /// <param name="filePath">The path to the file.</param>
+    /// <returns>The MIME content type for the file based on its extension.</returns>
+    /// <remarks>
+    /// Uses a mapping approach to determine common MIME types. For PDF files, returns "application/pdf".
+    /// For other file types, attempts to determine the appropriate MIME type based on extension.
+    /// Falls back to "application/octet-stream" if the content type cannot be determined.
+    /// </remarks>
+    private string GetContentTypeForFile(string filePath)
+    {
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+
+        // Map common extensions to MIME types
+        return extension switch
+        {
+            ".pdf" => "application/pdf",
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
+            ".jpeg" => "image/jpeg",
+            ".gif" => "image/gif",
+            ".txt" => "text/plain",
+            ".html" => "text/html",
+            ".htm" => "text/html",
+            ".json" => "application/json",
+            ".xml" => "application/xml",
+            ".doc" => "application/msword",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".xls" => "application/vnd.ms-excel",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".ppt" => "application/vnd.ms-powerpoint",
+            ".pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            ".zip" => "application/zip",
+            _ => "application/octet-stream" // Default fallback for unknown types
+        };
     }
 }

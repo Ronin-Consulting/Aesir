@@ -7,6 +7,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
+using Material.Icons;
 
 namespace Aesir.Client.ViewModels;
 
@@ -64,6 +65,9 @@ public partial class FileToUploadViewModel(
     [ObservableProperty]
     private string _filePath = DefaultFilePath;
 
+    [ObservableProperty] 
+    private MaterialIconKind _iconKind = MaterialIconKind.FileDocument;
+    
     /// <summary>
     /// Stores the unique identifier for the current conversation associated with the file upload process.
     /// This value helps in tracking file operations or determining the context of messages exchanged between components.
@@ -85,6 +89,11 @@ public partial class FileToUploadViewModel(
     {
         FileName = Path.GetFileName(filePath);
         FilePath = filePath;
+        
+        if (Path.GetExtension(filePath).Equals(".png", StringComparison.OrdinalIgnoreCase))
+        {
+            IconKind = MaterialIconKind.FileImage;
+        }
     }
 
     /// <summary>

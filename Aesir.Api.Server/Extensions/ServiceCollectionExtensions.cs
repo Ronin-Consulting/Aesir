@@ -144,6 +144,33 @@ public static class ServiceCollectionExtensions
             );
         });
 
+        services.AddSingleton<IImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>(serviceProvider =>
+        {
+            return new ImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>(
+                serviceProvider.GetRequiredService<UniqueKeyGenerator<Guid>>(),
+                serviceProvider
+                    .GetRequiredService<VectorStoreCollection<Guid, AesirConversationDocumentTextData<Guid>>>(),
+                serviceProvider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
+                (rawContent, request) =>
+                {
+                    var metadata = request.Metadata ?? new Dictionary<string, object>();
+                    var conversationId = metadata.TryGetValue("ConversationId", out var conversationIdObj)
+                        ? conversationIdObj.ToString()
+                        : null;
+
+                    return new AesirConversationDocumentTextData<Guid>
+                    {
+                        ConversationId = conversationId,
+                        Key = Guid.Empty // This will be replaced in the service
+                    };
+                },
+                serviceProvider.GetRequiredService<IVisionService>(),
+                serviceProvider.GetRequiredService<IModelsService>(),
+                serviceProvider
+                    .GetRequiredService<ILogger<ImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
+            );
+        });
+        
         kernelBuilder.AddVectorStoreTextSearch<AesirConversationDocumentTextData<Guid>>();
         kernelBuilder.AddVectorStoreTextSearch<AesirGlobalDocumentTextData<Guid>>();
 

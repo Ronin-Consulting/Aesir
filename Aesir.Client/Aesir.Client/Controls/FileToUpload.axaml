@@ -43,7 +43,7 @@
                     <avalonia:MaterialIcon
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Kind="FileDocument"
+                        Kind="{Binding IconKind}"
                         Width="40" Height="40" />
                     <TextBlock Text="{Binding FileName}"
                                HorizontalAlignment="Center"

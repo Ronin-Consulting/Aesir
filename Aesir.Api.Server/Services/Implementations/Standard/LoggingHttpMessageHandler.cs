@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 
-namespace Aesir.Api.Server.Services;
+namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 /// <summary>
 /// Provides HTTP message logging functionality for intercepting and logging HTTP requests and responses.
