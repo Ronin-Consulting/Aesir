@@ -35,7 +35,7 @@ Subject to compliance with this EULA:
   - Rate: Flat 3% on all Gross Revenue above the Exemption Threshold.
   - Calculation: Quarterly, based on cumulative lifetime Gross Revenue.
   - Reporting and Payment: Self-report via ronin.consulting/reporting, with payments due within 30 days of each quarter's end. Maintain records for audits (Licensor may audit with reasonable notice).
-  - Example: For $5M Gross Revenue, royalties = 3% of ($5M - $2M) = $90,000.
+  - Example: For \$5M Gross Revenue, royalties = 3% of (\$5M - \$2M) = \$90,000.
 - Back royalties apply to excess revenue from the date the threshold is exceeded.
 - Benefits: Includes all free tier rights, plus eligibility for optional premium support, custom integrations, or consulting.
 

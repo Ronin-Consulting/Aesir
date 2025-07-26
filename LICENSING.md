@@ -30,7 +30,7 @@ AESIR™ uses a dual-tier model based on the lifetime gross revenue of products 
   - Calculated quarterly and self-reported via a portal at [ronin.consulting/reporting](https://ronin.consulting/reporting).
   - Paid to Ronin Consulting; includes audit rights for verification.
 - **Benefits**: All free tier rights, plus optional add-ons like priority support, custom integrations (e.g., enterprise authentication plugins for Semantic Kernel), or consulting for air-gapped deployments.
-- **Examples**: For a defense intelligence platform generating $5M in attributable revenue, royalties = 3% of ($5M - $2M) = $90,000.
+- **Examples**: For a defense intelligence platform generating \$5M in attributable revenue, royalties = 3% of (\$5M - \$2M) = $90,000.
 
 | Aspect | Free Tier (≤ $2M Lifetime Revenue per Product) | Royalty Tier (> $2M Lifetime Revenue per Product) |
 |--------|------------------------------------------------|---------------------------------------------------|
