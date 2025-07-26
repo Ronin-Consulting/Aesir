@@ -1,34 +1,32 @@
-# AESIR: AI-Powered Conversational Platform
-## Sales Overview & Value Proposition
-
-![AESIR Logo](Transparent%20Logo.png)
+![AESIR™ Logo](Transparent%20Logo.png)
 
 ---
+# AESIR™: Strategic AI Platform
 
 ## Executive Summary
 
-**AESIR** is a sophisticated, enterprise-grade AI conversational platform designed for organizations requiring intelligent document processing, semantic search, and domain-specific AI assistance. Built for both cloud and edge deployment, AESIR delivers powerful AI capabilities while maintaining data security and operational flexibility.
+**AESIR™** is a sophisticated, enterprise-grade AI platform designed for organizations requiring intelligent document processing, semantic search, and domain-specific AI assistance. Built for both cloud and air-gapped, edge deployments, AESIR™ delivers powerful AI capabilities while maintaining data security and operational flexibility.
 
 ### Key Value Propositions
 - **Cost Flexibility**: Choose between local AI models (cost-effective) or cloud services (maximum performance)
 - **Data Security**: On-premises deployment options ensure sensitive information never leaves your infrastructure
 - **Domain Expertise**: Specialized AI personas tailored for business and military contexts
 - **Cross-Platform Access**: Native desktop applications and browser-based access for maximum user adoption
-- **Advanced Document Intelligence**: Transform static documents into searchable, conversational knowledge bases
+- **Advanced Document or Telemetry Intelligence**: Transform static documents and telemetry data into searchable, actionable, and conversational knowledge bases
 
 ---
 
 ## Core Features & Capabilities
 
 ### 🤖 **Dual AI Backend Support**
-- **Local Models (Ollama)**: Deploy AI models directly on your infrastructure for maximum security and cost control
+- **Local Models (Ollama)**: Deploy AI models directly on your infrastructure (servers, edge devices, etc) for maximum security and cost control
 - **Cloud Services (OpenAI)**: Leverage cutting-edge cloud AI for peak performance when connectivity allows
 - **Seamless Switching**: Configure and switch between backends based on operational requirements
-- **Tested Models**: Pre-validated with high-performance models including Qwen3:32b and Cogito:32b
+- **Tested Models**: Pre-validated with high-performance models including Gemma, Qwen, Cogito, and others.
 
 ### 📄 **Advanced Document Processing & RAG**
 - **Intelligent PDF Processing**: Extract text and images from complex documents with OCR capabilities
-- **Vision-Based OCR**: Handle image-heavy documents using AI vision models (Gemma3:12b tested)
+- **Vision & OCR**: Handle images and image-based documents using AI vision models (like Gemma)
 - **Smart Document Chunking**: Semantic Kernel-powered chunking for optimal context preservation
 - **Hybrid Search**: Combines keyword matching with semantic vector search for precise information retrieval
 - **Citation System**: Automatic source attribution with page-level references for audit trails
@@ -58,7 +56,7 @@
 ### **Backend Infrastructure**
 - **ASP.NET Core API**: Scalable, enterprise-ready web API with health checks and monitoring
 - **Microsoft Semantic Kernel**: Advanced AI orchestration and plugin architecture
-- **PostgreSQL with pgvector**: Robust data persistence with vector search capabilities
+- **PostgreSQL**: Robust data persistence with including vector search capabilities
 - **Qdrant Vector Database**: High-performance semantic search and similarity matching
 - **Containerized Deployment**: Docker Compose orchestration with Traefik reverse proxy
 
@@ -112,9 +110,9 @@
 - **Scalable Architecture**: Pay only for the resources you need
 
 ### **Technical Excellence**
-- **Modern Architecture**: Built on proven enterprise technologies (ASP.NET Core, PostgreSQL)
+- **Modern Architecture**: Built on proven enterprise technologies (.Net Core, ASP.NET Core, Semantic Kernel, PostgreSQL)
 - **Cross-Platform Support**: Single solution for desktop and web deployment
-- **Extensible Design**: Plugin architecture for custom integrations and workflows
+- **Extensible Design**: Plugin, modular architecture for custom integrations and workflows
 - **Performance Optimized**: Edge-device optimization with sub-500 token response targets
 
 ---
@@ -123,14 +121,14 @@
 
 ### **Deployment Options**
 - **Full Container Stack**: Complete Docker Compose deployment with all dependencies
-- **Hybrid Deployment**: Mix of containerized services and native applications
+- **Hybrid Deployment**: Can be deployed as containerized services and/or native applications
 - **Development Environment**: Rapid setup for evaluation and customization
 - **Production Ready**: SSL/TLS termination, health monitoring, and automatic restarts
 
 ### **Integration Capabilities**
 - **RESTful API**: Standard HTTP endpoints for system integration
-- **Plugin Architecture**: Extensible kernel plugin system for custom functionality
-- **Database Flexibility**: Support for PostgreSQL with vector extensions
+- **Plugin Architecture**: Extensible AI kernel plugin system for modular custom functionality
+- **Database Flexibility**: Store data of any format to PostgreSQL (including vector extensions)
 - **Authentication Ready**: Prepared for enterprise authentication integration
 
 ### **Support & Maintenance**
@@ -145,7 +143,7 @@
 
 ### **Evaluation Process**
 1. **Quick Setup**: Docker Compose deployment in under 30 minutes
-2. **Document Upload**: Test with your organization's sample documents
+2. **Document Upload**: Test with your organization's sample documents and telemetry
 3. **AI Backend Configuration**: Evaluate both local and cloud AI options
 4. **User Experience**: Test desktop and browser clients with your team
 5. **Performance Assessment**: Measure response times and accuracy with your data
@@ -160,7 +158,7 @@
 
 ## Contact Information
 
-For more information about AESIR implementation, pricing, or technical specifications, please contact:
+For more information about AESIR™ implementation, pricing, or technical specifications, please contact:
 
 **Ronin Consulting**
 - Email: info@ronin.consulting
@@ -169,4 +167,6 @@ For more information about AESIR implementation, pricing, or technical specifica
 
 ---
 
-*AESIR: Transforming documents into conversations, data into decisions.*
+*AESIR™: Transforming Data into Intelligent Conversations and Strategic Decisions.*
+
+AESIR™ is a trademark of Ronin Consulting.
