@@ -40,6 +40,7 @@
   - [X] Implement Computer Vision
     - [X] Support for Local Vision Models
     - [X] Support for Hosted Vision Models
+- [X] Implement Image Chat (using computer vision)
 - [x] Implement Chat History
   - [x] CRUD
   - [x] Search
