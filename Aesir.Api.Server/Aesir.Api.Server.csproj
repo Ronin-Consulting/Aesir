@@ -34,6 +34,7 @@
         <PackageReference Include="OllamaSharp" Version="5.2.10" />
         <PackageReference Include="OpenAI" Version="2.2.0" />
         <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.12.0" />
+        <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.6" />
         <PackageReference Include="PdfPig" Version="0.1.10" />
         <PackageReference Include="Pgvector" Version="0.3.2" />
         <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
