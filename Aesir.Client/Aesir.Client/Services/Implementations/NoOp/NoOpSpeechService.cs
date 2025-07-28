@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Aesir.Client.Services.Implementations.NoOp;
@@ -18,5 +20,10 @@ public class NoOpSpeechService : ISpeechService
     public Task SpeakAsync(string text)
     {
         return Task.CompletedTask;
+    }
+
+    public IAsyncEnumerable<string> RecognizeSpeechAsync(CancellationToken cancellationToken)
+    {
+        throw new System.NotImplementedException();
     }
 }

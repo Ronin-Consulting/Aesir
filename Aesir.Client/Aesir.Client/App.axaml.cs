@@ -56,6 +56,8 @@ public partial class App : Application
         {
             var splashModel = serviceProvider.GetService<SplashViewModel>();
             desktop.MainWindow = new AesirSplashWindow().WithViewModel(splashModel);
+            
+            desktop.Exit += OnExit;
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
@@ -172,4 +174,14 @@ public partial class App : Application
         
         return serviceProvider;
     }
+    
+    private void OnExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
+    {
+        var audioPlaybackService = Ioc.Default.GetService<IAudioPlaybackService>();
+        audioPlaybackService?.Dispose();
+        
+        var audioRecordingService = Ioc.Default.GetService<IAudioRecordingService>();
+        audioRecordingService?.Dispose();
+    }
+
 }

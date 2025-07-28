@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using Aesir.Client.Services;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Threading.Tasks;
@@ -36,6 +39,12 @@ public class SpeechService : ISpeechService
     private readonly IAudioPlaybackService _audioPlaybackService;
 
     /// <summary>
+    /// Service responsible for handling audio recording operations,
+    /// such as capturing audio streams for speech recognition processing.
+    /// </summary>
+    private readonly IAudioRecordingService _audioRecordingService;
+
+    /// <summary>
     /// Represents the SignalR hub connection used to enable communication with the
     /// text-to-speech (TTS) service. This connection is responsible for sending
     /// text input to the server and receiving audio data streams for playback.
@@ -53,15 +62,17 @@ public class SpeechService : ISpeechService
     private bool _isConnected;
 
     /// <summary>
-    /// Provides text-to-speech functionality by interacting with a remote text-to-speech service
+    /// Provides text-to-speech and speech recognition functionality by interacting with remote services
     /// via a SignalR hub connection. Manages connection state and retries automatically when needed.
     /// </summary>
     public SpeechService(ILogger<SpeechService> logger,
         IConfiguration configuration,
-        IAudioPlaybackService audioPlaybackService)
+        IAudioPlaybackService audioPlaybackService,
+        IAudioRecordingService audioRecordingService)
     {
         _logger = logger;
         _audioPlaybackService = audioPlaybackService;
+        _audioRecordingService = audioRecordingService;
 
         var ttsHubUrl = configuration.GetValue<string>("Inference:Tts");
         _connection = new HubConnectionBuilder()
@@ -122,7 +133,33 @@ public class SpeechService : ISpeechService
     {
         await ConnectAsync();
 
-        var channelReader = await _connection.StreamAsChannelAsync<byte[]>("GenerateAudio", text, 1.0f);
+        var channelReader = await _connection.StreamAsChannelAsync<byte[]>("GenerateAudio", text, 0.9f);
         await _audioPlaybackService.PlayStreamAsync(channelReader.ReadAllAsync());
+    }
+
+    public async IAsyncEnumerable<string> RecognizeSpeechAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await ConnectAsync();
+
+        // Start the audio recording stream
+        var audioStream = _audioRecordingService.StartRecordingAsync(cancellationToken);
+        
+        // Start streaming audio to the server and receive text recognition results
+        var textChannelReader = await _connection.StreamAsChannelAsync<string>("ProcessAudioStream", audioStream, cancellationToken);
+        
+        // Process the recognition results
+        while (await textChannelReader.WaitToReadAsync(cancellationToken))
+        {
+            while (textChannelReader.TryRead(out var recognizedText))
+            {
+                if (!string.IsNullOrEmpty(recognizedText))
+                {
+                    yield return recognizedText;
+                }
+            }
+        }
+        
+        // Ensure recording is stopped when done
+        _audioRecordingService.StopRecording();
     }
 }

@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Aesir.Client.Services;
+using Microsoft.Extensions.Logging;
 using MiniAudioEx;
 
 namespace Aesir.Client.Desktop.Services;
@@ -12,13 +14,15 @@ namespace Aesir.Client.Desktop.Services;
 /// </summary>
 public sealed class AudioPlaybackService : IAudioPlaybackService
 {
+    private readonly ILogger<AudioPlaybackService> _logger;
+
     /// <summary>
     /// Represents the audio source used for managing audio playback operations,
     /// including playing, stopping, and handling end-of-clip events.
     /// This instance is initialized upon creation of the service and is responsible
     /// for directly interfacing with audio playback hardware or software components.
     /// </summary>
-    private readonly AudioSource _source;
+    private AudioSource _source = null!;
 
     /// <summary>
     /// A thread-safe queue that holds audio clips to be played sequentially.
@@ -27,21 +31,7 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     /// audio playback in a controlled order.
     /// </summary>
     private readonly ConcurrentQueue<AudioClip> _clipQueue = new();
-
-    /// <summary>
-    /// A thread dedicated to managing and updating the audio context at regular intervals.
-    /// This thread runs a loop which continuously updates the audio processing system
-    /// to ensure smooth and uninterrupted playback of audio streams.
-    /// </summary>
-    private readonly Thread _updateThread;
-
-    /// <summary>
-    /// Indicates the running state of the audio playback service.
-    /// When set to true, the service's update loop continues execution.
-    /// When set to false, the update loop stops, and the service terminates its background operations.
-    /// </summary>
-    private bool _running;
-
+    
     /// <summary>
     /// Indicates whether audio is currently being played.
     /// When set to true, audio playback is ongoing. When false,
@@ -67,7 +57,7 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     /// on shared resources within the AudioPlaybackService, such as playback state
     /// and the audio clip queue.
     /// </summary>
-    private readonly object _lock = new object();
+    private readonly object _lock = new();
 
     /// <summary>
     /// Represents a cancellation token source used to manage the cancellation of the audio playback stream.
@@ -92,36 +82,38 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     /// </summary>
     private const uint Channels = 1;
 
+    private AudioApp _audioApp;
+    
     /// <summary>
     /// Service for handling audio playback using streaming data and managing the playback lifecycle.
     /// </summary>
-    public AudioPlaybackService()
+    public AudioPlaybackService(ILogger<AudioPlaybackService> logger)
     {
-        AudioContext.Initialize(SampleRate, Channels);
+        _logger = logger;
+        
+        try
+        {
+            
+            _logger.LogInformation("Audio context initialized with sample rate {SampleRate} Hz and {Channels} channel(s)", SampleRate, Channels);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize audio context");
+            throw;
+        }
 
-        _source = new AudioSource();
-        _source.End += OnClipEnd;
+        _audioApp = new AudioApp(SampleRate, Channels);
+        _audioApp.Loaded += AudioContextLoaded;
 
-        _running = true;
-        _updateThread = new Thread(UpdateLoop);
-        _updateThread.Start();
+        Task.Run(() => _audioApp.Run());
+        
+        _logger.LogInformation("AudioPlaybackService initialized successfully");
     }
 
-    /// <summary>
-    /// Continuously updates the audio context at regular intervals to manage audio processing and playback.
-    /// </summary>
-    /// <remarks>
-    /// This method runs in a separate thread and periodically calls the audio context update functionality.
-    /// The thread remains active until the service is disposed or explicitly stopped, ensuring consistent
-    /// audio playback capabilities.
-    /// </remarks>
-    private void UpdateLoop()
+    private void AudioContextLoaded()
     {
-        while (_running)
-        {
-            AudioContext.Update();
-            Thread.Sleep(10); // Adjust for CPU efficiency; call Update regularly
-        }
+        _source = new AudioSource();
+        _source.End += OnClipEnd;        
     }
 
     /// <summary>
@@ -131,29 +123,58 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     /// <returns>A task representing the asynchronous operation of audio playback.</returns>
     public async Task PlayStreamAsync(IAsyncEnumerable<byte[]> audioChunks)
     {
+        _logger.LogInformation("Starting audio stream playback");
+        
         lock (_lock)
         {
             Stop(); // Stop any ongoing playback
             _cts = new CancellationTokenSource();
         }
-
-        await foreach (var chunk in audioChunks.WithCancellation(_cts.Token))
+        
+        try
         {
-            var clip = new AudioClip(chunk); // Use constructor with byte[]; assume isUnique = false by default
-            _clipQueue.Enqueue(clip);
-
-            lock (_lock)
+            var chunkCount = 0;
+            await foreach (var chunk in audioChunks.WithCancellation(_cts.Token))
             {
-                if (!_playing && _clipQueue.TryDequeue(out var firstClip))
+                ValidateChunk(chunk);
+                
+                var clip = new AudioClip(chunk); // Use constructor with byte[]; assume isUnique = false by default
+                _clipQueue.Enqueue(clip);
+                chunkCount++;
+                
+                lock (_lock)
                 {
-                    _currentClip = firstClip;
-                    _source.Play(firstClip);
-                    _playing = true;
+                    if (!_playing && _clipQueue.TryDequeue(out var firstClip))
+                    {
+                        _currentClip = firstClip;
+                        _source.Play(firstClip);
+                        _playing = true;
+                        _logger.LogDebug("Started playing first audio clip");
+                    }
                 }
             }
+            
+            _logger.LogInformation("Audio stream playback completed. Processed {ChunkCount} chunks", chunkCount);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Audio stream playback was cancelled");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred during audio stream playback");
         }
     }
 
+    private void ValidateChunk(byte[] chunk)
+    {
+        // Example: Check if chunk size is consistent with 16-bit mono PCM
+        if (chunk.Length % 2 != 0) // 2 bytes per sample
+        {
+            _logger.LogWarning("Invalid chunk size: {Length} bytes, not aligned to 16-bit PCM", chunk.Length);
+        }
+    }
+    
     /// <summary>
     /// Handles the event triggered when an audio clip ends playback.
     /// This method releases resources associated with the completed clip, updates the playback state,
@@ -164,6 +185,12 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     {
         lock (_lock)
         {
+            // Wait for audio source to confirm buffer is no longer in use
+            while (_source.IsPlaying)
+            {
+                Thread.Sleep(1);
+            }
+            
             _currentClip?.Dispose(); // Dispose finished clip to free resources
             _currentClip = null;
 
@@ -171,10 +198,12 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
             {
                 _currentClip = nextClip;
                 _source.Play(nextClip);
+                _logger.LogDebug("Playing next audio clip from queue");
             }
             else
             {
                 _playing = false;
+                _logger.LogDebug("Audio playback queue is empty, playback stopped");
             }
         }
     }
@@ -189,6 +218,13 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     {
         lock (_lock)
         {
+            if (!_playing && _cts == null)
+            {
+                return; // Already stopped
+            }
+            
+            _logger.LogInformation("Stopping audio playback");
+            
             _cts?.Cancel();
             _cts = null;
 
@@ -197,12 +233,21 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
             _currentClip?.Dispose();
             _currentClip = null;
 
+            var disposedClips = 0;
             while (_clipQueue.TryDequeue(out var clip))
             {
                 clip.Dispose(); // Dispose queued clips to free resources
+                disposedClips++;
             }
-
+            
             _playing = false;
+            
+            if (disposedClips > 0)
+            {
+                _logger.LogDebug("Disposed {DisposedClips} queued audio clips", disposedClips);
+            }
+            
+            _logger.LogInformation("Audio playback stopped successfully");
         }
     }
 
@@ -216,10 +261,24 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     /// </remarks>
     public void Dispose()
     {
+        _logger.LogInformation("Disposing AudioPlaybackService");
+        
         Stop();
-        _running = false;
-        _updateThread.Join();
+        
         _source.End -= OnClipEnd; // Unsubscribe event
-        AudioContext.Deinitialize(); // Frees all allocated memory
+        
+        _audioApp.Loaded -= AudioContextLoaded;
+        
+        try
+        {
+            AudioContext.Deinitialize(); // Frees all allocated memory
+            _logger.LogDebug("Audio context deinitialized");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error deinitializing audio context during disposal");
+        }
+        
+        _logger.LogInformation("AudioPlaybackService disposed successfully");
     }
 }

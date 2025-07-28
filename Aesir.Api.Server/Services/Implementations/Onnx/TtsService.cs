@@ -77,10 +77,14 @@ public partial class TtsService : ITtsService
             .Select(s => s.Trim())
             .Where(s => !string.IsNullOrEmpty(s));
 
-        foreach (var sentence in sentences)
+        var sentenceChunks = sentences.Select((s, i) => new { Sentence = s, Index = i })
+            .GroupBy(x => x.Index / 25)
+            .Select(g => string.Join(" ", g.Select(x => x.Sentence)));
+
+        foreach (var sentenceGroup in sentenceChunks)
         {
-            // 'sentence' now includes its original punctuation.
-            var audio = _ttsEngine.Generate(sentence, speed: speed, speakerId: 0);
+            // 'sentenceGroup' now includes a group of up to 3 sentences.
+            var audio = _ttsEngine.Generate(sentenceGroup, speed: speed, speakerId: 0);
 
             // Use a MemoryStream to create the WAV file in memory
             await using var memoryStream = new MemoryStream();
@@ -116,7 +120,7 @@ public partial class TtsService : ITtsService
             yield return memoryStream.ToArray();
         }
     }
-
+    
     /// Represents a regular expression used for splitting text into sentences
     /// based on sentence-ending punctuation marks like '.', '!', or '?' while retaining the delimiters.
     [GeneratedRegex(@"(?<=[.!?])")]
