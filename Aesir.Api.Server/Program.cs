@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Data;
 using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Services;
+using Aesir.Api.Server.Services.Implementations.Onnx;
 using Aesir.Api.Server.Services.Implementations.Standard;
 using FluentMigrator.Runner;
 using Microsoft.SemanticKernel;
@@ -121,6 +122,15 @@ public class Program
             });
         }
 
+        builder.Services.AddSingleton<ITtsService>(sp =>
+        {
+            var ttsModelPath = builder.Configuration.GetValue<string>("Inference:Onnx:Tts");
+            var useCudaValue = Environment.GetEnvironmentVariable("USE_CUDA");
+            _ = bool.TryParse(useCudaValue, out var useCuda);
+            
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+            return new TtsService(loggerFactory.CreateLogger<TtsService>(), ttsModelPath, useCuda);
+        });
         builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
         builder.Services.AddSingleton<IDbContext, PgDbContext>(p =>
             new PgDbContext(builder.Configuration.GetConnectionString("DefaultConnection")!)
@@ -150,8 +160,12 @@ public class Program
 
         builder.Services.AddHealthChecks();
 
+        builder.Services.AddSignalR();
+        
         var app = builder.Build();
 
+        app.MapHub<TtsHub>("/ttshub");
+        
         app.MapHealthChecks("/healthz");
 
         if (app.Environment.IsDevelopment())
@@ -163,8 +177,7 @@ public class Program
         app.UseHttpsRedirection();
 
         app.UseAuthorization();
-
-
+        
         app.MapControllers();
 
         app.MigrateDatabase();

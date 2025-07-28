@@ -16,6 +16,7 @@ using CommunityToolkit.Mvvm.DependencyInjection;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http;
 using Polly;
 using Polly.Contrib.WaitAndRetry;
@@ -93,7 +94,7 @@ public partial class App : Application
         AppServices.AddSingleton<MainWindowViewModel>();
         AppServices.AddSingleton<MainViewViewModel>();
         AppServices.AddSingleton<ChatHistoryViewModel>();
-        AppServices.AddSingleton<ISpeechService,NoOpSpeechService>();
+        AppServices.TryAddSingleton<ISpeechService,NoOpSpeechService>();
         AppServices.AddSingleton<IMarkdownService,MarkdigMarkdownService>();
         AppServices.AddSingleton<IChatService,ChatService>();
         AppServices.AddSingleton<IChatHistoryService, ChatHistoryService>();

@@ -14,8 +14,10 @@
 
     <ItemGroup>
         <PackageReference Include="Avalonia.Desktop" Version="11.3.2" />
+        <PackageReference Include="JAJ.Packages.MiniAudioEx" Version="2.1.0" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Include="Material.Icons.Avalonia" Version="2.4.1" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.7" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.7" />
         <PackageReference Include="NLog.Extensions.Logging" Version="6.0.1" />
         <PackageReference Include="PDFtoImage" Version="4.1.1" />

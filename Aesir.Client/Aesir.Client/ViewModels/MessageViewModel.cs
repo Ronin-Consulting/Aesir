@@ -13,93 +13,112 @@ using Microsoft.Extensions.Logging;
 namespace Aesir.Client.ViewModels;
 
 /// <summary>
-/// Serves as the foundational abstract view model for all types of chat messages within the application.
-/// Provides core properties and methods to handle message attributes, operations, and behaviors for different message roles in a conversation.
+/// Represents the base class for chat message view models, serving as a foundation for specialized message types.
+/// Provides core properties and functionality to manage content, roles, behaviors, and integration within a chat application.
 /// </summary>
 public abstract partial class MessageViewModel : ObservableRecipient
 {
     /// <summary>
-    /// Logger instance for capturing and recording log messages and application events.
+    /// Private logger instance used to capture and record log messages and application events specific to the current view model.
     /// </summary>
     private readonly ILogger _logger;
 
     /// <summary>
-    /// Service used to process and render Markdown content into HTML format.
+    /// Service instance used for converting and rendering Markdown content into an HTML format.
     /// </summary>
     /// <remarks>
-    /// Primarily utilized to handle the conversion of chat message content written in Markdown syntax
-    /// into an HTML representation for display purposes.
+    /// Provides functionality for transforming Markdown syntax, often used in user-generated
+    /// chat messages, into HTML that can be displayed within the application interface.
     /// </remarks>
     private readonly IMarkdownService _markdownService;
 
     /// <summary>
-    /// Stores the content of the message for the MessageViewModel instance.
+    /// Represents the content of the message within the MessageViewModel.
     /// </summary>
     /// <remarks>
-    /// This field is used internally by the ViewModel to manage the message content.
-    /// Changes to this field trigger property change notifications for data binding purposes.
-    /// It is initialized with an empty string and supports observation due to the [ObservableProperty] attribute.
+    /// This field supports property change notifications and is designed for use in data binding scenarios.
+    /// It is initialized to an empty string and managed internally by the ViewModel.
     /// </remarks>
     [ObservableProperty] private string _message = string.Empty;
 
     /// <summary>
-    /// Tracks the loading state of the associated data or resource.
+    /// Indicates whether the associated data or resource has been successfully loaded.
     /// </summary>
     /// <remarks>
-    /// This property determines whether the necessary content or resource has been fully loaded and is ready for use.
-    /// It is primarily used within the <see cref="MessageViewModel"/> class to manage and monitor loading operations.
+    /// This field is used within the context of the <see cref="MessageViewModel"/> class to monitor and manage
+    /// the completion status of loading operations. It reflects whether the required content or resource is fully ready for use.
     /// </remarks>
     [ObservableProperty] private bool _isLoaded;
 
     /// <summary>
-    /// Gets the role associated with the message, identifying its origin or type in a conversation context.
+    /// Represents the role of a message in a conversation. Defines the specific function or identity
+    /// a message assumes, such as "system", "user", or "assistant".
     /// </summary>
     public virtual string Role => "Unknown";
 
     /// <summary>
-    /// Represents the message content associated with a chat message.
-    /// This property holds the main textual content managed by the view model.
+    /// Represents the textual content of a message within the chat system.
+    /// Used to store and manage the core message data, such as user or assistant-generated text.
     /// </summary>
     public string Content { get; set; } = string.Empty;
 
     /// <summary>
-    /// Unique identifier for the message, represented as a GUID.
+    /// A unique identifier for the message instance.
     /// </summary>
     public Guid Id { get; set; } = Guid.NewGuid();
 
     /// <summary>
-    /// Command used to regenerate or recompute a chat message. This command is typically
-    /// invoked in scenarios where message content needs to be revised or refreshed.
+    /// Command responsible for triggering the regeneration of a chat message, allowing the content to be updated or reprocessed.
     /// </summary>
     public ICommand RegenerateMessageCommand { get; }
 
-    /// The MessageViewModel class serves as an abstract base for managing message-related functionality within conversations.
-    /// It defines core properties such as content, role, and unique identifiers for messages, along with commands and methods
-    /// for processing and updating message data. Derived classes can customize the behavior by overriding the virtual members.
+    /// <summary>
+    /// Command that triggers the playback of the associated message's content.
+    /// Typically used for playing audio versions of messages, if available.
+    /// </summary>
+    public ICommand PlayMessageCommand { get; }
+
+    /// The MessageViewModel class is an abstract foundation for handling the representation and management of messages
+    /// within a conversation. It provides essential properties and commands for functionalities like message content updates,
+    /// playback, and regeneration. This class is intended to be extended by specific message types, enabling tailored behavior
+    /// for different roles or scenarios within the application.
     protected MessageViewModel(ILogger logger, IMarkdownService markdownService)
     {
         _logger = logger;
         _markdownService = markdownService;
 
+        // ReSharper disable once VirtualMemberCallInConstructor
         RegenerateMessageCommand = CreateRegenerateMessageCommand();
+        // ReSharper disable once VirtualMemberCallInConstructor
+        PlayMessageCommand = CreatePlayMessageCommand();
     }
 
-    /// Creates the command responsible for triggering the regeneration of a message.
-    /// This method is designed to be overridden in derived classes to define the specific logic
-    /// for regenerating a message within the context of the respective view model.
+    /// Creates the command responsible for initiating the regeneration of a message in the view model context.
+    /// This method can be overridden by derived classes to implement specific logic for regenerating a message.
     /// <returns>
-    /// An object implementing the ICommand interface that handles the regeneration of a message.
+    /// An instance of ICommand that encapsulates the logic for the regeneration process.
     /// </returns>
     protected virtual ICommand CreateRegenerateMessageCommand()
     {
         return new RelayCommand(() => { }); // Default no-op implementation
     }
 
+    /// Creates a command responsible for triggering the playback of a message.
+    /// This method provides a mechanism to initialize and retrieve an ICommand
+    /// implementation that encapsulates the logic for playing message content.
+    /// <returns>
+    /// An ICommand instance designed to handle the execution of message playback functionality.
+    /// </returns>
+    protected virtual ICommand CreatePlayMessageCommand()
+    {
+        return new RelayCommand(() => { }); // Default no-op implementation
+    }
+
     /// <summary>
-    /// Sets the message content and renders it into an appropriate format asynchronously.
+    /// Asynchronously sets the message content and processes it into an appropriate format.
     /// </summary>
-    /// <param name="message">An instance of <c>AesirChatMessage</c> containing the content to be set and processed.</param>
-    /// <returns>A <c>Task</c> representing the asynchronous operation of setting and processing the message content.</returns>
+    /// <param name="message">An instance of <c>AesirChatMessage</c> containing the message data to be set and formatted.</param>
+    /// <returns>A <c>Task</c> that represents the asynchronous operation of setting and processing the message content.</returns>
     public virtual async Task SetMessage(AesirChatMessage message)
     {
         Content = message.Content;
@@ -110,16 +129,16 @@ public abstract partial class MessageViewModel : ObservableRecipient
         IsLoaded = true;
     }
 
-    /// Asynchronously processes a streamed message and dynamically updates the message content.
-    /// This method collects the streamed results, builds the message content in real-time,
-    /// and extracts a title if available during the streaming process.
+    /// Asynchronously processes streamed messages to dynamically update content and extract relevant metadata.
+    /// It collects and processes incoming data in real-time, modifying the message's content and attempting
+    /// to determine a title if one is provided during the streaming process.
     /// <param name="message">
-    /// An asynchronous enumerable containing instances of <see cref="AesirChatStreamedResult"/> that represent
-    /// partial or complete streamed results.
+    /// An asynchronous enumerable of <see cref="AesirChatStreamedResult"/> objects, representing partial
+    /// or complete results of the streamed chat message.
     /// </param>
     /// <returns>
-    /// A string representing the extracted title of the first valid received message, or an empty string
-    /// if no title could be determined.
+    /// A task that resolves to a string containing the extracted title from the message stream,
+    /// or an empty string if no title is identified.
     /// </returns>
     public virtual async Task<string> SetStreamedMessageAsync(IAsyncEnumerable<AesirChatStreamedResult?> message)
     {

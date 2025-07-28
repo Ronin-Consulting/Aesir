@@ -1,0 +1,128 @@
+using System;
+using System.Net.Http;
+using Aesir.Client.Services;
+using Microsoft.AspNetCore.SignalR.Client;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
+namespace Aesir.Client.Desktop.Services;
+
+/// <summary>
+/// Provides functionality for text-to-speech synthesis using SignalR for communication with a backend service.
+/// Responsible for establishing and maintaining a connection with the TTS service, as well as streaming generated
+/// audio data and playing it back using a specified audio playback service.
+/// </summary>
+public class SpeechService : ISpeechService
+{
+    /// <summary>
+    /// Specifies the delay, in milliseconds, before retrying a failed connection attempt.
+    /// This constant is used to introduce a wait period when handling reconnection logic
+    /// to the text-to-speech service.
+    /// </summary>
+    private const int RetryDelay = 5000;
+
+    /// <summary>
+    /// A logger instance used for logging messages, warnings, and errors throughout the
+    /// <see cref="SpeechService"/> class. This logger enables effective monitoring and debugging
+    /// by capturing application performance, runtime issues, or connection-related events.
+    /// </summary>
+    private readonly ILogger<SpeechService> _logger;
+
+    /// <summary>
+    /// Service responsible for handling audio playback operations,
+    /// such as playing audio streams generated during text-to-speech processing.
+    /// </summary>
+    private readonly IAudioPlaybackService _audioPlaybackService;
+
+    /// <summary>
+    /// Represents the SignalR hub connection used to enable communication with the
+    /// text-to-speech (TTS) service. This connection is responsible for sending
+    /// text input to the server and receiving audio data streams for playback.
+    /// The connection automatically attempts to reconnect if closed unexpectedly.
+    /// </summary>
+    private readonly HubConnection _connection;
+
+    /// <summary>
+    /// Indicates the current connection status to the TTS SignalR hub.
+    /// A value of <c>true</c> signifies that the service is connected,
+    /// while <c>false</c> signifies that it is not connected.
+    /// Used internally to manage reconnection logic and ensure
+    /// stable communication with the hub.
+    /// </summary>
+    private bool _isConnected;
+
+    /// <summary>
+    /// Provides text-to-speech functionality by interacting with a remote text-to-speech service
+    /// via a SignalR hub connection. Manages connection state and retries automatically when needed.
+    /// </summary>
+    public SpeechService(ILogger<SpeechService> logger,
+        IConfiguration configuration,
+        IAudioPlaybackService audioPlaybackService)
+    {
+        _logger = logger;
+        _audioPlaybackService = audioPlaybackService;
+
+        var ttsHubUrl = configuration.GetValue<string>("Inference:Tts");
+        _connection = new HubConnectionBuilder()
+            .WithUrl(ttsHubUrl ?? throw new InvalidOperationException(), options =>
+            {
+                options.HttpMessageHandlerFactory = (handler) =>
+                {
+                    if (handler is HttpClientHandler clientHandler)
+                    {
+                        clientHandler.ServerCertificateCustomValidationCallback =
+                            (sender, certificate, chain, sslPolicyErrors) => true;
+                    }
+                    return handler;
+                };
+            })
+
+            .WithAutomaticReconnect()
+            .Build();
+        
+        _connection.Closed += async (error) =>
+        {
+            _isConnected = false;
+            _logger.LogWarning("TTS Connection closed: {Error}", error);
+            
+            await Task.Delay(RetryDelay); // Simple retry delay
+            await ConnectAsync();
+        };
+    }
+
+    /// <summary>
+    /// Establishes an asynchronous connection to the text-to-speech service Hub,
+    /// ensuring a reliable connection with automatic retry logic on failure.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous connection operation.</returns>
+    private async Task ConnectAsync()
+    {
+        if (_isConnected) return;
+        try
+        {
+            await _connection.StartAsync();
+            _isConnected = true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("TTS Connection closed: {Error}", ex);
+            
+            await Task.Delay(RetryDelay);
+            await ConnectAsync(); // Retry
+        }
+    }
+
+    /// <summary>
+    /// Converts the provided text to speech and plays the audio asynchronously.
+    /// </summary>
+    /// <param name="text">The text to be converted into speech and played.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public async Task SpeakAsync(string text)
+    {
+        await ConnectAsync();
+
+        var channelReader = await _connection.StreamAsChannelAsync<byte[]>("GenerateAudio", text, 1.0f);
+        await _audioPlaybackService.PlayStreamAsync(channelReader.ReadAllAsync());
+    }
+}
