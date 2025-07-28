@@ -4,36 +4,57 @@ using SherpaOnnx;
 namespace Aesir.Api.Server.Services.Implementations.Onnx;
 
 /// <summary>
-/// The TtsService class provides text-to-speech (TTS) functionality by converting
-/// input text into corresponding audio data in chunks. It utilizes an offline TTS
-/// engine for generating audio based on the provided model and configuration.
+/// The TtsService class implements text-to-speech (TTS) functionality, enabling the conversion
+/// of text input into audio output. It supports chunked audio generation and is designed to
+/// operate with an offline TTS engine using configurable settings such as model path and hardware acceleration.
 /// </summary>
 public partial class TtsService : ITtsService
 {
     /// <summary>
-    /// Represents the internal text-to-speech engine used for generating audio data from text inputs.
+    /// Provides logging capabilities for the <see cref="TtsService"/> class.
     /// </summary>
     /// <remarks>
-    /// This variable is an instance of <see cref="OfflineTts"/> and is configured during the initialization
-    /// of the <see cref="TtsService"/> class. It is responsible for performing the core text-to-speech functionality,
-    /// including processing input text and generating corresponding audio samples.
+    /// This variable is an instance of <see cref="ILogger{TtsService}"/> and is used to log
+    /// informational messages, warnings, errors, and other diagnostic information related
+    /// to the operation of the text-to-speech service.
+    /// </remarks>
+    private readonly ILogger<TtsService> _logger;
+
+    /// <summary>
+    /// Holds the instance of the text-to-speech engine utilized for converting text inputs into synthesized audio data.
+    /// </summary>
+    /// <remarks>
+    /// This variable is initialized as an instance of <see cref="OfflineTts"/> and configured based on specified model
+    /// and environment options. It serves as the core processing unit for generating audio from textual input, managing
+    /// tasks such as applying language models and synthesizing speech.
     /// </remarks>
     private readonly OfflineTts _ttsEngine;
 
-    /// Represents a Text-to-Speech (TTS) service implementation.
-    /// Provides functionality for generating audio data from text input asynchronously.
-    public TtsService(string modelPath, bool useCuda)
+    /// Represents a Text-to-Speech (TTS) service.
+    /// Provides functionality for converting text input into audio data in chunks using an offline TTS engine.
+    public TtsService(ILogger<TtsService> logger, string? modelPath, bool useCuda)
     {
+        _logger = logger;
+
+        // C API Setup
+        // config.model.vits.model = "vits-piper-en_US-joe-medium/en_US-joe-medium.onnx";
+        // config.model.vits.tokens = "vits-piper-en_US-joe-medium/tokens.txt";
+        // config.model.vits.data_dir = "vits-piper-en_US-joe-medium/espeak-ng-data";
+        // config.model.num_threads = 1;
+        // const SherpaOnnxOfflineTts *tts = SherpaOnnxCreateOfflineTts(&config);
+        //
+        // int sid = 0; // speaker id
         var config = new OfflineTtsConfig
         {
             Model = new OfflineTtsModelConfig
             {
                 Vits = new OfflineTtsVitsModelConfig
                 {
-                    Model = modelPath,  // "en_US-joe-medium.onnx"
+                    Model = modelPath,
                     Tokens = Path.Combine(
                         Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(), "tokens.txt"),
-                    DataDir = Path.GetDirectoryName(modelPath)
+                    DataDir = Path.Combine(
+                        Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(), "espeak-ng-data")
                 },
                 NumThreads = 4,
                 Provider = useCuda ? "cuda" : "cpu"
@@ -43,18 +64,19 @@ public partial class TtsService : ITtsService
     }
 
     /// <summary>
-    /// Asynchronously generates audio chunks in WAV format for the given text, splitting it into sentences and applying text-to-speech synthesis for each sentence.
+    /// Asynchronously generates audio chunks in WAV format for a given text input, splitting the text into individual sentences
+    /// and applying text-to-speech synthesis to each sentence.
     /// </summary>
-    /// <param name="text">The input text to be converted to audio. It will be split into sentences for processing.</param>
-    /// <param name="speed">The speed factor for the generated speech. Default is 1.0f.</param>
-    /// <returns>An asynchronous stream of byte arrays representing WAV audio data for each processed sentence.</returns>
+    /// <param name="text">The text input to be processed and converted into audio chunks. Sentences are processed individually.</param>
+    /// <param name="speed">A value representing the speed factor for the synthesized speech. The default value is 1.0f.</param>
+    /// <returns>An asynchronous stream of byte arrays, each representing a WAV audio chunk corresponding to a processed sentence.</returns>
     public async IAsyncEnumerable<byte[]> GenerateAudioChunksAsync(string text, float speed = 1.0f)
     {
         // Use regex to split the text while keeping the delimiters.
         var sentences = SentenceSplitterRegex().Split(text)
             .Select(s => s.Trim())
             .Where(s => !string.IsNullOrEmpty(s));
-    
+
         foreach (var sentence in sentences)
         {
             // 'sentence' now includes its original punctuation.
@@ -95,15 +117,8 @@ public partial class TtsService : ITtsService
         }
     }
 
-    /// <summary>
-    /// A method that generates and returns a regular expression used to split sentences
-    /// at sentence-ending punctuation marks such as '.', '!', or '?' while retaining the delimiters.
-    /// This regex is primarily used to segment text input into smaller chunks.
-    /// </summary>
-    /// <returns>
-    /// A <see cref="Regex"/> instance configured to identify sentence-ending punctuation
-    /// and split the input text accordingly.
-    /// </returns>
+    /// Represents a regular expression used for splitting text into sentences
+    /// based on sentence-ending punctuation marks like '.', '!', or '?' while retaining the delimiters.
     [GeneratedRegex(@"(?<=[.!?])")]
     private static partial Regex SentenceSplitterRegex();
 }

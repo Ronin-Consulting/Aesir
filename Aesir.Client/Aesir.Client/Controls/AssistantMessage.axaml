@@ -83,6 +83,15 @@
                     ToolTip.Tip="Regenerate">
                 <avalonia:MaterialIcon Kind="Refresh" Width="20" Height="20" />
             </Button>
+            <Button Name="PlayMessageButton" 
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Command="{Binding PlayMessageCommand}"
+                    Padding="8"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="Play">
+                <avalonia:MaterialIcon Kind="Play" Width="20" Height="20" />
+            </Button>
         </StackPanel>
     </StackPanel>
 </UserControl>
