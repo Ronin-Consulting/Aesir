@@ -1,7 +1,6 @@
 using System;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;
-using Aesir.Client.Services.Implementations.NoOp;
 using Aesir.Client.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Threading;

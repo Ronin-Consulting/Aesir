@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Runtime.InteropServices.JavaScript;
+using System.Threading;
 using System.Threading.Tasks;
 using Aesir.Client.Services;
 
@@ -16,6 +18,11 @@ public class BrowserSpeechService : ISpeechService
         await Task.CompletedTask;
         
         SpeechInterop.SpeakText(text);
+    }
+
+    public IAsyncEnumerable<string> RecognizeSpeechAsync(CancellationToken cancellationToken)
+    {
+        throw new System.NotImplementedException();
     }
 }
 

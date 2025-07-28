@@ -56,6 +56,7 @@ sealed class Program
                     services.AddTransient<IPdfViewerService, PdfViewerService>();
 
                     services.AddSingleton<IAudioPlaybackService, AudioPlaybackService>();
+                    services.AddSingleton<IAudioRecordingService, AudioRecordingService>();
                     services.AddSingleton<ISpeechService, SpeechService>();
                 }
             );

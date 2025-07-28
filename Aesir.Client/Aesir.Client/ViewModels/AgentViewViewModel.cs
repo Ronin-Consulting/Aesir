@@ -3,7 +3,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.Windows.Input;
 using Aesir.Client.Services;
-using Aesir.Client.Services.Implementations.NoOp;
 using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using CommunityToolkit.Mvvm.ComponentModel;
