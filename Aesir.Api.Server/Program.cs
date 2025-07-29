@@ -165,7 +165,8 @@ public class Program
         var app = builder.Build();
 
         app.MapHub<TtsHub>("/ttshub");
-        
+        app.MapHub<SttHub>("/stthub");
+
         app.MapHealthChecks("/healthz");
 
         if (app.Environment.IsDevelopment())

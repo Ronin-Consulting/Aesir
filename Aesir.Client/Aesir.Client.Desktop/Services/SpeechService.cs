@@ -50,8 +50,10 @@ public class SpeechService : ISpeechService
     /// text input to the server and receiving audio data streams for playback.
     /// The connection automatically attempts to reconnect if closed unexpectedly.
     /// </summary>
-    private readonly HubConnection _connection;
+    private readonly HubConnection _ttsConnection;
 
+    private readonly HubConnection _sttConnection;
+    
     /// <summary>
     /// Indicates the current connection status to the TTS SignalR hub.
     /// A value of <c>true</c> signifies that the service is connected,
@@ -75,7 +77,7 @@ public class SpeechService : ISpeechService
         _audioRecordingService = audioRecordingService;
 
         var ttsHubUrl = configuration.GetValue<string>("Inference:Tts");
-        _connection = new HubConnectionBuilder()
+        _ttsConnection = new HubConnectionBuilder()
             .WithUrl(ttsHubUrl ?? throw new InvalidOperationException(), options =>
             {
                 options.HttpMessageHandlerFactory = (handler) =>
@@ -88,14 +90,39 @@ public class SpeechService : ISpeechService
                     return handler;
                 };
             })
-
             .WithAutomaticReconnect()
             .Build();
         
-        _connection.Closed += async (error) =>
+        _ttsConnection.Closed += async (error) =>
         {
             _isConnected = false;
             _logger.LogWarning("TTS Connection closed: {Error}", error);
+            
+            await Task.Delay(RetryDelay); // Simple retry delay
+            await ConnectAsync();
+        };
+        
+        var sttHubUrl = configuration.GetValue<string>("Inference:Stt");
+        _sttConnection = new HubConnectionBuilder()
+            .WithUrl(sttHubUrl ?? throw new InvalidOperationException(), options =>
+            {
+                options.HttpMessageHandlerFactory = (handler) =>
+                {
+                    if (handler is HttpClientHandler clientHandler)
+                    {
+                        clientHandler.ServerCertificateCustomValidationCallback =
+                            (sender, certificate, chain, sslPolicyErrors) => true;
+                    }
+                    return handler;
+                };
+            })
+            .WithAutomaticReconnect()
+            .Build();
+        
+        _sttConnection.Closed += async (error) =>
+        {
+            _isConnected = false;
+            _logger.LogWarning("STT Connection closed: {Error}", error);
             
             await Task.Delay(RetryDelay); // Simple retry delay
             await ConnectAsync();
@@ -112,7 +139,8 @@ public class SpeechService : ISpeechService
         if (_isConnected) return;
         try
         {
-            await _connection.StartAsync();
+            await _ttsConnection.StartAsync();
+            await _sttConnection.StartAsync();
             _isConnected = true;
         }
         catch (Exception ex)
@@ -133,7 +161,7 @@ public class SpeechService : ISpeechService
     {
         await ConnectAsync();
 
-        var channelReader = await _connection.StreamAsChannelAsync<byte[]>("GenerateAudio", text, 0.9f);
+        var channelReader = await _ttsConnection.StreamAsChannelAsync<byte[]>("GenerateAudio", text, 0.9f);
         await _audioPlaybackService.PlayStreamAsync(channelReader.ReadAllAsync());
     }
 
@@ -145,7 +173,8 @@ public class SpeechService : ISpeechService
         var audioStream = _audioRecordingService.StartRecordingAsync(cancellationToken);
         
         // Start streaming audio to the server and receive text recognition results
-        var textChannelReader = await _connection.StreamAsChannelAsync<string>("ProcessAudioStream", audioStream, cancellationToken);
+        var textChannelReader = await _sttConnection.StreamAsChannelAsync<string>("ProcessAudioStream", 
+            audioStream, cancellationToken);
         
         // Process the recognition results
         while (await textChannelReader.WaitToReadAsync(cancellationToken))
