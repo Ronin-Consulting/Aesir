@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Aesir.Client.Services;
@@ -13,4 +15,6 @@ public interface ISpeechService
     /// <param name="text">The text content to be spoken by the speech synthesis service.</param>
     /// <returns>A Task representing the asynchronous operation of speaking the provided text.</returns>
     Task SpeakAsync(string text);
+
+    IAsyncEnumerable<string> RecognizeSpeechAsync(CancellationToken cancellationToken);
 }

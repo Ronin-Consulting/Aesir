@@ -14,11 +14,11 @@
 
 ## AESIR client things left to do
 
-- [ ] Add message controls like chatgpt
+- [X] Add message controls like chatgpt
   - [x] Copy message
-  - [x] Regenerate assistant message
-  - [x] Edit user message
-  - [ ] Play message
+  - [X] Regenerate assistant message
+  - [X] Edit user message
+  - [X] Play message
 - [X] Support "Thinking" In Chat 
 - [X] Implement RAG
   - [x] Upload - Global Documents
@@ -46,10 +46,10 @@
   - [x] Search
 - [ ] Tools/MCP Integration
 - [ ] AI Agents
-- [ ] Implement Microphone
-  - [ ] Record
-  - [ ] Stop
-  - [ ] Play
+- [ ] Hands Free Mode
+  - [ ] hands free UI/UX
+  - [ ] speech-to-text
+  - [X] text-to-speech
 - [ ] Implement User Settings
   - [ ] Change name
   - [ ] Change profile picture
@@ -58,7 +58,7 @@
   - [ ] Login
   - [ ] Register
   - [ ] Logout
-- [ ] Implement Model Switching
+- [ ] Works in web browser
 
 ## Supported AI Backends
 
