@@ -1,0 +1,131 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:viewModels="clr-namespace:Aesir.Client.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="200"
+             x:Class="Aesir.Client.Controls.HandsFreeControl"
+             x:DataType="viewModels:HandsFreeViewModel">
+
+  <UserControl.Styles>
+    <!-- Pulsing animation for listening state -->
+    <Style Selector="Border.listening">
+      <Style.Animations>
+        <Animation Duration="0:0:1.5" IterationCount="INFINITE" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%">
+            <Setter Property="Background" Value="#FF4A90E2" />
+            <Setter Property="Opacity" Value="0.6" />
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="Background" Value="#FF87CEEB" />
+            <Setter Property="Opacity" Value="1.0" />
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+
+    <!-- Scaling animation for speaking state -->
+    <Style Selector="Border.speaking">
+      <Style.Animations>
+        <Animation Duration="0:0:0.5" IterationCount="INFINITE" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%">
+            <Setter Property="RenderTransform">
+              <ScaleTransform ScaleX="1.0" ScaleY="1.0" />
+            </Setter>
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="RenderTransform">
+              <ScaleTransform ScaleX="{Binding AudioLevel}" ScaleY="{Binding AudioLevel}" />
+            </Setter>
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+
+    <!-- Error state styling -->
+    <Style Selector="Border.error">
+      <Setter Property="Background" Value="#FFFF6B6B" />
+      <Setter Property="Opacity" Value="0.8" />
+    </Style>
+
+    <!-- Idle state styling -->
+    <Style Selector="Border.idle">
+      <Setter Property="Background" Value="#FFE0E0E0" />
+      <Setter Property="Opacity" Value="0.5" />
+    </Style>
+
+    <!-- Processing state styling -->
+    <Style Selector="Border.processing">
+      <Setter Property="Background" Value="#FFFFB347" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Main Assistant Icon -->
+    <Border Grid.Row="0"
+            Name="AssistantBorder"
+            Width="120"
+            Height="120"
+            CornerRadius="60"
+            Background="#FFE0E0E0"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Classes="{Binding StateClass}"
+            RenderTransformOrigin="0.5,0.5">
+      
+      <!-- Assistant SVG Icon Placeholder -->
+      <Viewbox Width="80" Height="80">
+        <Canvas Width="24" Height="24">
+          <!-- Simple microphone icon as placeholder for assistant.svg -->
+          <Path Fill="{Binding IconColor}" 
+                Data="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" />
+        </Canvas>
+      </Viewbox>
+    </Border>
+
+    <!-- State Indicator Text -->
+    <TextBlock Grid.Row="1"
+               Text="{Binding StateText}"
+               HorizontalAlignment="Center"
+               Margin="0,10,0,5"
+               FontSize="14"
+               FontWeight="Medium"
+               Foreground="{Binding StateTextColor}" />
+
+    <!-- Control Buttons -->
+    <StackPanel Grid.Row="2" 
+                Orientation="Horizontal" 
+                HorizontalAlignment="Center"
+                Spacing="10">
+      
+      <!-- Start/Stop Button -->
+      <Button Name="ToggleButton"
+              Content="{Binding ToggleButtonText}"
+              Command="{Binding ToggleHandsFreeCommand}"
+              Background="{Binding ToggleButtonBackground}"
+              Foreground="White"
+              Padding="20,8"
+              CornerRadius="4"
+              FontWeight="Medium" />
+      
+      <!-- Settings Button (Optional) -->
+      <Button Content="⚙️"
+              Command="{Binding ShowSettingsCommand}"
+              Width="36"
+              Height="36"
+              Background="Transparent"
+              BorderThickness="1"
+              BorderBrush="#FFCCCCCC"
+              CornerRadius="4"
+              ToolTip.Tip="Hands-free settings" />
+    </StackPanel>
+
+  </Grid>
+</UserControl>
