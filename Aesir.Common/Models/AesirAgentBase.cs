@@ -4,8 +4,14 @@ using Aesir.Common.Prompts;
 
 namespace Aesir.Common.Models;
 
-public class AesirAgent
+public class AesirAgentBase
 {
+    /// <summary>
+    /// Gets or sets the id of the agent
+    /// </summary>
+    [JsonPropertyName("id")]
+    public Guid? Id { get; set; }
+    
     /// <summary>
     /// Gets or sets the name of the agent
     /// </summary>
@@ -15,19 +21,19 @@ public class AesirAgent
     /// <summary>
     /// Gets or sets the name of the chat model
     /// </summary>
-    [JsonPropertyName("chat-model")]
+    [JsonPropertyName("chat_model")]
     public string? ChatModel { get; set; }
     
     /// <summary>
     /// Gets or sets the name of the embedding model
     /// </summary>
-    [JsonPropertyName("embedding-model")]
+    [JsonPropertyName("embedding_model")]
     public string? EmbeddingModel { get; set; }
     
     /// <summary>
     /// Gets or sets the name of the vision model
     /// </summary>
-    [JsonPropertyName("vision-model")]
+    [JsonPropertyName("vision_model")]
     public string? VisionModel { get; set; }
     
     /// <summary>
@@ -35,12 +41,6 @@ public class AesirAgent
     /// </summary>
     [JsonPropertyName("source")]
     public ModelSource? Source { get; set; }
-
-    /// <summary>
-    /// Gets or sets the tools used by the agent
-    /// </summary>
-    [JsonPropertyName("tools")]
-    public IEnumerable<string> Tools { get; set; } = new List<string>();
     
     /// <summary>
     /// Gets or sets the prompt used by the agent

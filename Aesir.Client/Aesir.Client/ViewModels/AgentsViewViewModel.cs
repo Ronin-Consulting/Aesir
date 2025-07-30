@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;
 using Aesir.Common.Models;
 using Aesir.Common.Prompts;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -33,12 +35,12 @@ public class AgentsViewViewModel : ObservableRecipient
     /// <summary>
     /// Represents the agents loaded from the system
     /// </summary>
-    public ObservableCollection<AesirAgent> Agents { get; protected set; }
+    public ObservableCollection<AesirAgentBase> Agents { get; protected set; }
 
     /// <summary>
     /// Represents the currently selected agent
     /// </summary>
-    public AesirAgent? SelectedAgent
+    public AesirAgentBase? SelectedAgent
     {
         get => _selectedAgent;
         set
@@ -65,57 +67,54 @@ public class AgentsViewViewModel : ObservableRecipient
     private readonly INavigationService _navigationService;
     
     /// <summary>
-    /// 
+    /// Configuration service used for managing configuration
     /// </summary>
-    private AesirAgent? _selectedAgent;
+    private readonly IConfigurationService _configurationService;
+    
+    /// <summary>
+    /// The currently selected agent
+    /// </summary>
+    private AesirAgentBase? _selectedAgent;
     
     /// Represents the view model for the main view in the application.
     /// Handles core application state and provides commands for toggling chat history, starting a new chat, and controlling the microphone.
     /// Integrates services for speech recognition, chat session management, and file upload interactions.
     public AgentsViewViewModel(
         ILogger<AgentsViewViewModel> logger,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        IConfigurationService configurationService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _navigationService = navigationService;
+        _configurationService = configurationService;
 
         ShowChat = new RelayCommand(ExecuteShowChat);
         ShowTools = new RelayCommand(ExecuteShowTools);
         ShowAddAgent = new RelayCommand(ExecuteShowAddAgent);
-        
-        // TODO load this on activate
-        Agents = new ObservableCollection<AesirAgent>([
-            new AesirAgent
-            {
-                Name = "Agent 1",
-                ChatModel = "gpt-4.1-2025-04-14",
-                EmbeddingModel = "text-embedding-3-large",
-                VisionModel = "gpt-4.1-2025-04-14",
-                Source = ModelSource.OpenAI,
-                Tools = new List<string>() { "RAG" },
-                Prompt = PromptContext.Military
-            },
-            new AesirAgent
-            {
-                Name = "Agent 2",
-                ChatModel = "qwen3:32b-q4_K_M",
-                EmbeddingModel = "mxbai-embed-large:latest",
-                VisionModel = "gemma3:12b",
-                Source = ModelSource.Ollama,
-                Tools = new List<string>() { "RAG" },
-                Prompt = PromptContext.Military
-            },
-            new AesirAgent
-            {
-                Name = "Computer Use",
-                ChatModel = "cogito:32b-v1-preview-qwen-q4_K_M",
-                EmbeddingModel = "mxbai-embed-large:latest",
-                VisionModel = "gemma3:12b",
-                Source =ModelSource.Ollama,
-                Tools = new List<string>() { "RAG" },
-                Prompt = PromptContext.Business
-            }
-        ]);
+
+        Agents = new ObservableCollection<AesirAgentBase>();
+    }
+    
+    protected override void OnActivated()
+    {
+        base.OnActivated();
+
+        Dispatcher.UIThread.InvokeAsync(LoadAgentsAsync);
+    }
+    
+    private async Task LoadAgentsAsync()
+    {
+        try
+        {
+            var agents = await _configurationService.GetAgentsAsync();
+            Agents.Clear();
+            foreach (var agent in agents)
+                Agents.Add(agent);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading agents: {ex.Message}");
+        }
     }
 
     private void ExecuteShowChat()
@@ -133,7 +132,7 @@ public class AgentsViewViewModel : ObservableRecipient
         WeakReferenceMessenger.Default.Send(new ShowAgentDetailMessage(null));
     }
 
-    private void OnAgentSelected(AesirAgent? selectedAgent)
+    private void OnAgentSelected(AesirAgentBase? selectedAgent)
     {
         if (selectedAgent != null)
         {

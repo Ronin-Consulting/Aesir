@@ -10,13 +10,13 @@ namespace Aesir.Client.ViewModels.Design;
 
 public class DesignAgentsViewViewModel : AgentsViewViewModel
 {   
-    public DesignAgentsViewViewModel() : base(NullLogger<AgentsViewViewModel>.Instance, new NoOpNavigationService())
+    public DesignAgentsViewViewModel() : base(NullLogger<AgentsViewViewModel>.Instance, new NoOpNavigationService(), new NoOpConfigurationService())
     {
         ShowChat = new RelayCommand(() => { });
         ShowTools = new RelayCommand(() => { });
         ShowAddAgent = new RelayCommand(() => { });
         
-        var agents = new List<AesirAgent> 
+        var agents = new List<AesirAgentBase> 
         {
             new()
             {
@@ -25,7 +25,6 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 EmbeddingModel = "text-embedding-3-large",
                 VisionModel = "gpt-4.1-2025-04-14",
                 Source = ModelSource.OpenAI,
-                Tools = new List<string>() { "RAG" },
                 Prompt = PromptContext.Military
             },
             new()
@@ -35,7 +34,6 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 EmbeddingModel = "mxbai-embed-large:latest",
                 VisionModel = "gemma3:12b",
                 Source = ModelSource.Ollama,
-                Tools = new List<string>() { "RAG" },
                 Prompt = PromptContext.Military
             },
             new()
@@ -45,10 +43,9 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 EmbeddingModel = "mxbai-embed-large:latest",
                 VisionModel = "gemma3:12b",
                 Source = ModelSource.Ollama,
-                Tools = new List<string>() { "RAG" },
                 Prompt = PromptContext.Business
             }
         };
-        Agents = new ObservableCollection<AesirAgent>(agents);
+        Agents = new ObservableCollection<AesirAgentBase>(agents);
     }
 }

@@ -132,6 +132,7 @@ public class Program
             return new TtsService(loggerFactory.CreateLogger<TtsService>(), ttsModelPath, useCuda);
         });
         builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
+        builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
         builder.Services.AddSingleton<IDbContext, PgDbContext>(p =>
             new PgDbContext(builder.Configuration.GetConnectionString("DefaultConnection")!)
         );

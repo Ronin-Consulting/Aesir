@@ -25,7 +25,6 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
     {
         SqlMapper.AddTypeHandler(new JsonTypeHandler<AesirConversation>());
         SqlMapper.AddTypeHandler(new JsonTypeHandler<AesirChatMessage>());
-        SqlMapper.AddTypeHandler(new JsonTypeHandler<AesirChatMessage>());
     }
 
     /// <summary>

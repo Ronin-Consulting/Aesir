@@ -104,6 +104,7 @@ public partial class App : Application
         AppServices.AddSingleton<IContentProcessingService, ContentProcessingService>();
         AppServices.AddSingleton<INavigationService, NavigationService>();
         AppServices.AddSingleton<INotificationService, NotificationService>();
+        AppServices.AddSingleton<IConfigurationService, ConfigurationService>();
         
         AppServices.AddTransient<SystemMessageViewModel>();
         AppServices.AddTransient<UserMessageViewModel>();
@@ -163,6 +164,7 @@ public partial class App : Application
             .AddSingleton<IChatSessionManager, NoOpChatSessionManager>()
             .AddSingleton<INavigationService, NoOpNavigationService>()
             .AddSingleton<INotificationService, NoOpNotificationService>()
+            .AddSingleton<IConfigurationService, NoOpConfigurationService>()
             .AddLogging()
             .AddSingleton<FileToUploadViewModel>()
             // …add ONLY what the open XAML needs

@@ -8,16 +8,15 @@ namespace Aesir.Client.ViewModels.Design;
 
 public class DesignAgentViewViewModel : AgentViewViewModel
 {   
-    public DesignAgentViewViewModel() : base(new AesirAgent()
+    public DesignAgentViewViewModel() : base(new AesirAgentBase()
     {
         Name = "My Test Agent",
         Source = ModelSource.Ollama,
         Prompt = PromptContext.Military,
         ChatModel = "qwen3:32b-q4_K_M",
         EmbeddingModel = "mxbai-embed-large:latest",
-        VisionModel = "gemma3:12b",
-        Tools = new ObservableCollection<string>()
-    }, new NoOpNotificationService())
+        VisionModel = "gemma3:12b"
+    }, new NoOpNotificationService(), new NoOpConfigurationService())
     {
         AvailableTools = new ObservableCollection<string>()
         {

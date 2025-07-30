@@ -1,7 +1,6 @@
 using System;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;
-using Aesir.Client.Services.Implementations.NoOp;
 using Aesir.Client.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Threading;
@@ -29,7 +28,10 @@ public partial class AgentsView : UserControl, IRecipient<ShowAgentDetailMessage
             try
             {
                 var notificationService = Ioc.Default.GetService<INotificationService>()!;
-                var viewModel = new AgentViewViewModel(detailMessage.Agent, notificationService);
+                var configurationService = Ioc.Default.GetService<IConfigurationService>()!;
+                var viewModel = new AgentViewViewModel(detailMessage.Agent, notificationService, configurationService);
+
+                viewModel.IsActive = true;
 
                 var options = new DrawerOptions()
                 {
@@ -42,6 +44,8 @@ public partial class AgentsView : UserControl, IRecipient<ShowAgentDetailMessage
 
                 var result = await Drawer.ShowCustomModal<AgentView, AgentViewViewModel, object?>(
                     viewModel, options: options);
+
+                viewModel.IsActive = false;
 
                 //if (result == DialogResult.None)
                 //    throw new ApplicationException("PdfViewerService.ShowPdfAsync failed.");

@@ -2,7 +2,7 @@ using Aesir.Common.Models;
 
 namespace Aesir.Client.Messages;
 
-public class ShowAgentDetailMessage(AesirAgent? agent)
+public class ShowAgentDetailMessage(AesirAgentBase? agent)
 {   
-    public AesirAgent Agent { get; set; } = agent ?? new AesirAgent();
+    public AesirAgentBase Agent { get; set; } = agent ?? new AesirAgentBase();
 }
