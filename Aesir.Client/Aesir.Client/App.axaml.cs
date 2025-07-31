@@ -61,8 +61,16 @@ public partial class App : Application
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            var mainViewViewModel = serviceProvider.GetService<MainViewViewModel>();
-            singleViewPlatform.MainView = new MainView().WithViewModel(mainViewViewModel!);
+            try
+            {
+                var mainViewViewModel = serviceProvider.GetService<MainViewViewModel>();
+
+                singleViewPlatform.MainView = new MainView().WithViewModel(mainViewViewModel!);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
         
         base.OnFrameworkInitializationCompleted();
@@ -127,8 +135,11 @@ public partial class App : Application
             // all clients:
             .WithDefaults(builder =>
                 builder
-                    .ConfigureInnerHandler(i => 
-                        i.ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+                    .ConfigureInnerHandler(i =>
+                        {
+                            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime)
+                                i.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+                        }
                     )
                     .WithTimeout(240)
                     .AddMiddleware(() => new PolicyHttpMessageHandler(policy))

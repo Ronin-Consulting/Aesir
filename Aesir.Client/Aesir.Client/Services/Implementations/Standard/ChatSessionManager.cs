@@ -131,7 +131,7 @@ public class ChatSessionManager(
             if (assistantMessageViewModel == null)
                 throw new InvalidOperationException("No assistant message view model found");
 
-            var title = await assistantMessageViewModel.SetStreamedMessageAsync(result).ConfigureAwait(false);
+            var title = await assistantMessageViewModel.SetStreamedMessageAsync(result);
 
             _appState.ChatSession.Title = title;
             _appState.ChatSession.AddMessage(assistantMessageViewModel.GetAesirChatMessage());
