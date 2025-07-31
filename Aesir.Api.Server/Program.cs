@@ -131,6 +131,16 @@ public class Program
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             return new TtsService(loggerFactory.CreateLogger<TtsService>(), ttsModelPath, useCuda);
         });
+        builder.Services.AddSingleton<ISttService>(sp =>
+        {
+            var ttsModelPath = builder.Configuration.GetValue<string>("Inference:Onnx:Stt");
+            var useCudaValue = Environment.GetEnvironmentVariable("USE_CUDA");
+            _ = bool.TryParse(useCudaValue, out var useCuda);
+            
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+            return new SttService(loggerFactory.CreateLogger<SttService>(), ttsModelPath, useCuda);
+        });
+        
         builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
         builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
         builder.Services.AddSingleton<IDbContext, PgDbContext>(p =>

@@ -298,6 +298,8 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
                 }
 
                 await _speechService.SpeakAsync("Aesir is listening.");
+                
+                
             }
         }
         catch (Exception ex)

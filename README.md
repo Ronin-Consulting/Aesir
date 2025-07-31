@@ -48,7 +48,7 @@
 - [ ] AI Agents
 - [ ] Hands Free Mode
   - [ ] hands free UI/UX
-  - [ ] speech-to-text
+  - [X] speech-to-text
   - [X] text-to-speech
 - [ ] Implement User Settings
   - [ ] Change name

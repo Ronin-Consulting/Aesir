@@ -1,11 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="20 150 170 150">
     <g transform="rotate(0 175.43836033950438 287.5)">
-        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="nnnn_1" x="20" y="150" viewBox="1678.919921875 781.6400146484375 1642.16015625 1436.7200927734375" xml:space="preserve" height="149.49922923525503" width="170.87672067900877" preserveAspectRatio="xMinYMin" enable-background="new 0 0 5000 3000" style="overflow: visible;"><path class="st0" d="M2561.02,1305.49l760.06-509.28L2500,1199.8l-821.08-403.59l760.06,509.28l61.02,912.87L2561.02,1305.49z    M2500,1270.26L2500,1270.26L2500,1270.26L2500,1270.26z" style="fill: #F9F9F9; fill-opacity: 1;"></path><polygon
-                class="st0" points="2253.42,1409.7 2308.19,1915.29 2316.62,1371.78 1853.16,1099.29  "
-                style="fill: #F9F9F9; fill-opacity: 1;"></polygon><polygon class="st0"
-                                                                           points="2744.04,1414.08 3154.51,1113.85 2679.61,1378.31 2675.35,1915.93  "
-                                                                           style="fill: #F9F9F9; fill-opacity: 1;"></polygon><polygon
-                class="st0" points="2502.53,987 2037.29,781.64 2503.77,1060.69 2971.49,795.57  "
-                style="fill: #F9F9F9; fill-opacity: 1;"></polygon></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="nnnn_1"
+             x="20" y="150" viewBox="1678.919921875 781.6400146484375 1642.16015625 1436.7200927734375"
+             xml:space="preserve" height="149.49922923525503" width="170.87672067900877" preserveAspectRatio="xMinYMin"
+             enable-background="new 0 0 5000 3000" style="overflow: visible;"><path class="st0" d="M2561.02,1305.49l760.06-509.28L2500,1199.8l-821.08-403.59l760.06,509.28l61.02,912.87L2561.02,1305.49z    M2500,1270.26L2500,1270.26L2500,1270.26L2500,1270.26z" style="fill: #F9F9F9; fill-opacity: 1;"></path>
+            <polygon
+                    class="st0" points="2253.42,1409.7 2308.19,1915.29 2316.62,1371.78 1853.16,1099.29  "
+                    style="fill: #F9F9F9; fill-opacity: 1;"></polygon>
+            <polygon class="st0"
+                     points="2744.04,1414.08 3154.51,1113.85 2679.61,1378.31 2675.35,1915.93  "
+                     style="fill: #F9F9F9; fill-opacity: 1;"></polygon>
+            <polygon
+                    class="st0" points="2502.53,987 2037.29,781.64 2503.77,1060.69 2971.49,795.57  "
+                    style="fill: #F9F9F9; fill-opacity: 1;"></polygon></svg>
     </g>
 </svg>
