@@ -12,6 +12,7 @@ using Flurl;
 using Flurl.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 [assembly: SupportedOSPlatform("browser")]
 
@@ -21,7 +22,7 @@ internal sealed partial class Program
     private static string _baseUrl = null!;
     
     // Entry point for the application.  See main.js for the browser entry point.
-    private static async Task Main(string[] args)
+    private static Task Main(string[] args)
     {
         // The first argument is the base URL of the API
         _baseUrl = args.Length > 0 ? args[0] : throw new ArgumentException("Base URL is required");
@@ -29,28 +30,23 @@ internal sealed partial class Program
         _environmentName = args.Length == 2 ? args[1] : string.Empty;
 
         // Load the app settings.  These are platform specific and are loaded from the server.
-        await LoadAppSettingsAsync();
+        LoadAppSettings();
         
         // register services that are platform specific
         App.AddService(services => 
             services.AddSingleton<ISpeechService, BrowserSpeechService>()
         );
         
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-        BuildAvaloniaApp()
+        return AppBuilder.Configure<App>()
             .WithInterFont()
             .StartBrowserAppAsync("out");
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
     }
-
-    static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<App>();
-
-    private static async Task LoadAppSettingsAsync()
+    
+    private static async void LoadAppSettings()
     {
         var environmentNameNormalized = 
             !string.IsNullOrWhiteSpace(_environmentName) ? $".{_environmentName}" : string.Empty;
-            
+        
         var settingsJsonString = await _baseUrl
             .AppendPathSegment($"appsettings{environmentNameNormalized}.json")
             .GetStringAsync();
@@ -64,7 +60,12 @@ internal sealed partial class Program
         
         // Add the configuration to the service collection of the app
         App.AddService(services => 
-            services.AddSingleton<IConfiguration>(configuration)
+            services.AddSingleton<IConfiguration>(configuration).AddLogging(loggingBuilder =>
+            {
+                // configure Logging with NLog
+                loggingBuilder.ClearProviders();
+                loggingBuilder.SetMinimumLevel(LogLevel.Trace);
+            })
         );
         
         Console.WriteLine(settingsJsonString);

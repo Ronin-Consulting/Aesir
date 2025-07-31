@@ -3,10 +3,14 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:viewModels="clr-namespace:Aesir.Client.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="200"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Aesir.Client.Controls.HandsFreeControl"
              x:DataType="viewModels:HandsFreeViewModel">
 
+  <Design.DataContext>    
+    <viewModels:HandsFreeViewModel />
+  </Design.DataContext>
+  
   <UserControl.Styles>
     <!-- Pulsing animation for listening state -->
     <Style Selector="Border.listening">
@@ -77,16 +81,16 @@
             Background="#FFE0E0E0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            Classes="{Binding StateClass}"
+            Classes="speaking"
             RenderTransformOrigin="0.5,0.5">
       
       <!-- Assistant SVG Icon Placeholder -->
       <Viewbox Width="80" Height="80">
-        <Canvas Width="24" Height="24">
-          <!-- Simple microphone icon as placeholder for assistant.svg -->
-          <Path Fill="{Binding IconColor}" 
-                Data="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" />
-        </Canvas>
+        <Image Height="24" Width="24">
+          <Image.Source>
+            <SvgImage Source="/Assets/assistant.svg" />
+          </Image.Source>
+        </Image>
       </Viewbox>
     </Border>
 

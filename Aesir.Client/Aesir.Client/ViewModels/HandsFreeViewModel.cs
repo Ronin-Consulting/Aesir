@@ -26,9 +26,14 @@ public partial class HandsFreeViewModel : ObservableRecipient, IDisposable
     [ObservableProperty] private IBrush _toggleButtonBackground = Brushes.Green;
     [ObservableProperty] private double _audioLevel = 1.0;
     [ObservableProperty] private bool _isProcessing;
-
+    
     public ICommand ToggleHandsFreeCommand { get; }
     public ICommand ShowSettingsCommand { get; }
+
+    public HandsFreeViewModel()
+    {
+        
+    }
 
     public HandsFreeViewModel(
         ILogger<HandsFreeViewModel> logger,

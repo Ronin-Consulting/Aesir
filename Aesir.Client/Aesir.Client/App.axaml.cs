@@ -61,8 +61,8 @@ public partial class App : Application
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            var mainWindowViewModel = serviceProvider.GetService<MainWindowViewModel>();
-            singleViewPlatform.MainView = new MainWindow().WithViewModel(mainWindowViewModel!);
+            var mainViewViewModel = serviceProvider.GetService<MainViewViewModel>();
+            singleViewPlatform.MainView = new MainView().WithViewModel(mainViewViewModel!);
         }
         
         base.OnFrameworkInitializationCompleted();
