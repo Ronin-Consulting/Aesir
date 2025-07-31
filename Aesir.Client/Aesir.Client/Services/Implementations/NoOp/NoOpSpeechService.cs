@@ -19,7 +19,7 @@ public class NoOpSpeechService : ISpeechService
     /// <returns>A completed Task representing the operation.</returns>
     public Task SpeakAsync(string text)
     {
-        return Task.CompletedTask;
+        throw new System.NotImplementedException();
     }
 
     public IAsyncEnumerable<string> RecognizeSpeechAsync(CancellationToken cancellationToken)

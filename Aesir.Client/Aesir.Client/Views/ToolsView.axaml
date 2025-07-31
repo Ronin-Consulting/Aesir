@@ -10,7 +10,7 @@
     xmlns:sys="clr-namespace:System;assembly=System.Runtime"
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
     x:Class="Aesir.Client.Views.ToolsView"
-    x:DataType="vm:ToolsViewViewModel">
+    >
     
     <UserControl.Styles>
         <Style Selector="FlyoutPresenter.modelSelection">
@@ -19,9 +19,12 @@
         </Style>
     </UserControl.Styles>
     
-    <!-- Add some content here -->
-    <Grid>
-        <!-- Your agents view content will go here -->
-    </Grid>
+    <Image Name="AesirImage"
+           RelativePanel.AlignHorizontalCenterWithPanel="True"
+           RelativePanel.AlignVerticalCenterWithPanel="True" Margin="0" VerticalAlignment="Center">
+        <Image.Source>
+            <SvgImage Source="/Assets/logo.svg" />
+        </Image.Source>
+    </Image>
     
 </UserControl>

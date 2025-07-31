@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.Versioning;
 using System.Text;
@@ -8,6 +9,7 @@ using Avalonia.Browser;
 using Aesir.Client;
 using Aesir.Client.Browser.Services;
 using Aesir.Client.Services;
+using Avalonia.Logging;
 using Flurl;
 using Flurl.Http;
 using Microsoft.Extensions.Configuration;
@@ -37,7 +39,10 @@ internal sealed partial class Program
             services.AddSingleton<ISpeechService, BrowserSpeechService>()
         );
         
+        Trace.Listeners.Add(new ConsoleTraceListener());
+
         return AppBuilder.Configure<App>()
+            .LogToTrace(LogEventLevel.Verbose)
             .WithInterFont()
             .StartBrowserAppAsync("out");
     }
@@ -60,12 +65,10 @@ internal sealed partial class Program
         
         // Add the configuration to the service collection of the app
         App.AddService(services => 
-            services.AddSingleton<IConfiguration>(configuration).AddLogging(loggingBuilder =>
-            {
-                // configure Logging with NLog
-                loggingBuilder.ClearProviders();
-                loggingBuilder.SetMinimumLevel(LogLevel.Trace);
-            })
+            services.AddSingleton<IConfiguration>(configuration)
+                .AddLogging(builder => builder
+                    .SetMinimumLevel(LogLevel.Trace)
+                )
         );
         
         Console.WriteLine(settingsJsonString);
