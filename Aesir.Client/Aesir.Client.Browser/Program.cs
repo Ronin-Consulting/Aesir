@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.Versioning;
 using System.Text;
@@ -39,10 +38,10 @@ internal sealed partial class Program
             services.AddSingleton<ISpeechService, BrowserSpeechService>()
         );
         
-        Trace.Listeners.Add(new ConsoleTraceListener());
+        //Trace.Listeners.Add(new ConsoleTraceListener());
 
         return AppBuilder.Configure<App>()
-            .LogToTrace(LogEventLevel.Verbose)
+            .LogToTrace(LogEventLevel.Error)
             .WithInterFont()
             .StartBrowserAppAsync("out");
     }
@@ -67,7 +66,7 @@ internal sealed partial class Program
         App.AddService(services => 
             services.AddSingleton<IConfiguration>(configuration)
                 .AddLogging(builder => builder
-                    .SetMinimumLevel(LogLevel.Trace)
+                    .SetMinimumLevel(LogLevel.Error)
                 )
         );
         
