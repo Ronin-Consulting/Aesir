@@ -20,7 +20,7 @@ public partial class MainWindow : UrsaWindow
         ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.PreferSystemChrome;
         ExtendClientAreaToDecorationsHint = false;
         
-        if (OperatingSystem.IsWindows() ||  OperatingSystem.IsLinux())
+        if (OperatingSystem.IsWindows())
         {
             IsFullScreenButtonVisible = false;
             IsManagedResizerVisible = false;
