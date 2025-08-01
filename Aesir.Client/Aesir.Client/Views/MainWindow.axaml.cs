@@ -1,6 +1,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Platform;
 using Ursa.Controls;
 
@@ -32,6 +33,7 @@ public partial class MainWindow : UrsaWindow
         if (OperatingSystem.IsLinux())
         {
             IsManagedResizerVisible = true;
+            TitleBarMargin = new Thickness(0, 36, 0, 0);
         }
     }
     
