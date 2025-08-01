@@ -287,7 +287,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         kernelFunctions.Add(imageSearchFunction);
         
         // text searches
-        if (_conversationDocumentHybridSearch != null && false)
+        if (_conversationDocumentHybridSearch != null)
         {
             var hybridSearch = _conversationDocumentHybridSearch;
 
