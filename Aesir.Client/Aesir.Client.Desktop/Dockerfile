@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/runtime:8.0-jammy AS base
+FROM mcr.microsoft.com/dotnet/runtime:9.0-noble AS base
 # Install comprehensive dependencies for Avalonia and SkiaSharp on ARM64
 RUN apt-get update && apt-get install -y \
     libx11-6 libfontconfig1 libice6 libsm6 libxext6 libxrender1 libxi6 \
@@ -17,7 +17,7 @@ RUN groupadd -r avalonia && useradd -r -g avalonia -m avalonia
 # Set working directory
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0-noble AS build
 
 WORKDIR /src
 # Copy project files

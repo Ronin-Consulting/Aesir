@@ -1,6 +1,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Platform;
 using Ursa.Controls;
 
@@ -20,7 +21,7 @@ public partial class MainWindow : UrsaWindow
         ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.PreferSystemChrome;
         ExtendClientAreaToDecorationsHint = false;
         
-        if (OperatingSystem.IsWindows() ||  OperatingSystem.IsLinux())
+        if (OperatingSystem.IsWindows())
         {
             IsFullScreenButtonVisible = false;
             IsManagedResizerVisible = false;
@@ -31,14 +32,8 @@ public partial class MainWindow : UrsaWindow
         
         if (OperatingSystem.IsLinux())
         {
-            ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.SystemChrome;
-            ExtendClientAreaToDecorationsHint = false;
-            
-            IsFullScreenButtonVisible = false;
-            IsManagedResizerVisible = false;
-            IsCloseButtonVisible = false;
-            IsMinimizeButtonVisible = false;
-            IsRestoreButtonVisible = false;
+            IsManagedResizerVisible = true;
+            ContentControl.Margin = new Thickness(0, 28, 0, 0);
         }
     }
     

@@ -19,17 +19,19 @@ services:
       # PulseAudio socket and cookie for audio (adjusted for non-root user 'avalonia')
       - ${XDG_RUNTIME_DIR}/pulse/native:/run/pulse/native:ro
       - ~/.config/pulse/cookie:/home/avalonia/.config/pulse/cookie:ro
+      - /tmp/aesir_documents:/home/documents:rw
     devices:
       - /dev/snd:/dev/snd
     group_add:
-      # export AUDIO_GID=$(getent group audio | cut -d: -f3) on host before running docker compose up
-      - ${AUDIO_GID}
+      # getent group audio | cut -d: -f3 on host before running docker compose up
+      - 29
     network_mode: host
     # Grant access to X11 - this is important for GUI apps
     security_opt:
       - seccomp:unconfined
     depends_on:
-      - aesir-api
+      aesir-api:
+        condition: service_healthy
     # Uncomment if you need to override the default command
     # command: dotnet Aesir.Client.Desktop.dll
   aesir-api:
@@ -43,6 +45,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
+      # Comment this out when Ollama is on container host
+      - Inference__Ollama__Endpoint=http://10.1.10.138:11434
     healthcheck:
       test: [ "CMD", "curl", "--fail", "http://aesir-api/healthz" ]
       interval: 10s

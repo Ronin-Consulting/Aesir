@@ -100,7 +100,7 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
                 catch
                 {
                     if (i == 4) throw;
-                    await Task.Delay(TimeSpan.FromSeconds(2));
+                    await Task.Delay(TimeSpan.FromSeconds(1));
                 }
             }
         }
@@ -116,7 +116,7 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
             return;
         }
 
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(1));
         Progress = 33;
         
         try
@@ -136,7 +136,7 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
                 catch
                 {
                     if (i == 4) throw;
-                    await Task.Delay(TimeSpan.FromSeconds(2));
+                    await Task.Delay(TimeSpan.FromSeconds(1));
                 }
             }
         }
@@ -152,12 +152,12 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
             return;
         }
         
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(1));
         Progress += 33;
         
         
         Status = "Preparing main window...";
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(1));
         
         Status = "Launching...";
         
