@@ -36,7 +36,7 @@ public partial class MainWindow : UrsaWindow
             
             IsFullScreenButtonVisible = false;
             IsManagedResizerVisible = false;
-            IsCloseButtonVisible = false;
+            IsCloseButtonVisible = true;
             IsMinimizeButtonVisible = false;
             IsRestoreButtonVisible = false;
         }

@@ -29,7 +29,8 @@ services:
     security_opt:
       - seccomp:unconfined
     depends_on:
-      - aesir-api
+      aesir-api:
+        condition: service_healthy
     # Uncomment if you need to override the default command
     # command: dotnet Aesir.Client.Desktop.dll
   aesir-api:
@@ -43,6 +44,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
+      # Comment this out when Ollama is on container host
+      - Inference__Ollama__Endpoint=http://192.168.1.120:11434
     healthcheck:
       test: [ "CMD", "curl", "--fail", "http://aesir-api/healthz" ]
       interval: 10s
