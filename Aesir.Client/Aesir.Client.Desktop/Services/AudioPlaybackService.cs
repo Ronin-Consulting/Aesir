@@ -22,7 +22,7 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     /// This instance is initialized upon creation of the service and is responsible
     /// for directly interfacing with audio playback hardware or software components.
     /// </summary>
-    private AudioSource _source = null!;
+    private AudioSource? _source;
 
     /// <summary>
     /// A thread-safe queue that holds audio clips to be played sequentially.
@@ -147,7 +147,7 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
                     if (!_playing && _clipQueue.TryDequeue(out var firstClip))
                     {
                         _currentClip = firstClip;
-                        _source.Play(firstClip);
+                        _source!.Play(firstClip);
                         _playing = true;
                         _logger.LogDebug("Started playing first audio clip");
                     }
@@ -186,7 +186,7 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
         lock (_lock)
         {
             // Wait for audio source to confirm buffer is no longer in use
-            while (_source.IsPlaying)
+            while (_source!.IsPlaying)
             {
                 Thread.Sleep(1);
             }
@@ -228,7 +228,7 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
             _cts?.Cancel();
             _cts = null;
 
-            _source.Stop();
+            if (_source != null) _source.Stop();
 
             _currentClip?.Dispose();
             _currentClip = null;
@@ -264,9 +264,9 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
         _logger.LogInformation("Disposing AudioPlaybackService");
         
         Stop();
-        
-        _source.End -= OnClipEnd; // Unsubscribe event
-        
+
+        if (_source != null) _source.End -= OnClipEnd; // Unsubscribe event
+
         _audioApp.Loaded -= AudioContextLoaded;
         
         try

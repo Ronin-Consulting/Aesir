@@ -20,5 +20,5 @@
     <u:UrsaWindow.LeftContent>
     </u:UrsaWindow.LeftContent>
  
-    <ContentControl Margin="0 0 0 0" Content="{Binding CurrentViewModel}"></ContentControl>
+    <ContentControl Name="ContentControl" Margin="0 0 0 0" Content="{Binding CurrentViewModel}"></ContentControl>
 </u:UrsaWindow>
