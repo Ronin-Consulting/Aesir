@@ -22,6 +22,7 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
         
+        #region AI Backend Clients
         var useOpenAi = builder.Configuration.GetValue<bool>("Inference:UseOpenAICompatible");
 
         if (useOpenAi)
@@ -121,7 +122,7 @@ public class Program
                 return new OllamaApiClient(httpClient, modelNames?.FirstOrDefault() ?? string.Empty);
             });
         }
-
+        
         builder.Services.AddSingleton<ITtsService>(sp =>
         {
             var ttsModelPath = builder.Configuration.GetValue<string>("Inference:Onnx:Tts");
@@ -140,12 +141,14 @@ public class Program
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             return new SttService(loggerFactory.CreateLogger<SttService>(), ttsModelPath, useCuda);
         });
+        #endregion
         
-        builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
-        builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
         builder.Services.AddSingleton<IDbContext, PgDbContext>(p =>
             new PgDbContext(builder.Configuration.GetConnectionString("DefaultConnection")!)
         );
+        
+        builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
+        builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
         builder.Services.AddSingleton<IFileStorageService, FileStorageService>();
         
         builder.Services.SetupSemanticKernel(builder.Configuration);
@@ -165,6 +168,16 @@ public class Program
                 lb.AddConsole().SetMinimumLevel(LogLevel.Trace);
             });
 
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowAvaloniaApp", policy =>
+            {
+                policy.WithOrigins("http://aesir.localhost:5236")
+                    .AllowAnyMethod()
+                    .AllowAnyHeader();
+            });
+        });
+        
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
@@ -186,8 +199,11 @@ public class Program
             app.UseSwaggerUI();
         }
 
-        app.UseHttpsRedirection();
+        // Let Traffic do this for us
+        //app.UseHttpsRedirection();
 
+        app.UseCors("AllowAvaloniaApp");
+        
         app.UseAuthorization();
         
         app.MapControllers();
@@ -198,7 +214,7 @@ public class Program
         {
             app.EnsureOllamaBackend();
         }
-
+        
         app.Run();
     }
 }
