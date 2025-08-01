@@ -51,7 +51,7 @@
         <SplitView IsPaneOpen="{Binding PanelOpen}"
                    DisplayMode="CompactInline"
                    PanePlacement="Left"
-                   CompactPaneLength="-1"
+                   CompactPaneLength="0"
                    RelativePanel.AlignTopWithPanel="True"
                    RelativePanel.AlignRightWithPanel="True"
                    RelativePanel.AlignLeftWithPanel="True"
