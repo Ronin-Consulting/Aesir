@@ -33,7 +33,7 @@ public partial class MainWindow : UrsaWindow
         if (OperatingSystem.IsLinux())
         {
             IsManagedResizerVisible = true;
-            ContentControl.Margin = new Thickness(0, 45, 0, 0);
+            ContentControl.Margin = new Thickness(0, 36, 0, 0);
         }
     }
     
