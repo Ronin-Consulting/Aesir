@@ -22,8 +22,8 @@ services:
     devices:
       - /dev/snd:/dev/snd
     group_add:
-      # export AUDIO_GID=$(getent group audio | cut -d: -f3) on host before running docker compose up
-      - ${AUDIO_GID}
+      # getent group audio | cut -d: -f3 on host before running docker compose up
+      - 29
     network_mode: host
     # Grant access to X11 - this is important for GUI apps
     security_opt:
