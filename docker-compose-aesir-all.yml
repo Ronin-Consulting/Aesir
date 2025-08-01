@@ -19,6 +19,7 @@ services:
       # PulseAudio socket and cookie for audio (adjusted for non-root user 'avalonia')
       - ${XDG_RUNTIME_DIR}/pulse/native:/run/pulse/native:ro
       - ~/.config/pulse/cookie:/home/avalonia/.config/pulse/cookie:ro
+      - /tmp/aesir_documents:/home/documents:rw
     devices:
       - /dev/snd:/dev/snd
     group_add:
