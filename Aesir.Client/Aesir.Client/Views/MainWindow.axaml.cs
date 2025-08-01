@@ -31,14 +31,7 @@ public partial class MainWindow : UrsaWindow
         
         if (OperatingSystem.IsLinux())
         {
-            ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.Default;
-            ExtendClientAreaToDecorationsHint = false;
-            
-            IsFullScreenButtonVisible = false;
-            IsManagedResizerVisible = false;
-            IsCloseButtonVisible = true;
-            IsMinimizeButtonVisible = false;
-            IsRestoreButtonVisible = false;
+            IsManagedResizerVisible = true;
         }
     }
     
