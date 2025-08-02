@@ -30,4 +30,10 @@ public interface IModelsService
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task UnloadVisionModelAsync();
+    
+    /// <summary>
+    /// Asynchronously unloads all models from the system.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task UnloadAllModelsAsync();
 }
