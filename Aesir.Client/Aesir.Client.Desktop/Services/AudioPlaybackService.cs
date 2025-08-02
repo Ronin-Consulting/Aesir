@@ -93,7 +93,6 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
         
         try
         {
-            
             _logger.LogInformation("Audio context initialized with sample rate {SampleRate} Hz and {Channels} channel(s)", SampleRate, Channels);
         }
         catch (Exception ex)
