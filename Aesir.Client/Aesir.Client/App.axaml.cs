@@ -102,7 +102,7 @@ public partial class App : Application
             return appState;
         });
         AppServices.AddSingleton<MainWindowViewModel>();
-        AppServices.AddSingleton<MainViewViewModel>();
+        AppServices.AddSingleton<ChatViewViewModel>();
         AppServices.AddSingleton<ChatHistoryViewModel>();
         AppServices.TryAddSingleton<ISpeechService,NoOpSpeechService>();
         AppServices.AddSingleton<IMarkdownService,MarkdigMarkdownService>();

@@ -26,14 +26,14 @@ public partial class MainWindowViewModel : ObservableRecipient, IRecipient<Navig
 
     /// <summary>
     /// Called when the MainWindowViewModel is activated. This method initializes the current view model
-    /// to the instance of MainViewViewModel retrieved from the dependency injection container
+    /// to the instance of ChatViewViewModel retrieved from the dependency injection container
     /// and sets its activation state to active.
     /// </summary>
     protected override void OnActivated()
     {
         base.OnActivated();
         
-        CurrentViewModel = Ioc.Default.GetService<MainViewViewModel>()!;
+        CurrentViewModel = Ioc.Default.GetService<ChatViewViewModel>()!;
         CurrentViewModel.IsActive = true;
     }
 
@@ -63,7 +63,7 @@ public partial class MainWindowViewModel : ObservableRecipient, IRecipient<Navig
         // Navigate to the requested view
         CurrentViewModel = viewName switch
         {
-            NavigationMessage.ViewType.Chat => Ioc.Default.GetService<MainViewViewModel>()!,
+            NavigationMessage.ViewType.Chat => Ioc.Default.GetService<ChatViewViewModel>()!,
             NavigationMessage.ViewType.Tools => Ioc.Default.GetService<ToolsViewViewModel>()!,
             NavigationMessage.ViewType.Agents => Ioc.Default.GetService<AgentsViewViewModel>()!,
             _ => CurrentViewModel

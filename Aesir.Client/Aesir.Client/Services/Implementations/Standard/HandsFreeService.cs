@@ -15,7 +15,7 @@ namespace Aesir.Client.Services.Implementations.Standard;
 /// <summary>
 /// Implementation of hands-free voice interaction service.
 /// Orchestrates speech recognition, chat completion, and text-to-speech in a continuous loop.
-/// Mimics the conversation pattern used by MainViewViewModel.
+/// Mimics the conversation pattern used by ChatViewViewModel.
 /// </summary>
 public class HandsFreeService : IHandsFreeService
 {
@@ -30,7 +30,7 @@ public class HandsFreeService : IHandsFreeService
     private CancellationTokenSource? _handsFreeToken;
     private Task? _processingTask;
 
-    // Conversation management - mimicking MainViewViewModel
+    // Conversation management - mimicking ChatViewViewModel
     private ObservableCollection<MessageViewModel?> _conversationMessages = new();
     private string? _selectedModelId;
 
@@ -176,7 +176,7 @@ public class HandsFreeService : IHandsFreeService
                 return;
             }
 
-            // Step 2: Process with chat completion (mimicking MainViewViewModel.SendMessageAsync)
+            // Step 2: Process with chat completion (mimicking ChatViewViewModel.SendMessageAsync)
             await ChangeStateAsync(HandsFreeState.Processing);
             var assistantResponse = await ProcessChatCompletion(userMessage, cancellationToken);
 
@@ -248,7 +248,7 @@ public class HandsFreeService : IHandsFreeService
 
     /// <summary>
     /// Processes user message through chat completion system.
-    /// Mimics the pattern from MainViewViewModel.SendMessageAsync.
+    /// Mimics the pattern from ChatViewViewModel.SendMessageAsync.
     /// </summary>
     private async Task<string> ProcessChatCompletion(string userMessage, CancellationToken cancellationToken)
     {
@@ -259,7 +259,7 @@ public class HandsFreeService : IHandsFreeService
                 throw new InvalidOperationException("No model selected");
             }
 
-            // Mimic MainViewViewModel.SendMessageAsync pattern:
+            // Mimic ChatViewViewModel.SendMessageAsync pattern:
             
             // 1. Add user message to conversation
             var userChatMessage = AesirChatMessage.NewUserMessage(userMessage);
@@ -291,7 +291,7 @@ public class HandsFreeService : IHandsFreeService
     }
 
     /// <summary>
-    /// Adds a message to the conversation, mimicking MainViewViewModel.AddMessageToConversationAsync.
+    /// Adds a message to the conversation, mimicking ChatViewViewModel.AddMessageToConversationAsync.
     /// </summary>
     private async Task AddMessageToConversationAsync(AesirChatMessage message)
     {

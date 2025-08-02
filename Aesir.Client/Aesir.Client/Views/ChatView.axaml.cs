@@ -6,11 +6,11 @@ using CommunityToolkit.Mvvm.DependencyInjection;
 
 namespace Aesir.Client.Views;
 
-public partial class MainView : UserControl
+public partial class ChatView : UserControl
 {
     private readonly ApplicationState _appState;
     
-    public MainView()
+    public ChatView()
     {
         InitializeComponent();
         
