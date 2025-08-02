@@ -1,4 +1,4 @@
-using Whisper.net.Ggml;
+//using Whisper.net.Ggml;
 
 namespace Aesir.Api.Server.Tests;
 
@@ -41,11 +41,11 @@ public class WhisperTests
         // }
     }
     
-    private static async Task DownloadModel(string fileName, GgmlType ggmlType)
+    private static async Task DownloadModel(string fileName)//, GgmlType ggmlType)
     {
-        Console.WriteLine($"Downloading Model {fileName}");
-        await using var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(ggmlType);
-        await using var fileWriter = File.OpenWrite(fileName);
-        await modelStream.CopyToAsync(fileWriter);
+        // Console.WriteLine($"Downloading Model {fileName}");
+        // await using var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(ggmlType);
+        // await using var fileWriter = File.OpenWrite(fileName);
+        // await modelStream.CopyToAsync(fileWriter);
     }
 }

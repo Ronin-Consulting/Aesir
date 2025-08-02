@@ -122,9 +122,10 @@ public abstract class BaseChatService(
         var messageToSave = AesirChatMessage.NewAssistantMessage("");
 
         var title = request.Title;
+        var titleTask = Task.FromResult(title);
         if (request.Conversation.Messages.Count == 2)
         {
-            title = await GetTitleForUserMessageAsync(request);
+            titleTask = GetTitleForUserMessageAsync(request);
         }
 
         // Handle initialization errors without try/catch around yield
@@ -144,12 +145,15 @@ public abstract class BaseChatService(
 
             initializationError = true;
             request.Conversation.Messages.Add(errorMessage);
+            title = await titleTask;
             await PersistChatSessionAsync(request, request.Conversation, title);
         }
 
         // Handle initialization errors outside the catch block
         if (initializationError)
         {
+            title = await titleTask;
+            
             yield return CreateErrorResult(completionId, request, errorMessage, title);
             yield break;
         }
@@ -157,6 +161,8 @@ public abstract class BaseChatService(
         // Process streaming results - only execute if no initialization error occurred
         if (streamingResults != null)
         {
+            title = await titleTask;
+            
             await foreach (var (content, isThinking, isComplete) in streamingResults)
             {
                 //_logger.LogDebug("Received streaming content: {Content}", content);

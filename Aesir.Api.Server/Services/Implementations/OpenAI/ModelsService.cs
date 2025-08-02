@@ -108,4 +108,10 @@ public class ModelsService(
         // no op
         return Task.CompletedTask;
     }
+
+    public Task UnloadAllModelsAsync()
+    {
+        // no op
+        return Task.CompletedTask;
+    }
 }

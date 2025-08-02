@@ -215,6 +215,15 @@ public class Program
             app.EnsureOllamaBackend();
         }
         
+        var modelsService = app.Services.GetRequiredService<IModelsService>();
+        var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+
+        appLifetime.ApplicationStopping.Register(() =>
+        {
+            modelsService.UnloadAllModelsAsync().Wait();
+        });
+
+        
         app.Run();
     }
 }
