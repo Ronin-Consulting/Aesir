@@ -24,14 +24,16 @@
 ## Core Features & Capabilities
 
 ### 🤖 **Dual AI Backend Support**
-- **Local Models (Ollama)**: Deploy AI models directly on your infrastructure (servers, edge devices, etc) for maximum security and cost control
-- **Cloud Services (OpenAI)**: Leverage cutting-edge cloud AI for peak performance when connectivity allows
+- **Local Models**: Deploy AI models directly on your infrastructure (servers, edge devices, etc) for maximum security and cost control
+- **Cloud Services**: Leverage cutting-edge cloud AI for peak performance when connectivity allows
 - **Seamless Switching**: Configure and switch between backends based on operational requirements via simple configuration changes
 - **Tested Models**: Pre-validated with high-performance models including:
-  - **Cogito:32b-v1-preview-qwen-q4_K_M** - Best non-reasoning model
-  - **Qwen3:32b-q4_K_M** - Best reasoning/thinking model
-  - **Gemma3:12b** - Vision model for image processing
-  - **mxbai-embed-large** and **nomic-embed-text** - Embedding models
+  - **Cogito** - Best non-reasoning model
+  - **Qwen3** - Best reasoning/thinking model
+  - **Gemma3** - Vision model for image processing
+  - **MxbAI** and **Nomic** - Embedding models
+  - **Piper** - Text-to-Speech models
+  - **SenseVoice** - Speech-to-Text models
 
 ### 📄 **Advanced Document Processing & RAG**
 - **Intelligent PDF Processing**: Extract text and images from complex documents with OCR capabilities using Aspose.PDF
@@ -45,7 +47,7 @@
 - **Business Professional Mode**: Tailored for corporate environments with business-focused prompts and terminology
 - **Military Operations Mode**: OPSEC-compliant assistance for mission-critical information processing
 - **Customizable Contexts**: Extensible prompt system for industry-specific adaptations
-- **Edge-Optimized**: Designed for performance on edge devices with sub-500 token response targets
+- **Edge-Optimized**: Designed for performance on edge devices
 
 ### 🖥️ **Cross-Platform Client Architecture**
 - **Desktop Application**: Native Avalonia-based client for Windows, macOS, and Linux
@@ -58,14 +60,19 @@
 - **Global Document Collections**: Organization-wide knowledge bases accessible across teams
 - **Conversation-Scoped Documents**: Context-specific document collections for focused discussions
 - **Real-Time Citations**: Automatic source linking with file and page references
-- **PostgreSQL with pgvector**: Robust data persistence with vector search capabilities
+- **PostgreSQL**: Robust data persistence
 
 ### 🎙️ **Voice & Speech Integration**
 - **Speech-to-Text (STT)**: Real-time voice recognition using ONNX models with SherpaOnnx
+  - Speaker diarization
+  - Speaker identification
+  - Speaker verification
+  - Spoken language identification
+  - Keyword spotting
 - **Text-to-Speech (TTS)**: Natural voice synthesis using VITS-Piper models
 - **Hands-Free Mode**: Complete voice-controlled interaction for operational environments
 - **SignalR Streaming**: Real-time audio processing with low-latency communication
-- **CUDA Support**: Hardware acceleration for improved performance on compatible systems
+- **CUDA & Metal Support**: Hardware acceleration for improved performance on compatible systems
 
 ---
 
@@ -80,13 +87,19 @@ AESIR™ is built on **Microsoft Semantic Kernel**, providing a sophisticated, p
 - **Prompt Engineering**: Handlebars-based template system for dynamic prompt generation
 - **Memory Management**: Sophisticated conversation and document memory systems
 - **Tool Integration**: Built-in web search, document search, and custom tool capabilities
+  - Easy customizable tool integrations for systems like:
+    - SAP
+    - Dynamics 365
+    - Salesforce
+    - Hubspot
+    - And more!
 
 ### **Backend Infrastructure**
 - **ASP.NET Core API**: Scalable, enterprise-ready web API with health checks and monitoring
 - **Microsoft Semantic Kernel**: Advanced AI orchestration and plugin architecture
 - **PostgreSQL with pgvector**: Robust data persistence with vector search capabilities
 - **Qdrant Vector Database**: High-performance semantic search and similarity matching
-- **Containerized Deployment**: Docker Compose orchestration with Traefik reverse proxy
+- **Containerized Deployment**: Offers flexible deployment options, ranging from the straightforward management of multi-container applications with Docker Compose to the robust orchestration capabilities of K3s and Kubernetes (K8s).
 - **SignalR Hubs**: Real-time communication for speech processing and live updates
 
 ### **AI Integration Layer**
@@ -121,7 +134,7 @@ AESIR™ is built on **Microsoft Semantic Kernel**, providing a sophisticated, p
 - **Audit Trail**: Complete citation and source tracking for compliance requirements
 
 ### **Deployment Flexibility**
-- **Container Orchestration**: Full Docker Compose stack for easy deployment
+- **Container Orchestration**: Facilitates seamless deployment and management leveraging Docker Compose stack for straightforward setups or the robust orchestration with K3s
 - **Hybrid Configurations**: Mix local and cloud AI based on security requirements
 - **SSL/TLS Ready**: Production-ready security with automatic certificate management
 - **Health Monitoring**: Built-in health checks and service dependency management
@@ -220,7 +233,7 @@ AESIR™ uses a dual-tier licensing model inspired by successful platforms like 
 ## Implementation & Deployment
 
 ### **Deployment Options**
-- **Full Container Stack**: Complete Docker Compose deployment with all dependencies
+- **Full Container Stack**: Complete Docker Compose deployment or K3s with all dependencies
 - **Hybrid Deployment**: Mix containerized services and native applications
 - **Development Environment**: Rapid setup for evaluation and customization
 - **Production Ready**: SSL/TLS termination, health monitoring, and automatic restarts
@@ -229,8 +242,8 @@ AESIR™ uses a dual-tier licensing model inspired by successful platforms like 
 ### **Integration Capabilities**
 - **RESTful API**: Standard HTTP endpoints for system integration
 - **Plugin Architecture**: Extensible AI kernel plugin system for custom functionality
-- **Database Flexibility**: PostgreSQL with vector extensions for any data format
-- **Authentication Ready**: Prepared for enterprise authentication integration
+- **Database Flexibility**: PostgreSQL for any data format
+- **Authentication Ready**: Easy IDP setup for enterprise authentication integration
 - **SignalR Support**: Real-time communication for live updates and voice processing
 
 ### **Support & Maintenance**
@@ -253,8 +266,8 @@ AESIR™ uses a dual-tier licensing model inspired by successful platforms like 
 6. **Voice Testing**: Evaluate hands-free capabilities in your operational environment
 
 ### **Technical Requirements**
-- **Minimum Hardware**: 8GB RAM, 4 CPU cores, 50GB storage
-- **Recommended Hardware**: 16GB+ RAM, 8+ CPU cores, 100GB+ storage
+- **Minimum Hardware**: 16GB RAM, 4 CPU cores, 50GB storage
+- **Recommended Hardware**: 100GB+ RAM, 8+ CPU cores, 1TB+ storage
 - **GPU Support**: Optional CUDA-compatible GPU for enhanced performance
 - **Operating Systems**: Windows, macOS, Linux (containerized deployment)
 - **Network**: Optional internet connectivity for cloud AI models
@@ -313,32 +326,3 @@ For more information about AESIR™ implementation, pricing, or technical specif
 *AESIR™: Transforming Data into Intelligent Conversations and Strategic Decisions.*
 
 **AESIR™ is a trademark of Ronin Consulting. Microsoft Semantic Kernel is a trademark of Microsoft Corporation.**
-
----
-
-## Appendix: Technical Specifications
-
-### **Supported AI Models**
-- **Chat Models**: Qwen3, Cogito, Gemma, GPT-4, GPT-4 Turbo
-- **Embedding Models**: mxbai-embed-large, nomic-embed-text, text-embedding-3-large
-- **Vision Models**: Gemma3:12b, GPT-4 Vision
-- **Speech Models**: VITS-Piper (TTS), SherpaOnnx (STT)
-
-### **Database Support**
-- **Primary**: PostgreSQL with pgvector extension
-- **Vector Store**: Qdrant for high-performance semantic search
-- **Document Storage**: File system with metadata tracking
-
-### **API Endpoints**
-- **Chat Completions**: `/api/chat/completions`
-- **Document Upload**: `/api/documents/upload`
-- **Search**: `/api/search`
-- **Health Check**: `/healthz`
-- **SignalR Hubs**: `/ttshub`, `/stthub`
-
-### **Container Images**
-- **API Server**: `aesir.api.server`
-- **Desktop Client**: `aesir-client-desktop`
-- **Database**: `pgvector/pgvector:pg16`
-- **Vector Store**: `qdrant/qdrant:latest`
-- **Reverse Proxy**: `traefik:latest`
