@@ -137,4 +137,16 @@ public class ModelsService(
             logger.LogWarning("Unload of vision model had error: {Error}", ex);
         }
     }
+    
+    /// <summary>
+    /// Asynchronously unloads all models from the system.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public async Task UnloadAllModelsAsync()
+    {
+        await UnloadChatModelAsync();
+        await UnloadEmbeddingModelAsync();
+        await UnloadVisionModelAsync();
+    }
+
 }

@@ -29,6 +29,18 @@ public class SttService : ISttService
     {
         _logger = logger;
 
+        if (string.IsNullOrEmpty(modelPath))
+        {
+            throw new ArgumentNullException(nameof(modelPath), "Model path cannot be null or empty");
+        }
+
+        if (!File.Exists(modelPath))
+        {
+            throw new FileNotFoundException($"Model file not found at path: {modelPath}");
+        }
+        
+        _logger.LogInformation("Initializing TTS engine with model: {ModelPath}", modelPath);
+        
         var config = new OnlineRecognizerConfig
         {
             FeatConfig = new FeatureConfig

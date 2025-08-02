@@ -36,6 +36,18 @@ public partial class TtsService : ITtsService
     {
         _logger = logger;
 
+        if (string.IsNullOrEmpty(modelPath))
+        {
+            throw new ArgumentNullException(nameof(modelPath), "Model path cannot be null or empty");
+        }
+
+        if (!File.Exists(modelPath))
+        {
+            throw new FileNotFoundException($"Model file not found at path: {modelPath}");
+        }
+        
+        _logger.LogInformation("Initializing TTS engine with model: {ModelPath}", modelPath);
+
         // C API Setup
         // config.model.vits.model = "vits-piper-en_US-joe-medium/en_US-joe-medium.onnx";
         // config.model.vits.tokens = "vits-piper-en_US-joe-medium/tokens.txt";
@@ -56,6 +68,7 @@ public partial class TtsService : ITtsService
                     DataDir = Path.Combine(
                         Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(), "espeak-ng-data")
                 },
+                Debug = 1,
                 NumThreads = 4,
                 Provider = useCuda ? "cuda" : "cpu"
             }
