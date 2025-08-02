@@ -26,7 +26,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// Used to control the size of the result set returned by search operations, ensuring efficient
     /// performance and relevance by limiting outcomes to a specific count.
     /// </remarks>
-    private const int TopResults = 25;
+    private const int TopResults = 8;
 
     /// <summary>
     /// Encapsulates a vector-based semantic search engine specifically designed for conversation document data management.
