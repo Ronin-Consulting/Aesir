@@ -275,8 +275,8 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             Description = "Analyzes an image to classify it as 'document' or 'non-document', transcribing text if a document or providing a detailed description otherwise.",
             Parameters = [
                 new KernelParameterMetadata("query") { Description = "The name of the image file to process.", ParameterType = typeof(string), IsRequired = true },
-                new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 25).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 25 },
-                new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
+                // new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 25).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 25 },
+                // new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
             ],
             ReturnParameter = new KernelReturnParameterMetadata { ParameterType = typeof(KernelSearchResults<TextSearchResult>), Description = "A collection of search results, where each TextSearchResult contains properties like Name, Value, and Link."  },
         };
@@ -329,11 +329,11 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             var functionOptions = new KernelFunctionFromMethodOptions()
             {
                 FunctionName = "PerformHybridDocumentSearch",
-                Description = "Executes a hybrid search combining exact keyword matching with semantic relevance for the given query. Returns a collection of results, each including a name (e.g., title or identifier), value (e.g., snippet or full content), and link (e.g., URI or reference) for the matched items. Use 'count' to limit results and 'skip' for pagination.",
+                Description = "Executes a hybrid search combining exact keyword matching with semantic relevance for the given query. Returns a collection of results, each including a name (e.g., title or identifier), value (e.g., snippet or full content), and link (e.g., URI or reference) for the matched items.",
                 Parameters = [
                     new KernelParameterMetadata("query") { Description = "The search query string, supporting keywords, phrases, or natural language input for hybrid matching.", ParameterType = typeof(string), IsRequired = true },
-                    new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 25).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 25 },
-                    new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
+                    // new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 25).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 25 },
+                    // new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
                 ],
                 ReturnParameter = new KernelReturnParameterMetadata { ParameterType = typeof(KernelSearchResults<TextSearchResult>), Description = "A collection of search results, where each TextSearchResult contains properties like Name, Value, and Link." },
             };
@@ -356,11 +356,11 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             var semanticSearchResultsFunctionOptions = new KernelFunctionFromMethodOptions()
             {
                 FunctionName = "PerformSemanticDocumentSearch",
-                Description = "Executes a semantic search for the given query. Returns a collection of results, each including a name (e.g., title or identifier), value (e.g., snippet or full content), and link (e.g., URI or reference) for the matched items. Use 'count' to limit results and 'skip' for pagination.",
+                Description = "Executes a semantic search for the given query. Returns a collection of results, each including a name (e.g., title or identifier), value (e.g., snippet or full content), and link (e.g., URI or reference) for the matched items.",
                 Parameters = [
                     new KernelParameterMetadata("query") { Description = "The search query string, supporting keywords, phrases, or natural language input for semantic matching.", ParameterType = typeof(string), IsRequired = true },
-                    new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 25).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 25 },
-                    new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
+                    // new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 25).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 25 },
+                    // new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
                 ],
                 ReturnParameter = new KernelReturnParameterMetadata { ParameterType = typeof(KernelSearchResults<TextSearchResult>), Description = "A collection of search results, where each TextSearchResult contains properties like Name, Value, and Link."  },
             };
