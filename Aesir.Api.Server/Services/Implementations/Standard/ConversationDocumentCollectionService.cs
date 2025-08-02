@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Models;
 using Microsoft.Extensions.VectorData;
@@ -26,7 +27,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// Used to control the size of the result set returned by search operations, ensuring efficient
     /// performance and relevance by limiting outcomes to a specific count.
     /// </remarks>
-    private const int TopResults = 8;
+    private const int TopResults = 25;
 
     /// <summary>
     /// Encapsulates a vector-based semantic search engine specifically designed for conversation document data management.
@@ -301,6 +302,33 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
                     return [];
                 }
                 
+                // NOTE: how to process the files parameter if we wanted to
+                // var files = new List<string>();
+                // arguments.TryGetValue("files", out var filesValue);
+                // if (filesValue is JsonElement jsonElement)
+                // {
+                //     files = jsonElement.EnumerateArray().Select(x => x.GetString()).ToList()!;
+                // }
+                //
+                // // if only a single file then determine if we can just load all of its text
+                // if (files.Count == 1)
+                // {
+                //     var found = await _vectorStoreRecordCollection.GetAsync(filter: data => data.ConversationId == conversationId,
+                //         int.MaxValue, cancellationToken: cancellationToken).ToListAsync(cancellationToken).ConfigureAwait(false);
+                //     
+                //     // for now total up the tokens.. if less than 16K then return results
+                //     if (found.Sum(r => r.TokenCount) <= 16384)
+                //     {
+                //         return found.OrderBy(r => r.CreatedAt).Select(r =>
+                //             new TextSearchResult(r.Text!)
+                //             {
+                //                 Link = r.ReferenceLink,
+                //                 Name = r.ReferenceDescription
+                //             }
+                //         );
+                //     }
+                // }
+
                 var searchOptions = new HybridSearchOptions<AesirConversationDocumentTextData<Guid>>
                 {
                     Filter = data => data.ConversationId == conversationId,
@@ -317,7 +345,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
                     cancellationToken
                 ).ToListAsync(cancellationToken).ConfigureAwait(false);
                 
-                return results.Select(r =>
+                return results.Where(r => r.Score >= 0.5f).Select(r =>
                     new TextSearchResult(r.Record.Text!)
                     {
                         Link = r.Record.ReferenceLink,
@@ -329,9 +357,10 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             var functionOptions = new KernelFunctionFromMethodOptions()
             {
                 FunctionName = "PerformHybridDocumentSearch",
-                Description = "Executes a hybrid search combining exact keyword matching with semantic relevance for the given query. Returns a collection of results, each including a name (e.g., title or identifier), value (e.g., snippet or full content), and link (e.g., URI or reference) for the matched items.",
+                Description = "Perform a search for content related to the specified query. The search will return the name, value and link for the related content.",
                 Parameters = [
                     new KernelParameterMetadata("query") { Description = "The search query string, supporting keywords, phrases, or natural language input for hybrid matching.", ParameterType = typeof(string), IsRequired = true },
+                    new KernelParameterMetadata("files") { Description = "The files to search.", ParameterType = typeof(string[]), IsRequired = true },
                     // new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 25).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 25 },
                     // new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
                 ],
@@ -356,9 +385,10 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             var semanticSearchResultsFunctionOptions = new KernelFunctionFromMethodOptions()
             {
                 FunctionName = "PerformSemanticDocumentSearch",
-                Description = "Executes a semantic search for the given query. Returns a collection of results, each including a name (e.g., title or identifier), value (e.g., snippet or full content), and link (e.g., URI or reference) for the matched items.",
+                Description = "Perform a search for content related to the specified query. The search will return the name, value and link for the related content.",
                 Parameters = [
                     new KernelParameterMetadata("query") { Description = "The search query string, supporting keywords, phrases, or natural language input for semantic matching.", ParameterType = typeof(string), IsRequired = true },
+                    new KernelParameterMetadata("files") { Description = "The files to search.", ParameterType = typeof(string[]), IsRequired = true },
                     // new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 25).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 25 },
                     // new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
                 ],

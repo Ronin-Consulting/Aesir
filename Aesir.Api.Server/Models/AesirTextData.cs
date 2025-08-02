@@ -50,6 +50,9 @@ public class AesirTextData<TKey>
     /// </summary>
     [VectorStoreData(StorageName = "token_count")]
     public int? TokenCount { get; set; }
+    
+    [VectorStoreData(StorageName = "created_at", IsIndexed = true)]
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 /// <summary>
