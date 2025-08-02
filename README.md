@@ -59,6 +59,10 @@
   - [ ] Register
   - [ ] Logout
 - [ ] Works in web browser
+- [ ] Optimize Backend
+  - [ ] Custom tuned llama.cpp 
+    - X86,Apple Silicon and ARM64
+    - CUDA, Metal and Onnx
 
 ## Supported AI Backends
 
