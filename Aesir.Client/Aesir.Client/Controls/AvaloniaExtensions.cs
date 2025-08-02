@@ -5,6 +5,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input.Platform;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Ursa.Controls;
 
 namespace Aesir.Client.Controls;
 
@@ -70,6 +71,17 @@ public static class AvaloniaExtensions
         };
 
         return window;
+    }
+    
+    public static UrsaView WithViewModel(this UrsaView view, ObservableRecipient? viewModel)
+    {
+        if (viewModel == null) throw new InvalidOperationException();
+        
+        view.DataContext = viewModel;
+        
+        viewModel.IsActive = true;
+
+        return view;
     }
 
     /// <summary>

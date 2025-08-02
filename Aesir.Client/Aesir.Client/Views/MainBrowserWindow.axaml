@@ -1,0 +1,16 @@
+<u:UrsaView xmlns="https://github.com/avaloniaui"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+            xmlns:u="https://irihi.tech/ursa"
+            xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+            mc:Ignorable="d"
+            x:Class="Aesir.Client.Views.MainBrowserWindow"
+            x:DataType="vm:MainWindowViewModel">   
+    <u:UrsaWindow.RightContent>
+    </u:UrsaWindow.RightContent>
+    <u:UrsaWindow.LeftContent>
+    </u:UrsaWindow.LeftContent>
+        
+    <ContentControl Name="ContentControl" Margin="0 0 0 0" Content="{Binding CurrentViewModel}"></ContentControl>
+</u:UrsaView>

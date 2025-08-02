@@ -29,7 +29,7 @@ public partial class MainWindowViewModel : ObservableRecipient, IRecipient<Navig
     /// to the instance of MainViewViewModel retrieved from the dependency injection container
     /// and sets its activation state to active.
     /// </summary>
-    protected override async void OnActivated()
+    protected override void OnActivated()
     {
         base.OnActivated();
         

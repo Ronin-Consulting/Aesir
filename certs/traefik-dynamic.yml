@@ -1,0 +1,9 @@
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/aesir.localhost.crt
+        keyFile: /certs/aesir.localhost.key
+  certificates:
+    - certFile: /certs/aesir.localhost.crt
+      keyFile: /certs/aesir.localhost.key
