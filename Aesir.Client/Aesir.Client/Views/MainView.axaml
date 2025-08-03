@@ -96,16 +96,19 @@
                     <Border BorderThickness="0,1,0,0" DockPanel.Dock="Bottom">
                         <DockPanel Margin="10">
                             <DockPanel DockPanel.Dock="Bottom">
-                                <Button Classes="Tertiary" DockPanel.Dock="Left" Margin="0,0,6,0"
+                                <Button Classes="Primary" DockPanel.Dock="Left" Margin="0,0,6,0"
                                         Theme="{DynamicResource OutlineButton}"
                                         Command="{Binding ShowFileSelectionCommand}"
                                         IsEnabled="{Binding SelectedFileEnabled}"
+                                        ToolTip.Tip="Attach File"
                                 >
                                     <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="20" />
                                 </Button>
                                 <Button Name="SendMessageButton" IsVisible="{Binding HasChatMessage}"
                                         DockPanel.Dock="Right" Margin="6,0,0,0"
-                                        Theme="{DynamicResource OutlineButton}" Command="{Binding SendMessageCommand}">
+                                        Theme="{DynamicResource OutlineButton}" Command="{Binding SendMessageCommand}"
+                                        ToolTip.Tip="Send"
+                                        >
                                     <avalonia:MaterialIcon Kind="Send" Width="20" Height="20" />
                                 </Button>
                                 <controls:CustomTextBox
@@ -120,22 +123,19 @@
                                     <controls:CustomTextBox.InnerLeftContent>
                                     </controls:CustomTextBox.InnerLeftContent>
                                     <controls:CustomTextBox.InnerRightContent>
-                                        <Button Classes="Small" Classes.Primary="{Binding MicOn}"
-                                                Classes.Tertiary="{Binding !MicOn}"
+                                        <Button Classes="Small Primary"
                                                 Padding="0"
                                                 Margin="0"
                                                 Theme="{DynamicResource BorderlessButton}"
-                                                Command="{Binding ToggleMicrophone}">
+                                                Command="{Binding ToggleMicrophone}"
+                                                ToolTip.Tip="Hands Free Mode"
+                                                >
                                             <Panel>
                                                 <avalonia:MaterialIcon
                                                     IsVisible="{Binding MicOn, Converter={x:Static BoolConverters.Not}}"
                                                     HorizontalAlignment="Center"
                                                     VerticalAlignment="Center"
-                                                    Kind="MicrophoneOff" Width="20" Height="20" />
-                                                <avalonia:MaterialIcon IsVisible="{Binding MicOn}"
-                                                                       HorizontalAlignment="Center"
-                                                                       VerticalAlignment="Center"
-                                                                       Kind="Microphone" Width="20" Height="20" />
+                                                    Kind="Waveform" Width="20" Height="20" />
                                             </Panel>
                                         </Button>
                                     </controls:CustomTextBox.InnerRightContent>
