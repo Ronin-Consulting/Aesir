@@ -7,4 +7,6 @@ public interface INavigationService
     void NavigateToTools();
     
     void NavigateToAgents();
+
+    void NavigateToHandsFree();
 }

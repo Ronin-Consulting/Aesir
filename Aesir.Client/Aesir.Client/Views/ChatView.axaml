@@ -127,12 +127,11 @@
                                                 Padding="0"
                                                 Margin="0"
                                                 Theme="{DynamicResource BorderlessButton}"
-                                                Command="{Binding ToggleMicrophone}"
+                                                Command="{Binding ShowHandsFree}"
                                                 ToolTip.Tip="Hands Free Mode"
                                                 >
                                             <Panel>
                                                 <avalonia:MaterialIcon
-                                                    IsVisible="{Binding MicOn, Converter={x:Static BoolConverters.Not}}"
                                                     HorizontalAlignment="Center"
                                                     VerticalAlignment="Center"
                                                     Kind="Waveform" Width="20" Height="20" />

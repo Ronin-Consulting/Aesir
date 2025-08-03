@@ -12,7 +12,8 @@ public partial class AssistantMessage : UserControl
     {
         InitializeComponent();
         MessageHtmlLabel.LinkClicked += HtmlLabel_OnLinkClicked;
-
+        ThoughtsHtmlLabel.LinkClicked += HtmlLabel_OnLinkClicked;
+        
         MessagePanel.PointerEntered += OnPointerEntered;
         MessagePanel.PointerCaptureLost += OnPointerCaptureLost;
         MessagePanel.PointerExited += OnPointerExited;

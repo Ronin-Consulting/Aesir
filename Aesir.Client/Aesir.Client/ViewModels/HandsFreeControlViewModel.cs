@@ -13,9 +13,9 @@ namespace Aesir.Client.ViewModels;
 /// ViewModel for the HandsFreeControl.
 /// Manages the state, animations, and user interactions for hands-free voice mode.
 /// </summary>
-public partial class HandsFreeViewModel : ObservableRecipient, IDisposable
+public partial class HandsFreeControlViewModel : ObservableRecipient, IDisposable
 {
-    private readonly ILogger<HandsFreeViewModel> _logger;
+    private readonly ILogger<HandsFreeControlViewModel> _logger;
     private readonly IHandsFreeService _handsFreeService;
 
     [ObservableProperty] private string _stateText = "Ready";
@@ -29,14 +29,9 @@ public partial class HandsFreeViewModel : ObservableRecipient, IDisposable
     
     public ICommand ToggleHandsFreeCommand { get; }
     public ICommand ShowSettingsCommand { get; }
-
-    public HandsFreeViewModel()
-    {
-        
-    }
-
-    public HandsFreeViewModel(
-        ILogger<HandsFreeViewModel> logger,
+    
+    public HandsFreeControlViewModel(
+        ILogger<HandsFreeControlViewModel> logger,
         IHandsFreeService handsFreeService)
     {
         _logger = logger;
@@ -48,6 +43,11 @@ public partial class HandsFreeViewModel : ObservableRecipient, IDisposable
         // Subscribe to hands-free service events
         _handsFreeService.StateChanged += OnHandsFreeStateChanged;
         _handsFreeService.AudioLevelChanged += OnAudioLevelChanged;
+    }
+
+    protected override async void OnActivated()
+    {
+        //await ToggleHandsFreeAsync();
     }
 
     /// <summary>

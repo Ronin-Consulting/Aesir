@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:Aesir.Client.Controls"
+             mc:Ignorable="d" d:DesignWidth="340" d:DesignHeight="340"
+             x:Class="Aesir.Client.Controls.AssistantAvatarUserControl"
+    >
+    <ContentControl Width="340" Height="340" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <StackPanel>
+            <Image Name="AvatarImage">
+                <Image.Source>
+                    <SvgImage Invalidated="SvgImage_OnInvalidated" 
+                              Source="/Assets/assistant-colorable.svg" 
+                              Css="{Binding $parent[controls:AssistantAvatarUserControl].SvgCss}" />
+                </Image.Source>
+            </Image>
+            <TextBlock Foreground="Gray"
+                       Text="{Binding $parent[controls:AssistantAvatarUserControl].StateText}"
+                       HorizontalAlignment="Center"
+                       Margin="0,10,0,5"
+                       FontSize="14"
+                       FontWeight="Medium"
+            />
+        </StackPanel>
+    </ContentControl>
+</UserControl>

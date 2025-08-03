@@ -115,6 +115,7 @@ public partial class App : Application
         AppServices.AddSingleton<INavigationService, NavigationService>();
         AppServices.AddSingleton<INotificationService, NotificationService>();
         AppServices.AddSingleton<IConfigurationService, ConfigurationService>();
+        AppServices.AddSingleton<IHandsFreeService, HandsFreeService>();
         
         AppServices.AddTransient<SystemMessageViewModel>();
         AppServices.AddTransient<UserMessageViewModel>();
@@ -124,6 +125,7 @@ public partial class App : Application
         AppServices.AddTransient<SplashViewModel>();
         AppServices.AddTransient<ToolsViewViewModel>();
         AppServices.AddTransient<AgentsViewViewModel>();
+        AppServices.AddTransient<HandsFreeControlViewModel>();
         
         var delay = Backoff.DecorrelatedJitterBackoffV2(
             medianFirstRetryDelay: TimeSpan.FromSeconds(1), retryCount: 5, fastFirst: true);

@@ -66,6 +66,7 @@ public partial class MainWindowViewModel : ObservableRecipient, IRecipient<Navig
             NavigationMessage.ViewType.Chat => Ioc.Default.GetService<ChatViewViewModel>()!,
             NavigationMessage.ViewType.Tools => Ioc.Default.GetService<ToolsViewViewModel>()!,
             NavigationMessage.ViewType.Agents => Ioc.Default.GetService<AgentsViewViewModel>()!,
+            NavigationMessage.ViewType.HandsFree => Ioc.Default.GetService<HandsFreeControlViewModel>()!,
             _ => CurrentViewModel
         };
 

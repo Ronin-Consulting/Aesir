@@ -1,8 +1,4 @@
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
 using Ursa.Controls;
-using WindowNotificationManager = Avalonia.Controls.Notifications.WindowNotificationManager;
 
 namespace Aesir.Client.Views;
 
