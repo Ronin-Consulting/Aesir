@@ -1,0 +1,33 @@
+volumes:
+  dbdata:
+  letsencryptdata:
+  qdrant_storage:
+
+services:
+  aesir-api:
+    labels:
+      - "traefik.http.routers.aesir.rule=Host(`mydomain.com`)"
+      - "traefik.http.routers.aesir.tls.certresolver=letsencryptresolver"
+  reverse-proxy:
+    command:
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker=true"
+      - "--providers.file.filename="
+      - "--providers.file.watch="
+      - "--api.debug=true"
+      - "--api.insecure=true"
+      - "--log.level=DEBUG"
+      - "--accesslog=true"
+      - "--certificatesresolvers.letsencryptresolver.acme.email=email@mydomain.com"
+      - "--certificatesresolvers.letsencryptresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge.entrypoint=web"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - letsencryptdata:/letsencrypt
+
+  qdrant:
+    labels:
+      - "traefik.http.routers.qdrant.tls.certresolver=letsencryptresolver"

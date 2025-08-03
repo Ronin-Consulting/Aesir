@@ -209,11 +209,11 @@ public partial class ChatHistoryViewModel(
     /// to update the chat history asynchronously when certain conditions are met.
     /// <param name="message">
     /// The PropertyChangedMessage<bool> instance containing details about the property change.
-    /// Expected to provide information about the property 'SendingChatOrProcessingFile' from MainViewViewModel.
+    /// Expected to provide information about the property 'SendingChatOrProcessingFile' from ChatViewViewModel.
     /// </param>
     public void Receive(PropertyChangedMessage<bool> message)
     {
-        if(message is { PropertyName: nameof(MainViewViewModel.SendingChatOrProcessingFile), NewValue: false })
+        if(message is { PropertyName: nameof(ChatViewViewModel.SendingChatOrProcessingFile), NewValue: false })
         {
             Dispatcher.UIThread.InvokeAsync(LoadChatHistoryAsync);
         }

@@ -54,7 +54,7 @@ public class AgentsViewViewModel : ObservableRecipient
 
     /// <summary>
     /// Represents the logger instance used for capturing and recording log messages
-    /// within the context of the MainViewViewModel class. This includes logging
+    /// within the context of the ChatViewViewModel class. This includes logging
     /// errors, warnings, and informational messages during the execution of
     /// various operations such as handling chat functionality, toggling features,
     /// or reporting application states.

@@ -15,7 +15,7 @@ namespace Aesir.Client.Services.Implementations.Standard;
 /// searching within chat sessions, and modifying or deleting individual chat sessions.
 /// </summary>
 public class ChatHistoryService(
-    ILogger<ChatService> logger,
+    ILogger<ChatHistoryService> logger,
     IConfiguration configuration,
     IFlurlClientCache flurlClientCache)
     : IChatHistoryService

@@ -30,7 +30,7 @@ namespace Aesir.Client.ViewModels;
 /// and command execution. It facilitates operations such as chat management, speech processing, file uploads,
 /// and lifecycle management while integrating with other services and view models.
 /// </remarks>
-public partial class MainViewViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>,
+public partial class ChatViewViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>,
     IRecipient<FileUploadStatusMessage>, IRecipient<RegenerateMessageMessage>, IDisposable
 {
     /// <summary>
@@ -51,7 +51,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     /// <summary>
     /// Represents the state of the panel within the main view.
     /// When true, the panel is open; when false, it is closed.
-    /// Used to control the visibility or expanded state of the panel in the MainViewViewModel.
+    /// Used to control the visibility or expanded state of the panel in the ChatViewViewModel.
     /// </summary>
     [ObservableProperty] private bool _panelOpen;
 
@@ -92,7 +92,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     private string? _selectedModelId = DefaultModelIdValue;
 
     /// <summary>
-    /// Represents the currently selected file in the MainViewViewModel.
+    /// Represents the currently selected file in the ChatViewViewModel.
     /// This property is used to handle and track the file selection state
     /// within the application's user interface and functionality.
     /// </summary>
@@ -219,12 +219,12 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
 
     /// <summary>
     /// Represents the logger instance used for capturing and recording log messages
-    /// within the context of the MainViewViewModel class. This includes logging
+    /// within the context of the ChatViewViewModel class. This includes logging
     /// errors, warnings, and informational messages during the execution of
     /// various operations such as handling chat functionality, toggling features,
     /// or reporting application states.
     /// </summary>
-    private readonly ILogger<MainViewViewModel> _logger;
+    private readonly ILogger<ChatViewViewModel> _logger;
 
     /// <summary>
     /// 
@@ -234,11 +234,11 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
     /// Represents the view model for the main view in the application.
     /// Handles core application state and provides commands for toggling chat history, starting a new chat, and controlling the microphone.
     /// Integrates services for speech recognition, chat session management, and file upload interactions.
-    public MainViewViewModel(
+    public ChatViewViewModel(
         ApplicationState appState,
         ISpeechService speechService,
         IChatSessionManager chatSessionManager,
-        ILogger<MainViewViewModel> logger,
+        ILogger<ChatViewViewModel> logger,
         FileToUploadViewModel fileToUploadViewModel,
         INavigationService navigationService)
     {
@@ -815,7 +815,7 @@ public partial class MainViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
-    /// Releases all resources used by the instance of MainViewViewModel.
+    /// Releases all resources used by the instance of ChatViewViewModel.
     /// This method ensures proper cleanup of managed resources, explicitly
     /// invoking the disposal process to free memory or other resources.
     /// Invokes the Dispose(bool) method and suppresses finalization to

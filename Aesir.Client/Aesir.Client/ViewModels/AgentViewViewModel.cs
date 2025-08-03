@@ -110,22 +110,16 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
         }
         
         // TODO actually load - sources will determine the models
-        AvailableChatModels = new ObservableCollection<string>()
-        {
-            "gpt-4.1-2025-04-14",
-            "qwen3:32b-q4_K_M",
-            "cogito:32b-v1-preview-qwen-q4_K_M"
-        };
-        AvailableEmbeddingModels = new ObservableCollection<string>()
-        {
-            "text-embedding-3-large",
-            "mxbai-embed-large:latest"
-        };
-        AvailableVisionModels = new ObservableCollection<string>()
-        {
-            "gpt-4.1-2025-04-14",
-            "gemma3:12b"
-        };
+        AvailableChatModels.Clear();
+        AvailableChatModels.Add("gpt-4.1-2025-04-14");
+        AvailableChatModels.Add("qwen3:32b-q4_K_M");
+        AvailableChatModels.Add("cogito:32b-v1-preview-qwen-q4_K_M");
+        AvailableEmbeddingModels.Clear();
+        AvailableEmbeddingModels.Add("text-embedding-3-large");
+        AvailableEmbeddingModels.Add("mxbai-embed-large:latest");
+        AvailableVisionModels.Clear();
+        AvailableVisionModels.Add("gpt-4.1-2025-04-14");
+        AvailableVisionModels.Add("gemma3:12b");
     }
 
     private void ExecuteSaveCommand()

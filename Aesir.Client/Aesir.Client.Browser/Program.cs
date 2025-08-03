@@ -34,8 +34,11 @@ internal sealed partial class Program
         LoadAppSettings();
         
         // register services that are platform specific
-        App.AddService(services => 
-            services.AddSingleton<ISpeechService, BrowserSpeechService>()
+        App.AddService(services =>
+            {
+                services.AddSingleton<ISpeechService, BrowserSpeechService>();
+                services.AddTransient<IPdfViewerService, PdfViewerService>();
+            }
         );
         
         //Trace.Listeners.Add(new ConsoleTraceListener());

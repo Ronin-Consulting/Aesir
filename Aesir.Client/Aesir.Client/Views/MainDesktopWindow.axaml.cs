@@ -7,11 +7,11 @@ using Ursa.Controls;
 
 namespace Aesir.Client.Views;
 
-public partial class MainWindow : UrsaWindow
+public partial class MainDesktopWindow : UrsaWindow
 {
     public WindowNotificationManager? NotificationManager { get; set; }
     
-    public MainWindow()
+    public MainDesktopWindow()
     {
         InitializeComponent();
         

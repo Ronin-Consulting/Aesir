@@ -43,7 +43,7 @@ public partial class App : Application
                 var designServiceProvider = ConfigureDesignServices(this);
                 
                 var designModel = designServiceProvider.GetService<MainWindowViewModel>();
-                designDesktop.MainWindow = new MainWindow().WithViewModel(designModel);
+                designDesktop.MainWindow = new MainDesktopWindow().WithViewModel(designModel);
             }
         
             base.OnFrameworkInitializationCompleted();
@@ -63,9 +63,9 @@ public partial class App : Application
         {
             try
             {
-                var mainViewViewModel = serviceProvider.GetService<MainViewViewModel>();
+                var mainViewViewModel = serviceProvider.GetService<MainWindowViewModel>();
 
-                singleViewPlatform.MainView = new MainView().WithViewModel(mainViewViewModel!);
+                singleViewPlatform.MainView = new MainBrowserWindow().WithViewModel(mainViewViewModel!);
             }
             catch (Exception ex)
             {
@@ -102,7 +102,7 @@ public partial class App : Application
             return appState;
         });
         AppServices.AddSingleton<MainWindowViewModel>();
-        AppServices.AddSingleton<MainViewViewModel>();
+        AppServices.AddSingleton<ChatViewViewModel>();
         AppServices.AddSingleton<ChatHistoryViewModel>();
         AppServices.TryAddSingleton<ISpeechService,NoOpSpeechService>();
         AppServices.AddSingleton<IMarkdownService,MarkdigMarkdownService>();

@@ -9,8 +9,8 @@
     xmlns:controls="clr-namespace:Aesir.Client.Controls"
     xmlns:sys="clr-namespace:System;assembly=System.Runtime"
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-    x:Class="Aesir.Client.Views.MainView"
-    x:DataType="vm:MainViewViewModel">
+    x:Class="Aesir.Client.Views.ChatView"
+    x:DataType="vm:ChatViewViewModel">
     <UserControl.Styles>
         <Style Selector="FlyoutPresenter.modelSelection">
             <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}" />
