@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using System.IO;
 using System.Threading.Tasks;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using Material.Icons;
@@ -34,12 +35,6 @@ public partial class FileToUploadViewModel(
     private const string DefaultFileName = "No File";
 
     /// <summary>
-    /// Represents the default value for the file path in the <see cref="FileToUploadViewModel"/>.
-    /// This constant is used as an initial placeholder or when the file path needs to be reset.
-    /// </summary>
-    private const string DefaultFilePath = "No Path";
-
-    /// <summary>
     /// Indicates whether the file upload view is currently visible or not.
     /// </summary>
     [ObservableProperty]
@@ -57,13 +52,6 @@ public partial class FileToUploadViewModel(
     /// </summary>
     [ObservableProperty]
     private string _fileName = DefaultFileName;
-
-    /// <summary>
-    /// Stores the file path of the file to be uploaded.
-    /// Initialized with a default value indicating that no path is set.
-    /// </summary>
-    [ObservableProperty]
-    private string _filePath = DefaultFilePath;
 
     [ObservableProperty] 
     private MaterialIconKind _iconKind = MaterialIconKind.FileDocument;
@@ -83,14 +71,13 @@ public partial class FileToUploadViewModel(
         _conversationId = conversationId;
     }
 
-    /// Sets the file information based on the specified file path.
-    /// <param name="filePath">The full path of the file to be set.</param>
-    public void SetFileInfo(string filePath)
+    /// Sets the file information based on the specified file.
+    /// <param name="file">The file to be set.</param>
+    public void SetFileInfo(IStorageFile file)
     {
-        FileName = Path.GetFileName(filePath);
-        FilePath = filePath;
+        FileName = file.Name;
         
-        if (Path.GetExtension(filePath).Equals(".png", StringComparison.OrdinalIgnoreCase))
+        if (Path.GetExtension(FileName).Equals(".png", StringComparison.OrdinalIgnoreCase))
         {
             IconKind = MaterialIconKind.FileImage;
         }
@@ -127,14 +114,13 @@ public partial class FileToUploadViewModel(
                 WeakReferenceMessenger.Default.Send(new FileUploadCanceledMessage()
                 {
                     ConversationId = _conversationId,
-                    FilePath = FilePath
+                    FileName = FileName
                 });
 
                 await documentCollectionService.DeleteUploadedConversationFileAsync(FileName, _conversationId!);
                 
                 IsProcessingFile = false;
                 IsVisible = false;
-                FilePath = DefaultFilePath;
                 FileName = DefaultFileName;
             }
         );
@@ -146,7 +132,6 @@ public partial class FileToUploadViewModel(
     {
         IsProcessingFile = false;
         IsVisible = false;
-        FilePath = DefaultFilePath;
         FileName = DefaultFileName;
     }
 
@@ -161,27 +146,27 @@ public partial class FileToUploadViewModel(
         
         Dispatcher.UIThread.InvokeAsync(async () =>
         {
-            SetFileInfo(message.FilePath);
+            SetFileInfo(message.File);
             ToggleProcessingFile();
             ToggleVisible();
             
             WeakReferenceMessenger.Default.Send(new FileUploadStatusMessage()
             {
                 ConversationId = _conversationId,
-                FilePath = message.FilePath,
+                FileName = message.File.Name,
                 IsProcessing = true
             });
 
             try
             {
-                await documentCollectionService.UploadConversationFileAsync(message.FilePath, _conversationId!);
+                await documentCollectionService.UploadConversationFileAsync(message.File, _conversationId!);
                 
                 ToggleProcessingFile();
                 
                 WeakReferenceMessenger.Default.Send(new FileUploadStatusMessage()
                 {
                     ConversationId = _conversationId,
-                    FilePath = message.FilePath,
+                    FileName = message.File.Name,
                     IsProcessing = false,
                     IsSuccess = true
                 });
@@ -193,7 +178,7 @@ public partial class FileToUploadViewModel(
                 WeakReferenceMessenger.Default.Send(new FileUploadStatusMessage()
                 {
                     ConversationId = _conversationId,
-                    FilePath = message.FilePath,
+                    FileName = message.File.Name,
                     IsProcessing = false,
                     IsSuccess = false
                 });

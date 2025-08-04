@@ -1,3 +1,5 @@
+using Avalonia.Platform.Storage;
+
 namespace Aesir.Client.Messages;
 
 /// <summary>
@@ -27,11 +29,10 @@ public class FileUploadRequestMessage
     public string? ConversationId { get; set; }
 
     /// <summary>
-    /// Represents the file path to be uploaded in the context of file upload operations.
+    /// The file to be uploaded in the context of file upload operations.
     /// </summary>
     /// <remarks>
-    /// This property specifies the location or name of the file that needs to be uploaded.
-    /// It is essential for identifying and processing the file during upload tasks.
+    /// This property specifies the file that needs to be uploaded.
     /// </remarks>
-    public string FilePath { get; set; } = null!;
+    public IStorageFile File { get; set; } = null!;
 }
