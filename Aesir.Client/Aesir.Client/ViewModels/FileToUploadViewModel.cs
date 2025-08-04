@@ -26,7 +26,7 @@ namespace Aesir.Client.ViewModels;
 public partial class FileToUploadViewModel(
     IDocumentCollectionService documentCollectionService,
     IDialogService dialogService)
-    : ObservableRecipient, IRecipient<FileUploadRequestMessage>
+    : ObservableRecipient, IRecipient<FileUploadRequestMessage>, IDisposable
 {
     /// <summary>
     /// Represents the default file name used when no file has been selected or specified.
@@ -201,5 +201,19 @@ public partial class FileToUploadViewModel(
                 await dialogService.ShowErrorDialogAsync("Upload Error", $"An error occurred while uploading the file: {ex.Message}");
             }
         });
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            IsActive = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }

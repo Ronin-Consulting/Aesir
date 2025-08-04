@@ -379,6 +379,9 @@ public class HandsFreeService : IHandsFreeService
     /// </summary>
     private async Task ChangeStateAsync(HandsFreeState newState, string? errorMessage = null)
     {
+        if(newState == HandsFreeState.Error)
+            await _handsFreeToken!.CancelAsync();
+        
         var previousState = _currentState;
         _currentState = newState;
 

@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
 
-public class AgentsViewViewModel : ObservableRecipient
+public class AgentsViewViewModel : ObservableRecipient, IDisposable
 {
     /// <summary>
     /// Represents a command that shows a agents view
@@ -136,5 +136,19 @@ public class AgentsViewViewModel : ObservableRecipient
         {
             WeakReferenceMessenger.Default.Send(new ShowAgentDetailMessage(selectedAgent));
         }
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            IsActive = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }

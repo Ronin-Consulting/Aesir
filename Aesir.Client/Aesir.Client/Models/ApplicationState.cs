@@ -19,7 +19,7 @@ namespace Aesir.Client.Models;
 /// which are dynamically loaded through asynchronous methods.
 /// </remarks>
 public partial class ApplicationState(IModelService modelService, IChatHistoryService chatHistoryService)
-    : ObservableRecipient
+    : ObservableRecipient, IDisposable
 {
     /// <summary>
     /// Represents a flag indicating the readiness of the application to handle a new AI-generated message.
@@ -106,5 +106,19 @@ public partial class ApplicationState(IModelService modelService, IChatHistorySe
         }
         
         return ChatSessions;
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            IsActive = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }

@@ -4,35 +4,26 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:viewModels="clr-namespace:Aesir.Client.ViewModels"
              xmlns:controls="clr-namespace:Aesir.Client.Controls"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Aesir.Client.Controls.HandsFreeControl"
              x:DataType="viewModels:HandsFreeControlViewModel">
-    <Grid RowDefinitions="*,Auto,Auto">
-        <controls:AssistantAvatarUserControl Name="AssistantAvatar" Grid.Row="0" />
-        <!-- State Indicator Text -->
-        <TextBlock Grid.Row="1"
-                   Text="{Binding StateText}"
-                   HorizontalAlignment="Center"
-                   Margin="0,10,0,5"
-                   FontSize="14"
-                   FontWeight="Medium"
-                   Foreground="{Binding StateTextColor}" />
-
-        <!-- Control Buttons -->
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
+    <Grid RowDefinitions="*,*,*" ColumnDefinitions="*,*,*">
+        <controls:AssistantAvatarUserControl Name="AssistantAvatar" Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Grid.ColumnSpan="3" CurrentState="{Binding CurrentState}" />
+        <Button Grid.Row="0" Grid.Column="2"
+                Name="CloseButton"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Right"
+                Classes="Large Primary"
+                Margin="12"
+                Command="{Binding ExitHandsFreeCommand}"
+                ToolTip.Tip="Stop Hands Free Mode">
+            <Panel>
+                <avalonia:MaterialIcon
                     HorizontalAlignment="Center"
-                    Spacing="10">
-            <!-- Start/Stop Button -->
-            <Button Name="ToggleButton"
-                    Content="{Binding ToggleButtonText}"
-                    Command="{Binding ToggleHandsFreeCommand}"
-                    Background="{Binding ToggleButtonBackground}"
-                    Foreground="White"
-                    Padding="20,8"
-                    CornerRadius="4"
-                    FontWeight="Medium" />
-        </StackPanel>
-
+                    VerticalAlignment="Center"
+                    Kind="Close" />
+            </Panel>
+        </Button>
     </Grid>
 </UserControl>

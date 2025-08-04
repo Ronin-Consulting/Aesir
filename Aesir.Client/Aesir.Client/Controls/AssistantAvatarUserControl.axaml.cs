@@ -1,4 +1,5 @@
 using System;
+using Aesir.Client.Services;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -8,11 +9,11 @@ namespace Aesir.Client.Controls;
 
 public partial class AssistantAvatarUserControl : UserControl
 {
-    private static readonly string DefaultAvatarColor = "#4A90E2";
+    private const string DefaultAvatarColor = "#4A90E2";
 
-    public static readonly StyledProperty<AssistantAvatarState> CurrentStateProperty =
-        AvaloniaProperty.Register<AssistantAvatarUserControl, AssistantAvatarState>(nameof(CurrentState),
-            defaultValue: AssistantAvatarState.Processing);
+    public static readonly StyledProperty<HandsFreeState> CurrentStateProperty =
+        AvaloniaProperty.Register<AssistantAvatarUserControl, HandsFreeState>(nameof(CurrentState),
+            defaultValue: HandsFreeState.Idle);
 
     public static readonly StyledProperty<string> SvgCssProperty =
         AvaloniaProperty.Register<AssistantAvatarUserControl, string>(nameof(SvgCss),
@@ -28,7 +29,7 @@ public partial class AssistantAvatarUserControl : UserControl
             defaultValue: 1.0,
             coerce: (_, value) => Math.Clamp(value, 1.0, 10.0));
 
-    public AssistantAvatarState CurrentState
+    public HandsFreeState CurrentState
     {
         get => GetValue(CurrentStateProperty);
         set => SetValue(CurrentStateProperty, value);
@@ -66,7 +67,7 @@ public partial class AssistantAvatarUserControl : UserControl
             {
                 StateText = value.ToString();
                 
-                if (value is AssistantAvatarState.Listening or AssistantAvatarState.Processing)
+                if (value is HandsFreeState.Listening or HandsFreeState.Processing)
                 {
                     StartAnimation();
                 }
@@ -75,8 +76,8 @@ public partial class AssistantAvatarUserControl : UserControl
                     StopAnimation();
                     SvgCss = value switch
                     {
-                        AssistantAvatarState.Idle => $".st0 {{fill: {DefaultAvatarColor}}}",
-                        AssistantAvatarState.Error => ".st0 {fill: #FF6B6B}",
+                        HandsFreeState.Idle => $".st0 {{fill: {DefaultAvatarColor}}}",
+                        HandsFreeState.Error => ".st0 {fill: #FF6B6B}",
                         _ => $".st0 {{fill: {DefaultAvatarColor}}}"
                     };
                 }
@@ -117,7 +118,7 @@ public partial class AssistantAvatarUserControl : UserControl
         var easedProgress = Math.Sin(cycleProgress * Math.PI);
 
         var startColor = Color.Parse(DefaultAvatarColor);
-        var endColor = Color.Parse("#87CEEB");
+        var endColor = Color.Parse("#F9F9F9");
 
         var r = (byte)(startColor.R + (endColor.R - startColor.R) * easedProgress);
         var g = (byte)(startColor.G + (endColor.G - startColor.G) * easedProgress);
@@ -131,13 +132,4 @@ public partial class AssistantAvatarUserControl : UserControl
     {
         AvatarImage?.InvalidateVisual();
     }
-}
-
-public enum AssistantAvatarState
-{
-    Idle,
-    Listening,
-    Processing,
-    Speaking,
-    Error
 }

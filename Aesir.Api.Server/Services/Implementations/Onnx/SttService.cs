@@ -38,6 +38,32 @@ public class SttService : ISttService
         {
             throw new FileNotFoundException($"Model file not found at path: {modelPath}");
         }
+
+        var encoderPath = Path.Combine(Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(),
+            "encoder-epoch-99-avg-1.onnx");
+        var decoderPath = Path.Combine(Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(),
+            "decoder-epoch-99-avg-1.onnx");
+        var joinerPath = Path.Combine(Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(),
+            "joiner-epoch-99-avg-1.onnx");
+        var tokensPath = Path.Combine(Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(),
+            "tokens.txt");
+        
+        if (!File.Exists(encoderPath))
+        {
+            throw new FileNotFoundException($"Encoder model file not found at path: {encoderPath}");
+        }
+        if (!File.Exists(decoderPath))
+        {
+            throw new FileNotFoundException($"Decoder model file not found at path: {decoderPath}");
+        }
+        if (!File.Exists(joinerPath))
+        {
+            throw new FileNotFoundException($"Joiner model file not found at path: {joinerPath}");
+        }
+        if (!File.Exists(tokensPath))
+        {
+            throw new FileNotFoundException($"Tokens file not found at path: {tokensPath}");
+        }
         
         _logger.LogInformation("Initializing TTS engine with model: {ModelPath}", modelPath);
         
@@ -52,11 +78,11 @@ public class SttService : ISttService
             {
                 Transducer = new OnlineTransducerModelConfig
                 {
-                    Encoder = Path.Combine(Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(), "encoder-epoch-99-avg-1.onnx"),
-                    Decoder = Path.Combine(Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(), "decoder-epoch-99-avg-1.onnx"),
-                    Joiner = Path.Combine(Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(), "joiner-epoch-99-avg-1.onnx")
+                    Encoder = encoderPath,
+                    Decoder = decoderPath,
+                    Joiner = joinerPath
                 },
-                Tokens = Path.Combine(Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(), "tokens.txt"),
+                Tokens = tokensPath,
                 NumThreads = 4,
                 Provider = useCuda ? "cuda" : "cpu"
             }
