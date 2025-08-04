@@ -603,7 +603,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             if (files.Count >= 1)
             {
                 SelectedFile!.SetConversationId(_appState.ChatSession!.Conversation.Id);
-                RequestFileUpload(files[0].Path.LocalPath);
+                await RequestFileUpload(files[0]);
                 ErrorMessage = null;
             }
         }
@@ -651,14 +651,18 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// Initiates a request to upload a file to the server.
     /// Sends a message containing the file path and associated conversation ID for processing.
     /// </summary>
-    /// <param name="filePath">The full path of the file to be uploaded. Must be a non-null, non-empty string.</param>
-    private void RequestFileUpload(string filePath)
+    /// <param name="file">The file to be uploaded.</param>
+    private async Task RequestFileUpload(IStorageFile file)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(filePath))
+            try
             {
-                _logger.LogWarning("Attempted to upload file with empty path");
+                await using var stream = await file.OpenReadAsync();
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning("Attempted to upload inaccessible file");
                 ErrorMessage = "Invalid file path.";
                 return;
             }
@@ -673,12 +677,12 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             WeakReferenceMessenger.Default.Send(new FileUploadRequestMessage()
             {
                 ConversationId = _appState.ChatSession.Conversation.Id,
-                FilePath = filePath
+                File = file
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to request file upload for path: {FilePath}", filePath);
+            _logger.LogError(ex, "Failed to request file upload for: {FileName}", file.Name);
             ErrorMessage = "Failed to upload file. Please try again.";
         }
     }

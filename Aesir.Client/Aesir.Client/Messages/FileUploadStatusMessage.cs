@@ -12,12 +12,9 @@ public class FileUploadStatusMessage
     /// flow and handling within the application.
     public string? ConversationId { get; set; }
 
-    /// Represents the file path associated with the file being uploaded or processed
+    /// Represents the file name associated with the file being uploaded or processed
     /// during a file upload operation.
-    /// The value of this property is used to determine the location of the file in the file
-    /// system or to reference the file during processing and communication between
-    /// components.
-    public string FilePath { get; set; } = "No File";
+    public string FileName { get; set; } = "No File";
 
     /// Gets or sets a value indicating whether a file upload process is currently ongoing.
     /// This property is used to monitor or control the state of file upload operations.

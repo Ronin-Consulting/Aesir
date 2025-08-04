@@ -10,10 +10,6 @@ public class FileUploadCanceledMessage
     /// This property helps in identifying which conversation's file upload process was terminated.
     public string? ConversationId { get; set; }
 
-    /// Gets or sets the file path related to the file upload process.
-    /// This property typically specifies the location path to the file, which can be
-    /// referenced during operations such as file upload or removal. It is utilized
-    /// in scenarios requiring file management, such as sending cancellation messages
-    /// or deleting previously uploaded files.
-    public string FilePath { get; set; } = null!;
+    /// Gets or sets the file name related to the file upload process.
+    public string FileName { get; set; } = null!;
 }

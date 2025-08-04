@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Avalonia.Platform.Storage;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -86,52 +87,57 @@ public class DocumentCollectionService(
     /// Validates the specified file for upload, ensuring it meets the necessary requirements
     /// such as file existence, size, and allowed file extension.
     /// </summary>
-    /// <param name="filePath">The full path of the file to validate.</param>
+    /// <param name="file">The file to validate.</param>
     /// <param name="identifier">A unique identifier associated with the upload operation (e.g., conversation ID or category ID).</param>
     /// <param name="parameterName">The name of the parameter that represents the identifier.</param>
     /// <exception cref="ArgumentException">Thrown if the identifier is null, empty, or whitespace.</exception>
     /// <exception cref="FileNotFoundException">Thrown if the file does not exist at the specified path.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the file size exceeds the allowed maximum size.</exception>
     /// <exception cref="NotSupportedException">Thrown if the file format is not supported.</exception>
-    private void ValidateUploadFile(string filePath, string identifier, string parameterName)
+    private async Task ValidateUploadFileAsync(IStorageFile file, string identifier, string parameterName)
     {
         if (string.IsNullOrWhiteSpace(identifier))
         {
             throw new ArgumentException($"{parameterName} is required for file upload", nameof(identifier));
         }
-
-        if (!File.Exists(filePath))
+        
+        try
         {
-            throw new FileNotFoundException($"File not found: {filePath}");
+            await using var stream = await file.OpenReadAsync();
+        }
+        catch (Exception e)
+        {
+            throw new FileNotFoundException($"File could not be opened: {file.Name}");
         }
 
-        var fileInfo = new FileInfo(filePath);
-        if (fileInfo.Length > MaxFileSizeBytes)
+        var fileProperties = await file.GetBasicPropertiesAsync();
+
+        if (fileProperties.Size > MaxFileSizeBytes)
         {
-            throw new InvalidOperationException($"File size exceeds 100MB limit: {filePath}");
+            throw new InvalidOperationException($"File size exceeds 100MB limit: {file.Name}");
         }
 
-        var fileExtension = Path.GetExtension(filePath).ToLowerInvariant();
+        var fileExtension = Path.GetExtension(file.Name).ToLowerInvariant();
         if (!Array.Exists(AllowedFileExtensions, ext => ext == fileExtension))
         {
             throw new NotSupportedException(
-                $"Only allowed file types ({string.Join(", ", AllowedFileExtensions)}) are supported: {filePath}");
+                $"Only allowed file types ({string.Join(", ", AllowedFileExtensions)}) are supported: {file.Name}");
         }
     }
 
     /// <summary>
     /// Uploads a file located at the specified file path to a designated destination defined by the given path segments.
     /// </summary>
-    /// <param name="filePath">The full file path of the file to upload.</param>
+    /// <param name="file">The file to upload.</param>
     /// <param name="pathSegments">An array of path segments specifying the destination endpoint for the file upload.</param>
     /// <returns>A task representing the asynchronous operation. The task result contains the HTTP response returned from the server.</returns>
     /// <exception cref="System.IO.FileNotFoundException">Thrown if the file at <paramref name="filePath"/> does not exist.</exception>
     /// <exception cref="System.Exception">Thrown if the file upload fails with a non-success HTTP status code.</exception>
-    private async Task<IFlurlResponse> UploadFileAsync(string filePath, params string[] pathSegments)
+    private async Task<IFlurlResponse> UploadFileAsync(IStorageFile file, params string[] pathSegments)
     {
-        await using var fileStream = File.OpenRead(filePath);
-        var fileName = Path.GetFileName(filePath);
-        var contentType = GetContentTypeForFile(filePath);
+        await using var fileStream = await file.OpenReadAsync();
+        var fileName = Path.GetFileName(file.Name);
+        var contentType = GetContentTypeForFile(fileName);
 
         var response = await _flurlClient
             .Request(pathSegments)
@@ -198,18 +204,18 @@ public class DocumentCollectionService(
     /// <summary>
     /// Asynchronously uploads a file associated with a specific conversation to the intended storage location.
     /// </summary>
-    /// <param name="filePath">The full path to the file that is to be uploaded.</param>
+    /// <param name="file">The file that is to be uploaded.</param>
     /// <param name="conversationId">The unique identifier of the conversation to which the file is associated.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     /// <exception cref="ArgumentException">Thrown if the provided file path or conversation ID is invalid.</exception>
     /// <exception cref="Exception">Thrown if an error occurs during the file upload process.</exception>
-    public async Task UploadConversationFileAsync(string filePath, string conversationId)
+    public async Task UploadConversationFileAsync(IStorageFile file, string conversationId)
     {
         await ExecuteWithExceptionHandlingAsync(async () =>
         {
-            ValidateUploadFile(filePath, conversationId, nameof(conversationId));
-            await UploadFileAsync(filePath, "conversations", conversationId, "upload", "file");
-        }, "upload file", filePath);
+            await ValidateUploadFileAsync(file, conversationId, nameof(conversationId));
+            await UploadFileAsync(file, "conversations", conversationId, "upload", "file");
+        }, "upload file", file.Name);
     }
 
     /// <summary>
@@ -229,19 +235,19 @@ public class DocumentCollectionService(
     /// <summary>
     /// Uploads a file globally to the specified category.
     /// </summary>
-    /// <param name="filePath">The path of the file to be uploaded.</param>
+    /// <param name="file">The file to be uploaded.</param>
     /// <param name="categoryId">The identifier of the category to which the file will be associated.</param>
     /// <returns>A task that represents the asynchronous upload operation.</returns>
     /// <exception cref="ArgumentNullException">Thrown if the file path or category ID is null or empty.</exception>
     /// <exception cref="IOException">Thrown if an I/O error occurs during file upload.</exception>
     /// <exception cref="Exception">Thrown if there is an unexpected error during the upload process.</exception>
-    public async Task UploadGlobalFileAsync(string filePath, string categoryId)
+    public async Task UploadGlobalFileAsync(IStorageFile file, string categoryId)
     {
         await ExecuteWithExceptionHandlingAsync(async () =>
         {
-            ValidateUploadFile(filePath, categoryId, nameof(categoryId));
-            await UploadFileAsync(filePath, "globals", categoryId, "upload", "file");
-        }, "upload file", filePath);
+            await ValidateUploadFileAsync(file, categoryId, nameof(categoryId));
+            await UploadFileAsync(file, "globals", categoryId, "upload", "file");
+        }, "upload file", file.Name);
     }
 
     /// <summary>
