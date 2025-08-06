@@ -57,7 +57,7 @@ public class PdfViewerService(
     
     private async Task<IImage?> GetPdfImageAsync(string fileUri)
     {
-        // fileUri should be like file:///C:/Users/ooart/Downloads/Aesir.pdf#page=1
+        // fileUri should be like file://guid/Aesir.pdf#page=1
         try
         {
             var uri = new Uri(fileUri);
@@ -75,7 +75,7 @@ public class PdfViewerService(
                 return new Bitmap(fileContentStream);
             }
             
-            // Render the first page (pageIndex: 0) to a SKBitmap
+            // Render the first page (pageIndex: 0) to a SKBitmap        
 #pragma warning disable CA1416
             var skBitmap = PDFtoImage.Conversion.ToImage(fileContentStream, pageNumber - 1);
 #pragma warning restore CA1416
