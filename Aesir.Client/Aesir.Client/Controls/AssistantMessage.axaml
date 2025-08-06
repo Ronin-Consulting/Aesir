@@ -51,7 +51,7 @@
                         Name="ThoughtsHtmlLabel"
                         Text="{Binding ThoughtsMessage}" 
                         AutoSizeHeightOnly="True"
-                        BaseStylesheet="* { color: #F9F9F9; line-height: 1.6;} li { margin-bottom: 1em; line-height: 24px; }"
+                        BaseStylesheet="* { color: #F9F9F9; line-height: 1.4; margin: 0; padding: 0; } ol { padding-left: 20px; margin-top: 0; } ol li { margin-bottom: 0.5em; line-height: 1.4; padding-left: 5px; } ol li p { margin: 0; line-height: 1.4; } ul { padding-left: 20px; margin-top: 0.2em; } ul li { margin-bottom: 0.3em; line-height: 1.4; }"
                         Margin="0 0 0 0"
                         Padding="0"
                     />
@@ -61,7 +61,7 @@
                     Name="MessageHtmlLabel"
                     Text="{Binding Message}" 
                     AutoSizeHeightOnly="True"
-                    BaseStylesheet="* { color: #F9F9F9; line-height: 1.6;} li { margin-bottom: 1em; line-height: 24px; }"
+                    BaseStylesheet="* { color: #F9F9F9; line-height: 1.4; margin: 0; padding: 0; } ol { padding-left: 20px; margin-top: 0; } ol li { margin-bottom: 0.5em; line-height: 1.4; padding-left: 5px; } ol li p { margin: 0; line-height: 1.4; } ul { padding-left: 20px; margin-top: 0.2em; } ul li { margin-bottom: 0.3em; line-height: 1.4; }"
                     Margin="0 0 0 0"
                     Padding="0"
                 />

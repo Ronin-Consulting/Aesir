@@ -1,12 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;
 using Aesir.Common.Models;
-using Aesir.Common.Prompts;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -15,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
 
-public class AgentsViewViewModel : ObservableRecipient
+public class AgentsViewViewModel : ObservableRecipient, IDisposable
 {
     /// <summary>
     /// Represents a command that shows a agents view
@@ -138,5 +136,19 @@ public class AgentsViewViewModel : ObservableRecipient
         {
             WeakReferenceMessenger.Default.Send(new ShowAgentDetailMessage(selectedAgent));
         }
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            IsActive = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }

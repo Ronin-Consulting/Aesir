@@ -13,4 +13,8 @@ public class NoOpNavigationService : INavigationService
     public void NavigateToAgents()
     {
     }
+
+    public void NavigateToHandsFree()
+    {
+    }
 }

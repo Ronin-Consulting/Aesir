@@ -49,7 +49,6 @@ sealed class Program
                         {
                             // configure Logging with NLog
                             loggingBuilder.ClearProviders();
-                            loggingBuilder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Error);
                             loggingBuilder.AddNLog(configuration);
                         });
 

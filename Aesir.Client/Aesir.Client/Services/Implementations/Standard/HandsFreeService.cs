@@ -2,7 +2,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.Text;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 using Aesir.Client.Models;
 using Aesir.Client.ViewModels;
@@ -22,7 +21,7 @@ public class HandsFreeService : IHandsFreeService
     private readonly ILogger<HandsFreeService> _logger;
     private readonly ISpeechService _speechService;
     private readonly ApplicationState _appState;
-    private readonly ChatSessionManager _chatSessionManager;
+    private readonly IChatSessionManager _chatSessionManager;
     
     private HandsFreeState _currentState = HandsFreeState.Idle;
     private bool _isHandsFreeActive;
@@ -56,7 +55,7 @@ public class HandsFreeService : IHandsFreeService
         ILogger<HandsFreeService> logger,
         ISpeechService speechService,
         ApplicationState appState,
-        ChatSessionManager chatSessionManager)
+        IChatSessionManager chatSessionManager)
     {
         _logger = logger;
         _speechService = speechService;
@@ -380,6 +379,9 @@ public class HandsFreeService : IHandsFreeService
     /// </summary>
     private async Task ChangeStateAsync(HandsFreeState newState, string? errorMessage = null)
     {
+        if(newState == HandsFreeState.Error)
+            await _handsFreeToken!.CancelAsync();
+        
         var previousState = _currentState;
         _currentState = newState;
 

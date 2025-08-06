@@ -9,6 +9,7 @@ services:
     build:
       context: .
       dockerfile: Aesir.Api.Server/Dockerfile
+    restart: on-failure
     depends_on:
       pgdb:
         condition: service_healthy

@@ -19,4 +19,9 @@ public class NavigationService : INavigationService
     {
         WeakReferenceMessenger.Default.Send(new NavigationMessage(NavigationMessage.ViewType.Agents));
     }
+
+    public void NavigateToHandsFree()
+    {
+        WeakReferenceMessenger.Default.Send(new NavigationMessage(NavigationMessage.ViewType.HandsFree));
+    }
 }

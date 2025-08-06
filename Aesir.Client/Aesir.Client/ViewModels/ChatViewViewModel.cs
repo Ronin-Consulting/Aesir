@@ -39,15 +39,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// Serves as an indicator for uninitialized or default states related to model selection.
     /// </summary>
     private const string DefaultModelIdValue = "Select a model";
-
-    /// <summary>
-    /// Represents the current operational status of the microphone within the application.
-    /// A value of true indicates that the microphone is turned on and active, while a value of
-    /// false signifies that it is turned off or inactive.
-    /// This property is integral for managing microphone toggling functionality in the ViewModel.
-    /// </summary>
-    [ObservableProperty] private bool _micOn;
-
+    
     /// <summary>
     /// Represents the state of the panel within the main view.
     /// When true, the panel is open; when false, it is closed.
@@ -160,12 +152,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// Represents a command that shows a tools view
     /// </summary>
     public ICommand ShowTools { get; }
-
-    /// <summary>
-    /// Represents a command used to toggle the state of the microphone in the application.
-    /// When executed, it enables or disables the microphone, altering its active operational state.
-    /// </summary>
-    public ICommand ToggleMicrophone { get; }
+    
+    public ICommand ShowHandsFree { get; }
 
     /// <summary>
     /// Command that triggers the action to send a chat message asynchronously.
@@ -250,7 +238,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
 
         ToggleChatHistory = new RelayCommand(() => PanelOpen = !PanelOpen);
         ToggleNewChat = new RelayCommand(ExecuteNewChat);
-        ToggleMicrophone = new RelayCommand(ExecuteToggleMicrophone);
+        ShowHandsFree = new RelayCommand(ExecuteShowHandsFree);
         ShowAgents = new RelayCommand(ExecuteShowAgents);
         ShowTools = new RelayCommand(ExecuteShowTools);
 
@@ -280,34 +268,35 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// to provide necessary user feedback. Handles any errors gracefully by logging and displaying an appropriate error message.
     /// Exceptions:
     /// Throws an exception if there is an unexpected error during the process, which will be logged accordingly.
-    private async void ExecuteToggleMicrophone()
+    private async void ExecuteShowHandsFree()
     {
-        try
-        {
-            MicOn = !MicOn;
-            ErrorMessage = null;
-
-            if (MicOn)
-            {
-                if (_speechService == null)
-                {
-                    _logger.LogWarning("Speech service is not available");
-                    ErrorMessage = "Speech recognition is not available on this platform.";
-                    MicOn = false;
-                    return;
-                }
-
-                await _speechService.SpeakAsync("Aesir is listening.");
-                
-                
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to toggle microphone");
-            ErrorMessage = "Failed to toggle microphone. Please try again.";
-            MicOn = false;
-        }
+        // try
+        // {
+        //     MicOn = !MicOn;
+        //     ErrorMessage = null;
+        //
+        //     if (MicOn)
+        //     {
+        //         if (_speechService == null)
+        //         {
+        //             _logger.LogWarning("Speech service is not available");
+        //             ErrorMessage = "Speech recognition is not available on this platform.";
+        //             MicOn = false;
+        //             return;
+        //         }
+        //
+        //         await _speechService.SpeakAsync("Aesir is listening.");
+        //         
+        //         
+        //     }
+        // }
+        // catch (Exception ex)
+        // {
+        //     _logger.LogError(ex, "Failed to toggle microphone");
+        //     ErrorMessage = "Failed to toggle microphone. Please try again.";
+        //     MicOn = false;
+        // }
+        _navigationService.NavigateToHandsFree();
     }
 
     private void ExecuteShowAgents()

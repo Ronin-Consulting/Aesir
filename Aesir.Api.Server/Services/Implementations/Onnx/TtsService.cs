@@ -46,6 +46,20 @@ public partial class TtsService : ITtsService
             throw new FileNotFoundException($"Model file not found at path: {modelPath}");
         }
         
+        var tokensPath = Path.Combine(
+            Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(), "tokens.txt");
+        var dataDirPath = Path.GetDirectoryName(modelPath);
+        
+        if (!File.Exists(tokensPath))
+        {
+            throw new FileNotFoundException($"Tokens file not found at path: {tokensPath}");
+        }
+
+        if (!Directory.Exists(dataDirPath))
+        {
+            throw new FileNotFoundException($"Data directory not found at path: {dataDirPath}");
+        }
+        
         _logger.LogInformation("Initializing TTS engine with model: {ModelPath}", modelPath);
 
         // C API Setup

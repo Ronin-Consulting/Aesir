@@ -6,7 +6,8 @@ public class NavigationMessage
     {
         Chat,
         Tools,
-        Agents
+        Agents,
+        HandsFree
     }
     
     public ViewType View { get; set; }

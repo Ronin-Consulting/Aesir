@@ -174,7 +174,7 @@ public abstract partial class MessageViewModel : ObservableRecipient
                 {
                     Message = htmlMessage;
                     IsLoaded = true;
-                });
+                }, priority: DispatcherPriority.Input);
             }
             
             return title;
