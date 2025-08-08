@@ -16,7 +16,7 @@
    2. **IF** Rider IDE from the run menu edit the run configuration and set Open Browser to Chrome.
    3. **THEN** from the menu "Debug ..." or "Run..." the Aesir.Client.Browser project.
 
-## AESIR client things left to do
+## OUTSTANDING FEATURES
 
 - [X] Add message controls like chatgpt
   - [x] Copy message
@@ -67,6 +67,11 @@
   - [ ] Custom tuned llama.cpp 
     - X86,Apple Silicon and ARM64
     - CUDA, Metal and Onnx
+
+### KNOWN BUGS
+
+- [ ] True up web and desktop fonts
+
 
 ## Supported AI Backends
 

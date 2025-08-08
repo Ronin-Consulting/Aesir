@@ -7,6 +7,7 @@
     xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
     xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
     xmlns:controls="clr-namespace:Aesir.Client.Controls"
+    xmlns:converters="clr-namespace:Aesir.Client.Converters"
     xmlns:sys="clr-namespace:System;assembly=System.Runtime"
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
     x:Class="Aesir.Client.Views.ChatView"
@@ -24,26 +25,23 @@
             RelativePanel.AlignLeftWithPanel="True"
             ZIndex="100">
             <DockPanel Width="450" Margin="14, 10, 10, 10">
-                <Button DockPanel.Dock="Left" ToolTip.Tip="Toggle Sidebar" Command="{Binding ToggleChatHistory}">
-                    <avalonia:MaterialIcon Kind="QuestionAnswer" Width="20" Height="20" />
+                <Button Classes="Primary" DockPanel.Dock="Left" 
+                        Theme="{DynamicResource OutlineButton}"
+                        Command="{Binding ToggleLeftPane}"
+                        ToolTip.Tip="Toggle Sidebar">
+                    <avalonia:MaterialIcon Kind="{Binding PanelOpen, Converter={x:Static converters:BoolMenuIconConverter.Instance}}"
+                                           Width="20" Height="20" />
                 </Button>
                 <Panel />
             </DockPanel>
             <DockPanel
                 Margin="10, 10, 14, 10"
                 LastChildFill="True">
-                <u:IconButton DockPanel.Dock="Right" HorizontalAlignment="Left" IconPlacement="Left" Content="Tools" Command="{Binding ShowTools}">
-                   <u:IconButton.Icon>
-                        <avalonia:MaterialIcon Kind="Wrench" Width="20" Height="20" />
-                    </u:IconButton.Icon>
-                </u:IconButton>
-                <u:IconButton DockPanel.Dock="Right" HorizontalAlignment="Left" IconPlacement="Left" Content="Agents" Margin="0,0,10,0" Command="{Binding ShowAgents}">
-                    <u:IconButton.Icon>
-                        <avalonia:MaterialIcon Kind="AccountMultiple" Width="20" Height="20" />
-                    </u:IconButton.Icon>
-                </u:IconButton>
-                <Button DockPanel.Dock="Right" ToolTip.Tip="New Chat" Command="{Binding ToggleNewChat}" Margin="0,0,10,0">
-                    <avalonia:MaterialIcon Kind="CommentAdd" Width="20" Height="20" />
+                <Button Classes="Primary" DockPanel.Dock="Right" Margin="0,0,10,0"
+                        Theme="{DynamicResource OutlineButton}"
+                        Command="{Binding ToggleNewChat}"
+                        ToolTip.Tip="New Chat">
+                    <avalonia:MaterialIcon Kind="CommentAdd" Width="20" Height="34" />
                 </Button>
                 <Panel />
             </DockPanel>
@@ -102,7 +100,7 @@
                                         IsEnabled="{Binding SelectedFileEnabled}"
                                         ToolTip.Tip="Attach File"
                                 >
-                                    <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="20" />
+                                    <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="34" />
                                 </Button>
                                 <Button Name="SendMessageButton" IsVisible="{Binding HasChatMessage}"
                                         DockPanel.Dock="Right" Margin="6,0,0,0"
