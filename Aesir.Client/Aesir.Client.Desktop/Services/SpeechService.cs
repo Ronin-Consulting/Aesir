@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
-using System.Runtime.CompilerServices;
-using System.Threading;
 using Aesir.Client.Services;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Threading.Tasks;
@@ -12,71 +10,50 @@ using Microsoft.Extensions.Logging;
 namespace Aesir.Client.Desktop.Services;
 
 /// <summary>
-/// Responsible for text-to-speech synthesis and speech recognition functionalities by leveraging SignalR for
-/// communication with a backend service. Manages the integration between audio playback and recording
-/// services, along with handling connection states and data streaming for seamless audio processing.
+/// Provides text-to-speech (TTS) and speech-to-text (STT) functionality using SignalR connections.
+/// It handles the generation of audio streams, playback, and speech recording for processing.
 /// </summary>
-public class SpeechService : ISpeechService
+public class SpeechService : ISpeechService, IAsyncDisposable
 {
     /// <summary>
-    /// Defines the delay duration, in milliseconds, before reattempting a failed connection
-    /// to the text-to-speech service. This value helps manage reconnection intervals to avoid
-    /// continuous retries in rapid succession.
-    /// </summary>
-    private const int RetryDelay = 5000;
-
-    /// <summary>
-    /// A logger instance utilized for capturing and recording log messages, warnings, and errors
-    /// throughout the execution of the <see cref="SpeechService"/> class. This logger supports
-    /// monitoring the application's behavior, diagnosing issues, and tracking important events such
-    /// as connection lifecycle states and runtime errors.
+    /// An instance of <see cref="ILogger{TCategoryName}"/> used for logging events, warnings, errors,
+    /// and diagnostic information in the <see cref="SpeechService"/> class.
     /// </summary>
     private readonly ILogger<SpeechService> _logger;
 
     /// <summary>
-    /// Service responsible for managing audio playback, including streaming and playing back
-    /// audio data generated in text-to-speech operations. Utilized to ensure seamless playback
-    /// of audio streams during speech synthesis processes.
+    /// Represents the audio playback service used for handling tasks related to audio playback
+    /// such as streaming audio data and controlling playback state.
     /// </summary>
     private readonly IAudioPlaybackService _audioPlaybackService;
 
     /// <summary>
-    /// Represents the audio recording service used for operations such as capturing audio streams for
-    /// speech recognition or other audio processing tasks.
-    /// This dependency is responsible for managing the audio input lifecycle, including starting
-    /// and stopping recordings, and integrating with audio stream consumers.
+    /// Provides the necessary audio recording functionalities to the SpeechService,
+    /// including starting and stopping audio capture, and detecting silence events
+    /// during recording operations.
     /// </summary>
     private readonly IAudioRecordingService _audioRecordingService;
 
     /// <summary>
-    /// Represents the private SignalR hub connection used for interfacing with the
-    /// text-to-speech (TTS) service. This connection facilitates the streaming of text inputs
-    /// to the server for audio synthesis and receives corresponding audio data for playback
-    /// while supporting automatic reconnection on unexpected disconnections.
+    /// Represents the SignalR hub connection used for Text-to-Speech (TTS) functionality.
+    /// This connection enables communication with a remote service to generate audio
+    /// streams from textual input and handle automatic reconnection or closed states.
     /// </summary>
     private readonly HubConnection _ttsConnection;
 
     /// <summary>
-    /// Manages the SignalR connection for the speech-to-text (STT) service.
-    /// Used to stream audio data to the backend STT service and receive
-    /// text recognition outputs in real-time during speech recognition operations.
+    /// Represents a SignalR hub connection used for speech-to-text (STT) operations within the SpeechService.
     /// </summary>
+    /// <remarks>
+    /// This hub connection facilitates audio streaming to the server for real-time speech recognition and
+    /// handles the asynchronous reception of recognized text data.
+    /// </remarks>
+    /// <seealso cref="Microsoft.AspNetCore.SignalR.Client.HubConnection"/>
     private readonly HubConnection _sttConnection;
 
     /// <summary>
-    /// Represents the current connection status to the SignalR hubs used for
-    /// text-to-speech (TTS) and speech-to-text (STT) communication.
-    /// A value of <c>true</c> indicates that the service is actively connected,
-    /// while <c>false</c> means that it is disconnected or in the process of reconnecting.
-    /// This variable helps manage the connection state across internal methods and ensures
-    /// proper handling of connection-related operations.
-    /// </summary>
-    private bool _isConnected;
-
-    /// <summary>
-    /// Provides text-to-speech and speech recognition functionality through SignalR hub connections.
-    /// Handles connection management, including automatic reconnection and retry logic.
-    /// Facilitates integration with audio playback and recording services.
+    /// Provides speech-related services including text-to-speech (TTS) and speech-to-text (STT) functionalities.
+    /// This service leverages SignalR hubs for interaction with corresponding inference endpoints.
     /// </summary>
     public SpeechService(ILogger<SpeechService> logger,
         IConfiguration configuration,
@@ -98,21 +75,19 @@ public class SpeechService : ISpeechService
                         clientHandler.ServerCertificateCustomValidationCallback =
                             (sender, certificate, chain, sslPolicyErrors) => true;
                     }
+
                     return handler;
                 };
             })
             .WithAutomaticReconnect()
             .Build();
-        
-        _ttsConnection.Closed += async (error) =>
+
+        _ttsConnection.Closed += (error) =>
         {
-            _isConnected = false;
-            _logger.LogWarning("TTS Connection closed: {Error}", error);
-            
-            await Task.Delay(RetryDelay); // Simple retry delay
-            await ConnectAsync();
+            _logger.LogWarning("TTS Connection closed: {Result}", error?.ToString() ?? "Gracefully");
+            return Task.CompletedTask;
         };
-        
+
         var sttHubUrl = configuration.GetValue<string>("Inference:Stt");
         _sttConnection = new HubConnectionBuilder()
             .WithUrl(sttHubUrl ?? throw new InvalidOperationException(), options =>
@@ -124,92 +99,113 @@ public class SpeechService : ISpeechService
                         clientHandler.ServerCertificateCustomValidationCallback =
                             (sender, certificate, chain, sslPolicyErrors) => true;
                     }
+
                     return handler;
                 };
             })
             .WithAutomaticReconnect()
             .Build();
-        
-        _sttConnection.Closed += async (error) =>
+
+        _sttConnection.Closed += (error) =>
         {
-            _isConnected = false;
-            _logger.LogWarning("STT Connection closed: {Error}", error);
-            
-            await Task.Delay(RetryDelay); // Simple retry delay
-            await ConnectAsync();
+            _logger.LogWarning("TTS Connection closed: {Result}", error?.ToString() ?? "Gracefully");
+            return Task.CompletedTask;
         };
     }
 
     /// <summary>
-    /// Establishes an asynchronous connection to the text-to-speech and speech recognition services,
-    /// ensuring a reliable connection with automatic retry logic upon failure.
+    /// Asynchronously converts the provided text into speech audio using a text-to-speech service and plays it back.
     /// </summary>
-    /// <returns>A task that represents the asynchronous operation of establishing the connection.</returns>
-    private async Task ConnectAsync()
-    {
-        if (_isConnected) return;
-        try
-        {
-            await _ttsConnection.StartAsync();
-            await _sttConnection.StartAsync();
-            _isConnected = true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("TTS Connection closed: {Error}", ex);
-            
-            await Task.Delay(RetryDelay);
-            await ConnectAsync(); // Retry
-        }
-    }
-
-    /// <summary>
-    /// Converts the provided text to speech and plays the audio asynchronously.
-    /// </summary>
-    /// <param name="text">The text to be converted into speech and played.</param>
+    /// <param name="text">The text to be synthesized into speech.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task SpeakAsync(string text)
     {
-        await ConnectAsync();
+        if (_ttsConnection.State == HubConnectionState.Disconnected)
+            await _ttsConnection.StartAsync();
 
         var channelReader = await _ttsConnection.StreamAsChannelAsync<byte[]>("GenerateAudio", text, 0.9f);
         await _audioPlaybackService.PlayStreamAsync(channelReader.ReadAllAsync());
     }
 
     /// <summary>
-    /// Asynchronously streams recognized speech text from an audio input in real-time.
-    /// Establishes a connection with the speech recognition server, processes audio input,
-    /// and provides the recognized text as an asynchronous enumerable.
+    /// Stops the active text-to-speech task if a connection to the speech service is currently active.
     /// </summary>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    /// <returns>
-    /// An asynchronous enumerable that yields recognized text segments as strings.
-    /// Each segment represents a portion of the processed speech input.
-    /// </returns>
-    public async IAsyncEnumerable<string> RecognizeSpeechAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public async Task StopSpeaking()
     {
-        await ConnectAsync();
+        if (_ttsConnection.State == HubConnectionState.Connected)
+            await _ttsConnection.StopAsync();
+    }
+
+    /// <summary>
+    /// Starts streaming audio to the server for speech-to-text processing and yields recognized text results asynchronously.
+    /// </summary>
+    /// <param name="silenceDetectedAction">
+    /// An optional callback action invoked when silence is detected, receiving the duration of silence in milliseconds.
+    /// </param>
+    /// <returns>
+    /// An asynchronous stream of recognized text segments as they are processed.
+    /// </returns>
+    public async IAsyncEnumerable<string> ListenAsync(Action<int>? silenceDetectedAction = null)
+    {
+        if (_sttConnection.State == HubConnectionState.Disconnected)
+            await _sttConnection.StartAsync();
 
         // Start the audio recording stream
-        var audioStream = _audioRecordingService.StartRecordingAsync(cancellationToken);
-        
+        var audioStream = _audioRecordingService.StartRecordingAsync();
+
+        _audioRecordingService.SilenceDetected += OnHandleSilenceDetected;
+
         // Start streaming audio to the server and receive text recognition results
-        var textChannelReader = await _sttConnection.StreamAsChannelAsync<string>("ProcessAudioStream", 
-            audioStream, cancellationToken);
-        
-        // Process the recognition results
-        while (await textChannelReader.WaitToReadAsync(cancellationToken))
+        var textChannelReader = await _sttConnection.StreamAsChannelAsync<string>("ProcessAudioStream",
+            audioStream);
+
+        await foreach (var utterance in textChannelReader.ReadAllAsync())
         {
-            while (textChannelReader.TryRead(out var recognizedText))
+            _logger.LogDebug("Listening and heard: {Utterance}", utterance);
+            if (!string.IsNullOrEmpty(utterance))
             {
-                if (!string.IsNullOrEmpty(recognizedText))
-                {
-                    yield return recognizedText;
-                }
+                yield return utterance;
             }
         }
-        
+
         // Ensure recording is stopped when done
         _audioRecordingService.StopRecording();
+        _audioRecordingService.SilenceDetected -= OnHandleSilenceDetected;
+        yield break;
+
+        void OnHandleSilenceDetected(object? sender, SilenceDetectedEventArgs args)
+        {
+            silenceDetectedAction?.Invoke(args.SilenceDurationMs);
+        }
+    }
+
+    /// <summary>
+    /// Stops the speech-to-text listening operation.
+    /// </summary>
+    /// <remarks>
+    /// This method halts the ongoing audio recording process if it is active
+    /// and disconnects the speech-to-text service connection if it is currently connected.
+    /// It ensures that all associated resources or operations related to listening
+    /// are properly stopped.
+    /// </remarks>
+    /// <returns>A task that represents the asynchronous stop operation.</returns>
+    public async Task StopListening()
+    {
+        if (_audioRecordingService.IsRecording)
+            _audioRecordingService.StopRecording();
+
+        if (_sttConnection.State == HubConnectionState.Connected)
+            await _sttConnection.StopAsync();
+    }
+
+    /// <summary>
+    /// Asynchronously disposes the resources used by the SpeechService, including the TTS and STT hub connections.
+    /// </summary>
+    /// <returns>A ValueTask representing the asynchronous dispose operation.</returns>
+    public async ValueTask DisposeAsync()
+    {
+        await _ttsConnection.DisposeAsync();
+        await _sttConnection.DisposeAsync();
     }
 }

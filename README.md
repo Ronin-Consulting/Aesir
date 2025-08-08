@@ -92,3 +92,6 @@ Note:
 
 ### Vision Models Tested
 1. gemma3:12b (works pretty good)
+
+### KNOW BUGS
+1. When using OpenAI Compatible Models (specfically ChatGPT 4.1) the model will not auto run function tools if a document is attached to the conversation it was pre-trained on.

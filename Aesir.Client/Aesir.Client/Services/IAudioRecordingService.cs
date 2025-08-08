@@ -5,25 +5,43 @@ using System.Threading;
 namespace Aesir.Client.Services;
 
 /// <summary>
-/// Represents a service for audio recording functionalities,
-/// including streaming audio capture and managing recording state.
+/// Represents a contract for audio recording services, enabling asynchronous recording,
+/// managing the recording lifecycle, and detecting silence during the recording process.
 /// </summary>
 public interface IAudioRecordingService : IDisposable
 {
     /// <summary>
-    /// Starts recording audio and returns a stream of audio chunks asynchronously.
+    /// Raised when a period of silence is detected during an audio recording session.
     /// </summary>
-    /// <param name="cancellationToken">A cancellation token to stop the recording operation.</param>
-    /// <returns>An asynchronous enumerable of audio chunks represented as byte arrays.</returns>
+    event EventHandler<SilenceDetectedEventArgs>? SilenceDetected;
+
+    /// <summary>
+    /// Starts the audio recording as an asynchronous stream of byte arrays.
+    /// </summary>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>An asynchronous enumerable of byte arrays representing recorded audio data.</returns>
     IAsyncEnumerable<byte[]> StartRecordingAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Stops the audio recording operation.
+    /// Stops the ongoing audio recording process, releasing associated resources and ensuring
+    /// that the recording operation is properly terminated.
     /// </summary>
     void StopRecording();
 
     /// <summary>
-    /// Gets a value indicating whether recording is currently active.
+    /// Indicates whether the audio recording is currently active.
     /// </summary>
     bool IsRecording { get; }
+}
+
+/// <summary>
+/// Represents the event arguments for a silence detection event, which contains information
+/// about the duration of a detected silent period in an audio recording context.
+/// </summary>
+public class SilenceDetectedEventArgs : EventArgs
+{
+    /// <summary>
+    /// Represents the duration of detected silence in milliseconds.
+    /// </summary>
+    public int SilenceDurationMs { get; set; }
 }

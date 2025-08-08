@@ -2,21 +2,17 @@
 
     <PropertyGroup>
         <TargetFramework>net9.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-
-        <IsPackable>false</IsPackable>
-        <IsTestProject>true</IsTestProject>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="coverlet.collector" Version="6.0.4">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
+        <PackageReference Include="FluentAssertions" Version="6.12.2" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.8" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-        <PackageReference Include="MSTest.TestAdapter" Version="3.10.1" />
-        <PackageReference Include="MSTest.TestFramework" Version="3.10.1" />
+        <PackageReference Include="Moq" Version="4.20.72" />
+        <PackageReference Include="MSTest" Version="3.10.1" />
         <PackageReference Include="NAudio" Version="2.2.1" />
     </ItemGroup>
 
@@ -25,7 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Aesir.Api.Server\Aesir.Api.Server.csproj" />
+      <ProjectReference Include="..\Aesir.Client\Aesir.Client.Desktop\Aesir.Client.Desktop.csproj" />
     </ItemGroup>
 
     <ItemGroup>

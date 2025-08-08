@@ -14,5 +14,5 @@ public interface ITtsService
     /// <param name="text">The input text to be converted to audio. It is automatically split into sentences for processing.</param>
     /// <param name="speed">The speed factor for speech synthesis. The default value is 1.0f, representing normal speed.</param>
     /// <returns>An asynchronous stream of byte arrays, where each byte array represents a WAV audio chunk for a processed sentence.</returns>
-    IAsyncEnumerable<byte[]> GenerateAudioChunksAsync(string text, float speed = 1.0f);
+    IAsyncEnumerable<byte[]> GenerateAudioChunksAsync(string text, float? speed = 1.0f);
 }

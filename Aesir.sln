@@ -32,6 +32,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Api.Server.Tests", "A
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Common", "Aesir.Common\Aesir.Common.csproj", "{8766FEAD-E6B7-41CC-BD6F-9B124A34750D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Client.Desktop.Tests", "Aesir.Client.Desktop.Tests\Aesir.Client.Desktop.Tests.csproj", "{396883C3-ECA6-4A17-9B71-E941ED39B4B8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,5 +68,9 @@ Global
 		{8766FEAD-E6B7-41CC-BD6F-9B124A34750D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8766FEAD-E6B7-41CC-BD6F-9B124A34750D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8766FEAD-E6B7-41CC-BD6F-9B124A34750D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{396883C3-ECA6-4A17-9B71-E941ED39B4B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{396883C3-ECA6-4A17-9B71-E941ED39B4B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{396883C3-ECA6-4A17-9B71-E941ED39B4B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{396883C3-ECA6-4A17-9B71-E941ED39B4B8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

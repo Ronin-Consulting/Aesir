@@ -58,6 +58,8 @@ public partial class HandsFreeControlViewModel : ObservableRecipient, IDisposabl
     
     private async Task StartHandsFreeAsync()
     {
+        await StopHandsFreeAsync();
+        
         if (IsProcessing) return;
 
         try

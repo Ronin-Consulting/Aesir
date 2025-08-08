@@ -129,17 +129,27 @@ public class Program
             var useCudaValue = Environment.GetEnvironmentVariable("USE_CUDA");
             _ = bool.TryParse(useCudaValue, out var useCuda);
             
+            var ttsConfig = TtsConfig.Default;
+            ttsConfig.ModelPath = ttsModelPath ?? throw new InvalidOperationException();
+            ttsConfig.CudaEnabled = useCuda;
+            
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-            return new TtsService(loggerFactory.CreateLogger<TtsService>(), ttsModelPath, useCuda);
+            return new TtsService(loggerFactory.CreateLogger<TtsService>(), ttsConfig);
         });
         builder.Services.AddSingleton<ISttService>(sp =>
         {
-            var ttsModelPath = builder.Configuration.GetValue<string>("Inference:Onnx:Stt");
+            var sttModelPath = builder.Configuration.GetValue<string>("Inference:Onnx:Stt");
+            var vadModelPath = builder.Configuration.GetValue<string>("Inference:Onnx:Vad");
             var useCudaValue = Environment.GetEnvironmentVariable("USE_CUDA");
             _ = bool.TryParse(useCudaValue, out var useCuda);
             
+            var sttConfig = SttConfig.Default;
+            sttConfig.WhisperModelPath = sttModelPath ?? throw new InvalidOperationException();
+            sttConfig.VadModelPath = vadModelPath ?? throw new InvalidOperationException();
+            sttConfig.CudaEnabled = useCuda;
+            
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-            return new SttService(loggerFactory.CreateLogger<SttService>(), ttsModelPath, useCuda);
+            return new SttService(loggerFactory.CreateLogger<SttService>(), sttConfig);
         });
         #endregion
         

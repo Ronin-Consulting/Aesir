@@ -115,8 +115,8 @@ public partial class App : Application
         AppServices.AddSingleton<INavigationService, NavigationService>();
         AppServices.AddSingleton<INotificationService, NotificationService>();
         AppServices.AddSingleton<IConfigurationService, ConfigurationService>();
-        AppServices.AddSingleton<IHandsFreeService, HandsFreeService>();
         
+        AppServices.AddTransient<IHandsFreeService, HandsFreeService>();
         AppServices.AddTransient<SystemMessageViewModel>();
         AppServices.AddTransient<UserMessageViewModel>();
         AppServices.AddTransient<AssistantMessageViewModel>();

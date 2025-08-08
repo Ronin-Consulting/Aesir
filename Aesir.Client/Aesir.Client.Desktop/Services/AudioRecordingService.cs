@@ -1,511 +1,308 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 using Aesir.Client.Services;
 using Microsoft.Extensions.Logging;
-using SoundFlow.Abstracts;
 using SoundFlow.Abstracts.Devices;
 using SoundFlow.Backends.MiniAudio;
+using SoundFlow.Components;
 using SoundFlow.Enums;
 using SoundFlow.Structs;
 
 namespace Aesir.Client.Desktop.Services;
 
 /// <summary>
-/// A service responsible for managing audio recording functionalities, leveraging the SoundFlow library
-/// for audio processing and device control. This service provides capabilities to initiate, terminate, and
-/// monitor audio recordings, while ensuring proper handling of their lifecycle and associated operations.
+/// Provides audio recording functionality using a capture device and recorder.
 /// </summary>
-public sealed class AudioRecordingService : IAudioRecordingService
+/// <remarks>
+/// This service enables starting and stopping an audio recording process. It captures audio in a specific format
+/// and supports asynchronous stream-based data processing. The service emits audio data as chunks via an asynchronous enumerable.
+/// </remarks>
+public class AudioRecordingService(ILogger<AudioRecordingService> logger) : IAudioRecordingService
 {
     /// <summary>
-    /// Represents the constant number of audio channels to be utilized for audio recording.
-    /// Configured for optimal integration with audio processing systems, typically reflecting a mono (1 channel) setting.
+    /// Logger instance used for recording and emitting logs within the
+    /// <see cref="AudioRecordingService"/> class. This is primarily used to
+    /// trace the execution flow, report errors, or log informational messages
+    /// during audio recording operations and related activities.
     /// </summary>
-    private const uint Channels = 1;
+    private readonly ILogger<AudioRecordingService> _logger = logger;
 
     /// <summary>
-    /// Represents the fixed size, in bytes, of audio chunks to be processed during recording.
-    /// Optimized for maintaining a balance between processing performance and latency,
-    /// with the default value set to 4096 bytes.
+    /// Represents the audio engine responsible for managing audio device initialization
+    /// and operations in the recording service. This includes updating device information,
+    /// handling capture devices, and providing access to audio processing functionality.
     /// </summary>
-    private const int ChunkSize = 4096;
+    private readonly MiniAudioEngine? _engine = new();
 
     /// <summary>
-    /// Defines the amplitude threshold value used to determine silence in audio processing.
-    /// Any audio signal with amplitude below this value is classified as silence.
-    /// Permissible range: 0.0 (absolute silence) to 1.0 (maximum signal amplitude).
-    /// Utilized during audio processing for silence detection and filtering.
+    /// Represents the audio capture device used for recording audio input.
+    /// It is initialized with the audio engine and configured to capture audio
+    /// in a specified format.
     /// </summary>
-    private const float SilenceThreshold = 0.01f;
+    private AudioCaptureDevice? _captureDevice; // Updated to use AudioCaptureDevice from docs
 
     /// <summary>
-    /// Defines the duration in milliseconds after which the recording automatically stops
-    /// if no audio input is detected. This value is used to terminate recordings when silence is sustained
-    /// for the specified time interval.
+    /// Represents the recorder instance used to capture audio data from the configured audio capture device.
+    /// Manages the audio recording lifecycle, including starting, stopping, and processing audio samples.
     /// </summary>
-    private const int SilenceTimeoutMs = 120000;
+    private Recorder? _recorder;
 
     /// <summary>
-    /// Represents a logger instance used within the <see cref="AudioRecordingService"/> class
-    /// to log events, warnings, errors, and debugging information during the execution
-    /// of audio recording operations. Enables tracking and troubleshooting of processes
-    /// related to audio recording functionality.
+    /// Represents a channel used for asynchronously transferring audio data in byte array chunks.
+    /// Acts as a communication mechanism between the audio capture process and consumers,
+    /// facilitating unbounded, thread-safe buffering of audio samples.
     /// </summary>
-    private readonly ILogger<AudioRecordingService> _logger;
+    private Channel<byte[]>? _audioChannel;
 
     /// <summary>
-    /// Represents the audio engine instance used for audio processing and device management within the service.
-    /// This instance is responsible for capturing, playback, and general audio operations via the SoundFlow library.
+    /// A buffer used to store audio samples temporarily during the recording process.
+    /// Samples are enqueued as they are captured, typically in float format.
     /// </summary>
-    private readonly AudioEngine _engine;
+    private readonly Queue<float> _sampleBuffer = new();
 
     /// <summary>
-    /// Represents the audio capture device employed within the AudioRecordingService for handling audio acquisition.
-    /// This private field is responsible for managing the lifecycle of the capture device, including starting, stopping, and disposing,
-    /// as well as attaching event handlers for processing audio data.
+    /// A locking mechanism used to synchronize access to the sample buffer during audio recording.
+    /// Ensures thread-safe operations when processing or clearing the buffer.
     /// </summary>
-    private AudioCaptureDevice? _captureDevice;
+    private readonly Lock _bufferLock = new();
 
     /// <summary>
-    /// Represents a private channel writer used for streaming audio data as byte array chunks within the recording process.
-    /// Enables asynchronous communication from audio processing components to consumers of the audio data.
-    /// Typically initialized when recording begins and completed or set to null when recording stops.
+    /// Defines the audio sample rate for recording, specified in hertz (Hz).
+    /// Determines the number of audio samples captured per second,
+    /// impacting audio quality and data size.
     /// </summary>
-    private ChannelWriter<byte[]>? _channelWriter;
+    private const int SampleRate = 16000;
 
     /// <summary>
-    /// Represents the cancellation token source used to signal and manage the termination of the audio recording process.
-    /// Functions as a control mechanism to ensure proper handling of recording operations, including stopping and resource cleanup.
+    /// The number of audio samples processed per chunk. This value determines the size of each audio chunk
+    /// and is calculated based on the sample rate and desired chunk duration.
     /// </summary>
-    private CancellationTokenSource? _recordingCts;
+    private const int SamplesPerChunk = (SampleRate / 10) * 7; // 11,200 samples
 
     /// <summary>
-    /// Indicates the current state of the audio recording process within the service.
-    /// When set to true, audio recording is actively occurring; when false, recording is stopped or has not started.
-    /// This field is managed internally to ensure thread-safe updates and accurate state representation.
+    /// Represents the number of bytes per audio sample. Commonly used to determine
+    /// the size of memory allocations or buffer calculations for audio processing.
     /// </summary>
-    private bool _isRecording;
+    private const int BytesPerSample = 2; // 16-bit
 
     /// <summary>
-    /// A private synchronization object used to enforce thread-safe access to shared
-    /// resources within the AudioRecordingService. It ensures proper synchronization
-    /// for concurrent operations like managing the recording state and interacting
-    /// with audio devices.
+    /// Represents the Root Mean Square (RMS) amplitude threshold used to determine silence during audio recording.
+    /// Audio segments with an RMS value below this threshold are classified as silence.
+    /// The value can be adjusted based on the recording environment or sensitivity requirements.
     /// </summary>
-    private readonly object _lock = new();
+    private const float SilenceRmsThreshold = 0.02f; // Adjustable RMS threshold for silence (tune based on environment)
 
     /// <summary>
-    /// Represents a mutable, in-memory collection of audio data as a sequence of bytes.
-    /// Primarily utilized as a temporary storage buffer during the audio recording lifecycle.
-    /// Enables efficient management of audio chunks by accumulating and processing data
-    /// progressively before it is flushed or transmitted.
+    /// The number of consecutive silent audio chunks required to trigger a silence detection event.
+    /// This represents the duration of silence, where each chunk corresponds to approximately 100ms of audio.
+    /// Adjust this value to change the sensitivity of silence detection.
     /// </summary>
-    private readonly List<byte> _audioBuffer = [];
+    private const int SilenceChunkThreshold = 5; // ~500ms of consecutive silence to trigger event
 
     /// <summary>
-    /// Stores the timestamp of the most recent detected audio signal.
-    /// Used to track silence periods and manage features like automatic recording stop
-    /// based on the absence of audio input.
+    /// Tracks the number of consecutive silent audio chunks detected during recording.
+    /// This variable is incremented for each silent chunk and reset to zero
+    /// when a non-silent chunk is encountered. Used to identify prolonged silence
+    /// and trigger the <see cref="SilenceDetected"/> event if the configured threshold is reached.
     /// </summary>
-    private DateTime _lastAudioDetected = DateTime.UtcNow;
+    private int _consecutiveSilentChunks;
 
     /// <summary>
-    /// A timer used to monitor periods of silence during an active audio recording session.
-    /// Triggers actions such as auto-stopping the recording if the silence exceeds a predefined threshold.
+    /// Indicates whether the recording process is currently active.
+    /// This property reflects the active state of the recording operation and can be used
+    /// to determine if audio is being captured at a given time.
     /// </summary>
-    private Timer? _silenceTimer;
+    public bool IsRecording { get; private set; }
 
     /// <summary>
-    /// Indicates whether the audio recording service is currently active.
-    /// Ensures thread-safe access to the recording state.
+    /// Event triggered when a silent period is identified during the recording process
+    /// based on the predefined silence detection criteria.
+    /// Allows subscribers to handle or react to periods of detected silence.
     /// </summary>
-    public bool IsRecording
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _isRecording;
-            }
-        }
-    }
+    public event EventHandler<SilenceDetectedEventArgs>? SilenceDetected;
 
-    /// <summary>
-    /// Service responsible for managing audio recording functionality, including operations such as
-    /// starting, stopping, and handling the audio recording lifecycle. Utilizes the SoundFlow library
-    /// for audio processing and interaction with audio devices.
-    /// </summary>
-    public AudioRecordingService(ILogger<AudioRecordingService> logger)
-    {
-        _logger = logger;
-
-        try
-        {
-            _engine = new MiniAudioEngine();
-            _logger.LogInformation("AudioRecordingService initialized successfully with SoundFlow MiniAudioEngine");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to initialize SoundFlow MiniAudioEngine");
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// Initiates an asynchronous recording of audio and provides a continuous stream of audio chunks as an enumerable.
-    /// </summary>
-    /// <param name="cancellationToken">The cancellation token to monitor for cancellation requests during the recording process.</param>
-    /// <returns>An asynchronous enumerable of audio chunks represented as byte arrays.</returns>
+    /// Begins an asynchronous audio recording process and returns a stream of byte arrays representing audio chunks.
+    /// <param name="cancellationToken">
+    /// A token to monitor for cancellation requests. Recording stops when the token is canceled.
+    /// </param>
+    /// <returns>
+    /// An asynchronous enumerable of byte arrays, where each byte array represents a chunk of recorded audio data.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the recording process is already active.
+    /// </exception>
     public async IAsyncEnumerable<byte[]> StartRecordingAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        // Initial check without a lock to return early. The IsRecording property is thread-safe.
-        if (IsRecording)
+        if (IsRecording) throw new InvalidOperationException("Recording already started.");
+        cancellationToken.Register(StopRecording);
+
+        _audioChannel = Channel.CreateUnbounded<byte[]>();
+
+        // Define format and initialize capture device
+        var format = new AudioFormat
         {
-            _logger.LogWarning("Recording is already in progress.");
-            yield break;
-        }
-
-        AudioCaptureDevice? captureDevice;
-        try
-        {
-            // Perform potentially blocking I/O outside of the main lock.
-            var format = AudioFormat.Broadcast; // S16, Mono, 48kHz - perfect for STT service
-            _logger.LogDebug("Searching for default capture device with format {Format}", format);
-            
-            var availableDevices = _engine.CaptureDevices.ToList();
-            _logger.LogDebug("Found {DeviceCount} capture devices available", availableDevices.Count);
-            
-            DeviceInfo? defaultCapture = availableDevices.FirstOrDefault(x => x.IsDefault);
-            if (defaultCapture == null)
-            {
-                _logger.LogError("No default capture device found among {DeviceCount} available devices", availableDevices.Count);
-                throw new InvalidOperationException("No default capture device found.");
-            }
-
-            _logger.LogInformation("Using default capture device found");
-            captureDevice = _engine.InitializeCaptureDevice(defaultCapture, format);
-            _logger.LogDebug("Capture device initialized successfully");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to initialize audio capture device");
-            yield break; // Exit cleanly if device init fails.
-        }
-
-        Channel<byte[]> channel;
-        CancellationTokenSource localCancellationTokenSource;
-
-        lock (_lock)
-        {
-            // Double-check state inside the lock to prevent a race condition.
-            if (_isRecording)
-            {
-                _logger.LogWarning("Recording started by another call while this one was initializing");
-                captureDevice.Dispose(); // Clean up the newly created device.
-                yield break;
-            }
-
-            _logger.LogDebug("Setting up recording channel and cancellation token");
-            channel = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions { SingleReader = true });
-            _channelWriter = channel.Writer;
-
-            localCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            _recordingCts = localCancellationTokenSource;
-
-            _captureDevice = captureDevice;
-            // The lambda can be replaced with a named method if it grows more complex.
-            _captureDevice.OnAudioProcessed += OnAudioProcessedHandler;
-            _logger.LogDebug("Audio processing event handler attached");
-
-            _isRecording = true;
-            _lastAudioDetected = DateTime.UtcNow;
-            
-            // Start silence detection timer
-            _silenceTimer = new Timer(CheckSilenceTimeout, null, 1000, 1000); // Check every second
-            _logger.LogDebug("Recording state set to active with silence detection enabled");
-        }
-
-        _logger.LogInformation("Starting audio capture device");
+            SampleRate = SampleRate,
+            Channels = 1, // Mono
+            Format = SampleFormat.S16
+        };
+        _engine!.UpdateDevicesInfo();
+        var defaultCapture = _engine!.CaptureDevices.First(d => d.IsDefault);
+        
+        _captureDevice = _engine.InitializeCaptureDevice(defaultCapture, format);
         _captureDevice.Start();
-        _logger.LogInformation("Audio recording started successfully");
 
-        var chunkCount = 0;
-        try
+        // Setup recorder with callback
+        _recorder = new Recorder(_captureDevice, ProcessAudioCallback); // Assuming this takes engine; adjust if needed
+        _recorder.StartRecording();
+        IsRecording = true;
+
+        // Yield from channel
+        await foreach (var chunk in _audioChannel.Reader.ReadAllAsync(cancellationToken))
+            yield return chunk;
+    }
+
+    /// <summary>
+    /// Stops the ongoing audio recording process if it is currently active.
+    /// </summary>
+    /// <remarks>
+    /// This method halts the audio capture and releases resources associated with the recording process.
+    /// If there is buffered audio data yet to be processed, it will finalize and ensure no data is left unprocessed.
+    /// Calling this method when no recording is active is safe and will return without performing any operations.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if an attempt is made to stop recording while the system is in an invalid state.
+    /// </exception>
+    public void StopRecording()
+    {
+        if (!IsRecording) return;
+
+        _recorder?.StopRecording();
+        _captureDevice?.Stop();
+        IsRecording = false;
+
+        // Yield any remaining samples
+        lock (_bufferLock)
         {
-            // Stream from the channel. Cancellation is handled by ReadAllAsync.
-            await foreach (var chunk in channel.Reader.ReadAllAsync(localCancellationTokenSource.Token))
+            if (_sampleBuffer.Count > 0)
             {
-                chunkCount++;
-                if (chunkCount == 1)
-                {
-                    _logger.LogDebug("First audio chunk received and streamed");
-                }
-                else if (chunkCount % 100 == 0) // Log every 100th chunk to avoid spam
-                {
-                    _logger.LogDebug("Processed {ChunkCount} audio chunks", chunkCount);
-                }
-                yield return chunk;
+                WriteChunk(_sampleBuffer.ToArray());
+                _sampleBuffer.Clear();
+            }
+        }
+
+        _audioChannel?.Writer.Complete();
+    }
+
+    /// <summary>
+    /// Processes audio samples in chunks and performs operations such as detecting silence,
+    /// calculating RMS, and enqueuing processed audio chunks for further consumption.
+    /// </summary>
+    /// <param name="samples">The span of audio samples captured, represented as floating-point values.</param>
+    /// <param name="capability">The capability settings associated with the audio processing.</param>
+    private void ProcessAudioCallback(Span<float> samples, Capability capability)
+    {
+        lock (_bufferLock)
+        {
+            foreach(var sample in samples)
+            {
+                _sampleBuffer.Enqueue(sample);
             }
             
-            _logger.LogInformation("Audio recording stream completed. Total chunks processed: {ChunkCount}", chunkCount);
+            while (_sampleBuffer.Count >= SamplesPerChunk)
+            {
+                var chunkSamples = new float[SamplesPerChunk];
+                for (var i = 0; i < SamplesPerChunk; i++)
+                {
+                    chunkSamples[i] = _sampleBuffer.Dequeue();
+                }
+                //_logger.LogDebug("Writing sample chunk of length {SampleChunkLength}", chunkSamples.Length);
+
+                // Detect silence
+                var rms = CalculateRms(chunkSamples);
+                if (rms < SilenceRmsThreshold)
+                {
+                    _consecutiveSilentChunks++;
+                    if (_consecutiveSilentChunks >= SilenceChunkThreshold)
+                    {
+                        OnSilenceDetected(new SilenceDetectedEventArgs { SilenceDurationMs = _consecutiveSilentChunks * 100 }); // ~100ms per chunk
+                        // Do not reset here; consumer decides to stop or continue
+                    }
+                }
+                else
+                {
+                    _consecutiveSilentChunks = 0; // Reset on speech
+                }
+
+                WriteChunk(chunkSamples);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Calculates the root mean square (RMS) of an array of audio samples.
+    /// </summary>
+    /// <param name="samples">An array of float audio samples to calculate the RMS.</param>
+    /// <returns>The calculated RMS value as a float.</returns>
+    private float CalculateRms(float[] samples)
+    {
+        float sumSquares = 0;
+        foreach (var sample in samples)
+        {
+            sumSquares += sample * sample;
+        }
+        return (float)Math.Sqrt(sumSquares / samples.Length);
+    }
+
+    /// <summary>
+    /// Invokes the SilenceDetected event when silence is detected during audio recording.
+    /// </summary>
+    /// <param name="e">The event data containing details about the detected silence.</param>
+    protected virtual void OnSilenceDetected(SilenceDetectedEventArgs e)
+    {
+        SilenceDetected?.Invoke(this, e);
+    }
+
+    /// <summary>
+    /// Converts an array of floating-point audio samples into a byte array in PCM format and writes the resulting byte array to the audio channel.
+    /// </summary>
+    /// <param name="samples">An array of floating-point audio samples, each representing audio data in the range of -1.0 to 1.0.</param>
+    private void WriteChunk(float[] samples)
+    {
+        var byteChunk = ArrayPool<byte>.Shared.Rent(samples.Length * BytesPerSample);
+        try
+        {
+            for (var i = 0; i < samples.Length; i++)
+            {
+                var pcmValue = (short)(samples[i] * 32767);
+                BitConverter.GetBytes(pcmValue).CopyTo(byteChunk, i * BytesPerSample);
+            }
+            _audioChannel?.Writer.TryWrite(byteChunk.AsSpan(0, samples.Length * BytesPerSample).ToArray());
         }
         finally
         {
-            // This ensures StopRecording is always called to clean up resources.
-            _logger.LogDebug("Recording stream ended, initiating cleanup");
-            StopRecording();
+            ArrayPool<byte>.Shared.Return(byteChunk, clearArray: true);
         }
     }
 
     /// <summary>
-    /// Handles the event of receiving raw audio data captured from the audio device.
-    /// This method processes the provided audio data and attempts to write it to an internal audio stream or buffer.
-    /// </summary>
-    /// <param name="audioData">The byte array containing the raw audio data captured from the audio device.</param>
-    private void OnAudioDataReceived(byte[] audioData)
-    {
-        try
-        {
-            if (_channelWriter == null)
-            {
-                _logger.LogDebug("Channel writer is null, skipping audio data");
-                return;
-            }
-
-            if (_recordingCts?.Token.IsCancellationRequested == true)
-            {
-                _logger.LogDebug("Recording cancellation requested, skipping audio data");
-                return;
-            }
-
-            // Send the audio chunk to the channel (non-blocking)
-            if (!_channelWriter.TryWrite(audioData))
-            {
-                _logger.LogWarning("Failed to write {DataSize} bytes of audio data to channel", audioData.Length);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing {DataSize} bytes of audio data", audioData?.Length ?? 0);
-        }
-    }
-
-    /// <summary>
-    /// Stops the current audio recording session. This method ensures that all resources related to the
-    /// audio recording process are released, any buffered audio data is processed, and logging provides
-    /// insights into the termination process. It handles errors gracefully and ensures proper cleanup operations.
-    /// </summary>
-    public void StopRecording()
-    {
-        lock (_lock)
-        {
-            if (!_isRecording)
-            {
-                return;
-            }
-
-            _isRecording = false; // Set this first to prevent race conditions.
-            _logger.LogInformation("Stopping audio recording");
-
-            try
-            {
-                _logger.LogDebug("Cancelling recording operations");
-                _recordingCts?.Cancel();
-
-                if (_captureDevice != null)
-                {
-                    // Detach the event handler to prevent it from firing during disposal.
-                    _logger.LogDebug("Detaching audio processing event handler");
-                    _captureDevice.OnAudioProcessed -= OnAudioProcessedHandler;
-                    
-                    _logger.LogDebug("Stopping capture device");
-                    _captureDevice.Stop();
-                    
-                    _logger.LogDebug("Disposing capture device");
-                    _captureDevice.Dispose();
-                    _captureDevice = null;
-                }
-
-                if (_audioBuffer.Count > 0)
-                {
-                    _logger.LogInformation("Flushing {RemainingBytes} bytes from audio buffer", _audioBuffer.Count);
-                    OnAudioDataReceived(_audioBuffer.ToArray());
-                    _audioBuffer.Clear();
-                    _logger.LogDebug("Audio buffer cleared");
-                }
-
-                _logger.LogDebug("Completing channel writer");
-                _channelWriter?.TryComplete();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error occurred while stopping audio recording");
-            }
-            finally
-            {
-                _channelWriter = null;
-                _recordingCts?.Dispose();
-                _recordingCts = null;
-                
-                // Stop and dispose silence timer
-                _silenceTimer?.Dispose();
-                _silenceTimer = null;
-                
-                _logger.LogInformation("Audio recording stopped and all resources cleaned up");
-            }
-        }
-    }
-
-    /// <summary>
-    /// Handles audio processing events generated by the capture device. Converts the provided audio
-    /// samples into byte arrays, facilitates silence detection, and prepares audio chunks
-    /// for subsequent processing or transmission.
-    /// </summary>
-    /// <param name="samples">A span of floating-point audio samples to be processed.</param>
-    /// <param name="capability">Metadata or capability information related to the audio being processed.</param>
-    private void OnAudioProcessedHandler(Span<float> samples, Capability capability)
-    {
-        try
-        {
-            // Calculate RMS (Root Mean Square) for silence detection
-            var rms = CalculateRms(samples);
-            var isAudioDetected = rms > SilenceThreshold;
-
-            if (isAudioDetected)
-            {
-                _lastAudioDetected = DateTime.UtcNow;
-                _logger.LogTrace("Audio detected with RMS: {Rms:F4}", rms);
-            }
-
-            var byteBuffer = new byte[samples.Length * Channels * 2];
-            var byteIndex = 0;
-            foreach (var sample in samples)
-            {
-                var val = (short)(sample * 32767f);
-                byteBuffer[byteIndex++] = (byte)(val & 0xFF);
-                byteBuffer[byteIndex++] = (byte)((val >> 8) & 0xFF);
-            }
-
-            lock (_lock)
-            {
-                _audioBuffer.AddRange(byteBuffer);
-
-                var chunksProcessed = 0;
-                while (_audioBuffer.Count >= ChunkSize)
-                {
-                    var chunk = new byte[ChunkSize];
-                    _audioBuffer.CopyTo(0, chunk, 0, ChunkSize);
-                    _audioBuffer.RemoveRange(0, ChunkSize);
-
-                    OnAudioDataReceived(chunk);
-                    chunksProcessed++;
-                }
-
-                if (chunksProcessed > 0)
-                {
-                    _logger.LogTrace("Processed {ChunksProcessed} audio chunks from {SampleCount} samples, {BufferSize} bytes remaining in buffer", 
-                        chunksProcessed, samples.Length, _audioBuffer.Count);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing audio samples in OnAudioProcessedHandler");
-        }
-    }
-
-    /// <summary>
-    /// Calculates the Root Mean Square (RMS) value of the provided audio samples.
-    /// RMS is used to measure the audio level, which helps in detecting the presence of sound.
-    /// </summary>
-    /// <param name="samples">An array of audio samples to calculate the RMS value from.</param>
-    /// <returns>A float value representing the calculated RMS of the audio samples.</returns>
-    private static float CalculateRms(Span<float> samples)
-    {
-        if (samples.Length == 0) return 0.0f;
-
-        var sum = 0.0f;
-        foreach (var sample in samples)
-        {
-            sum += sample * sample;
-        }
-
-        return (float)Math.Sqrt(sum / samples.Length);
-    }
-
-    /// <summary>
-    /// Timer callback method that checks whether the silence duration has exceeded the configured timeout limit.
-    /// If the duration exceeds the threshold, the recording is stopped automatically.
-    /// </summary>
-    /// <param name="state">An optional object state parameter for the timer callback. This parameter is not utilized in this implementation.</param>
-    private void CheckSilenceTimeout(object? state)
-    {
-        try
-        {
-            if (!_isRecording) return;
-
-            var silenceDuration = DateTime.UtcNow - _lastAudioDetected;
-            if (silenceDuration.TotalMilliseconds >= SilenceTimeoutMs)
-            {
-                _logger.LogInformation("Auto-stopping recording due to {SilenceDuration:F1} seconds of silence", 
-                    silenceDuration.TotalSeconds);
-                
-                // Stop recording due to silence timeout
-                Task.Run(StopRecording);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in silence timeout check");
-        }
-    }
-
-    /// <summary>
-    /// Releases the resources used by the <see cref="AudioRecordingService"/> instance.
+    /// Releases the resources used by the <see cref="AudioRecordingService"/> class.
     /// </summary>
     /// <remarks>
-    /// This method handles the cleanup of internal components such as the silence timer and audio engine,
-    /// ensuring that any ongoing operations are stopped and all resources are disposed of properly.
+    /// This method ensures that any ongoing audio recording is stopped, and the underlying audio
+    /// capture device and engine are disposed of properly to free up system resources. Additionally,
+    /// it suppresses finalization for the instance, preventing the garbage collector from calling the finalizer.
     /// </remarks>
     public void Dispose()
     {
-        _logger.LogInformation("Disposing AudioRecordingService");
-
-        try
-        {
-            StopRecording();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error stopping recording during disposal");
-        }
-
-        try
-        {
-            _silenceTimer?.Dispose();
-            _logger.LogDebug("Silence timer disposed");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error disposing silence timer");
-        }
-        
-        try
-        {
-            _engine?.Dispose();
-            _logger.LogDebug("SoundFlow engine disposed");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error disposing SoundFlow engine");
-        }
-        
-        _logger.LogInformation("AudioRecordingService disposed successfully");
+        StopRecording();
+        _captureDevice?.Dispose(); // If IDisposable
+        _engine?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

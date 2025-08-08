@@ -22,9 +22,8 @@ public interface IHandsFreeService
     /// <summary>
     /// Starts hands-free mode with configurable silence detection.
     /// </summary>
-    /// <param name="silenceTimeoutSeconds">Duration of silence before stopping listening (default: 5 seconds).</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task StartHandsFreeMode(float silenceTimeoutSeconds = 5.0f);
+    Task StartHandsFreeMode();
 
     /// <summary>
     /// Stops hands-free mode and cleans up resources.

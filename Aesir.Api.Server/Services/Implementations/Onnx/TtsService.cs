@@ -4,51 +4,115 @@ using SherpaOnnx;
 namespace Aesir.Api.Server.Services.Implementations.Onnx;
 
 /// <summary>
-/// The TtsService class implements text-to-speech (TTS) functionality, enabling the conversion
-/// of text input into audio output. It supports chunked audio generation and is designed to
-/// operate with an offline TTS engine using configurable settings such as model path and hardware acceleration.
+/// Represents the configuration settings for the TTS service, including model path,
+/// hardware acceleration, threading, and performance tuning parameters.
+/// </summary>
+public class TtsConfig
+{
+    /// <summary>
+    /// Provides a default configuration instance for TTS settings, enabling out-of-the-box functionality without requiring manual configuration.
+    /// </summary>
+    public static TtsConfig Default => new();
+
+    /// <summary>
+    /// Specifies the file path to the TTS model that will be used for text-to-speech processing.
+    /// This must be a valid path to the model file.
+    /// </summary>
+    public string ModelPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Indicates whether CUDA acceleration is enabled for TTS service processing.
+    /// </summary>
+    public bool CudaEnabled { get; set; } = false;
+
+    /// <summary>
+    /// Specifies the number of threads used for TTS processing.
+    /// This influences performance and multi-threading optimization.
+    /// </summary>
+    public int NumThreads { get; set; } = Math.Min(Environment.ProcessorCount / 2, 4);
+
+    /// <summary>
+    /// Defines the rate of speech synthesis playback.
+    /// A value of 1.0 represents normal speed, while values greater than 1.0 increase the speed, and values less than 1.0 decrease it.
+    /// </summary>
+    public float Speed { get; set; } = 1.0f;
+
+    /// <summary>
+    /// The identifier of the speaker used for text-to-speech (TTS) audio generation.
+    /// Allows for selecting a specific speaker voice profile from the model.
+    /// </summary>
+    public int SpeakerId { get; set; } = 0;
+
+    /// <summary>
+    /// Enable or disable debug mode for TTS processing, controlling the level of logging or diagnostic output.
+    /// </summary>
+    public int Debug { get; set; } = 1;
+
+    /// <summary>
+    /// Specifies the maximum number of sentences to include in a single chunk for TTS processing.
+    /// </summary>
+    public int MaxSentencesPerChunk { get; set; } = 25;
+}
+
+/// <summary>
+/// Implements the text-to-speech (TTS) functionality, allowing for conversion of text input
+/// into audio output. The TtsService supports generating audio in chunks and can be configured
+/// for offline use with specific models and settings, including hardware acceleration options.
 /// </summary>
 public partial class TtsService : ITtsService
 {
     /// <summary>
-    /// Provides logging capabilities for the <see cref="TtsService"/> class.
+    /// Provides logging functionality for the TtsService class.
     /// </summary>
     /// <remarks>
-    /// This variable is an instance of <see cref="ILogger{TtsService}"/> and is used to log
-    /// informational messages, warnings, errors, and other diagnostic information related
-    /// to the operation of the text-to-speech service.
+    /// This variable is an instance of <see cref="ILogger{TtsService}"/> and is used
+    /// to log diagnostic information, including informational, warning, and error messages
+    /// during the lifecycle and operation of the text-to-speech service.
     /// </remarks>
     private readonly ILogger<TtsService> _logger;
 
     /// <summary>
-    /// Holds the instance of the text-to-speech engine utilized for converting text inputs into synthesized audio data.
+    /// The text-to-speech engine used for converting text into synthesized audio output.
     /// </summary>
     /// <remarks>
-    /// This variable is initialized as an instance of <see cref="OfflineTts"/> and configured based on specified model
-    /// and environment options. It serves as the core processing unit for generating audio from textual input, managing
-    /// tasks such as applying language models and synthesizing speech.
+    /// This field is instantiated as an <see cref="OfflineTts"/> object configured with specific model
+    /// parameters, including paths for the speech synthesis model and token files, as well as runtime
+    /// configurations such as CPU/GPU support and thread allocation. It forms the core component used
+    /// in the text-to-speech processing pipeline.
     /// </remarks>
     private readonly OfflineTts _ttsEngine;
 
-    /// Represents a Text-to-Speech (TTS) service.
-    /// Provides functionality for converting text input into audio data in chunks using an offline TTS engine.
-    public TtsService(ILogger<TtsService> logger, string? modelPath, bool useCuda)
+    /// <summary>
+    /// Stores configuration settings used by the <see cref="TtsService"/> class for text-to-speech
+    /// processing, including model paths, performance tuning options, and hardware acceleration settings.
+    /// </summary>
+    private readonly TtsConfig _config;
+
+    /// <summary>
+    /// The TtsService class is responsible for handling text-to-speech (TTS) operations using ONNX models.
+    /// It utilizes provided configuration settings for model path validation, token file validation,
+    /// and hardware acceleration to initialize a TTS processing engine.
+    /// </summary>
+    public TtsService(
+        ILogger<TtsService> logger,
+        TtsConfig? config = null)
     {
+        _config = config ?? new TtsConfig();
         _logger = logger;
 
-        if (string.IsNullOrEmpty(modelPath))
+        if (string.IsNullOrEmpty(_config.ModelPath))
         {
-            throw new ArgumentNullException(nameof(modelPath), "Model path cannot be null or empty");
+            throw new ArgumentNullException(nameof(_config.ModelPath), "Model path cannot be null or empty");
         }
 
-        if (!File.Exists(modelPath))
+        if (!File.Exists(_config.ModelPath))
         {
-            throw new FileNotFoundException($"Model file not found at path: {modelPath}");
+            throw new FileNotFoundException($"Model file not found at path: {_config.ModelPath}");
         }
         
         var tokensPath = Path.Combine(
-            Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(), "tokens.txt");
-        var dataDirPath = Path.GetDirectoryName(modelPath);
+            Path.GetDirectoryName(_config.ModelPath) ?? throw new InvalidOperationException(), "tokens.txt");
+        var dataDirPath = Path.GetDirectoryName(_config.ModelPath);
         
         if (!File.Exists(tokensPath))
         {
@@ -60,44 +124,34 @@ public partial class TtsService : ITtsService
             throw new FileNotFoundException($"Data directory not found at path: {dataDirPath}");
         }
         
-        _logger.LogInformation("Initializing TTS engine with model: {ModelPath}", modelPath);
-
-        // C API Setup
-        // config.model.vits.model = "vits-piper-en_US-joe-medium/en_US-joe-medium.onnx";
-        // config.model.vits.tokens = "vits-piper-en_US-joe-medium/tokens.txt";
-        // config.model.vits.data_dir = "vits-piper-en_US-joe-medium/espeak-ng-data";
-        // config.model.num_threads = 1;
-        // const SherpaOnnxOfflineTts *tts = SherpaOnnxCreateOfflineTts(&config);
-        //
-        // int sid = 0; // speaker id
-        var config = new OfflineTtsConfig
+        _logger.LogInformation("Initializing TTS engine with model: {ModelPath}", _config.ModelPath);
+        
+        var ttsEngineConfig = new OfflineTtsConfig
         {
             Model = new OfflineTtsModelConfig
             {
                 Vits = new OfflineTtsVitsModelConfig
                 {
-                    Model = modelPath,
-                    Tokens = Path.Combine(
-                        Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(), "tokens.txt"),
+                    Model = _config.ModelPath,
+                    Tokens = tokensPath,
                     DataDir = Path.Combine(
-                        Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException(), "espeak-ng-data")
+                        Path.GetDirectoryName(_config.ModelPath) ?? throw new InvalidOperationException(), "espeak-ng-data")
                 },
-                Debug = 1,
-                NumThreads = 4,
-                Provider = useCuda ? "cuda" : "cpu"
+                Debug = _config.Debug,
+                NumThreads = _config.NumThreads,
+                Provider = _config.CudaEnabled ? "cuda" : "cpu"
             }
         };
-        _ttsEngine = new OfflineTts(config);
+        _ttsEngine = new OfflineTts(ttsEngineConfig);
     }
 
     /// <summary>
-    /// Asynchronously generates audio chunks in WAV format for a given text input, splitting the text into individual sentences
-    /// and applying text-to-speech synthesis to each sentence.
+    /// Asynchronously generates audio chunks in WAV format for a given text input, splitting the text into sentences and processing each sentence using text-to-speech synthesis.
     /// </summary>
-    /// <param name="text">The text input to be processed and converted into audio chunks. Sentences are processed individually.</param>
-    /// <param name="speed">A value representing the speed factor for the synthesized speech. The default value is 1.0f.</param>
-    /// <returns>An asynchronous stream of byte arrays, each representing a WAV audio chunk corresponding to a processed sentence.</returns>
-    public async IAsyncEnumerable<byte[]> GenerateAudioChunksAsync(string text, float speed = 1.0f)
+    /// <param name="text">The input text to be converted into audio chunks. The text is split into sentences before processing.</param>
+    /// <param name="speed">An optional parameter representing the speed adjustment for the synthesized speech. Defaults to 1.0f if not provided.</param>
+    /// <returns>An asynchronous stream of byte arrays, where each byte array represents a WAV audio chunk corresponding to a processed sentence.</returns>
+    public async IAsyncEnumerable<byte[]> GenerateAudioChunksAsync(string text, float? speed = 1.0f)
     {
         // Use regex to split the text while keeping the delimiters.
         var sentences = SentenceSplitterRegex().Split(text)
@@ -105,13 +159,13 @@ public partial class TtsService : ITtsService
             .Where(s => !string.IsNullOrEmpty(s));
 
         var sentenceChunks = sentences.Select((s, i) => new { Sentence = s, Index = i })
-            .GroupBy(x => x.Index / 25)
+            .GroupBy(x => x.Index / _config.MaxSentencesPerChunk)
             .Select(g => string.Join(" ", g.Select(x => x.Sentence)));
 
         foreach (var sentenceGroup in sentenceChunks)
         {
             // 'sentenceGroup' now includes a group of up to 3 sentences.
-            var audio = _ttsEngine.Generate(sentenceGroup, speed: speed, speakerId: 0);
+            var audio = _ttsEngine.Generate(sentenceGroup, speed: speed ?? _config.Speed, speakerId: _config.SpeakerId);
 
             // Use a MemoryStream to create the WAV file in memory
             await using var memoryStream = new MemoryStream();
@@ -147,9 +201,16 @@ public partial class TtsService : ITtsService
             yield return memoryStream.ToArray();
         }
     }
-    
-    /// Represents a regular expression used for splitting text into sentences
-    /// based on sentence-ending punctuation marks like '.', '!', or '?' while retaining the delimiters.
+
+    /// <summary>
+    /// Represents a regular expression used to split text into sentences based on
+    /// sentence-ending punctuation marks such as '.', '!', or '?'. The delimiters
+    /// are retained to preserve sentence boundaries.
+    /// </summary>
+    /// <returns>
+    /// A <see cref="Regex"/> instance configured to split text at sentence boundaries
+    /// while keeping the sentence-ending punctuation.
+    /// </returns>
     [GeneratedRegex(@"(?<=[.!?])")]
     private static partial Regex SentenceSplitterRegex();
 }

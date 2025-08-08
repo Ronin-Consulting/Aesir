@@ -14,12 +14,48 @@ using Polly.Contrib.WaitAndRetry;
 
 namespace Aesir.Client.Tests;
 
+/// <summary>
+/// Unit test class for testing functionalities of the ChatService implementation.
+/// </summary>
+/// <remarks>
+/// This class covers integration tests for ChatService with a focus on various request types
+/// such as standard chat completions and streaming chat completions. The tests validate correct
+/// behavior through arranged scenarios and expected outcomes by making use of mocks and
+/// dependency injections.
+/// </remarks>
+/// <example>
+/// - Ensuring the `ChatCompletionsAsync` method returns valid responses when processing
+/// non-streamed chat completion requests.
+/// - Validating the `ChatCompletionsStreamedAsync` method for correct handling
+/// of streamed chat completion requests.
+/// </example>
+/// <seealso cref="ChatService"/>
+/// <seealso cref="AesirChatRequest"/>
 [TestClass]
 public class ChatServiceTests
 {
+    /// <summary>
+    /// Represents a cache of Flurl HTTP clients used to manage and reuse instances of IFlurlClient.
+    /// This aids in improving performance by reducing the overhead of creating and disposing
+    /// of HTTP client instances for repeated HTTP requests within the test suite.
+    /// </summary>
     private readonly IFlurlClientCache _flurlClientCache;
+
+    /// <summary>
+    /// Represents the configuration settings used in the test class for initializing and configuring various components,
+    /// such as service dependencies and environment-specific parameters.
+    /// </summary>
+    /// <remarks>
+    /// This variable is used to provide values for application settings, specifically for dependency injection
+    /// purposes during the initialization of services (e.g., URLs or other configurations for ChatService).
+    /// It is built using a ConfigurationBuilder with an in-memory collection of key-value pairs.
+    /// </remarks>
     private readonly IConfiguration _configuration;
 
+    /// <summary>
+    /// Provides unit tests for the ChatService implementation. The tests validate the behavior
+    /// of ChatService methods to ensure correct functionality when interacting with chat-related features.
+    /// </summary>
     public ChatServiceTests()
     {
         var delay = Backoff.DecorrelatedJitterBackoffV2(
@@ -43,6 +79,14 @@ public class ChatServiceTests
                 }).Build();
     }
 
+    /// <summary>
+    /// Tests the ChatCompletionsAsync method of the ChatService class by sending a sample chat request
+    /// and verifying that a valid response is returned.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation of the test, ensuring the result is not null
+    /// and the ChatCompletionsAsync method works as expected.
+    /// </returns>
     [TestMethod]
     public async Task Test_ChatCompletionsAsync()
     {
@@ -76,7 +120,15 @@ public class ChatServiceTests
         // Assert
         result.Should().NotBeNull();
     }
-    
+
+    /// <summary>
+    /// Tests the <see cref="ChatService.ChatCompletionsStreamedAsync"/> method to ensure it properly streams
+    /// chat completion results based on a provided <see cref="AesirChatRequest"/> object.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous test operation. The task contains assertions verifying that:
+    /// the result is not null, and each streamed completion is non-null as well.
+    /// </returns>
     [TestMethod]
     public async Task Test_ChatCompletionsStreamedAsync()
     {

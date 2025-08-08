@@ -49,11 +49,11 @@
 - **Customizable Contexts**: Extensible prompt system for industry-specific adaptations
 - **Edge-Optimized**: Designed for performance on edge devices
 
-### 🖥️ **Cross-Platform Client Architecture**
-- **Desktop Application**: Native Avalonia-based client for Windows, macOS, and Linux
-- **Browser Access**: WebAssembly deployment for universal web-based access
-- **Responsive Design**: Consistent user experience across all platforms
+### 🖥️ **Cross-Platform**
+- **Hardware Systems**: Optimized for all major hardware architectures (X86, X64, and ARM64)
 - **Offline Capability**: Continue working even when internet connectivity is limited
+- **Edge deployment**: Optimized for sub-500 token responses.
+- **CUDA & Metal Support**: Hardware acceleration for improved performance on compatible systems
 
 ### 🔍 **Enterprise-Grade Search & Knowledge Management**
 - **Vector Database Integration**: Qdrant-powered semantic search for intelligent document discovery
@@ -71,8 +71,7 @@
   - Keyword spotting
 - **Text-to-Speech (TTS)**: Natural voice synthesis using VITS-Piper models
 - **Hands-Free Mode**: Complete voice-controlled interaction for operational environments
-- **SignalR Streaming**: Real-time audio processing with low-latency communication
-- **CUDA & Metal Support**: Hardware acceleration for improved performance on compatible systems
+- **Byte-Level Streaming**: Real-time audio processing with low-latency communication
 
 ---
 
