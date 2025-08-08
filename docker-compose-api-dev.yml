@@ -39,10 +39,11 @@ services:
       resources:
         limits:
           cpus: '4.0'
-          memory: 4G
-        reservations:
-          cpus: '2.0'
           memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+          
   pgdb:
     environment:
       POSTGRES_PASSWORD: RaGn4r0k!!
@@ -59,7 +60,15 @@ services:
       retries: 10
     labels:
       - "traefik.enable=false"
-
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+          
   reverse-proxy:
     image: traefik:latest
     restart: unless-stopped
@@ -86,6 +95,14 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - letsencryptdata:/letsencrypt
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512MB
+        reservations:
+          cpus: '0.5'
+          memory: 256MB
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -113,7 +130,14 @@ services:
       - "traefik.http.routers.qdrant.tls=true"
       - "traefik.http.routers.qdrant.tls.certresolver=letsencryptresolver"
       - "traefik.http.services.qdrant.loadbalancer.server.port=6333"
-
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
 configs:
   qdrant_config:
     content: |

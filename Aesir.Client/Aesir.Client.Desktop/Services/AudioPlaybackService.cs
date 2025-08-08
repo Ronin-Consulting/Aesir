@@ -10,11 +10,40 @@ using MiniAudioEx;
 namespace Aesir.Client.Desktop.Services;
 
 /// <summary>
+/// Configuration class for audio playback service settings, allowing for easy tuning and overrides.
+/// </summary>
+public class AudioPlaybackConfig
+{
+    public static AudioPlaybackConfig Default => new();
+    
+    /// <summary>
+    /// Defines the sampling rate (in Hz) used for audio playback.
+    /// This determines the number of audio samples per second, critical for audio quality
+    /// and compatibility with audio processing components.
+    /// </summary>
+    public uint SampleRate { get; set; } = 22050;
+    
+    /// <summary>
+    /// Represents the number of audio channels to be used for playback.
+    /// Common values include 1 for mono and 2 for stereo.
+    /// </summary>
+    public uint Channels { get; set; } = 1;
+    
+    /// <summary>
+    /// Buffer size for audio chunk validation (bytes per sample for 16-bit PCM).
+    /// </summary>
+    public int ValidationBufferSize { get; set; } = 2;
+}
+
+/// <summary>
 /// A service responsible for audio playback operations, utilizing audio streams for real-time playback and managing audio state.
 /// </summary>
-public sealed class AudioPlaybackService : IAudioPlaybackService
+public sealed class AudioPlaybackService(
+    ILogger<AudioPlaybackService> logger,
+    AudioPlaybackConfig? config = null) : IAudioPlaybackService
 {
-    private readonly ILogger<AudioPlaybackService> _logger;
+    private readonly ILogger<AudioPlaybackService> _logger = logger;
+    private readonly AudioPlaybackConfig _config = config ?? AudioPlaybackConfig.Default;
 
     /// <summary>
     /// Represents the audio source used for managing audio playback operations,
@@ -38,7 +67,7 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     /// there is no active playback, either because playback has stopped,
     /// no audio is queued, or the current clip has ended.
     /// </summary>
-    private bool _playing;
+    public bool IsPlaying { get; private set; }
 
     /// <summary>
     /// Represents the currently active audio clip being played by the audio playback service.
@@ -66,31 +95,24 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     /// </summary>
     private CancellationTokenSource? _cts;
 
-    // Assumptions: All WAV chunks are 16-bit signed PCM, mono, 22050 Hz (based on Sherpa-ONNX VITS English model docs)
+    // Assumptions: All WAV chunks are 16-bit signed PCM, configurable sample rate and channels
     /// <summary>
-    /// Defines the sampling rate (in Hz) used for audio playback.
-    /// This determines the number of audio samples per second, critical for audio quality
-    /// and compatibility with audio processing components.
-    /// The value for this implementation is set to 22050 Hz, aligning with model specifications.
+    /// Gets the sampling rate (in Hz) used for audio playback from configuration.
     /// </summary>
-    private const uint SampleRate = 22050;
+    private uint SampleRate => _config.SampleRate;
 
     /// <summary>
-    /// Represents the number of audio channels to be used for playback.
-    /// Common values include 1 for mono and 2 for stereo.
-    /// In this implementation, it is set to 1 (mono), matching the audio format's characteristics.
+    /// Gets the number of audio channels to be used for playback from configuration.
     /// </summary>
-    private const uint Channels = 1;
+    private uint Channels => _config.Channels;
 
-    private AudioApp _audioApp;
+    private AudioApp? _audioApp;
     
     /// <summary>
-    /// Service for handling audio playback using streaming data and managing the playback lifecycle.
+    /// Initializes the audio playback service components.
     /// </summary>
-    public AudioPlaybackService(ILogger<AudioPlaybackService> logger)
+    private void Initialize()
     {
-        _logger = logger;
-        
         try
         {
             _logger.LogInformation("Audio context initialized with sample rate {SampleRate} Hz and {Channels} channel(s)", SampleRate, Channels);
@@ -101,10 +123,12 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
             throw;
         }
 
+        if(_audioApp != null) return; // Already initialized
+        
         _audioApp = new AudioApp(SampleRate, Channels);
         _audioApp.Loaded += AudioContextLoaded;
-
-        Task.Run(() => _audioApp.Run());
+        
+        Task.Run(() => _audioApp.Run(),_cts!.Token);
         
         _logger.LogInformation("AudioPlaybackService initialized successfully");
     }
@@ -122,13 +146,15 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     /// <returns>A task representing the asynchronous operation of audio playback.</returns>
     public async Task PlayStreamAsync(IAsyncEnumerable<byte[]> audioChunks)
     {
-        _logger.LogInformation("Starting audio stream playback");
-        
         lock (_lock)
         {
             Stop(); // Stop any ongoing playback
             _cts = new CancellationTokenSource();
+            
+            Initialize();
         }
+        
+        _logger.LogInformation("Starting audio stream playback");
         
         try
         {
@@ -143,11 +169,11 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
                 
                 lock (_lock)
                 {
-                    if (!_playing && _clipQueue.TryDequeue(out var firstClip))
+                    if (!IsPlaying && _clipQueue.TryDequeue(out var firstClip))
                     {
                         _currentClip = firstClip;
                         _source!.Play(firstClip);
-                        _playing = true;
+                        IsPlaying = true;
                         _logger.LogDebug("Started playing first audio clip");
                     }
                 }
@@ -167,8 +193,8 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
 
     private void ValidateChunk(byte[] chunk)
     {
-        // Example: Check if chunk size is consistent with 16-bit mono PCM
-        if (chunk.Length % 2 != 0) // 2 bytes per sample
+        // Example: Check if chunk size is consistent with 16-bit PCM
+        if (chunk.Length % _config.ValidationBufferSize != 0)
         {
             _logger.LogWarning("Invalid chunk size: {Length} bytes, not aligned to 16-bit PCM", chunk.Length);
         }
@@ -201,7 +227,7 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
             }
             else
             {
-                _playing = false;
+                IsPlaying = false;
                 _logger.LogDebug("Audio playback queue is empty, playback stopped");
             }
         }
@@ -217,7 +243,7 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
     {
         lock (_lock)
         {
-            if (!_playing && _cts == null)
+            if (!IsPlaying && _cts == null)
             {
                 return; // Already stopped
             }
@@ -231,15 +257,22 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
 
             _currentClip?.Dispose();
             _currentClip = null;
-
+            
             var disposedClips = 0;
             while (_clipQueue.TryDequeue(out var clip))
             {
                 clip.Dispose(); // Dispose queued clips to free resources
                 disposedClips++;
             }
+
+            if (_source != null) _source.End -= OnClipEnd; // Unsubscribe event
             
-            _playing = false;
+            _audioApp!.Loaded -= AudioContextLoaded;
+
+            _source = null;
+            _audioApp = null;
+            
+            IsPlaying = false;
             
             if (disposedClips > 0)
             {
@@ -263,10 +296,6 @@ public sealed class AudioPlaybackService : IAudioPlaybackService
         _logger.LogInformation("Disposing AudioPlaybackService");
         
         Stop();
-
-        if (_source != null) _source.End -= OnClipEnd; // Unsubscribe event
-
-        _audioApp.Loaded -= AudioContextLoaded;
         
         try
         {

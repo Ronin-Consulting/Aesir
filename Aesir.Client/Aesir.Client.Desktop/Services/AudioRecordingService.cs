@@ -16,13 +16,66 @@ using SoundFlow.Structs;
 namespace Aesir.Client.Desktop.Services;
 
 /// <summary>
+/// Configuration class for audio recording service settings, allowing for easy tuning and overrides.
+/// </summary>
+public class AudioRecordingConfig
+{
+    public static AudioRecordingConfig Default => new();
+    
+    /// <summary>
+    /// Defines the audio sample rate for recording, specified in hertz (Hz).
+    /// Determines the number of audio samples captured per second,
+    /// impacting audio quality and data size.
+    /// </summary>
+    public int SampleRate { get; set; } = 16000;
+    
+    /// <summary>
+    /// The number of audio samples processed per chunk. This value determines the size of each audio chunk
+    /// and is calculated based on the sample rate and desired chunk duration.
+    /// </summary>
+    public int SamplesPerChunk { get; set; } = (16000 / 10) * 7; // 11,200 samples by default
+    
+    /// <summary>
+    /// Represents the number of bytes per audio sample. Commonly used to determine
+    /// the size of memory allocations or buffer calculations for audio processing.
+    /// </summary>
+    public int BytesPerSample { get; set; } = 2; // 16-bit
+    
+    /// <summary>
+    /// Represents the Root Mean Square (RMS) amplitude threshold used to determine silence during audio recording.
+    /// Audio segments with an RMS value below this threshold are classified as silence.
+    /// The value can be adjusted based on the recording environment or sensitivity requirements.
+    /// </summary>
+    public float SilenceRmsThreshold { get; set; } = 0.02f; // Adjustable RMS threshold for silence
+    
+    /// <summary>
+    /// The number of consecutive silent audio chunks required to trigger a silence detection event.
+    /// This represents the duration of silence, where each chunk corresponds to approximately 100ms of audio.
+    /// Adjust this value to change the sensitivity of silence detection.
+    /// </summary>
+    public int SilenceChunkThreshold { get; set; } = 5; // ~500ms of consecutive silence to trigger event
+    
+    /// <summary>
+    /// Number of audio channels for recording (1 for mono, 2 for stereo).
+    /// </summary>
+    public int Channels { get; set; } = 1;
+    
+    /// <summary>
+    /// Audio sample format for recording.
+    /// </summary>
+    public SampleFormat SampleFormat { get; set; } = SampleFormat.S16;
+}
+
+/// <summary>
 /// Provides audio recording functionality using a capture device and recorder.
 /// </summary>
 /// <remarks>
 /// This service enables starting and stopping an audio recording process. It captures audio in a specific format
 /// and supports asynchronous stream-based data processing. The service emits audio data as chunks via an asynchronous enumerable.
 /// </remarks>
-public class AudioRecordingService(ILogger<AudioRecordingService> logger) : IAudioRecordingService
+public class AudioRecordingService(
+    ILogger<AudioRecordingService> logger, 
+    AudioRecordingConfig? config = null) : IAudioRecordingService
 {
     /// <summary>
     /// Logger instance used for recording and emitting logs within the
@@ -31,6 +84,11 @@ public class AudioRecordingService(ILogger<AudioRecordingService> logger) : IAud
     /// during audio recording operations and related activities.
     /// </summary>
     private readonly ILogger<AudioRecordingService> _logger = logger;
+    
+    /// <summary>
+    /// Configuration settings for the audio recording service.
+    /// </summary>
+    private readonly AudioRecordingConfig _config = config ?? AudioRecordingConfig.Default;
 
     /// <summary>
     /// Represents the audio engine responsible for managing audio device initialization
@@ -70,40 +128,7 @@ public class AudioRecordingService(ILogger<AudioRecordingService> logger) : IAud
     /// Ensures thread-safe operations when processing or clearing the buffer.
     /// </summary>
     private readonly Lock _bufferLock = new();
-
-    /// <summary>
-    /// Defines the audio sample rate for recording, specified in hertz (Hz).
-    /// Determines the number of audio samples captured per second,
-    /// impacting audio quality and data size.
-    /// </summary>
-    private const int SampleRate = 16000;
-
-    /// <summary>
-    /// The number of audio samples processed per chunk. This value determines the size of each audio chunk
-    /// and is calculated based on the sample rate and desired chunk duration.
-    /// </summary>
-    private const int SamplesPerChunk = (SampleRate / 10) * 7; // 11,200 samples
-
-    /// <summary>
-    /// Represents the number of bytes per audio sample. Commonly used to determine
-    /// the size of memory allocations or buffer calculations for audio processing.
-    /// </summary>
-    private const int BytesPerSample = 2; // 16-bit
-
-    /// <summary>
-    /// Represents the Root Mean Square (RMS) amplitude threshold used to determine silence during audio recording.
-    /// Audio segments with an RMS value below this threshold are classified as silence.
-    /// The value can be adjusted based on the recording environment or sensitivity requirements.
-    /// </summary>
-    private const float SilenceRmsThreshold = 0.02f; // Adjustable RMS threshold for silence (tune based on environment)
-
-    /// <summary>
-    /// The number of consecutive silent audio chunks required to trigger a silence detection event.
-    /// This represents the duration of silence, where each chunk corresponds to approximately 100ms of audio.
-    /// Adjust this value to change the sensitivity of silence detection.
-    /// </summary>
-    private const int SilenceChunkThreshold = 5; // ~500ms of consecutive silence to trigger event
-
+    
     /// <summary>
     /// Tracks the number of consecutive silent audio chunks detected during recording.
     /// This variable is incremented for each silent chunk and reset to zero
@@ -147,9 +172,9 @@ public class AudioRecordingService(ILogger<AudioRecordingService> logger) : IAud
         // Define format and initialize capture device
         var format = new AudioFormat
         {
-            SampleRate = SampleRate,
-            Channels = 1, // Mono
-            Format = SampleFormat.S16
+            SampleRate = _config.SampleRate,
+            Channels = _config.Channels,
+            Format = _config.SampleFormat
         };
         _engine!.UpdateDevicesInfo();
         var defaultCapture = _engine!.CaptureDevices.First(d => d.IsDefault);
@@ -214,21 +239,21 @@ public class AudioRecordingService(ILogger<AudioRecordingService> logger) : IAud
                 _sampleBuffer.Enqueue(sample);
             }
             
-            while (_sampleBuffer.Count >= SamplesPerChunk)
+            while (_sampleBuffer.Count >= _config.SamplesPerChunk)
             {
-                var chunkSamples = new float[SamplesPerChunk];
-                for (var i = 0; i < SamplesPerChunk; i++)
+                var chunkSamples = new float[_config.SamplesPerChunk];
+                for (var i = 0; i < _config.SamplesPerChunk; i++)
                 {
                     chunkSamples[i] = _sampleBuffer.Dequeue();
                 }
-                //_logger.LogDebug("Writing sample chunk of length {SampleChunkLength}", chunkSamples.Length);
+                _logger.LogDebug("Writing sample chunk of length {SampleChunkLength}", chunkSamples.Length);
 
                 // Detect silence
                 var rms = CalculateRms(chunkSamples);
-                if (rms < SilenceRmsThreshold)
+                if (rms < _config.SilenceRmsThreshold)
                 {
                     _consecutiveSilentChunks++;
-                    if (_consecutiveSilentChunks >= SilenceChunkThreshold)
+                    if (_consecutiveSilentChunks >= _config.SilenceChunkThreshold)
                     {
                         OnSilenceDetected(new SilenceDetectedEventArgs { SilenceDurationMs = _consecutiveSilentChunks * 100 }); // ~100ms per chunk
                         // Do not reset here; consumer decides to stop or continue
@@ -263,7 +288,7 @@ public class AudioRecordingService(ILogger<AudioRecordingService> logger) : IAud
     /// Invokes the SilenceDetected event when silence is detected during audio recording.
     /// </summary>
     /// <param name="e">The event data containing details about the detected silence.</param>
-    protected virtual void OnSilenceDetected(SilenceDetectedEventArgs e)
+    private void OnSilenceDetected(SilenceDetectedEventArgs e)
     {
         SilenceDetected?.Invoke(this, e);
     }
@@ -274,15 +299,15 @@ public class AudioRecordingService(ILogger<AudioRecordingService> logger) : IAud
     /// <param name="samples">An array of floating-point audio samples, each representing audio data in the range of -1.0 to 1.0.</param>
     private void WriteChunk(float[] samples)
     {
-        var byteChunk = ArrayPool<byte>.Shared.Rent(samples.Length * BytesPerSample);
+        var byteChunk = ArrayPool<byte>.Shared.Rent(samples.Length * _config.BytesPerSample);
         try
         {
             for (var i = 0; i < samples.Length; i++)
             {
                 var pcmValue = (short)(samples[i] * 32767);
-                BitConverter.GetBytes(pcmValue).CopyTo(byteChunk, i * BytesPerSample);
+                BitConverter.GetBytes(pcmValue).CopyTo(byteChunk, i * _config.BytesPerSample);
             }
-            _audioChannel?.Writer.TryWrite(byteChunk.AsSpan(0, samples.Length * BytesPerSample).ToArray());
+            _audioChannel?.Writer.TryWrite(byteChunk.AsSpan(0, samples.Length * _config.BytesPerSample).ToArray());
         }
         finally
         {
