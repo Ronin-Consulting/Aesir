@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using Aesir.Client.Services;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Threading.Tasks;
@@ -50,6 +52,8 @@ public class SpeechService : ISpeechService, IAsyncDisposable
     /// </remarks>
     /// <seealso cref="Microsoft.AspNetCore.SignalR.Client.HubConnection"/>
     private readonly HubConnection _sttConnection;
+
+    private CancellationTokenSource? _stopListeningCts;
 
     /// <summary>
     /// Provides speech-related services including text-to-speech (TTS) and speech-to-text (STT) functionalities.
@@ -131,52 +135,75 @@ public class SpeechService : ISpeechService, IAsyncDisposable
     /// Stops the active text-to-speech task if a connection to the speech service is currently active.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task StopSpeaking()
+    public async Task StopSpeakingAsync()
     {
+        if (_audioPlaybackService.IsPlaying)
+            _audioPlaybackService.Stop();
+
         if (_ttsConnection.State == HubConnectionState.Connected)
             await _ttsConnection.StopAsync();
     }
 
-    /// <summary>
-    /// Starts streaming audio to the server for speech-to-text processing and yields recognized text results asynchronously.
-    /// </summary>
-    /// <param name="silenceDetectedAction">
-    /// An optional callback action invoked when silence is detected, receiving the duration of silence in milliseconds.
-    /// </param>
-    /// <returns>
-    /// An asynchronous stream of recognized text segments as they are processed.
-    /// </returns>
-    public async IAsyncEnumerable<string> ListenAsync(Action<int>? silenceDetectedAction = null)
+    public async Task<IList<string>> ListenAsync(Func<int, bool>? shouldPauseOnSilence)
     {
-        if (_sttConnection.State == HubConnectionState.Disconnected)
-            await _sttConnection.StartAsync();
+        if (shouldPauseOnSilence == null)
+            throw new ArgumentNullException(nameof(shouldPauseOnSilence));
 
-        // Start the audio recording stream
-        var audioStream = _audioRecordingService.StartRecordingAsync();
+        _stopListeningCts = new CancellationTokenSource();
+        var collectedUtterances = new List<string>();
+        var shouldStopCollecting = false;
+
+        if (_sttConnection.State == HubConnectionState.Disconnected)
+            await _sttConnection.StartAsync(_stopListeningCts.Token);
 
         _audioRecordingService.SilenceDetected += OnHandleSilenceDetected;
 
-        // Start streaming audio to the server and receive text recognition results
+        var audioStream = 
+            _audioRecordingService.StartRecordingAsync();
+        
         var textChannelReader = await _sttConnection.StreamAsChannelAsync<string>("ProcessAudioStream",
-            audioStream);
+            audioStream, _stopListeningCts.Token);
 
-        await foreach (var utterance in textChannelReader.ReadAllAsync())
+        try
         {
-            _logger.LogDebug("Listening and heard: {Utterance}", utterance);
-            if (!string.IsNullOrEmpty(utterance))
+            await foreach (var textUtterance in textChannelReader.ReadAllAsync(_stopListeningCts.Token))
             {
-                yield return utterance;
+                if (!string.IsNullOrWhiteSpace(textUtterance))
+                {
+                    _logger.LogDebug("Received utterance: {Utterance}", textUtterance);
+                    collectedUtterances.Add(textUtterance);
+                }
+
+                if (shouldStopCollecting)
+                {
+                    _logger.LogDebug("Stoping collection of utterances.");
+
+                    break;
+                }
             }
         }
+        catch (OperationCanceledException ocex)
+        {
+            _logger.LogDebug("Utterance collection operation cancelled: {Message}", ocex.Message);
+        }
+        finally
+        {
+            _audioRecordingService.SilenceDetected -= OnHandleSilenceDetected;
+        }
 
-        // Ensure recording is stopped when done
-        _audioRecordingService.StopRecording();
-        _audioRecordingService.SilenceDetected -= OnHandleSilenceDetected;
-        yield break;
+        _logger.LogDebug("Returning collected {Count} utterances.", collectedUtterances.Count);
+        
+        return collectedUtterances;
 
         void OnHandleSilenceDetected(object? sender, SilenceDetectedEventArgs args)
         {
-            silenceDetectedAction?.Invoke(args.SilenceDurationMs);
+            var shouldPause = shouldPauseOnSilence.Invoke(args.SilenceDurationMs);
+            if (shouldPause)
+            {
+                shouldStopCollecting = true;
+                
+                _stopListeningCts.Cancel();
+            }
         }
     }
 
@@ -190,10 +217,13 @@ public class SpeechService : ISpeechService, IAsyncDisposable
     /// are properly stopped.
     /// </remarks>
     /// <returns>A task that represents the asynchronous stop operation.</returns>
-    public async Task StopListening()
+    public async Task StopListeningAsync()
     {
+        if (_stopListeningCts != null)
+            await _stopListeningCts.CancelAsync();
+
         if (_audioRecordingService.IsRecording)
-            _audioRecordingService.StopRecording();
+            await _audioRecordingService.StopAsync();
 
         if (_sttConnection.State == HubConnectionState.Connected)
             await _sttConnection.StopAsync();

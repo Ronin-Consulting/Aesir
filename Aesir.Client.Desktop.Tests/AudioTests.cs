@@ -48,7 +48,7 @@ public sealed class AudioTests
         await Task.Delay(50);
         service.IsRecording.Should().BeTrue("because StartRecordingAsync was called and is being consumed");
 
-        service.StopRecording();
+        service.StopAsync();
 
         // The consumption task should complete gracefully
         await consumptionTask.WaitAsync(TimeSpan.FromSeconds(1));
@@ -107,7 +107,7 @@ public sealed class AudioTests
 
             var recordingStream = service.StartRecordingAsync();
 
-            var stopTask = Task.Delay(TimeSpan.FromSeconds(5)).ContinueWith(_ => service.StopRecording());
+            var stopTask = Task.Delay(TimeSpan.FromSeconds(5)).ContinueWith(_ => service.StopAsync());
 
             using var memoryStream = new MemoryStream();
             await foreach (var buffer in recordingStream)
@@ -193,7 +193,7 @@ public sealed class AudioTests
         
         // Act
         var recognizedText = new StringBuilder();
-        await foreach (var recognized in speechService.ListenAsync(OnHandleSilenceDetected))
+        foreach (var recognized in await speechService.ListenAsync(OnHandleSilenceDetected))
         {
             recognizedText.Append(recognized);
         }
@@ -201,9 +201,11 @@ public sealed class AudioTests
         
         return;
         
-        void OnHandleSilenceDetected(int silenceDurationMs)
+        bool OnHandleSilenceDetected(int silenceDurationMs)
         {
             testlogger.LogInformation("Silence Heard: {SilenceDurationMs}", silenceDurationMs);
+
+            return false;
         }
     }
 
@@ -283,19 +285,10 @@ public sealed class AudioTests
                 await Task.Delay(100); // ~100ms delay to simulate real-time chunks
             }
         }
-
-        /// <summary>
-        /// Stops the audio recording process and releases any associated resources.
-        /// </summary>
-        /// <remarks>
-        /// This method terminates any active audio recording initiated through
-        /// the <see cref="IAudioRecordingService.StartRecordingAsync"/> method.
-        /// When called, it ensures the recording process is gracefully stopped
-        /// and no further audio data is captured. Subsequent calls to this method without
-        /// starting a new recording will have no effect.
-        /// </remarks>
-        public void StopRecording()
+        
+        public Task StopAsync()
         {
+            return Task.CompletedTask;
         }
 
         /// <summary>

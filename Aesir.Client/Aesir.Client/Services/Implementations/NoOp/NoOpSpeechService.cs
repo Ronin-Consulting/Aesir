@@ -22,17 +22,17 @@ public class NoOpSpeechService : ISpeechService
         throw new System.NotImplementedException();
     }
 
-    public Task StopSpeaking()
+    public Task StopSpeakingAsync()
     {
         throw new NotImplementedException();
     }
 
-    public IAsyncEnumerable<string> ListenAsync(Action<int>? silenceDetectedAction = null)
+    public Task<IList<string>> ListenAsync(Func<int, bool>? shouldPauseOnSilence = null)
     {
         throw new NotImplementedException();
     }
 
-    public Task StopListening()
+    public Task StopListeningAsync()
     {
         throw new NotImplementedException();
     }

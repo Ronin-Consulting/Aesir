@@ -13,11 +13,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.Services.Implementations.Standard;
 
-/// <summary>
-/// Implementation of hands-free voice interaction service.
-/// Orchestrates speech recognition, chat completion, and text-to-speech in a continuous loop.
-/// Mimics the conversation pattern used by ChatViewViewModel.
-/// </summary>
 public class HandsFreeService : IHandsFreeService
 {
     private readonly ILogger<HandsFreeService> _logger;
@@ -39,11 +34,7 @@ public class HandsFreeService : IHandsFreeService
 
     /// <inheritdoc />
     public HandsFreeState CurrentState => _currentState;
-
-    /// <summary>
-    /// Gets the conversation messages for hands-free interactions.
-    /// This allows the UI to display the hands-free conversation.
-    /// </summary>
+    
     public ObservableCollection<MessageViewModel?> ConversationMessages => _conversationMessages;
 
     /// <inheritdoc />
@@ -99,8 +90,7 @@ public class HandsFreeService : IHandsFreeService
             throw;
         }
     }
-
-    /// <inheritdoc />
+    
     public async Task StopHandsFreeMode()
     {
         if (!_isHandsFreeActive)
@@ -113,7 +103,7 @@ public class HandsFreeService : IHandsFreeService
             _logger.LogInformation("Stopping hands-free mode");
             
             _isHandsFreeActive = false;
-            _handsFreeToken?.Cancel();
+            await _handsFreeToken!.CancelAsync();
 
             if (_processingTask != null)
             {
@@ -169,39 +159,31 @@ public class HandsFreeService : IHandsFreeService
             await ChangeStateAsync(HandsFreeState.Listening);
 
             var userMessage = new StringBuilder();
-            await foreach (var utterance in ListenForUserSpeech(cancellationToken))
+            foreach (var utterance in await ListenForUserSpeechAsync(cancellationToken))
             {
+                _logger.LogDebug("User speech detected: {Speech}", utterance);
                 userMessage.Append(utterance);
             }
-            
-            _logger.LogDebug("userMessage={UserMessage}",userMessage.ToString());
             
             if (string.IsNullOrWhiteSpace(userMessage.ToString()))
             {
                 // No speech detected, continue listening
                 return;
             }
-            // var userMessage = await ListenForUserSpeech(cancellationToken);
-            //
-            // if (string.IsNullOrWhiteSpace(userMessage))
-            // {
-            //     // No speech detected, continue listening
-            //     return;
-            // }
 
             // Step 2: Process with chat completion (mimicking ChatViewViewModel.SendMessageAsync)
-            // await ChangeStateAsync(HandsFreeState.Processing);
-            // var assistantResponse = await ProcessChatCompletion(userMessage.ToString(), cancellationToken);
-            //
-            // if (string.IsNullOrWhiteSpace(assistantResponse))
-            // {
-            //     _logger.LogWarning("Empty response from chat completion");
-            //     return;
-            // }
+            await ChangeStateAsync(HandsFreeState.Processing);
+            var assistantResponse = await ProcessChatCompletion(userMessage.ToString(), cancellationToken);
+            
+            if (string.IsNullOrWhiteSpace(assistantResponse))
+            {
+                _logger.LogWarning("Empty response from chat completion");
+                return;
+            }
 
             // Step 3: Speak the response (with interruption detection)
             await ChangeStateAsync(HandsFreeState.Speaking);
-            //await SpeakResponse(assistantResponse, cancellationToken);
+            await SpeakResponse(assistantResponse, cancellationToken);
 
         }
         catch (OperationCanceledException)
@@ -222,32 +204,29 @@ public class HandsFreeService : IHandsFreeService
     /// Listens for user speech and returns the recognized text.
     /// For conversational AI, we expect complete utterances from the speech service.
     /// </summary>
-    private async IAsyncEnumerable<string> ListenForUserSpeech([EnumeratorCancellation] CancellationToken cancellationToken)
+    private async Task<IList<string>> ListenForUserSpeechAsync(CancellationToken cancellationToken)
     {
-        Action<int> cancelIfSilence = millisecondsOfSilence =>
+        // stop on silence
+        // ReSharper disable once ConvertToLocalFunction
+        Func<int, bool> shouldStopIfSilence = millisecondsOfSilence =>
         {
-            if (TimeSpan.FromMilliseconds(millisecondsOfSilence) > TimeSpan.FromSeconds(4))
+            if (TimeSpan.FromMilliseconds(millisecondsOfSilence) > TimeSpan.FromSeconds(1))
             {
-                _speechService.StopListening();
+                _logger.LogDebug("Stopping speech recognition due to silence");
+                return true;
             }
+
+            return false;
         };
 
-        cancellationToken.Register(() =>
+        // stop if canceled
+        cancellationToken.Register(async () =>
         {
-            _speechService.StopListening();
+            _logger.LogDebug("Stopping speech recognition due to cancellation");
+            await _speechService.StopListeningAsync();
         });
-        
-        await foreach (var completeUtterance in _speechService.ListenAsync(cancelIfSilence).WithCancellation(cancellationToken))
-        {
-            if (cancellationToken.IsCancellationRequested)
-                break;
 
-            if (!string.IsNullOrWhiteSpace(completeUtterance))
-            {
-                _logger.LogInformation("Complete user utterance recognized: {Speech}", completeUtterance);
-                yield return completeUtterance.Trim(); // Return the first complete utterance
-            }
-        }
+        return await _speechService.ListenAsync(shouldStopIfSilence);
     }
 
     /// <summary>
@@ -327,7 +306,7 @@ public class HandsFreeService : IHandsFreeService
     {
         try
         {
-            await _speechService.SpeakAsync(response);
+            await _speechService.SpeakAsync("Hello World!");
             _logger.LogDebug("AI response speech completed");
         }
         catch (Exception ex)
@@ -336,7 +315,7 @@ public class HandsFreeService : IHandsFreeService
         }
         finally
         {
-            await _speechService.StopSpeaking();
+            await _speechService.StopSpeakingAsync();
         }
     }
 

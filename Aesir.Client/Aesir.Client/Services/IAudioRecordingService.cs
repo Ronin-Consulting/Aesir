@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Aesir.Client.Services;
 
@@ -21,12 +22,8 @@ public interface IAudioRecordingService : IDisposable
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An asynchronous enumerable of byte arrays representing recorded audio data.</returns>
     IAsyncEnumerable<byte[]> StartRecordingAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Stops the ongoing audio recording process, releasing associated resources and ensuring
-    /// that the recording operation is properly terminated.
-    /// </summary>
-    void StopRecording();
+    
+    Task StopAsync();
 
     /// <summary>
     /// Indicates whether the audio recording is currently active.

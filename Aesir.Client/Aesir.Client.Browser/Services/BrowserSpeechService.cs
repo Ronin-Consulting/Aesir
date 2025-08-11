@@ -20,17 +20,17 @@ public class BrowserSpeechService : ISpeechService
         SpeechInterop.SpeakText(text);
     }
 
-    public Task StopSpeaking()
+    public Task StopSpeakingAsync()
     {
         throw new NotImplementedException();
     }
 
-    public IAsyncEnumerable<string> ListenAsync(Action<int>? silenceDetectedAction = null)
+    public Task<IList<string>> ListenAsync(Func<int, bool>? shouldPauseOnSilence)
     {
         throw new NotImplementedException();
     }
-
-    public Task StopListening()
+    
+    public Task StopListeningAsync()
     {
         throw new NotImplementedException();
     }

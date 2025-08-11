@@ -22,6 +22,8 @@ public class NoOpAudioPlaybackService : IAudioPlaybackService
         // TODO release managed resources here
     }
 
+    public bool IsPlaying { get; } = false;
+
     /// <summary>
     /// Plays audio from a stream of audio chunks asynchronously.
     /// </summary>

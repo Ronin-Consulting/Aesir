@@ -75,9 +75,7 @@ public partial class HandsFreeControlViewModel : ObservableRecipient, IDisposabl
         {
             _logger.LogError(ex, "Error starting hands-free mode");
             CurrentState = HandsFreeState.Error;
-        }
-        finally
-        {
+            
             IsProcessing = false;
         }
     }

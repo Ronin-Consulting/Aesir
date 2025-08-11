@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
+using System.Threading.Tasks;
 using Aesir.Client.Services;
 using Microsoft.Extensions.Logging;
 using SoundFlow.Abstracts.Devices;
@@ -165,7 +166,7 @@ public class AudioRecordingService(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         if (IsRecording) throw new InvalidOperationException("Recording already started.");
-        cancellationToken.Register(StopRecording);
+        cancellationToken.Register(async () => await StopAsync());
 
         _audioChannel = Channel.CreateUnbounded<byte[]>();
 
@@ -192,20 +193,10 @@ public class AudioRecordingService(
             yield return chunk;
     }
 
-    /// <summary>
-    /// Stops the ongoing audio recording process if it is currently active.
-    /// </summary>
-    /// <remarks>
-    /// This method halts the audio capture and releases resources associated with the recording process.
-    /// If there is buffered audio data yet to be processed, it will finalize and ensure no data is left unprocessed.
-    /// Calling this method when no recording is active is safe and will return without performing any operations.
-    /// </remarks>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown if an attempt is made to stop recording while the system is in an invalid state.
-    /// </exception>
-    public void StopRecording()
+
+    public Task StopAsync()
     {
-        if (!IsRecording) return;
+        if (!IsRecording) return Task.CompletedTask;
 
         _recorder?.StopRecording();
         _captureDevice?.Stop();
@@ -221,7 +212,9 @@ public class AudioRecordingService(
             }
         }
 
-        _audioChannel?.Writer.Complete();
+        _audioChannel?.Writer.TryComplete();
+        
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -246,7 +239,7 @@ public class AudioRecordingService(
                 {
                     chunkSamples[i] = _sampleBuffer.Dequeue();
                 }
-                _logger.LogDebug("Writing sample chunk of length {SampleChunkLength}", chunkSamples.Length);
+                //_logger.LogDebug("Writing sample chunk of length {SampleChunkLength}", chunkSamples.Length);
 
                 // Detect silence
                 var rms = CalculateRms(chunkSamples);
@@ -325,7 +318,7 @@ public class AudioRecordingService(
     /// </remarks>
     public void Dispose()
     {
-        StopRecording();
+        StopAsync();
         _captureDevice?.Dispose(); // If IDisposable
         _engine?.Dispose();
         GC.SuppressFinalize(this);

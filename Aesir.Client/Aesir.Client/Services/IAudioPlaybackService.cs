@@ -10,6 +10,8 @@ namespace Aesir.Client.Services;
 /// </summary>
 public interface IAudioPlaybackService : IDisposable
 {
+    bool IsPlaying { get; }
+    
     /// <summary>
     /// Plays audio from a stream of audio chunks asynchronously.
     /// </summary>
