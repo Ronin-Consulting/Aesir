@@ -6,119 +6,133 @@ using Whisper.net;
 namespace Aesir.Api.Server.Services.Implementations.Onnx;
 
 /// <summary>
-/// Defines the configuration options for Speech-to-Text (STT) processing,
-/// allowing tailored settings including model paths, language preference,
-/// sensitivity parameters, execution threads, and hardware acceleration capabilities.
+/// Encapsulates the configuration parameters for optimizing Speech-to-Text (STT) processing,
+/// including model paths, language settings, detection thresholds, processing constraints,
+/// and hardware acceleration options.
 /// </summary>
 public class SttConfig
 {
     /// <summary>
-    /// Provides a static instance of the <see cref="SttConfig"/> class initialized with default values,
-    /// allowing for quick setup of the Speech-to-Text (STT) configuration settings.
+    /// Gets a default instance of the <see cref="SttConfig"/> class initialized with pre-defined values
+    /// for Speech-to-Text (STT) processing, offering a convenient starting point for configuration.
     /// </summary>
     public static SttConfig Default => new SttConfig();
 
     /// <summary>
-    /// Gets or sets the file path to the Whisper model used for speech-to-text inference.
+    /// Specifies the file path of the Whisper model binary, used to configure the Speech-to-Text (STT) engine for processing audio data.
     /// </summary>
     public string WhisperModelPath { get; set; } = "ggml-base.bin";
 
     /// <summary>
-    /// Gets or sets the language configuration for the Whisper model used in the Speech-to-Text (STT) service.
-    /// Determines the language to be recognized in the audio input. Defaults to "en" (English).
+    /// Specifies the language for the Whisper Speech-to-Text (STT) model,
+    /// used to guide transcription processing in the chosen language.
+    /// Default value is set to "en" (English).
     /// </summary>
     public string WhisperLanguage { get; set; } = "en";
 
     /// <summary>
-    /// Gets or sets the temperature value used in the Whisper model for controlling randomness in text generation.
-    /// Lower values result in more deterministic outputs, while higher values introduce more variability.
+    /// Specifies the temperature setting for Whisper-based processing, influencing the randomness
+    /// of predictions and controlling the balance between creativity and determinism in Speech-to-Text (STT) outputs.
+    /// Lower values make predictions more focused, while higher values increase variability in results.
     /// </summary>
     public float WhisperTemperature { get; set; } = 0.2f;
 
     /// <summary>
-    /// Gets or sets the file path to the Voice Activity Detection (VAD) model used for audio processing in the STT service.
+    /// Specifies the file path to the Voice Activity Detection (VAD) model,
+    /// which is used for identifying segments of audio that contain active speech.
     /// </summary>
     public string VadModelPath { get; set; } = "silero-vad.onnx";
 
     /// <summary>
-    /// Represents the threshold value for Voice Activity Detection (VAD), used to distinguish between speech and non-speech segments in audio processing.
+    /// Represents the Voice Activity Detection (VAD) threshold used to determine the minimum energy level
+    /// required to classify audio as containing speech during the Speech-to-Text (STT) processing.
     /// </summary>
     public float VadThreshold { get; set; } = 0.3f; // Slightly lower for better sensitivity per tuning tips
 
     /// <summary>
-    /// Gets or sets the minimum duration of silence that will be considered as a pause during speech recognition.
+    /// Defines the minimum duration of silence, in seconds, that the system recognizes
+    /// when identifying pauses during speech analysis. It is used to optimize sensitivity
+    /// in Speech-to-Text processing.
     /// </summary>
     public float MinSilenceDuration { get; set; } = 0.6f;
 
     /// <summary>
-    /// Gets or sets the minimum duration of speech, in seconds, required to process audio input for recognition.
+    /// Represents the minimum duration, in seconds, of a speech segment required for processing in the Speech-to-Text (STT) configuration.
+    /// This property determines the threshold for identifying and analyzing speech input.
     /// </summary>
     public float MinSpeechDuration { get; set; } = 0.5f;
 
     /// <summary>
-    /// Gets or sets the size of the window in frames for voice activity detection (VAD).
-    /// This value determines the length of the analysis segment used during VAD processing.
+    /// Represents the size of the Voice Activity Detection (VAD) window in samples,
+    /// defining the length of audio segments used for detecting speech activity.
     /// </summary>
     public int VadWindowSize { get; set; } = 512;
 
     /// <summary>
-    /// Gets or sets the maximum allowable duration, in seconds, for speech input to be processed by the speech-to-text service.
+    /// Defines the maximum allowable duration, in seconds, for a single speech input
+    /// to be processed within the Speech-to-Text (STT) configuration.
     /// </summary>
     public float MaxSpeechDuration { get; set; } = 15f; // Higher for longer utterances
 
     /// <summary>
-    /// Gets or sets the audio sample rate in hertz, commonly used for audio processing.
-    /// Higher values support better quality for longer utterances.
+    /// Specifies the sample rate, in Hz, used for audio processing.
+    /// Higher values are typically suited for longer utterances and can improve audio quality during processing.
     /// </summary>
     public int SampleRate { get; set; } = 16000;
 
     /// <summary>
-    /// Gets or sets the number of threads to be used for processing, initialized with a default value based
-    /// on the system's processor count with a maximum of four.
+    /// Determines the number of threads to be utilized for processing tasks, with a default value
+    /// calculated based on the system's available processor count, optimized for performance.
     /// </summary>
     public int NumThreads { get; set; } = Math.Min(Environment.ProcessorCount / 2, 4);
 
     /// <summary>
-    /// Gets or sets the debug level for the STT configuration, typically used for logging or troubleshooting purposes.
+    /// Represents a debug level setting for the <see cref="SttConfig"/> class,
+    /// allowing for configuration of debugging verbosity or diagnostic output.
     /// </summary>
     public int Debug { get; set; } = 0;
 
     /// <summary>
-    /// Indicates whether CUDA acceleration is enabled for the speech-to-text inference process.
+    /// Indicates whether CUDA (Compute Unified Device Architecture) support is enabled for leveraging GPU acceleration
+    /// in speech-to-text processing tasks. If set to <c>true</c>, CUDA-enabled hardware will be used for computation when available;
+    /// otherwise, processing will be performed on the CPU.
     /// </summary>
     public bool CudaEnabled { get; set; } = false;
 }
 
 /// <summary>
-/// Provides a service for performing speech-to-text operations utilizing Whisper and VAD (Voice Activity Detection) models.
-/// This service handles streaming audio input and generates transcribed text in an asynchronous manner.
+/// Implements a speech-to-text service leveraging Whisper and VAD (Voice Activity Detection) models
+/// for real-time audio transcription. The service is designed to process audio streams asynchronously,
+/// providing transcribed text as output and supporting customizable configurations for optimized performance.
 /// </summary>
 public class SttService : ISttService, IDisposable
 {
     /// <summary>
-    /// An instance of <see cref="ILogger{TCategoryName}"/> used for recording log messages related to the operation and behavior of the class.
+    /// An instance of <see cref="ILogger{TCategoryName}"/> for logging messages, errors, and other relevant information specific to the execution of the <see cref="SttService"/> class.
     /// </summary>
     private readonly ILogger<SttService> _logger;
 
     /// <summary>
-    /// Represents an instance of WhisperFactory used for managing and processing speech-to-text operations.
+    /// Represents an instance of the <see cref="WhisperFactory"/> class used for managing and facilitating speech-to-text processing operations within the service.
     /// </summary>
     private readonly WhisperFactory _whisperFactory;
 
     /// <summary>
-    /// Stores the configuration settings for the Voice Activity Detection (VAD) model used within the Speech-to-Text (STT) service.
+    /// Represents the configuration settings for the Voice Activity Detection (VAD) model
+    /// utilized by the Speech-to-Text (STT) service for processing audio input and detecting active voice segments.
     /// </summary>
     private readonly VadModelConfig _vadModelConfig;
 
     /// <summary>
-    /// Represents the configuration settings used by the STT service to manage its operational parameters.
+    /// Holds the configuration settings specific to the Speech-to-Text (STT) service, enabling customization
+    /// and management of service behavior and parameters.
     /// </summary>
     private readonly SttConfig _config;
 
     /// <summary>
-    /// The SttService class is responsible for speech-to-text processing utilizing ONNX models.
-    /// It employs advanced configurations and logging capabilities to facilitate the transcription
-    /// of audio into textual data.
+    /// The SttService class handles the conversion of audio data into text using ONNX-based models.
+    /// It supports configurable options and integrates logging functionalities to monitor and manage
+    /// the execution and behavior of the speech-to-text operations.
     /// </summary>
     public SttService(
         ILogger<SttService> logger,
@@ -193,10 +207,10 @@ public class SttService : ISttService, IDisposable
     /// Asynchronously generates transcribed text chunks from a stream of audio data in byte arrays.
     /// </summary>
     /// <param name="audioStream">
-    /// An asynchronous enumerable of byte arrays, where each array represents a chunk of audio data.
+    /// An asynchronous enumerable of byte arrays representing chunks of audio data to be processed.
     /// </param>
     /// <param name="cancellationToken">
-    /// A token to observe while waiting for the task to complete, allowing operation cancellation.
+    /// A token that allows the operation to be cancelled before completion.
     /// </param>
     /// <returns>
     /// An asynchronous enumerable of transcribed text chunks as strings.
@@ -234,8 +248,8 @@ public class SttService : ISttService, IDisposable
 
     /// <summary>
     /// Releases all resources used by the current instance of the <see cref="SttService"/> class.
-    /// This includes the disposal of internal resources like the WhisperFactory instance
-    /// and ensures proper cleanup of memory by suppressing finalization.
+    /// This includes disposing of managed and unmanaged resources, ensuring a proper release of memory,
+    /// and calling <see cref="GC.SuppressFinalize"/> to prevent the garbage collector from finalizing the object.
     /// </summary>
     public void Dispose()
     {
@@ -246,47 +260,49 @@ public class SttService : ISttService, IDisposable
 
 // Internal processor (handling byte[] input)
 /// <summary>
-/// Responsible for processing audio input through voice activity detection (VAD),
-/// enabling segmentation and transcription of speech data into text using Speech-to-Text (STT) models.
+/// Handles audio processing by using Voice Activity Detection (VAD) to segment audio streams
+/// and passing detected speech segments to a specified Speech-to-Text (STT) model for transcription.
 /// </summary>
 internal class VadProcessor : IDisposable
 {
     /// <summary>
-    /// Represents a logging instance used to log messages within the <see cref="VadProcessor"/> class,
-    /// including debug information, warnings, and transcriptions generated during voice activity detection (VAD).
+    /// Represents a logging instance used to record diagnostic messages, warnings, and
+    /// debug information within the <see cref="VadProcessor"/> class, especially during
+    /// the handling of voice activity detection (VAD) and speech-to-text transcription processes.
     /// </summary>
     private readonly ILogger _logger;
 
     /// <summary>
-    /// Stores configuration settings for the Voice Activity Detection (VAD) process used within the <see cref="VadProcessor"/>.
-    /// This includes essential parameters such as window size and sample rate required for audio segmentation and speech detection.
+    /// Represents the configuration settings for the Voice Activity Detection (VAD) model
+    /// within the <see cref="VadProcessor"/>. These settings dictate parameters such as
+    /// audio processing window size and sample rate, which are critical for detecting
+    /// and segmenting speech in audio input.
     /// </summary>
     private readonly VadModelConfig _vadConfig;
 
     /// <summary>
-    /// Provides functionality to process audio streams for transcription using Whisper.
-    /// Handles audio input and interacts with the Whisper.NET transcription library
-    /// to generate textual outputs from voice data.
+    /// Serves as an internal processor leveraging the Whisper.NET library for speech recognition,
+    /// enabling transcription of audio streams into textual data during speech-to-text processing.
     /// </summary>
     private readonly WhisperProcessor _whisperProcessor;
 
     /// <summary>
-    /// The voice activity detector (VAD) responsible for analyzing
-    /// audio input, detecting segments of speech activity, and
-    /// segmenting the audio for further processing.
+    /// Represents the core voice activity detection (VAD) component that processes audio input
+    /// to detect active speech segments, enabling efficient handling of speech data for
+    /// further processing like transcription or analysis.
     /// </summary>
     private readonly VoiceActivityDetector _vad;
 
     /// <summary>
-    /// Holds the unprocessed audio samples that remain after processing a segment.
-    /// These samples are carried over to the next processing iteration to ensure
-    /// continuity in voice activity detection (VAD) and transcription.
+    /// Stores the unprocessed audio samples that are left over after processing a segment,
+    /// enabling continuity in subsequent iterations of voice activity detection (VAD) and transcription.
     /// </summary>
     private readonly List<float> _remainingSamples = [];
 
     /// <summary>
-    /// The VadProcessor class is responsible for processing audio data by performing voice activity detection (VAD)
-    /// and converting detected voice segments into text using a specified speech-to-text (STT) model.
+    /// The VadProcessor class facilitates audio data processing by employing voice activity detection (VAD)
+    /// to isolate speech segments and passing them to a speech-to-text (STT) processor for transcription.
+    /// It is designed to work with asynchronous audio streams and supports efficient resource management.
     /// </summary>
     public VadProcessor(ILogger logger, VadModelConfig vadConfig, WhisperProcessor whisperProcessor)
     {
@@ -297,11 +313,12 @@ internal class VadProcessor : IDisposable
     }
 
     /// <summary>
-    /// Asynchronously processes a chunk of audio data, detects speech regions, and returns transcribed text.
+    /// Asynchronously processes a chunk of audio data, applies Voice Activity Detection (VAD) to identify speech,
+    /// and streams the resulting transcribed text for detected speech regions.
     /// </summary>
-    /// <param name="audioChunk">The audio data to process, represented as a byte array in 16-bit PCM format.</param>
-    /// <param name="cancellationToken">A cancellation token that can be used to signal the operation should be canceled.</param>
-    /// <returns>An asynchronous stream of transcribed text for detected speech regions in the audio data.</returns>
+    /// <param name="audioChunk">The audio data to process, provided as a byte array in 16-bit PCM format.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests and terminate the operation if triggered.</param>
+    /// <returns>An asynchronous stream of transcribed string outputs corresponding to detected speech segments in the audio data.</returns>
     public async IAsyncEnumerable<string> ProcessChunkAsync(byte[] audioChunk,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -367,14 +384,16 @@ internal class VadProcessor : IDisposable
 
     /// <summary>
     /// Flushes any remaining voice activity detection (VAD) segments and yields their transcriptions.
-    /// This method is used to ensure that any trailing audio input is processed and transcribed
-    /// after the audio stream has ended.
+    /// This method ensures that trailing audio input, after the audio stream has ended, is processed
+    /// and converted into text.
     /// </summary>
     /// <param name="cancellationToken">
-    /// A token to monitor for cancellation requests. This allows the operation to be cancelled before completion.
+    /// A cancellation token to observe while flushing and yielding transcriptions, allowing the operation to be
+    /// interrupted before completion.
     /// </param>
     /// <returns>
-    /// An asynchronous stream of transcribed text for any remaining speech segments detected by VAD.
+    /// An asynchronous stream containing the transcribed text for any remaining speech segments
+    /// detected by the VAD.
     /// </returns>
     public async IAsyncEnumerable<string> FlushAndYieldAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -405,13 +424,13 @@ internal class VadProcessor : IDisposable
     }
 
     /// <summary>
-    /// Creates a WAV audio stream from the provided samples using the specified parameters.
+    /// Generates a WAV-formatted audio stream from the provided PCM samples and specified audio configuration.
     /// </summary>
-    /// <param name="samples">An array of floating-point PCM samples, where each sample is in the range of -1.0 to 1.0.</param>
-    /// <param name="sampleRate">The sample rate of the audio in Hz, specifying the number of samples per second.</param>
-    /// <param name="channels">The number of audio channels (e.g., 1 for mono, 2 for stereo).</param>
-    /// <param name="bitsPerSample">The bit depth of each audio sample (e.g., 16 for 16-bit audio).</param>
-    /// <returns>A memory stream containing the WAV-formatted audio data.</returns>
+    /// <param name="samples">The array of PCM samples, with each value normalized to the range -1.0 to 1.0.</param>
+    /// <param name="sampleRate">The number of audio samples per second, expressed in Hz.</param>
+    /// <param name="channels">The number of audio channels, indicating mono (1) or stereo (2).</param>
+    /// <param name="bitsPerSample">The bit depth of each individual audio sample, such as 16 bits per sample.</param>
+    /// <returns>A <see cref="MemoryStream"/> containing the audio data formatted as a WAV file.</returns>
     private static MemoryStream CreateWavStream(float[] samples, int sampleRate, short channels, short bitsPerSample)
     {
         var stream = new MemoryStream();
@@ -456,8 +475,9 @@ internal class VadProcessor : IDisposable
     }
 
     /// <summary>
-    /// Releases the unmanaged resources used by the SttService class
-    /// and optionally disposes of the managed resources.
+    /// Releases the resources used by the SttService class and its associated components.
+    /// Ensures proper cleanup of both managed and unmanaged resources, such as
+    /// the WhisperProcessor and VoiceActivityDetector instances.
     /// </summary>
     public void Dispose()
     {

@@ -4,13 +4,14 @@ using System.Threading.Tasks;
 namespace Aesir.Client.Services;
 
 /// <summary>
-/// Defines the contract for hands-free voice interaction services.
-/// Provides functionality to start/stop hands-free mode and manage voice-based conversations.
+/// Represents the interface for hands-free voice interaction services.
+/// Provides methods to start and stop hands-free mode, access the current state,
+/// and monitor audio levels and state changes through events.
 /// </summary>
 public interface IHandsFreeService
 {
     /// <summary>
-    /// Gets whether hands-free mode is currently active.
+    /// Indicates whether hands-free mode is currently active.
     /// </summary>
     bool IsHandsFreeActive { get; }
 
@@ -20,93 +21,97 @@ public interface IHandsFreeService
     HandsFreeState CurrentState { get; }
 
     /// <summary>
-    /// Starts hands-free mode with configurable silence detection.
+    /// Initiates hands-free mode, enabling voice-based interaction with optional silence detection configuration.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task StartHandsFreeMode();
 
     /// <summary>
-    /// Stops hands-free mode and cleans up resources.
+    /// Stops hands-free mode and performs necessary cleanup operations.
     /// </summary>
-    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     Task StopHandsFreeMode();
 
     /// <summary>
-    /// Event raised when the hands-free state changes.
+    /// Occurs when the hands-free state changes, providing information about the previous and current states.
     /// </summary>
     event EventHandler<HandsFreeStateChangedEventArgs> StateChanged;
 
     /// <summary>
-    /// Event raised when audio level changes during TTS playback.
-    /// Used for UI oscillation effects.
+    /// Occurs when the audio level changes during TTS playback or hands-free interaction.
     /// </summary>
     event EventHandler<AudioLevelEventArgs> AudioLevelChanged;
 }
 
 /// <summary>
-/// Represents the different states of the hands-free service.
+/// Represents the potential operational states of the hands-free interaction service.
+/// Used to track and manage transitions such as idle, listening for input, processing commands,
+/// providing output, or encountering errors within the hands-free system.
 /// </summary>
 public enum HandsFreeState
 {
     /// <summary>
-    /// Service is inactive.
+    /// Indicates that the hands-free service is currently inactive.
     /// </summary>
     Idle,
 
     /// <summary>
-    /// Listening for user speech input.
+    /// Indicates that the hands-free service is actively listening for user input.
     /// </summary>
     Listening,
 
     /// <summary>
-    /// Processing speech-to-text and generating chat completion.
+    /// Indicates that the system is processing an incoming command or request.
     /// </summary>
     Processing,
 
     /// <summary>
-    /// Playing AI response via text-to-speech.
+    /// Service is actively speaking or providing audio output.
     /// </summary>
     Speaking,
 
     /// <summary>
-    /// An error occurred during processing.
+    /// Indicates an error state in the hands-free service.
+    /// This represents a failure or malfunction that prevents normal operation.
     /// </summary>
     Error
 }
 
 /// <summary>
-/// Event arguments for hands-free state changes.
+/// Represents the arguments for the event raised when the state of a hands-free interaction changes.
+/// Provides details about the previous and current states, as well as any error information if applicable.
 /// </summary>
 public class HandsFreeStateChangedEventArgs : EventArgs
 {
     /// <summary>
-    /// The previous state.
+    /// Gets the state of the hands-free service prior to the most recent change.
     /// </summary>
     public HandsFreeState PreviousState { get; init; }
 
     /// <summary>
-    /// The new current state.
+    /// Gets the current state of the hands-free service.
     /// </summary>
     public HandsFreeState CurrentState { get; init; }
 
     /// <summary>
-    /// Optional error message if transitioning to Error state.
+    /// Gets the error message associated with the hands-free state transition,
+    /// if the state change is due to an error.
     /// </summary>
     public string? ErrorMessage { get; init; }
 }
 
 /// <summary>
-/// Event arguments for audio level changes during TTS playback.
+/// Provides data for events related to audio level changes during TTS playback.
 /// </summary>
 public class AudioLevelEventArgs : EventArgs
 {
     /// <summary>
-    /// The current audio level (0.0 to 1.0).
+    /// Represents the current audio level during TTS playback or voice interaction.
     /// </summary>
     public float AudioLevel { get; init; }
 
     /// <summary>
-    /// Whether audio is currently being produced.
+    /// Indicates whether audio is currently active during TTS playback or voice interaction.
     /// </summary>
     public bool IsAudioActive { get; init; }
 }

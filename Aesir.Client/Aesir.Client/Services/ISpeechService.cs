@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 namespace Aesir.Client.Services;
 
 /// <summary>
-/// Represents a service interface for enabling speech synthesis and recognition capabilities.
+/// Defines the interface for speech-related services, including synthesis and recognition.
 /// </summary>
 public interface ISpeechService
 {
@@ -19,12 +19,16 @@ public interface ISpeechService
     /// The behavior of this method depends on the specific implementation of the ISpeechService interface.
     /// <returns>A Task representing the asynchronous stop speech operation.</returns>
     Task StopSpeakingAsync();
-    
+
+    /// Asynchronously listens for speech and returns a list of recognized phrases.
+    /// The recognition process can be customized with a function to determine whether to pause on silence.
+    /// <param name="shouldPauseOnSilence">A function that receives the duration of silence in milliseconds and returns a boolean indicating whether to pause the recognition process.</param>
+    /// <returns>A Task representing the asynchronous operation, containing a list of recognized speech phrases.</returns>
     Task<IList<string>> ListenAsync(Func<int, bool>? shouldPauseOnSilence);
 
-    /// Stops the speech-to-text listening operation.
-    /// Halts ongoing audio recording and disconnects the speech-to-text service if active,
-    /// ensuring proper termination of all listening-related resources and tasks.
+    /// Stops the speech-to-text listening operation asynchronously.
+    /// Terminates ongoing audio recording and ensures the proper disconnection of the
+    /// speech service resources related to listening tasks.
     /// <returns>A Task representing the asynchronous stop operation.</returns>
     Task StopListeningAsync();
 }

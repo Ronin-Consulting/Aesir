@@ -17,138 +17,147 @@ using SoundFlow.Structs;
 namespace Aesir.Client.Desktop.Services;
 
 /// <summary>
-/// Configuration class for audio recording service settings, allowing for easy tuning and overrides.
+/// Represents configuration settings for controlling the behavior of the audio recording service,
+/// including parameters such as sample rate, chunk size, silence threshold, and audio format.
 /// </summary>
 public class AudioRecordingConfig
 {
-    public static AudioRecordingConfig Default => new();
-    
     /// <summary>
-    /// Defines the audio sample rate for recording, specified in hertz (Hz).
-    /// Determines the number of audio samples captured per second,
-    /// impacting audio quality and data size.
+    /// Gets the default configuration instance for the audio recording service.
+    /// Provides pre-set values that can be used as a baseline for custom configurations.
+    /// </summary>
+    public static AudioRecordingConfig Default => new();
+
+    /// <summary>
+    /// Represents the audio sample rate for the recording process, measured in hertz (Hz).
+    /// Specifies the number of audio samples captured per second, influencing both quality and processing requirements.
     /// </summary>
     public int SampleRate { get; set; } = 16000;
-    
+
     /// <summary>
-    /// The number of audio samples processed per chunk. This value determines the size of each audio chunk
-    /// and is calculated based on the sample rate and desired chunk duration.
+    /// Specifies the number of audio samples processed in each chunk during recording.
+    /// Affects the granularity of audio processing and determines how audio data
+    /// is segmented for tasks such as silence detection or chunk-based streaming.
     /// </summary>
     public int SamplesPerChunk { get; set; } = (16000 / 10) * 7; // 11,200 samples by default
-    
+
     /// <summary>
-    /// Represents the number of bytes per audio sample. Commonly used to determine
-    /// the size of memory allocations or buffer calculations for audio processing.
+    /// Specifies the number of bytes used to store a single audio sample in PCM format.
+    /// Determines the bit depth of the sample, with common values being 2 bytes for 16-bit audio.
+    /// Impacts the precision and size of the audio data.
     /// </summary>
     public int BytesPerSample { get; set; } = 2; // 16-bit
-    
+
     /// <summary>
-    /// Represents the Root Mean Square (RMS) amplitude threshold used to determine silence during audio recording.
-    /// Audio segments with an RMS value below this threshold are classified as silence.
-    /// The value can be adjusted based on the recording environment or sensitivity requirements.
+    /// Specifies the root mean square (RMS) amplitude threshold used to detect silence in the audio signal.
+    /// Values below this threshold are considered silent, impacting silence detection logic.
     /// </summary>
     public float SilenceRmsThreshold { get; set; } = 0.02f; // Adjustable RMS threshold for silence
-    
+
     /// <summary>
-    /// The number of consecutive silent audio chunks required to trigger a silence detection event.
-    /// This represents the duration of silence, where each chunk corresponds to approximately 100ms of audio.
-    /// Adjust this value to change the sensitivity of silence detection.
+    /// Specifies the number of consecutive silent chunks required to trigger the silence detection event.
+    /// A larger value ensures that only prolonged silence is detected, while a smaller value increases sensitivity.
+    /// Measured based on the RMS threshold defined by <see cref="SilenceRmsThreshold"/>.
     /// </summary>
     public int SilenceChunkThreshold { get; set; } = 5; // ~500ms of consecutive silence to trigger event
-    
+
     /// <summary>
-    /// Number of audio channels for recording (1 for mono, 2 for stereo).
+    /// Specifies the number of audio channels used in recording. Determines whether audio
+    /// is captured in mono (1 channel) or stereo (2 channels). Impacts the captured audio
+    /// data format and overall size.
     /// </summary>
     public int Channels { get; set; } = 1;
-    
+
     /// <summary>
-    /// Audio sample format for recording.
+    /// Specifies the format of audio samples, determining the data type and bit-depth representation.
+    /// Common formats include 16-bit signed integer and float, influencing audio quality and precision.
     /// </summary>
     public SampleFormat SampleFormat { get; set; } = SampleFormat.S16;
 }
 
 /// <summary>
-/// Provides audio recording functionality using a capture device and recorder.
+/// Provides audio recording functionality, supporting asynchronous audio data processing, event-driven silence detection, and seamless control of audio capture operations.
 /// </summary>
 /// <remarks>
-/// This service enables starting and stopping an audio recording process. It captures audio in a specific format
-/// and supports asynchronous stream-based data processing. The service emits audio data as chunks via an asynchronous enumerable.
+/// The service offers tools for managing audio recording sessions, including starting and stopping recordings and emitting audio data in a chunked format via asynchronous enumerable.
+/// It also integrates with a configured logger and optionally uses the provided recording configuration to manage settings.
 /// </remarks>
 public class AudioRecordingService(
-    ILogger<AudioRecordingService> logger, 
+    ILogger<AudioRecordingService> logger,
     AudioRecordingConfig? config = null) : IAudioRecordingService
 {
     /// <summary>
-    /// Logger instance used for recording and emitting logs within the
-    /// <see cref="AudioRecordingService"/> class. This is primarily used to
-    /// trace the execution flow, report errors, or log informational messages
-    /// during audio recording operations and related activities.
+    /// Represents an instance of <see cref="ILogger"/> used for logging messages
+    /// related to the operation and state of the <see cref="AudioRecordingService"/>.
+    /// Facilitates logging of diagnostic information, error messages, and execution traces.
     /// </summary>
     private readonly ILogger<AudioRecordingService> _logger = logger;
-    
+
     /// <summary>
-    /// Configuration settings for the audio recording service.
+    /// Represents the configuration settings used by the audio recording service.
+    /// Defines adjustable parameters, such as sample rate, audio format, and thresholds,
+    /// used to control recording behavior and process audio data.
     /// </summary>
     private readonly AudioRecordingConfig _config = config ?? AudioRecordingConfig.Default;
 
     /// <summary>
-    /// Represents the audio engine responsible for managing audio device initialization
-    /// and operations in the recording service. This includes updating device information,
-    /// handling capture devices, and providing access to audio processing functionality.
+    /// Represents the audio engine used to manage audio device operations and configurations
+    /// within the recording service. It handles initialization, device enumeration, and other
+    /// functionalities required for audio capturing and processing.
     /// </summary>
     private readonly MiniAudioEngine? _engine = new();
 
     /// <summary>
-    /// Represents the audio capture device used for recording audio input.
-    /// It is initialized with the audio engine and configured to capture audio
-    /// in a specified format.
+    /// Represents the audio capture device utilized for recording audio input.
+    /// Manages audio acquisition according to the specified audio configuration
+    /// within the recording service.
     /// </summary>
     private AudioCaptureDevice? _captureDevice; // Updated to use AudioCaptureDevice from docs
 
     /// <summary>
-    /// Represents the recorder instance used to capture audio data from the configured audio capture device.
-    /// Manages the audio recording lifecycle, including starting, stopping, and processing audio samples.
+    /// Represents the private instance of the recorder used to handle audio capture operations.
+    /// Responsible for managing the audio recording process, including initialization,
+    /// starting, stopping, and processing audio data captured from the audio capture device.
     /// </summary>
     private Recorder? _recorder;
 
     /// <summary>
-    /// Represents a channel used for asynchronously transferring audio data in byte array chunks.
-    /// Acts as a communication mechanism between the audio capture process and consumers,
-    /// facilitating unbounded, thread-safe buffering of audio samples.
+    /// A private channel used for asynchronously transferring audio data in byte array chunks.
+    /// Enables unbounded, thread-safe buffering and communication between the audio capture process
+    /// and audio data consumers.
     /// </summary>
     private Channel<byte[]>? _audioChannel;
 
     /// <summary>
-    /// A buffer used to store audio samples temporarily during the recording process.
-    /// Samples are enqueued as they are captured, typically in float format.
+    /// A buffer used to temporarily store audio samples during the recording process.
+    /// It holds audio data in float format, which is processed incrementally into chunks.
     /// </summary>
     private readonly Queue<float> _sampleBuffer = new();
 
     /// <summary>
-    /// A locking mechanism used to synchronize access to the sample buffer during audio recording.
-    /// Ensures thread-safe operations when processing or clearing the buffer.
+    /// A synchronization object used to control concurrent access to the audio buffer
+    /// during recording operations. Ensures thread safety when modifying or accessing
+    /// the shared buffer in multi-threaded environments.
     /// </summary>
     private readonly Lock _bufferLock = new();
-    
+
     /// <summary>
-    /// Tracks the number of consecutive silent audio chunks detected during recording.
-    /// This variable is incremented for each silent chunk and reset to zero
-    /// when a non-silent chunk is encountered. Used to identify prolonged silence
-    /// and trigger the <see cref="SilenceDetected"/> event if the configured threshold is reached.
+    /// Tracks the number of consecutive silent audio chunks observed during the recording process.
+    /// The variable increments with each detected silent chunk and resets to zero upon encountering
+    /// a non-silent chunk. It is primarily used to detect extended periods of silence and trigger
+    /// events or actions when a predefined silence threshold is exceeded.
     /// </summary>
     private int _consecutiveSilentChunks;
 
     /// <summary>
-    /// Indicates whether the recording process is currently active.
-    /// This property reflects the active state of the recording operation and can be used
-    /// to determine if audio is being captured at a given time.
+    /// Indicates whether the audio recording is currently active.
+    /// Returns true if recording is in progress; otherwise, false.
     /// </summary>
     public bool IsRecording { get; private set; }
 
     /// <summary>
-    /// Event triggered when a silent period is identified during the recording process
-    /// based on the predefined silence detection criteria.
-    /// Allows subscribers to handle or react to periods of detected silence.
+    /// An event triggered when a prolonged period of silence is detected during audio recording.
+    /// It provides details about the duration of the detected silence through its event arguments.
     /// </summary>
     public event EventHandler<SilenceDetectedEventArgs>? SilenceDetected;
 
@@ -194,6 +203,10 @@ public class AudioRecordingService(
     }
 
 
+    /// Stops the currently active audio recording process and performs cleanup of associated resources.
+    /// <returns>
+    /// A task that represents the asynchronous operation to stop recording. If no recording is active, the task completes immediately.
+    /// </returns>
     public Task StopAsync()
     {
         if (!IsRecording) return Task.CompletedTask;
@@ -213,25 +226,29 @@ public class AudioRecordingService(
         }
 
         _audioChannel?.Writer.TryComplete();
+
+        _consecutiveSilentChunks = 0;
         
         return Task.CompletedTask;
     }
 
-    /// <summary>
     /// Processes audio samples in chunks and performs operations such as detecting silence,
-    /// calculating RMS, and enqueuing processed audio chunks for further consumption.
-    /// </summary>
-    /// <param name="samples">The span of audio samples captured, represented as floating-point values.</param>
-    /// <param name="capability">The capability settings associated with the audio processing.</param>
+    /// calculating RMS values, and managing the buffering of audio data for subsequent use.
+    /// <param name="samples">
+    /// The span of audio samples captured, represented as an array of floating-point values.
+    /// </param>
+    /// <param name="capability">
+    /// The capability settings used to configure the behavior of the audio processing logic.
+    /// </param>
     private void ProcessAudioCallback(Span<float> samples, Capability capability)
     {
         lock (_bufferLock)
         {
-            foreach(var sample in samples)
+            foreach (var sample in samples)
             {
                 _sampleBuffer.Enqueue(sample);
             }
-            
+
             while (_sampleBuffer.Count >= _config.SamplesPerChunk)
             {
                 var chunkSamples = new float[_config.SamplesPerChunk];
@@ -265,8 +282,12 @@ public class AudioRecordingService(
     /// <summary>
     /// Calculates the root mean square (RMS) of an array of audio samples.
     /// </summary>
-    /// <param name="samples">An array of float audio samples to calculate the RMS.</param>
-    /// <returns>The calculated RMS value as a float.</returns>
+    /// <param name="samples">
+    /// An array of float audio samples to calculate the RMS.
+    /// </param>
+    /// <returns>
+    /// The calculated RMS value as a float.
+    /// </returns>
     private float CalculateRms(float[] samples)
     {
         float sumSquares = 0;
@@ -274,13 +295,16 @@ public class AudioRecordingService(
         {
             sumSquares += sample * sample;
         }
+
         return (float)Math.Sqrt(sumSquares / samples.Length);
     }
 
     /// <summary>
     /// Invokes the SilenceDetected event when silence is detected during audio recording.
     /// </summary>
-    /// <param name="e">The event data containing details about the detected silence.</param>
+    /// <param name="e">
+    /// The event data containing information about the duration of the detected silent period.
+    /// </param>
     private void OnSilenceDetected(SilenceDetectedEventArgs e)
     {
         SilenceDetected?.Invoke(this, e);
@@ -289,7 +313,9 @@ public class AudioRecordingService(
     /// <summary>
     /// Converts an array of floating-point audio samples into a byte array in PCM format and writes the resulting byte array to the audio channel.
     /// </summary>
-    /// <param name="samples">An array of floating-point audio samples, each representing audio data in the range of -1.0 to 1.0.</param>
+    /// <param name="samples">
+    /// An array of floating-point audio samples. Each value represents normalized audio data in the range of -1.0 to 1.0.
+    /// </param>
     private void WriteChunk(float[] samples)
     {
         var byteChunk = ArrayPool<byte>.Shared.Rent(samples.Length * _config.BytesPerSample);
@@ -308,13 +334,11 @@ public class AudioRecordingService(
         }
     }
 
-    /// <summary>
-    /// Releases the resources used by the <see cref="AudioRecordingService"/> class.
-    /// </summary>
+    /// Disposes the resources used by the AudioRecordingService instance.
     /// <remarks>
-    /// This method ensures that any ongoing audio recording is stopped, and the underlying audio
-    /// capture device and engine are disposed of properly to free up system resources. Additionally,
-    /// it suppresses finalization for the instance, preventing the garbage collector from calling the finalizer.
+    /// This method ensures proper cleanup by stopping any active audio recording processes
+    /// and releasing resources associated with the audio capture device and engine.
+    /// Suppresses finalization to optimize garbage collection.
     /// </remarks>
     public void Dispose()
     {

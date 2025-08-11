@@ -6,13 +6,14 @@ using System.Threading.Tasks;
 namespace Aesir.Client.Services;
 
 /// <summary>
-/// Represents a contract for audio recording services, enabling asynchronous recording,
-/// managing the recording lifecycle, and detecting silence during the recording process.
+/// Defines a contract for providing audio recording functionalities,
+/// including handling the recording process, detecting silence, and managing the recording state.
 /// </summary>
 public interface IAudioRecordingService : IDisposable
 {
     /// <summary>
-    /// Raised when a period of silence is detected during an audio recording session.
+    /// Occurs when a silent period is detected during an ongoing audio recording session.
+    /// Provides details about the duration of silence through the associated event arguments.
     /// </summary>
     event EventHandler<SilenceDetectedEventArgs>? SilenceDetected;
 
@@ -22,23 +23,27 @@ public interface IAudioRecordingService : IDisposable
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An asynchronous enumerable of byte arrays representing recorded audio data.</returns>
     IAsyncEnumerable<byte[]> StartRecordingAsync(CancellationToken cancellationToken = default);
-    
+
+    /// <summary>
+    /// Stops the audio recording process asynchronously.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     Task StopAsync();
 
     /// <summary>
-    /// Indicates whether the audio recording is currently active.
+    /// Indicates whether the audio recording service is currently active and recording audio.
     /// </summary>
     bool IsRecording { get; }
 }
 
 /// <summary>
-/// Represents the event arguments for a silence detection event, which contains information
-/// about the duration of a detected silent period in an audio recording context.
+/// Represents the event arguments for an event indicating that silence has been detected
+/// during audio recording, providing metadata such as the duration of the silent period.
 /// </summary>
 public class SilenceDetectedEventArgs : EventArgs
 {
     /// <summary>
-    /// Represents the duration of detected silence in milliseconds.
+    /// Gets or sets the duration of a detected silent period, in milliseconds, during an audio recording session.
     /// </summary>
     public int SilenceDurationMs { get; set; }
 }

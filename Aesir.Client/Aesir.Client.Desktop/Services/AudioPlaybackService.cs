@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,134 +9,93 @@ using MiniAudioEx;
 namespace Aesir.Client.Desktop.Services;
 
 /// <summary>
-/// Configuration class for audio playback service settings, allowing for easy tuning and overrides.
+/// Represents configuration settings for the audio playback functionality,
+/// including controls for sample rate, channel configuration, and buffer size validation.
 /// </summary>
 public class AudioPlaybackConfig
 {
-    public static AudioPlaybackConfig Default => new();
-    
     /// <summary>
-    /// Defines the sampling rate (in Hz) used for audio playback.
-    /// This determines the number of audio samples per second, critical for audio quality
-    /// and compatibility with audio processing components.
+    /// Provides a default configuration instance for audio playback settings.
+    /// This configuration serves as a baseline with pre-defined values for
+    /// audio playback, including sample rate, channel count, and buffer size.
+    /// </summary>
+    public static AudioPlaybackConfig Default => new();
+
+    /// <summary>
+    /// Specifies the audio sampling rate, measured in Hertz (Hz).
+    /// This property determines the number of samples per second in audio data,
+    /// impacting audio fidelity and compatibility with playback devices.
     /// </summary>
     public uint SampleRate { get; set; } = 22050;
-    
+
     /// <summary>
-    /// Represents the number of audio channels to be used for playback.
-    /// Common values include 1 for mono and 2 for stereo.
+    /// Specifies the number of audio channels used during playback.
+    /// Common values are 1 for mono and 2 for stereo, which determine the configuration
+    /// and spatial characteristics of the audio output.
     /// </summary>
     public uint Channels { get; set; } = 1;
-    
+
     /// <summary>
-    /// Buffer size for audio chunk validation (bytes per sample for 16-bit PCM).
+    /// Specifies the buffer size used for validation of audio data chunks during playback.
+    /// This value is used to determine the alignment and integrity of audio data, ensuring consistency with the expected format and structure.
     /// </summary>
     public int ValidationBufferSize { get; set; } = 2;
 }
 
 /// <summary>
-/// A service responsible for audio playback operations, utilizing audio streams for real-time playback and managing audio state.
+/// A service responsible for handling audio playback operations, integrating with real-time audio streaming and audio state management.
 /// </summary>
+/// <remarks>
+/// The <see cref="AudioPlaybackService"/> is designed to process audio streams in real time, providing methods to start and stop playback,
+/// and ensuring proper resource management through its implementation of the <see cref="IDisposable"/> interface.
+/// </remarks>
 public sealed class AudioPlaybackService(
     ILogger<AudioPlaybackService> logger,
     AudioPlaybackConfig? config = null) : IAudioPlaybackService
 {
+    /// <summary>
+    /// Represents a logger instance used for tracking events, errors, and informational messages
+    /// within the AudioPlaybackService during audio processing and playback operations.
+    /// Useful for debugging and monitoring service behavior.
+    /// </summary>
     private readonly ILogger<AudioPlaybackService> _logger = logger;
+
+    /// <summary>
+    /// Holds the configuration settings for the audio playback service, including parameters such as
+    /// sample rate, channels, and validation buffer size. If no configuration is provided,
+    /// default settings specified in <see cref="AudioPlaybackConfig.Default"/> are used.
+    /// </summary>
     private readonly AudioPlaybackConfig _config = config ?? AudioPlaybackConfig.Default;
-
-    /// <summary>
-    /// Represents the audio source used for managing audio playback operations,
-    /// including playing, stopping, and handling end-of-clip events.
-    /// This instance is initialized upon creation of the service and is responsible
-    /// for directly interfacing with audio playback hardware or software components.
-    /// </summary>
-    private AudioSource? _source;
-
-    /// <summary>
-    /// A thread-safe queue that holds audio clips to be played sequentially.
-    /// This queue stores instances of <see cref="AudioClip"/> and is managed
-    /// within the <see cref="AudioPlaybackService"/> class to handle
-    /// audio playback in a controlled order.
-    /// </summary>
-    private readonly ConcurrentQueue<AudioClip> _clipQueue = new();
     
-    /// <summary>
-    /// Indicates whether audio is currently being played.
-    /// When set to true, audio playback is ongoing. When false,
-    /// there is no active playback, either because playback has stopped,
-    /// no audio is queued, or the current clip has ended.
-    /// </summary>
-    public bool IsPlaying { get; private set; }
-
-    /// <summary>
-    /// Represents the currently active audio clip being played by the audio playback service.
-    /// This variable holds a reference to the audio clip currently being processed or played.
-    /// If no audio is being played, the value will be null.
-    /// </summary>
-    /// <remarks>
-    /// The _currentClip is updated when a new audio clip begins playback
-    /// and is set to null when playback stops or the clip is disposed.
-    /// Proper locking is used to ensure thread safety during modifications.
-    /// </remarks>
-    private AudioClip? _currentClip;
-
-    /// <summary>
-    /// Provides a synchronization lock used to ensure thread-safe operations
-    /// on shared resources within the AudioPlaybackService, such as playback state
-    /// and the audio clip queue.
-    /// </summary>
-    private readonly object _lock = new();
-
-    /// <summary>
-    /// Represents a cancellation token source used to manage the cancellation of the audio playback stream.
-    /// This field is initialized when a new playback session is started by the <see cref="PlayStreamAsync(IAsyncEnumerable{byte[]})"/> method
-    /// and is reset when playback is stopped via the <see cref="Stop"/> method.
-    /// </summary>
-    private CancellationTokenSource? _cts;
-
     // Assumptions: All WAV chunks are 16-bit signed PCM, configurable sample rate and channels
     /// <summary>
-    /// Gets the sampling rate (in Hz) used for audio playback from configuration.
+    /// Gets the sample rate (in Hz) used for audio playback operations.
+    /// Controls the number of audio samples processed per second, which
+    /// affects audio fidelity and compatibility across different audio systems.
     /// </summary>
     private uint SampleRate => _config.SampleRate;
 
     /// <summary>
-    /// Gets the number of audio channels to be used for playback from configuration.
+    /// Specifies the number of audio playback channels.
+    /// Determines whether the audio output is mono (1 channel), stereo (2 channels),
+    /// or a higher number for multi-channel audio configurations, impacting
+    /// the distribution of sound across speaker systems.
     /// </summary>
     private uint Channels => _config.Channels;
 
-    private AudioApp? _audioApp;
-    
     /// <summary>
-    /// Initializes the audio playback service components.
+    /// Indicates whether audio playback is currently active.
+    /// If true, audio is actively playing; if false, playback is paused or stopped.
+    /// This property is updated in real-time based on the playback state.
     /// </summary>
-    private void Initialize()
-    {
-        try
-        {
-            _logger.LogInformation("Audio context initialized with sample rate {SampleRate} Hz and {Channels} channel(s)", SampleRate, Channels);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to initialize audio context");
-            throw;
-        }
+    public bool IsPlaying { get; private set; }
 
-        if(_audioApp != null) return; // Already initialized
-        
-        _audioApp = new AudioApp(SampleRate, Channels);
-        _audioApp.Loaded += AudioContextLoaded;
-        
-        Task.Run(() => _audioApp.Run(),_cts!.Token);
-        
-        _logger.LogInformation("AudioPlaybackService initialized successfully");
-    }
-
-    private void AudioContextLoaded()
-    {
-        _source = new AudioSource();
-        _source.End += OnClipEnd;        
-    }
+    /// <summary>
+    /// A cancellation token source used to manage and signal cancellation
+    /// of the current audio playback operation.
+    /// This allows graceful interruption of asynchronous tasks associated with audio playback.
+    /// </summary>
+    private CancellationTokenSource? _cts;
 
     /// <summary>
     /// Plays audio from a provided asynchronous stream of audio chunks.
@@ -146,40 +104,45 @@ public sealed class AudioPlaybackService(
     /// <returns>A task representing the asynchronous operation of audio playback.</returns>
     public async Task PlayStreamAsync(IAsyncEnumerable<byte[]> audioChunks)
     {
-        lock (_lock)
+        Stop();
+
+        _cts = new CancellationTokenSource();
+
+        AudioSource? audioSource = null;
+        var audioApp = new AudioApp(SampleRate, Channels);
+        audioApp.Loaded += () =>
         {
-            Stop(); // Stop any ongoing playback
-            _cts = new CancellationTokenSource();
-            
-            Initialize();
+            audioSource = new AudioSource();
+        };
+        _ = Task.Run(() => audioApp.Run());
+
+        while (audioSource == null)
+        {
+            await Task.Delay(100);
         }
-        
-        _logger.LogInformation("Starting audio stream playback");
-        
+
+        audioSource.End += () =>
+        {
+            IsPlaying = false;
+        };
+
         try
         {
             var chunkCount = 0;
             await foreach (var chunk in audioChunks.WithCancellation(_cts.Token))
             {
+                chunkCount++;
                 ValidateChunk(chunk);
                 
-                var clip = new AudioClip(chunk); // Use constructor with byte[]; assume isUnique = false by default
-                _clipQueue.Enqueue(clip);
-                chunkCount++;
-                
-                lock (_lock)
+                using var clip = new AudioClip(chunk);
+                audioSource.Play(clip);
+                IsPlaying = true;
+                _logger.LogDebug("Audio clip {ClipNumber} playing.", chunkCount);
+                while (IsPlaying)
                 {
-                    if (!IsPlaying && _clipQueue.TryDequeue(out var firstClip))
-                    {
-                        _currentClip = firstClip;
-                        _source!.Play(firstClip);
-                        IsPlaying = true;
-                        _logger.LogDebug("Started playing first audio clip");
-                    }
+                    await Task.Delay(100);
                 }
             }
-            
-            _logger.LogInformation("Audio stream playback completed. Processed {ChunkCount} chunks", chunkCount);
         }
         catch (OperationCanceledException)
         {
@@ -191,6 +154,10 @@ public sealed class AudioPlaybackService(
         }
     }
 
+    /// <summary>
+    /// Validates the provided audio chunk for size consistency and alignment with the expected format.
+    /// </summary>
+    /// <param name="chunk">A byte array representing an audio chunk to be validated.</param>
     private void ValidateChunk(byte[] chunk)
     {
         // Example: Check if chunk size is consistent with 16-bit PCM
@@ -199,88 +166,18 @@ public sealed class AudioPlaybackService(
             _logger.LogWarning("Invalid chunk size: {Length} bytes, not aligned to 16-bit PCM", chunk.Length);
         }
     }
-    
-    /// <summary>
-    /// Handles the event triggered when an audio clip ends playback.
-    /// This method releases resources associated with the completed clip, updates the playback state,
-    /// and starts playback of the next queued clip if available. If no clips remain in the queue,
-    /// playback is set to an inactive state.
-    /// </summary>
-    private void OnClipEnd()
-    {
-        lock (_lock)
-        {
-            // Wait for audio source to confirm buffer is no longer in use
-            while (_source!.IsPlaying)
-            {
-                Thread.Sleep(1);
-            }
-            
-            _currentClip?.Dispose(); // Dispose finished clip to free resources
-            _currentClip = null;
-
-            if (_clipQueue.TryDequeue(out var nextClip))
-            {
-                _currentClip = nextClip;
-                _source.Play(nextClip);
-                _logger.LogDebug("Playing next audio clip from queue");
-            }
-            else
-            {
-                IsPlaying = false;
-                _logger.LogDebug("Audio playback queue is empty, playback stopped");
-            }
-        }
-    }
 
     /// <summary>
-    /// Stops the audio playback and releases any resources associated with the current playback session.
-    /// This method stops the current audio playback, cancels any ongoing audio stream operations,
-    /// clears the playback queue, and disposes of any active audio clips to free resources.
-    /// It ensures that all playback-related activities are halted, resetting the playback state.
+    /// Stops the current audio playback session, cancels any active playback operations,
+    /// and deinitializes the audio context, ensuring proper resource cleanup and halting all playback activities.
     /// </summary>
     public void Stop()
     {
-        lock (_lock)
-        {
-            if (!IsPlaying && _cts == null)
-            {
-                return; // Already stopped
-            }
-            
-            _logger.LogInformation("Stopping audio playback");
-            
-            _cts?.Cancel();
-            _cts = null;
+        _cts?.Cancel();
 
-            if (_source != null) _source.Stop();
+        AudioContext.Deinitialize();
 
-            _currentClip?.Dispose();
-            _currentClip = null;
-            
-            var disposedClips = 0;
-            while (_clipQueue.TryDequeue(out var clip))
-            {
-                clip.Dispose(); // Dispose queued clips to free resources
-                disposedClips++;
-            }
-
-            if (_source != null) _source.End -= OnClipEnd; // Unsubscribe event
-            
-            _audioApp!.Loaded -= AudioContextLoaded;
-
-            _source = null;
-            _audioApp = null;
-            
-            IsPlaying = false;
-            
-            if (disposedClips > 0)
-            {
-                _logger.LogDebug("Disposed {DisposedClips} queued audio clips", disposedClips);
-            }
-            
-            _logger.LogInformation("Audio playback stopped successfully");
-        }
+        _logger.LogDebug("Audio context deinitialized");
     }
 
     /// <summary>
@@ -290,23 +187,21 @@ public sealed class AudioPlaybackService(
     /// This method stops any ongoing audio playback, deinitializes the audio context,
     /// disposes of any queued audio clips, and terminates the update thread.
     /// It ensures that all unmanaged resources and allocated memory are properly freed.
+    /// Any errors encountered during the cleanup process are logged.
     /// </remarks>
     public void Dispose()
     {
         _logger.LogInformation("Disposing AudioPlaybackService");
-        
-        Stop();
-        
+
         try
         {
-            AudioContext.Deinitialize(); // Frees all allocated memory
-            _logger.LogDebug("Audio context deinitialized");
+            Stop();
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error deinitializing audio context during disposal");
         }
-        
+
         _logger.LogInformation("AudioPlaybackService disposed successfully");
     }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using Aesir.Client.Services;
@@ -146,63 +145,32 @@ public class SpeechService : ISpeechService, IAsyncDisposable
 
     public async Task<IList<string>> ListenAsync(Func<int, bool>? shouldPauseOnSilence)
     {
-        if (shouldPauseOnSilence == null)
-            throw new ArgumentNullException(nameof(shouldPauseOnSilence));
-
         _stopListeningCts = new CancellationTokenSource();
-        var collectedUtterances = new List<string>();
-        var shouldStopCollecting = false;
-
+        var localCancelToken = _stopListeningCts.Token;
+        
         if (_sttConnection.State == HubConnectionState.Disconnected)
-            await _sttConnection.StartAsync(_stopListeningCts.Token);
-
-        _audioRecordingService.SilenceDetected += OnHandleSilenceDetected;
-
-        var audioStream = 
-            _audioRecordingService.StartRecordingAsync();
+            await _sttConnection.StartAsync(localCancelToken);
         
-        var textChannelReader = await _sttConnection.StreamAsChannelAsync<string>("ProcessAudioStream",
-            audioStream, _stopListeningCts.Token);
-
-        try
-        {
-            await foreach (var textUtterance in textChannelReader.ReadAllAsync(_stopListeningCts.Token))
-            {
-                if (!string.IsNullOrWhiteSpace(textUtterance))
-                {
-                    _logger.LogDebug("Received utterance: {Utterance}", textUtterance);
-                    collectedUtterances.Add(textUtterance);
-                }
-
-                if (shouldStopCollecting)
-                {
-                    _logger.LogDebug("Stoping collection of utterances.");
-
-                    break;
-                }
-            }
-        }
-        catch (OperationCanceledException ocex)
-        {
-            _logger.LogDebug("Utterance collection operation cancelled: {Message}", ocex.Message);
-        }
-        finally
-        {
-            _audioRecordingService.SilenceDetected -= OnHandleSilenceDetected;
-        }
-
-        _logger.LogDebug("Returning collected {Count} utterances.", collectedUtterances.Count);
+        var utterances = new List<string>();
         
-        return collectedUtterances;
-
-        void OnHandleSilenceDetected(object? sender, SilenceDetectedEventArgs args)
+        _audioRecordingService.SilenceDetected += OnSilenceDetected;
+        
+        var audioChunkStream = _audioRecordingService.StartRecordingAsync(_stopListeningCts.Token);
+        await foreach (var chunk in _sttConnection.StreamAsync<string>("ProcessAudioStream", audioChunkStream).WithCancellation(localCancelToken))
         {
-            var shouldPause = shouldPauseOnSilence.Invoke(args.SilenceDurationMs);
-            if (shouldPause)
+            utterances.Add(chunk);
+        }
+        
+        _audioRecordingService.SilenceDetected -= OnSilenceDetected;
+        
+        return utterances;
+
+        void OnSilenceDetected(object? sender, SilenceDetectedEventArgs e)
+        {
+            if (shouldPauseOnSilence is not null && shouldPauseOnSilence(e.SilenceDurationMs))
             {
-                shouldStopCollecting = true;
-                
-                _stopListeningCts.Cancel();
+                _logger.LogInformation("Silence detected, pausing listening");
+                _audioRecordingService.StopAsync();
             }
         }
     }
@@ -219,7 +187,7 @@ public class SpeechService : ISpeechService, IAsyncDisposable
     /// <returns>A task that represents the asynchronous stop operation.</returns>
     public async Task StopListeningAsync()
     {
-        if (_stopListeningCts != null)
+        if (_stopListeningCts is { IsCancellationRequested: false })
             await _stopListeningCts.CancelAsync();
 
         if (_audioRecordingService.IsRecording)

@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.SignalR;
 namespace Aesir.Api.Server.Services;
 
 /// <summary>
-/// Represents a SignalR Hub that facilitates the real-time processing of audio streams to text
-/// by communicating with an <see cref="ISttService"/> for speech-to-text functionality.
+/// Defines a SignalR Hub that processes real-time audio streams, converting them into text
+/// by leveraging the functionalities provided by <see cref="ISttService"/>.
 /// </summary>
 public class SttHub(ISttService sttService) : Hub
 {
@@ -13,15 +13,15 @@ public class SttHub(ISttService sttService) : Hub
     /// Processes an audio stream by converting audio frames into text chunks asynchronously.
     /// </summary>
     /// <param name="audioFrames">An asynchronous stream of audio frame data represented as byte arrays.</param>
-    /// <param name="cancellationToken">Cancellation token to handle client disconnections.</param>
-    /// <returns>An asynchronous enumerable of text chunks generated from the audio frames.</returns>
+    /// <param name="cancellationToken">Cancellation token to handle client disconnections or additional cancellation signals.</param>
+    /// <returns>An asynchronous enumerable of text chunks generated from the processed audio frames.</returns>
     public async IAsyncEnumerable<string> ProcessAudioStream(
-        IAsyncEnumerable<byte[]> audioFrames, 
+        IAsyncEnumerable<byte[]> audioFrames,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // Combine the provided cancellation token with the connection abort token
         using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(
-            cancellationToken, 
+            cancellationToken,
             Context.ConnectionAborted);
 
         IAsyncEnumerator<string>? enumerator = null;
@@ -42,7 +42,13 @@ public class SttHub(ISttService sttService) : Hub
                     // Client disconnected - exit gracefully
                     yield break;
                 }
-
+                catch (HubException ex) when (ex.Message.Contains("Stream canceled by client"))
+                {
+                    // This is also an expected exception when the client cancels the incoming stream.
+                    // We break the loop to exit gracefully.
+                    break;
+                }
+                
                 if (!hasNext)
                     break;
 
