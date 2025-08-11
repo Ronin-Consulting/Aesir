@@ -19,7 +19,7 @@ services:
       # Comment this out when Ollama is on container host
       #- Inference__Ollama__Endpoint=http://192.168.1.120:11434
     healthcheck:
-      test: [ "CMD", "curl", "--fail", "http://aesir/healthz" ]
+      test: [ "CMD", "curl", "--fail", "http://aesir-api/healthz" ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -64,7 +64,8 @@ services:
           memory: 2G
         reservations:
           cpus: '1.0'
-          memory: 1G       
+          memory: 1G   
+          
   reverse-proxy:
     image: traefik:latest
     restart: unless-stopped
