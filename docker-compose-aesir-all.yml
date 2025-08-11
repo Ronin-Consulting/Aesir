@@ -47,7 +47,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
       # Comment this out when Ollama is on container host
-      - Inference__Ollama__Endpoint=http://192.168.1.120:11434
+      #- Inference__Ollama__Endpoint=http://192.168.1.120:11434
     healthcheck:
       test: [ "CMD", "curl", "--fail", "http://aesir-api/healthz" ]
       interval: 10s

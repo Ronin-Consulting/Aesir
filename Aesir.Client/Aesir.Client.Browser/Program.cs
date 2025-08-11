@@ -38,6 +38,7 @@ internal sealed partial class Program
             {
                 services.AddSingleton<ISpeechService, BrowserSpeechService>();
                 services.AddTransient<IPdfViewerService, PdfViewerService>();
+                services.AddTransient<BrowserJsService, BrowserJsService>();
             }
         );
         

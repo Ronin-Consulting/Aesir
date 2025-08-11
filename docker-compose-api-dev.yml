@@ -4,7 +4,7 @@
   qdrant_storage:
 
 services:
-  aesir:
+  aesir-api:
     image: aesir.api.server
     build:
       context: .
@@ -16,6 +16,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
+      # Comment this out when Ollama is on container host
+      #- Inference__Ollama__Endpoint=http://192.168.1.120:11434
     healthcheck:
       test: [ "CMD", "curl", "--fail", "http://aesir/healthz" ]
       interval: 10s
@@ -23,18 +25,13 @@ services:
       retries: 10
     labels:
       - "traefik.enable=true"
-      # HTTP Router
-      - "traefik.http.routers.aesir-http.rule=Host(`aesir.localhost`)"
-      - "traefik.http.routers.aesir-http.entrypoints=web"
-      - "traefik.http.routers.aesir-http.service=aesir"
-      # HTTPS Router
-      - "traefik.http.routers.aesir-https.rule=Host(`aesir.localhost`)"
-      - "traefik.http.routers.aesir-https.entrypoints=websecure"
-      - "traefik.http.routers.aesir-https.tls=true"
-      - "traefik.http.routers.aesir-https.tls.certresolver=letsencryptresolver"
-      - "traefik.http.routers.aesir-https.service=aesir"
-      # Service definition
+      - "traefik.http.routers.aesir.rule=Host(`aesir.localhost`)"
+      - "traefik.http.routers.aesir.entrypoints=websecure"
+      - "traefik.http.routers.aesir.tls=true"
+      - "traefik.http.routers.aesir.service=aesir"
       - "traefik.http.services.aesir.loadbalancer.server.port=80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:
@@ -52,7 +49,7 @@ services:
       - "5432:5432"
     volumes:
       - dbdata:/var/lib/postgresql/data
-    restart: always
+    restart: unless-stopped
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
@@ -67,8 +64,7 @@ services:
           memory: 2G
         reservations:
           cpus: '1.0'
-          memory: 1G
-          
+          memory: 1G       
   reverse-proxy:
     image: traefik:latest
     restart: unless-stopped
@@ -76,18 +72,16 @@ services:
       pgdb:
         condition: service_healthy
     command:
-      - "--log.level=DEBUG"
-      - "--accesslog=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--api.insecure=true"
-      - "--api.debug=true"
-      - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencryptresolver.acme.email=info@ronin.consulting"
-      - "--certificatesresolvers.letsencryptresolver.acme.storage=/letsencrypt/acme.json"
-      - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge=true" # Changed to true for Let's Encrypt
-      - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge.entrypoint=web"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker=true"
+      - "--providers.file.filename=/certs/traefik-dynamic.yml"
+      - "--providers.file.watch=true"
+      - "--api.debug=true"
+      - "--api.insecure=true"
+      - "--log.level=DEBUG"
+      - "--accesslog=true"
     ports:
       - "443:443"
       - "80:80"
@@ -95,6 +89,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - letsencryptdata:/letsencrypt
+      - ./certs:/certs
     deploy:
       resources:
         limits:
@@ -106,7 +101,7 @@ services:
 
   qdrant:
     image: qdrant/qdrant:latest
-    restart: always
+    restart: unless-stopped
     container_name: qdrant
     environment:
       - QDRANT__SERVICE__API_KEY=aesir_3a087fa5640958985025b0a03d2f6b0c80253884c5bd7c05f65f2fdf2404d7ab
@@ -125,10 +120,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.qdrant.rule=Host(`qdrant.localhost`)"
-      - "traefik.http.routers.qdrant.entrypoints=web"
       - "traefik.http.routers.qdrant.entrypoints=websecure"
       - "traefik.http.routers.qdrant.tls=true"
-      - "traefik.http.routers.qdrant.tls.certresolver=letsencryptresolver"
       - "traefik.http.services.qdrant.loadbalancer.server.port=6333"
     deploy:
       resources:
@@ -138,6 +131,7 @@ services:
         reservations:
           cpus: '1.0'
           memory: 1G
+
 configs:
   qdrant_config:
     content: |

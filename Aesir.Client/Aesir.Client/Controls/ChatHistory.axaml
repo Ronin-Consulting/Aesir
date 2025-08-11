@@ -9,6 +9,12 @@
              mc:Ignorable="d"
              x:DataType="vm:ChatHistoryViewModel"
              x:Class="Aesir.Client.Controls.ChatHistory">
+    <UserControl.Styles>
+        <Style Selector="MenuFlyoutPresenter.userMenu">
+            <Setter Property="MinWidth" Value="{Binding $parent[Button].Bounds.Width}" />
+        </Style>
+    </UserControl.Styles>
+
     <DockPanel Background="{DynamicResource BackgroundBrush}">
         <TextBox DockPanel.Dock="Top"
                  Classes="Bordered"
@@ -26,6 +32,41 @@
                 </Border>
             </TextBox.InnerLeftContent>
         </TextBox>
+        
+        <!-- User Profile Panel - Docked to Bottom -->
+        <Border DockPanel.Dock="Bottom" Padding="10" Margin="0 0 0 0">
+            <Button Classes="Primary" 
+                    Theme="{DynamicResource OutlineButton}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Padding="10,7,7,7">
+                <Button.Flyout>
+                    <MenuFlyout Placement="Top" FlyoutPresenterClasses="userMenu">
+                        <MenuItem Header="Agents" Command="{Binding ShowAgents}">
+                            <MenuItem.Icon>
+                                <avalonia:MaterialIcon Kind="Robot" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Tools" Command="{Binding ShowTools}">
+                            <MenuItem.Icon>
+                                <avalonia:MaterialIcon Kind="Tools" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <avalonia:MaterialIcon Kind="Cog" 
+                                           Width="18" 
+                                           Height="18" 
+                                           HorizontalAlignment="Center" 
+                                           VerticalAlignment="Center" />
+                    <TextBlock Text="Bobby Langford"
+                               VerticalAlignment="Center"
+                               FontWeight="Medium" />
+                </StackPanel>
+            </Button>
+        </Border>
+
         <ScrollViewer Margin="0,0,0,0" VerticalScrollBarVisibility="Auto">
             <ItemsControl ItemsSource="{Binding ChatHistoryByDate}">
                 <ItemsControl.ItemTemplate>

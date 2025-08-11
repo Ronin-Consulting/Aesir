@@ -1,6 +1,8 @@
+using System.IO;
 using System.Threading.Tasks;
 using ColorCode.Styling;
 using Markdig;
+using Markdig.Renderers.Html.Inlines;
 using Markdown.ColorCode;
 using Microsoft.Extensions.Logging;
 
@@ -46,8 +48,21 @@ public class MarkdigMarkdownService(ILogger<MarkdigMarkdownService> logger) : IM
     /// <returns>A task that represents the asynchronous operation. The task result contains the HTML string generated from the Markdown input.</returns>
     public Task<string> RenderMarkdownAsHtmlAsync(string markdown)
     {
-        var html = Markdig.Markdown.ToHtml(markdown, _pipeline);
-        //_logger.LogDebug("Rendered markdown to HTML: {html}", html);
+        using var writer = new StringWriter();
+        var renderer = new Markdig.Renderers.HtmlRenderer(writer);
+
+        renderer.ObjectRenderers.RemoveAll(r => r is LinkInlineRenderer);
+        renderer.ObjectRenderers.Add(new AesirLinkRenderer());
+
+        _pipeline.Setup(renderer);
+
+        var doc = Markdig.Markdown.Parse(markdown, _pipeline);
+        renderer.Render(doc);
+        writer.Flush();
+        
+        var html = writer.ToString();
+        
+        _logger.LogDebug("Rendered markdown to HTML: {html}", html);
 
         return Task.FromResult(html);
     }

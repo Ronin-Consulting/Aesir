@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
@@ -11,6 +12,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.DependencyInjection;
+using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using Humanizer;
@@ -29,9 +31,7 @@ namespace Aesir.Client.ViewModels;
 /// <seealso cref="ObservableRecipient" />
 /// <seealso cref="IRecipient{TMessage}" />
 /// <seealso cref="IDisposable" />
-public partial class ChatHistoryViewModel(
-    ApplicationState appState,
-    IChatHistoryService chatHistoryService)
+public partial class ChatHistoryViewModel
     : ObservableRecipient, IRecipient<PropertyChangedMessage<bool>>, IRecipient<ChatHistoryChangedMessage>, IDisposable
 {
     /// Represents a collection of chat history items grouped by date.
@@ -41,6 +41,16 @@ public partial class ChatHistoryViewModel(
     /// Automatically refreshed when chat session data changes, it enables efficient display
     /// and categorization of chat history in the user interface.
     public ObservableGroupedCollection<string, ChatHistoryButtonViewModel> ChatHistoryByDate { get; } = [];
+
+    /// <summary>
+    /// Represents a command that shows a agents view
+    /// </summary>
+    public ICommand ShowAgents { get; }
+
+    /// <summary>
+    /// Represents a command that shows a tools view
+    /// </summary>
+    public ICommand ShowTools { get; }
 
     /// <summary>
     /// Manages the cancellation of debounce operations for handling user input changes,
@@ -73,6 +83,28 @@ public partial class ChatHistoryViewModel(
     /// This variable is updated dynamically as the user enters or modifies the search query.
     /// The search operation is initiated only when the input text length satisfies the minimum required characters.
     [ObservableProperty] private string _searchText = string.Empty;
+
+    private readonly ApplicationState _appState;
+    
+    private readonly IChatHistoryService _chatHistoryService;
+
+    /// <summary>
+    /// Represents a service to aid in navigation
+    /// </summary>
+    private readonly INavigationService _navigationService;
+
+    public ChatHistoryViewModel(
+        ApplicationState appState,
+        IChatHistoryService chatHistoryService,
+        INavigationService navigationService)
+    {
+        _appState = appState;
+        _chatHistoryService = chatHistoryService;
+        _navigationService = navigationService;
+        
+        ShowAgents = new RelayCommand(ExecuteShowAgents);
+        ShowTools = new RelayCommand(ExecuteShowTools);
+    }
 
     /// Handles the event when the search text is modified. This method incorporates debounce logic
     /// to delay search execution and cancels any ongoing search operations if necessary.
@@ -116,7 +148,7 @@ public partial class ChatHistoryViewModel(
         base.OnActivated();
 
         ChatHistoryByDate.Clear();
-        appState.ChatSessions.Clear();
+        _appState.ChatSessions.Clear();
 
         Dispatcher.UIThread.InvokeAsync(LoadChatHistoryAsync);
     }
@@ -128,7 +160,7 @@ public partial class ChatHistoryViewModel(
     private async Task SearchChatHistoryAsync(string searchQuery)
     {
         var foundChatSessions =
-            await chatHistoryService.SearchChatSessionsAsync("Unknown", searchQuery);
+            await _chatHistoryService.SearchChatSessionsAsync("Unknown", searchQuery);
 
         RefreshChatHistoryDisplay(foundChatSessions ?? []);
     }
@@ -146,8 +178,8 @@ public partial class ChatHistoryViewModel(
         {
             foreach (var chatSession in chatSessionGroup)
             {
-                if(appState.ChatSessions.All(cs => cs.Id != chatSession.Id))
-                    appState.ChatSessions.Add(chatSession);
+                if (_appState.ChatSessions.All(cs => cs.Id != chatSession.Id))
+                    _appState.ChatSessions.Add(chatSession);
             }
 
             // stuff like this we may need to set TZ of the container for backend
@@ -177,7 +209,7 @@ public partial class ChatHistoryViewModel(
 
         chatHistoryButtonViewModel.SetChatSessionItem(cs);
         chatHistoryButtonViewModel.IsActive = true;
-        chatHistoryButtonViewModel.IsChecked = appState.SelectedChatSessionId == cs.Id;
+        chatHistoryButtonViewModel.IsChecked = _appState.SelectedChatSessionId == cs.Id;
 
         return chatHistoryButtonViewModel;
     }
@@ -191,7 +223,7 @@ public partial class ChatHistoryViewModel(
     {
         try
         {
-            var chatSessions = await chatHistoryService.GetChatSessionsAsync();
+            var chatSessions = await _chatHistoryService.GetChatSessionsAsync();
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (chatSessions != null)
             {
@@ -225,6 +257,16 @@ public partial class ChatHistoryViewModel(
     public void Receive(ChatHistoryChangedMessage message)
     {
         Dispatcher.UIThread.InvokeAsync(LoadChatHistoryAsync);
+    }
+
+    private void ExecuteShowAgents()
+    {
+        _navigationService.NavigateToAgents();
+    }
+
+    private void ExecuteShowTools()
+    {
+        _navigationService.NavigateToTools();
     }
 
     /// Releases all resources used by the ChatHistoryViewModel instance.

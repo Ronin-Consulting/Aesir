@@ -132,26 +132,16 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     public ObservableCollection<MessageViewModel?> ConversationMessages { get; } = [];
 
     /// <summary>
-    /// Command that toggles the visibility of the chat history panel in the application.
+    /// Command that toggles the visibility of the left panel in the application.
     /// When executed, it switches the panel's state between open and closed, improving user control over the interface layout.
     /// </summary>
-    public ICommand ToggleChatHistory { get; }
+    public ICommand ToggleLeftPane { get; }
 
     /// <summary>
     /// Represents a command to initiate or toggle a new chat session in the application.
     /// Typically bound to user interface elements to trigger the creation or reset of a chat thread.
     /// </summary>
     public ICommand ToggleNewChat { get; }
-
-    /// <summary>
-    /// Represents a command that shows a agents view
-    /// </summary>
-    public ICommand ShowAgents { get; }
-
-    /// <summary>
-    /// Represents a command that shows a tools view
-    /// </summary>
-    public ICommand ShowTools { get; }
     
     public ICommand ShowHandsFree { get; }
 
@@ -215,7 +205,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     private readonly ILogger<ChatViewViewModel> _logger;
 
     /// <summary>
-    /// 
+    /// Represents a service to aid in navigation
     /// </summary>
     private readonly INavigationService _navigationService;
 
@@ -236,11 +226,9 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _navigationService = navigationService;
 
-        ToggleChatHistory = new RelayCommand(() => PanelOpen = !PanelOpen);
+        ToggleLeftPane = new RelayCommand(() => PanelOpen = !PanelOpen);
         ToggleNewChat = new RelayCommand(ExecuteNewChat);
         ShowHandsFree = new RelayCommand(ExecuteShowHandsFree);
-        ShowAgents = new RelayCommand(ExecuteShowAgents);
-        ShowTools = new RelayCommand(ExecuteShowTools);
 
         SelectedFile = fileToUploadViewModel ?? throw new ArgumentNullException(nameof(fileToUploadViewModel));
         SelectedFile.IsActive = true;
@@ -297,16 +285,6 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         //     MicOn = false;
         // }
         _navigationService.NavigateToHandsFree();
-    }
-
-    private void ExecuteShowAgents()
-    {
-        _navigationService.NavigateToAgents();
-    }
-
-    private void ExecuteShowTools()
-    {
-        _navigationService.NavigateToTools();
     }
 
     /// <summary>

@@ -37,19 +37,11 @@ public class ContentProcessingService(
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(link))
+            // only process aesir rewritten uris
+            if (attributes.ContainsKey("data-href"))
             {
-                _logger.LogWarning("Attempted to handle empty link click");
-                return;
+                _pdfViewerService.ShowPdfAsync(attributes["data-href"]);
             }
-
-            // only process "file" uri ... if not "file" then just return... 
-            if (!Uri.TryCreate(link, UriKind.Absolute, out var uri) || uri.Scheme != "file")
-            {
-                return;
-            }
-            
-            _pdfViewerService.ShowPdfAsync(link);
         }
         catch (Exception ex)
         {

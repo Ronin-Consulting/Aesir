@@ -22,11 +22,26 @@ public class DocumentCollectionController(
         Conversation
     }
 
-    //https://aesir.localhost/document/collections/file/%2F407e11d8-2763-48a9-aa7a-2bd549b3e7f9%2FMissionPlan-OU812.pdf/content
+    /// <summary>
+    /// This method returns the file as an attachment. A sample URL would be
+    /// https://aesir.localhost/document/collections/file/%2F407e11d8-2763-48a9-aa7a-2bd549b3e7f9%2FMissionPlan-OU812.pdf/content
+    /// </summary>
     [HttpGet("file/{filename}/content")]
     public async Task<IActionResult> GetFileContentAsync([FromRoute]string filename)
     {
         return await GetFileContentCoreAsync(Uri.UnescapeDataString(filename));
+    }
+
+    /// <summary>
+    /// This method returns the file inline, suitable for displaying in a browser tab as opposed to being automatically
+    /// downloaded. It also uses the filename as the last segment of the path so browsers show it as the tab title. A
+    /// sample URL would be
+    /// https://aesir.localhost/document/collections/file/407e11d8-2763-48a9-aa7a-2bd549b3e7f9/MissionPlan-OU812.pdf
+    /// </summary>
+    [HttpGet("file/{id}/{filename}")]
+    public async Task<IActionResult> GetFileInlineAsync([FromRoute]string id, [FromRoute]string filename)
+    {
+        return await GetFileInlineCoreAsync(Uri.UnescapeDataString(id), Uri.UnescapeDataString(filename));
     }
     
     #region Global Files
@@ -107,10 +122,28 @@ public class DocumentCollectionController(
 
         var fileStream = new FileStream(result.Value.FilePath, FileMode.Open, FileAccess.Read);
         var contentType = result.Value.FileInfo.MimeType;
-
+        
         return new FileStreamResult(fileStream, contentType)
         {
             FileDownloadName = filename,
+            EnableRangeProcessing = true
+        };
+    }
+    
+    private async Task<IActionResult> GetFileInlineCoreAsync(string id, string filename)
+    {
+        var virtualFilename = $"{id}/{filename}";
+        var result = await fileStorageService.GetFileContentAsync(virtualFilename);
+
+        if(result == null || !System.IO.File.Exists(result.Value.FilePath))
+            return NotFound();
+
+        var fileStream = new FileStream(result.Value.FilePath, FileMode.Open, FileAccess.Read);
+        var contentType = result.Value.FileInfo.MimeType;
+        
+        Response.Headers["Content-Disposition"]= $"inline; filename=\"{filename}\"";
+        return new FileStreamResult(fileStream, contentType)
+        {
             EnableRangeProcessing = true
         };
     }
