@@ -93,7 +93,7 @@ public static class ServiceCollectionExtensions
         
         services.AddSingleton<IPdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>(serviceProvider =>
         {
-            return new SamurAI.PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>(
+            return new PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>(
                 serviceProvider.GetRequiredService<UniqueKeyGenerator<Guid>>(),
                 serviceProvider.GetRequiredService<VectorStoreCollection<Guid, AesirGlobalDocumentTextData<Guid>>>(),
                 serviceProvider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
@@ -113,13 +113,13 @@ public static class ServiceCollectionExtensions
                 serviceProvider.GetRequiredService<IVisionService>(),
                 serviceProvider.GetRequiredService<IModelsService>(),
                 serviceProvider
-                    .GetRequiredService<ILogger<SamurAI.PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>>()
+                    .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>>()
             );
         });
 
         services.AddSingleton<IPdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>(serviceProvider =>
         {
-            return new SamurAI.PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>(
+            return new PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>(
                 serviceProvider.GetRequiredService<UniqueKeyGenerator<Guid>>(),
                 serviceProvider
                     .GetRequiredService<VectorStoreCollection<Guid, AesirConversationDocumentTextData<Guid>>>(),
@@ -140,7 +140,7 @@ public static class ServiceCollectionExtensions
                 serviceProvider.GetRequiredService<IVisionService>(),
                 serviceProvider.GetRequiredService<IModelsService>(),
                 serviceProvider
-                    .GetRequiredService<ILogger<SamurAI.PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
+                    .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
         });
 

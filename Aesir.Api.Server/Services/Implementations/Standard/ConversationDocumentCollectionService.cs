@@ -26,7 +26,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// Used to control the size of the result set returned by search operations, ensuring efficient
     /// performance and relevance by limiting outcomes to a specific count.
     /// </remarks>
-    private const int TopResults = 25;
+    private const int TopResults = 50;
 
     /// <summary>
     /// Encapsulates a vector-based semantic search engine specifically designed for conversation document data management.
@@ -343,6 +343,15 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
                     searchOptions,
                     cancellationToken
                 ).ToListAsync(cancellationToken).ConfigureAwait(false);
+                
+                if(results.Count < TopResults)
+                    return results.Select(r =>
+                        new TextSearchResult(r.Record.Text!)
+                        {
+                            Link = r.Record.ReferenceLink,
+                            Name = r.Record.ReferenceDescription
+                        }
+                    );
                 
                 return results.Where(r => r.Score >= 0.5f).Select(r =>
                     new TextSearchResult(r.Record.Text!)
