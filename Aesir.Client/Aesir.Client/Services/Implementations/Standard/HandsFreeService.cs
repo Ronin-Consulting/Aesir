@@ -128,6 +128,35 @@ public class HandsFreeService : IHandsFreeService
         _speechService = speechService;
         _appState = appState;
         _chatSessionManager = chatSessionManager;
+
+        if (appState.ChatSession == null) return;
+        
+        foreach (var message in appState.ChatSession.GetMessages())
+        {
+            switch (message.Role)
+            {
+                case "user":
+                    var userMessage = Ioc.Default.GetService<UserMessageViewModel>();
+                    _ = userMessage!.SetMessage(message);
+                    
+                    _conversationMessages.Add(userMessage);
+                    break;
+                case "assistant":
+                    var assistantMessage = Ioc.Default.GetService<AssistantMessageViewModel>();
+                    _ = assistantMessage!.SetMessage(message);
+                    
+                    _conversationMessages.Add(assistantMessage);
+                    break;
+                case "system":
+                    var systemMessage = Ioc.Default.GetService<SystemMessageViewModel>();
+                    _ = systemMessage!.SetMessage(message);
+                    
+                    _conversationMessages.Add(systemMessage);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(message.Role);
+            }
+        }
     }
 
     /// <inheritdoc />
@@ -386,6 +415,8 @@ public class HandsFreeService : IHandsFreeService
             _conversationMessages.Add(userMessageViewModel);
 
             _logger.LogDebug("Added user message to conversation");
+
+            await Task.CompletedTask;
         }
         catch (Exception ex)
         {

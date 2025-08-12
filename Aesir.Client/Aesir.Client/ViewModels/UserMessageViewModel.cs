@@ -42,7 +42,7 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
     /// <summary>
     /// An instance of the markdown service used to convert markdown text into rendered HTML content.
     /// </summary>
-    private readonly IMarkdownService _markdownService1 = markdownService;
+    private readonly IMarkdownService _markdownService = markdownService;
 
     /// <summary>
     /// Represents the role of the message sender.
@@ -78,7 +78,7 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
 
         Content = message.GetContentWithoutFileName() ?? throw new InvalidOperationException();
 
-        var htmlMessage = await _markdownService1.RenderMarkdownAsHtmlAsync(Content);
+        var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(Content);
         Message = htmlMessage;
 
         IsLoaded = true;
@@ -93,7 +93,7 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
     {
         Content = rawMessage;
 
-        var htmlMessage = await _markdownService1.RenderMarkdownAsHtmlAsync(rawMessage);
+        var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(rawMessage);
         Message = htmlMessage;
 
         IsLoaded = true;
