@@ -17,7 +17,7 @@ public class VisionService(
     /// Represents a provider for generating and retrieving prompt templates used in AI operations,
     /// such as OCR and text extraction, within the VisionService.
     /// </summary>
-    private static readonly IPromptProvider PromptProvider = new DefaultPromptProvider();
+    private static readonly IPromptProvider PromptProvider = DefaultPromptProvider.Instance;
 
     /// <summary>
     /// Represents the configured identifier for the vision model, utilized to process image data and extract textual content.
@@ -38,7 +38,7 @@ public class VisionService(
             throw new InvalidOperationException("No vision model provided");
 
         var chatHistory = new ChatHistory();
-        chatHistory.AddSystemMessage(PromptProvider.GetSystemPrompt(PromptContext.Ocr).Content);
+        chatHistory.AddSystemMessage(PromptProvider.GetSystemPrompt(PromptPersona.Ocr).Content);
         chatHistory.AddUserMessage([
             new TextContent("Analyze this image."),
             new ImageContent(image, contentType),

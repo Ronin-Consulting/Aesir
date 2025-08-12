@@ -3,6 +3,7 @@ using System.Reflection;
 using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services;
 using Aesir.Api.Server.Services.Implementations.Standard;
+using Aesir.Common.Prompts;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
@@ -29,6 +30,10 @@ public static class ServiceCollectionExtensions
     [Experimental("SKEXP0070")]
     public static IServiceCollection SetupSemanticKernel(this IServiceCollection services, IConfiguration configuration)
     {
+        // set default prompt persona
+        var defaultPromptPersona = configuration.GetValue<string>("Inference:PromptContext") ?? "default";
+        DefaultPromptProvider.Instance.DefaultPromptPersona = defaultPromptPersona.PromptPersonaFromDescription();
+        
         var useOpenAi = configuration.GetValue<bool>("Inference:UseOpenAICompatible");
         var embeddingModelId = useOpenAi
             ? configuration.GetSection("Inference:OpenAI:EmbeddingModel").Value

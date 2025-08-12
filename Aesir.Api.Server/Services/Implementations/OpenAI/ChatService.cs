@@ -40,7 +40,7 @@ public class ChatService : BaseChatService
     /// and accessing prompts essential to AI-driven workflows, such as chat completion and
     /// other conversational AI operations.
     /// </summary>
-    private static readonly IPromptProvider PromptProvider = new DefaultPromptProvider();
+    private static readonly IPromptProvider PromptProvider = DefaultPromptProvider.Instance;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChatService"/> class.

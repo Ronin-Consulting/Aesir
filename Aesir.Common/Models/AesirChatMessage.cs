@@ -175,10 +175,10 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     /// <param name="content">The optional content of the system message. If null, a default system message will be used based on the specified context.</param>
     /// <param name="context">The context of the system message used to determine the default content when no content is provided.</param>
     /// <returns>A new instance of <see cref="AesirChatMessage"/> configured as a system message.</returns>
-    public static AesirChatMessage NewSystemMessage(string? content = null, PromptContext context = PromptContext.Business)
+    public static AesirChatMessage NewSystemMessage(string? content = null)
     {
-        var promptProvider = new DefaultPromptProvider();
-        var defaultSystemContent = promptProvider.GetSystemPrompt(context).Content;
+        var promptProvider = DefaultPromptProvider.Instance;
+        var defaultSystemContent = promptProvider.GetSystemPrompt().Content;
         
         return new AesirChatMessage()
         {

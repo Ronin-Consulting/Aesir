@@ -23,7 +23,7 @@ public class VisionService(
     /// A static instance of <see cref="IPromptProvider"/> for managing and retrieving prompt templates
     /// tailored to specific contexts within the application.
     /// </summary>
-    private static readonly IPromptProvider PromptProvider = new DefaultPromptProvider();
+    private static readonly IPromptProvider PromptProvider = DefaultPromptProvider.Instance;
 
     /// <summary>
     /// Represents the configured vision model identifier used to control which model is employed
@@ -50,7 +50,7 @@ public class VisionService(
             throw new InvalidOperationException("No vision model provided");
 
         var chatHistory = new ChatHistory();
-        chatHistory.AddSystemMessage(PromptProvider.GetSystemPrompt(PromptContext.Ocr).Content);
+        chatHistory.AddSystemMessage(PromptProvider.GetSystemPrompt(PromptPersona.Ocr).Content);
         chatHistory.AddUserMessage([
             new TextContent("Analyze this image."),
             new ImageContent(image, contentType),

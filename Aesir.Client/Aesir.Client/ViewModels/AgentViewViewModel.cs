@@ -62,7 +62,7 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     /// <summary>
     /// Collection of available prompts that defines the context in which the agent operates.
     /// </summary>
-    public ObservableCollection<PromptContext> AvailablePrompts { get; } = new(Enum.GetValues<PromptContext>());
+    public ObservableCollection<PromptPersona> AvailablePrompts { get; } = new(Enum.GetValues<PromptPersona>());
 
     /// <summary>
     /// Collection of available chat models that can be used.
@@ -270,7 +270,7 @@ public partial class AgentFormDataModel : ObservableValidator
     /// <summary>
     /// Represents the current prompt context for the agent, which is required for processing.
     /// </summary>
-    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Prompt is required")] private PromptContext? _prompt;
+    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Prompt is required")] private PromptPersona? _prompt;
 
 
     /// <summary>

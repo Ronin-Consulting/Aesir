@@ -30,7 +30,7 @@ public class DesignAgentViewViewModel : AgentViewViewModel
     {
         Name = "My Test Agent",
         Source = ModelSource.Ollama,
-        Prompt = PromptContext.Military,
+        Prompt = PromptPersona.Military,
         ChatModel = "qwen3:32b-q4_K_M",
         EmbeddingModel = "mxbai-embed-large:latest",
         VisionModel = "gemma3:12b"

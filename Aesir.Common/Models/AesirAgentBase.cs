@@ -46,7 +46,7 @@ public class AesirAgentBase
     /// Gets or sets the prompt used by the agent
     /// </summary>
     [JsonPropertyName("prompt")]
-    public PromptContext? Prompt { get; set; }
+    public PromptPersona? Prompt { get; set; }
 }
 
 public enum ModelSource

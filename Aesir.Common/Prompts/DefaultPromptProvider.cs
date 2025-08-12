@@ -4,31 +4,53 @@ using Aesir.Common.Prompts.PromptCategories;
 namespace Aesir.Common.Prompts;
 
 /// <summary>
-/// Provides default implementations for generating system prompts, title generation prompts,
-/// and condensed prompts based on the specified context.
-/// Implements the <see cref="IPromptProvider"/> interface.
+/// Represents the default implementation of the <see cref="IPromptProvider"/> interface.
+/// Responsible for providing system prompts, title generation prompts, and condense prompts
+/// based on the specified context.
 /// </summary>
 public class DefaultPromptProvider : IPromptProvider
 {
     /// <summary>
+    /// Provides access to the singleton instance of the DefaultPromptProvider.
+    /// </summary>
+    public static DefaultPromptProvider Instance { get; } = new DefaultPromptProvider();
+
+    /// <summary>
+    /// Gets or sets the default prompt persona used when no specific context is provided.
+    /// </summary>
+    public PromptPersona DefaultPromptPersona { get; set; } = PromptPersona.Business;
+
+    /// <summary>
+    /// Provides default implementations for generating system prompts, title generation prompts,
+    /// and condensed prompts based on the specified context.
+    /// Implements the <see cref="IPromptProvider"/> interface.
+    /// </summary>
+    private DefaultPromptProvider()
+    {
+    }
+
+    /// <summary>
     /// Retrieves a system prompt template based on the specified prompt context.
     /// </summary>
-    /// <param name="context">The prompt context to determine the appropriate system prompt template.</param>
-    /// <returns>A <see cref="PromptTemplate"/> object representing the system prompt for the given context.</returns>
-    public PromptTemplate GetSystemPrompt(PromptContext context)
+    /// <param name="context">The prompt context used to select the appropriate system prompt template. If null, a default context is used.</param>
+    /// <returns>An instance of <see cref="PromptTemplate"/> that represents the system prompt template for the given context.</returns>
+    public PromptTemplate GetSystemPrompt(PromptPersona? context = null)
     {
+        context ??= DefaultPromptPersona;
         return context switch
         {
-            PromptContext.Business => BusinessPrompts.SystemPrompt,
-            PromptContext.Military => MilitaryPrompts.SystemPrompt,
-            PromptContext.Ocr => OcrPrompt.SystemPrompt,
+            PromptPersona.Business => BusinessPrompts.SystemPrompt,
+            PromptPersona.Military => MilitaryPrompts.SystemPrompt,
+            PromptPersona.Ocr => OcrPrompt.SystemPrompt,
             _ => BusinessPrompts.SystemPrompt
         };
     }
 
+    /// <summary>
     /// Retrieves the title generation prompt from the default title generation prompts.
+    /// </summary>
     /// <returns>
-    /// A PromptTemplate containing the system-defined title generation prompt.
+    /// A <see cref="PromptTemplate"/> containing the system-defined title generation prompt.
     /// </returns>
     public PromptTemplate GetTitleGenerationPrompt()
     {
@@ -36,10 +58,11 @@ public class DefaultPromptProvider : IPromptProvider
     }
 
     /// <summary>
-    /// Retrieves a pre-defined prompt template for condensing text or other operations.
+    /// Retrieves a predefined prompt template used for condensing text
+    /// or performing similar operations within the context.
     /// </summary>
     /// <returns>
-    /// A <see cref="PromptTemplate"/> instance representing the condense prompt.
+    /// An instance of <see cref="PromptTemplate"/> representing the condense prompt.
     /// </returns>
     public PromptTemplate GetCondensePrompt()
     {

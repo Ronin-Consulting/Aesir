@@ -4,59 +4,83 @@ using Aesir.Common.Models;
 namespace Aesir.Common.Prompts;
 
 /// <summary>
-/// Represents a provider for generating various types of prompt templates.
+/// Defines an abstraction for providing prompt templates utilized in various contexts,
+/// including system prompts, title generation prompts, and condensed prompts.
 /// </summary>
 public interface IPromptProvider
 {
     /// <summary>
     /// Retrieves a system-level prompt template based on the specified prompt context.
     /// </summary>
-    /// <param name="context">The context used to determine the type of system prompt to retrieve.
-    /// This could be Business, Military, Ocr, or other predefined contexts.</param>
-    /// <returns>A prompt template corresponding to the provided context.</returns>
-    PromptTemplate GetSystemPrompt(PromptContext context);
+    /// <param name="context">The context used to determine the type of system prompt.
+    /// Examples include predefined contexts such as Business, Military, or Ocr.
+    /// If no context is provided, a default context is used.</param>
+    /// <returns>An instance of <see cref="PromptTemplate"/> corresponding to the given context.</returns>
+    PromptTemplate GetSystemPrompt(PromptPersona? context = null);
 
     /// <summary>
-    /// Retrieves the system-defined prompt for title generation.
+    /// Retrieves the system-defined prompt template used for generating titles.
     /// </summary>
-    /// <returns>
-    /// A <see cref="PromptTemplate"/> instance containing the predefined content
-    /// and variable placeholders for generating a title.
-    /// </returns>
+    /// <returns>A <see cref="PromptTemplate"/> that contains predefined content and placeholders necessary for title generation.</returns>
     PromptTemplate GetTitleGenerationPrompt();
 
     /// <summary>
-    /// Retrieves a pre-defined prompt template for condensing text or other related operations.
+    /// Retrieves a predefined prompt template designed for condensing text
+    /// or executing related operations.
     /// </summary>
     /// <returns>
-    /// A PromptTemplate instance containing the content and variables for a condense operation.
+    /// A PromptTemplate instance representing the condense operation prompt.
     /// </returns>
     PromptTemplate GetCondensePrompt();
 }
 
 /// <summary>
-/// Specifies the context in which a prompt is used.
+/// Defines various personas or contexts in which prompts can be generated.
 /// </summary>
-public enum PromptContext
+public enum PromptPersona
 {
     /// <summary>
-    /// Represents a context for prompts related to business operations or scenarios.
+    /// Designates prompts tailored towards business-related contexts and applications.
     /// </summary>
-    [Description("Business")]
-    Business,
+    [Description("Business")] Business,
 
     /// <summary>
-    /// Represents a military-focused prompt context. This context is used to provide prompts
-    /// or templates tailored to scenarios, operations, or discussions within a military domain.
+    /// Represents a context for prompts related to military operations, strategies, or scenarios.
     /// </summary>
-    [Description("Military")]
-    Military,
+    [Description("Military")] Military,
 
     /// <summary>
-    /// Represents the Optical Character Recognition (OCR) context in a prompt.
-    /// This context is used when generating system prompts specific to OCR-related operations,
-    /// such as extracting or processing text from images or scanned documents.
+    /// Represents a context for prompts related to Optical Character Recognition (OCR) operations or scenarios.
     /// </summary>
-    [Description("Ocr")]
-    Ocr
+    [Description("Ocr")] Ocr
+}
+
+/// <summary>
+/// Provides extension methods for the <see cref="PromptPersona"/> enum to facilitate additional functionality,
+/// such as mapping description strings to their respective enum values.
+/// </summary>
+public static class PromptPersonaExtensions
+{
+    /// <summary>
+    /// Converts a description string to its corresponding <see cref="PromptPersona"/> enum value.
+    /// </summary>
+    /// <param name="description">The description string that represents a valid prompt persona, such as "Business", "Military", or "Ocr".</param>
+    /// <returns>The <see cref="PromptPersona"/> value that matches the provided description string.</returns>
+    /// <exception cref="ArgumentException">Thrown if no matching <see cref="PromptPersona"/> is found for the given description.</exception>
+    public static PromptPersona PromptPersonaFromDescription(this string description)
+    {
+        foreach (var persona in Enum.GetValues<PromptPersona>())
+        {
+            var attr = (DescriptionAttribute?)Attribute.GetCustomAttribute(
+                persona.GetType().GetField(persona.ToString())!,
+                typeof(DescriptionAttribute));
+
+            if (attr?.Description.Equals(description, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return persona;
+            }
+        }
+        
+        throw new ArgumentException($"No PromptPersona found with description '{description}'.");
+    }    
 }

@@ -34,7 +34,7 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 EmbeddingModel = "text-embedding-3-large",
                 VisionModel = "gpt-4.1-2025-04-14",
                 Source = ModelSource.OpenAI,
-                Prompt = PromptContext.Military
+                Prompt = PromptPersona.Military
             },
             new()
             {
@@ -43,7 +43,7 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 EmbeddingModel = "mxbai-embed-large:latest",
                 VisionModel = "gemma3:12b",
                 Source = ModelSource.Ollama,
-                Prompt = PromptContext.Military
+                Prompt = PromptPersona.Military
             },
             new()
             {
@@ -52,7 +52,7 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 EmbeddingModel = "mxbai-embed-large:latest",
                 VisionModel = "gemma3:12b",
                 Source = ModelSource.Ollama,
-                Prompt = PromptContext.Business
+                Prompt = PromptPersona.Business
             }
         };
         Agents = new ObservableCollection<AesirAgentBase>(agents);

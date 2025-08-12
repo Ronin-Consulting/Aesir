@@ -70,7 +70,7 @@ public class ChatService : BaseChatService
     /// This variable supplies predefined templates for interactions, including system prompts
     /// and title generation prompts used in conversational AI contexts.
     /// </summary>
-    private static readonly DefaultPromptProvider PromptProvider = new();
+    private static readonly IPromptProvider PromptProvider = DefaultPromptProvider.Instance;
 
     /// <summary>
     /// Provides implementation for chat service operations, using Semantic Kernel and Ollama API.
