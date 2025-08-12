@@ -53,6 +53,8 @@ public class HandsFreeService : IHandsFreeService
     /// </summary>
     private readonly IChatSessionManager _chatSessionManager;
 
+    private readonly IMarkdownService _markdownService;
+
     /// <summary>
     /// Represents the current operational state of the hands-free service.
     /// </summary>
@@ -122,12 +124,14 @@ public class HandsFreeService : IHandsFreeService
         ILogger<HandsFreeService> logger,
         ISpeechService speechService,
         ApplicationState appState,
-        IChatSessionManager chatSessionManager)
+        IChatSessionManager chatSessionManager,
+        IMarkdownService markdownService)
     {
         _logger = logger;
         _speechService = speechService;
         _appState = appState;
         _chatSessionManager = chatSessionManager;
+        _markdownService = markdownService;
 
         if (appState.ChatSession == null) return;
         
@@ -437,7 +441,8 @@ public class HandsFreeService : IHandsFreeService
     {
         try
         {
-            await _speechService.SpeakAsync(response);
+            var plainTextResponse = await _markdownService.RenderMarkdownAsPlainTextAsync(response);
+            await _speechService.SpeakAsync(plainTextResponse);
             _logger.LogDebug("AI response speech completed");
         }
         catch (Exception ex)
