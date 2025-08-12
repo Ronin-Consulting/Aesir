@@ -9,61 +9,61 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace Aesir.Client.Models;
 
 /// <summary>
-/// Maintains the shared and observable state of the application, including
-/// collections and properties related to available models and chat sessions.
+/// Represents the shared and observable state of the application, managing critical
+/// data such as collections of available models and chat sessions.
 /// </summary>
 /// <remarks>
-/// This class, derived from <see cref="ObservableRecipient"/>, provides
-/// functionality for property change notifications and message handling. It
-/// manages collections like <see cref="AvailableModels"/> and <see cref="ChatSessions"/>,
-/// which are dynamically loaded through asynchronous methods.
+/// This class extends <see cref="ObservableRecipient"/>, allowing it to handle
+/// property change notifications and facilitate message communication between
+/// components. It serves as a central point for managing and dynamically loading data
+/// like <see cref="AvailableModels"/> and <see cref="ChatSessions"/> through asynchronous
+/// operations. Implements <see cref="IDisposable"/> for resource management.
 /// </remarks>
 public partial class ApplicationState(IModelService modelService, IChatHistoryService chatHistoryService)
     : ObservableRecipient, IDisposable
 {
     /// <summary>
-    /// Represents a flag indicating the readiness of the application to handle a new AI-generated message.
-    /// This property helps in controlling and synchronizing message processing flows within the application.
+    /// Determines if the application is prepared to process and handle a new AI-generated message.
+    /// Used for managing and synchronizing the flow of AI message handling within the application state.
     /// </summary>
     [ObservableProperty] [NotifyPropertyChangedRecipients]
     private bool _readyForNewAiMessage = true;
 
     /// <summary>
-    /// Represents the model currently selected by the user in the application.
-    /// This property holds detailed information about the selected model,
-    /// including its metadata retrieved from the Aesir client service.
-    /// Updates to this property trigger notifications to relevant recipients
-    /// to react accordingly in the UI or application logic.
+    /// Stores information about the currently selected model within the application.
+    /// This variable is used to manage and reflect the user's selection, ensuring proper handling
+    /// of associated data and actions for the chosen model throughout the application.
     /// </summary>
     [ObservableProperty] [NotifyPropertyChangedRecipients]
     private AesirModelInfo? _selectedModel;
 
     /// <summary>
-    /// Stores the unique identifier of the currently active chat session.
-    /// This variable helps track which chat session is selected or being interacted with
-    /// in the application state.
+    /// Represents the unique identifier of the currently selected chat session.
+    /// This field is used to keep track of the active chat session within the application state,
+    /// facilitating operations such as messaging and session management.
     /// </summary>
     [ObservableProperty] [NotifyPropertyChangedRecipients]
     private Guid? _selectedChatSessionId;
 
     /// <summary>
-    /// Represents the currently active chat session in the application.
-    /// Maintains the state of the chat session, including its context and interactions.
+    /// Represents the currently active chat session within the application.
+    /// Tracks and manages the ongoing context and interactions tied to a specific session.
     /// </summary>
     [ObservableProperty] [NotifyPropertyChangedRecipients]
     private AesirChatSession? _chatSession;
 
     /// <summary>
-    /// Represents a collection of chat sessions in the application.
-    /// This property is an observable collection used to track and manage
-    /// the list of chat sessions, enabling updates and data binding throughout the application.
+    /// Represents the collection of chat sessions available in the application.
+    /// This property is observable and allows dynamic updates to the chat session
+    /// list as new sessions are retrieved or modified within the application's
+    /// state.
     /// </summary>
     public ObservableCollection<AesirChatSessionItem> ChatSessions { get; set; } = [];
 
     /// <summary>
     /// Represents the collection of models available for use within the application.
-    /// This collection is populated asynchronously and can include models that
-    /// support various features, such as chat functionalities.
+    /// This property is dynamically populated by loading model information from the associated model service,
+    /// enabling users to select and interact with specific models.
     /// </summary>
     public ObservableCollection<AesirModelInfo> AvailableModels { get; set; } = [];
 
@@ -76,7 +76,7 @@ public partial class ApplicationState(IModelService modelService, IChatHistorySe
     public async Task<IEnumerable<AesirModelInfo>> LoadAvailableModelsAsync()
     {
         AvailableModels.Clear();
-        
+
         var models = await modelService.GetModelsAsync();
         foreach (var model in models)
         {
@@ -108,6 +108,13 @@ public partial class ApplicationState(IModelService modelService, IChatHistorySe
         return ChatSessions;
     }
 
+    /// <summary>
+    /// Releases the resources used by the application state.
+    /// </summary>
+    /// <param name="disposing">
+    /// A boolean value indicating whether the method is being called manually (true)
+    /// or by the garbage collector (false).
+    /// </param>
     protected virtual void Dispose(bool disposing)
     {
         if (disposing)
@@ -116,6 +123,15 @@ public partial class ApplicationState(IModelService modelService, IChatHistorySe
         }
     }
 
+    /// <summary>
+    /// Disposes the resources used by the <see cref="ApplicationState"/> instance.
+    /// </summary>
+    /// <remarks>
+    /// This method performs application-defined tasks associated with freeing,
+    /// releasing, or resetting unmanaged resources. It calls the protected <see cref="Dispose(bool)"/>
+    /// method with the disposing parameter set to true and suppresses finalization of the object to
+    /// optimize garbage collection.
+    /// </remarks>
     public void Dispose()
     {
         Dispose(true);

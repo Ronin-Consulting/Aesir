@@ -16,12 +16,21 @@ using Ursa.Controls.Options;
 
 namespace Aesir.Client.Desktop.Services;
 
+/// <summary>
+/// Provides functionality to display PDF documents in a desktop application.
+/// This service allows asynchronous rendering and viewing of PDF files within a modal drawer interface.
+/// </summary>
 public class PdfViewerService(
     ILogger<PdfViewerService> logger,
     IDocumentCollectionService documentCollectionService,
     IDialogService dialogService
 ) : IPdfViewerService
 {
+    /// <summary>
+    /// Displays a PDF file in a viewer using the provided file URI.
+    /// </summary>
+    /// <param name="fileUri">The URI of the PDF file to be displayed.</param>
+    /// <returns>A task that represents the asynchronous operation of showing the PDF.</returns>
     public async Task ShowPdfAsync(string fileUri)
     {
         if (Application.Current != null &&
@@ -54,7 +63,12 @@ public class PdfViewerService(
                 throw new ApplicationException("PdfViewerService.ShowPdfAsync failed.");
         }
     }
-    
+
+    /// <summary>
+    /// Retrieves an image representation of the specified page from a PDF document.
+    /// </summary>
+    /// <param name="fileUri">The URI of the PDF file, which may include a page number fragment (e.g., file://path/document.pdf#page=1).</param>
+    /// <returns>An <see cref="IImage"/> object representing the specified PDF page, or null if the operation fails or the file is invalid.</returns>
     private async Task<IImage?> GetPdfImageAsync(string fileUri)
     {
         // fileUri should be like file://guid/Aesir.pdf#page=1

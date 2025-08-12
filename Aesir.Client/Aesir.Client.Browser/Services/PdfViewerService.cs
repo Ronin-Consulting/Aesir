@@ -6,6 +6,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.Browser.Services;
 
+/// <summary>
+/// Provides a service for displaying PDF documents in a browser environment.
+/// </summary>
 public class PdfViewerService(
     ILogger<PdfViewerService> logger,
     BrowserJsService browserJsService,
@@ -13,6 +16,18 @@ public class PdfViewerService(
     IConfiguration configuration
 ) : IPdfViewerService
 {
+    /// <summary>
+    /// Displays a PDF file in a new browser window, allowing the user to view its contents starting from a specified page number.
+    /// </summary>
+    /// <param name="fileUri">
+    /// The URI of the PDF file to be displayed. The format should follow the pattern:
+    /// file://guid/Aesir.pdf#page=1, where 'guid' represents the unique identifier,
+    /// 'Aesir.pdf' is the file name, and 'page=1' specifies the page number to open.
+    /// </param>
+    /// <returns>
+    /// A task that represents the asynchronous operation of displaying the PDF file.
+    /// If the operation fails due to a browser blocking pop-ups, an error notification is shown.
+    /// </returns>
     public async Task ShowPdfAsync(string fileUri)
     {
         // fileUri should be like file://guid/Aesir.pdf#page=1
@@ -34,7 +49,13 @@ public class PdfViewerService(
             logger.LogError(ex, "Error occurred while fetching PDF page image.");
         }
     }
-    
+
+    /// <summary>
+    /// Parses a URI string in the Aesir format to extract the document ID, file name, and page number.
+    /// </summary>
+    /// <param name="aesirUri">The Aesir-formatted URI string to parse. The expected format is "file://guid/filename.pdf#page=number".</param>
+    /// <returns>A tuple containing the extracted document ID, file name, and page number.
+    /// The document ID is a string, the file name is a string, and the page number is an integer.</returns>
     private (string id, string filePath, int pageNumber) ParseAesirUri(string aesirUri)
     {
         var trimmed = aesirUri.Substring("file://".Length);

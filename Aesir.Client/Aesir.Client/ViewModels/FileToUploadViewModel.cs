@@ -13,16 +13,19 @@ using Material.Icons;
 namespace Aesir.Client.ViewModels;
 
 /// <summary>
-/// ViewModel responsible for managing file upload operations and coordinating
-/// user interactions related to file uploading within a conversation context.
+/// ViewModel responsible for handling file upload operations and managing
+/// state and interactions related to file uploads within a conversation context.
 /// </summary>
 /// <remarks>
-/// This class inherits from ObservableRecipient and implements IRecipient interface
-/// to handle received <see cref="FileUploadRequestMessage"/> instances. It maintains
-/// the state of the current file to be uploaded, including its name, path, visibility,
-/// and processing status, and facilitates interaction with file upload services.
-/// Dependencies such as <see cref="IDocumentCollectionService"/> and <see cref="IDialogService"/>
-/// are injected through the constructor, enabling service interactions and user dialogs.
+/// This class extends ObservableRecipient and implements IRecipient interface to
+/// facilitate the handling of <see cref="FileUploadRequestMessage"/> instances. It provides
+/// methods for configuring the upload process, toggling visibility, managing file
+/// information, and updating the processing state.
+/// The constructor requires implementations of <see cref="IDocumentCollectionService"/>
+/// and <see cref="IDialogService"/> to manage document-related operations and display
+/// user dialogs necessary for the file upload workflow.
+/// This ViewModel ensures the smooth coordination of file upload features with
+/// the application's user interface and backend services.
 /// </remarks>
 public partial class FileToUploadViewModel(
     IDocumentCollectionService documentCollectionService,
@@ -30,35 +33,36 @@ public partial class FileToUploadViewModel(
     : ObservableRecipient, IRecipient<FileUploadRequestMessage>, IDisposable
 {
     /// <summary>
-    /// Represents the default file name used when no file has been selected or specified.
+    /// Defines the constant used as the default file name when no file is chosen or specified.
     /// </summary>
     private const string DefaultFileName = "No File";
 
     /// <summary>
-    /// Indicates whether the file upload view is currently visible or not.
+    /// Determines whether the file upload view is visible to the user.
     /// </summary>
-    [ObservableProperty]
-    private bool _isVisible;
+    [ObservableProperty] private bool _isVisible;
 
     /// <summary>
-    /// Indicates whether the file is currently being processed.
+    /// Indicates whether a file is currently being processed within the view model.
     /// </summary>
-    [ObservableProperty]
-    private bool _isProcessingFile;
+    [ObservableProperty] private bool _isProcessingFile;
 
     /// <summary>
-    /// Represents the name of the file to be uploaded.
-    /// Defaults to "No File" when no file is selected or specified.
+    /// Stores the name of the file to be uploaded by the user.
+    /// Defaults to "No File" if no file is selected or provided.
     /// </summary>
-    [ObservableProperty]
-    private string _fileName = DefaultFileName;
+    [ObservableProperty] private string _fileName = DefaultFileName;
 
+    /// <summary>
+    /// Represents the type of icon displayed in the UI, typically reflecting the current state
+    /// or type of the file being handled within the file upload process.
+    /// </summary>
     [ObservableProperty] 
     private MaterialIconKind _iconKind = MaterialIconKind.FileDocument;
-    
+
     /// <summary>
-    /// Stores the unique identifier for the current conversation associated with the file upload process.
-    /// This value helps in tracking file operations or determining the context of messages exchanged between components.
+    /// Represents the unique identifier for the current conversation associated with the file upload process.
+    /// Used to track the context of operations and the flow of communication between components.
     /// </summary>
     private string? _conversationId;
 
@@ -72,39 +76,37 @@ public partial class FileToUploadViewModel(
     }
 
     /// Sets the file information based on the specified file.
-    /// <param name="file">The file to be set.</param>
+    /// <param name="file">
+    /// The file to be set, represented as an instance of IStorageFile.
+    /// </param>
     public void SetFileInfo(IStorageFile file)
     {
         FileName = file.Name;
-        
+
         if (Path.GetExtension(FileName).Equals(".png", StringComparison.OrdinalIgnoreCase))
         {
             IconKind = MaterialIconKind.FileImage;
         }
     }
 
-    /// <summary>
-    /// Toggles the processing state of a file.
-    /// Changes the value of the <c>IsProcessingFile</c> property to its opposite.
-    /// </summary>
+    /// Toggles the processing state of the file currently being handled.
+    /// Swaps the value of the <c>IsProcessingFile</c> property between <c>true</c> and <c>false</c>.
     public void ToggleProcessingFile()
     {
         IsProcessingFile = !IsProcessingFile;
     }
 
-    /// <summary>
     /// Toggles the visibility of the current file.
-    /// Changes the <see cref="IsVisible"/> state between true and false.
-    /// </summary>
+    /// Updates the state of the file's visibility by inverting the current value of the <see cref="IsVisible"/> property.
     public void ToggleVisible()
     {
         IsVisible = !IsVisible;
     }
 
     /// Removes the file associated with the current conversation asynchronously.
-    /// Sends a message to notify that the file upload has been canceled and updates the view model state accordingly.
+    /// Sends a cancellation message, updates the file state, and adjusts the visibility of the view model.
     /// <return>
-    /// A task that represents the asynchronous operation of removing the file.
+    /// A task representing the asynchronous operation of removing the file.
     /// </return>
     [RelayCommand]
     private async Task RemoveFileAsync()
@@ -126,8 +128,9 @@ public partial class FileToUploadViewModel(
         );
     }
 
-    /// Resets the file-related state in the view model to default values.
-    /// This includes clearing the file name, file path, visibility, and processing statuses.
+    /// Clears the currently selected file information within the view model.
+    /// Resets the file name to the default value, updates visibility,
+    /// and processing status to reflect a cleared state.
     public void ClearFile()
     {
         IsProcessingFile = false;
@@ -135,15 +138,15 @@ public partial class FileToUploadViewModel(
         FileName = DefaultFileName;
     }
 
-    /// Handles a file upload request message and processes the file upload operation.
+    /// Handles the reception of a file upload request message and initiates the associated file upload process.
     /// <param name="message">
-    /// The file upload request message containing the conversation ID and file path
-    /// for the file to be uploaded.
+    /// The file upload request message that contains details such as the conversation ID and the file
+    /// to be uploaded for processing.
     /// </param>
     public void Receive(FileUploadRequestMessage message)
     {
         if (_conversationId != message.ConversationId) return;
-        
+
         Dispatcher.UIThread.InvokeAsync(async () =>
         {
             SetFileInfo(message.File);
@@ -188,6 +191,12 @@ public partial class FileToUploadViewModel(
         });
     }
 
+    /// Releases unmanaged resources and any other resources used by the instance.
+    /// <param name="disposing">
+    /// A boolean value indicating whether the method is being called explicitly to release
+    /// both managed and unmanaged resources (true) or if it is being called by the finalizer
+    /// to release only unmanaged resources (false).
+    /// </param>
     protected virtual void Dispose(bool disposing)
     {
         if (disposing)
@@ -196,6 +205,11 @@ public partial class FileToUploadViewModel(
         }
     }
 
+    /// Releases the resources used by the FileToUploadViewModel instance.
+    /// This method performs cleanup operations for managed and unmanaged resources.
+    /// It ensures proper disposal of resources and prevents finalization by calling
+    /// <see cref="GC.SuppressFinalize"/>. Use this method when the instance is no longer needed
+    /// to release resources promptly.
     public void Dispose()
     {
         Dispose(true);

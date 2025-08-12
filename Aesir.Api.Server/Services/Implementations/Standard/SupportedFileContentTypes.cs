@@ -6,9 +6,12 @@ namespace Aesir.Api.Server.Services.Implementations.Standard;
 public static class SupportedFileContentTypes
 {
     /// <summary>
-    /// The MIME type for PDF files.
+    /// Represents the MIME type for PDF files.
     /// </summary>
     public static readonly string PdfContentType = "application/pdf";
-    
+
+    /// <summary>
+    /// The MIME type for PNG image files.
+    /// </summary>
     public static readonly string PngContentType = "image/png";
 }

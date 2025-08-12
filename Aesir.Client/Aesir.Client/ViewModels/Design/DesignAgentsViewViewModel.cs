@@ -8,8 +8,17 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Aesir.Client.ViewModels.Design;
 
+/// <summary>
+/// Represents the design-time implementation of the <c>AgentsViewViewModel</c>.
+/// Provides mock data and commands to aid in the design and development of the Agents View interface.
+/// </summary>
 public class DesignAgentsViewViewModel : AgentsViewViewModel
-{   
+{
+    /// <summary>
+    /// A design-time implementation of the <see cref="AgentsViewViewModel"/> class,
+    /// primarily used for populating sample data and providing commands suitable for
+    /// use during UI design in tools like visual editors.
+    /// </summary>
     public DesignAgentsViewViewModel() : base(NullLogger<AgentsViewViewModel>.Instance, new NoOpNavigationService(), new NoOpConfigurationService())
     {
         ShowChat = new RelayCommand(() => { });
