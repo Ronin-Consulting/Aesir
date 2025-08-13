@@ -22,7 +22,6 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
     public DesignAgentsViewViewModel() : base(NullLogger<AgentsViewViewModel>.Instance, new NoOpNavigationService(), new NoOpConfigurationService())
     {
         ShowChat = new RelayCommand(() => { });
-        ShowTools = new RelayCommand(() => { });
         ShowAddAgent = new RelayCommand(() => { });
         
         var agents = new List<AesirAgentBase> 
@@ -30,6 +29,7 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
             new()
             {
                 Name = "Agent 1",
+                Description = "Random agent 1",
                 ChatModel = "gpt-4.1-2025-04-14",
                 EmbeddingModel = "text-embedding-3-large",
                 VisionModel = "gpt-4.1-2025-04-14",
@@ -39,6 +39,7 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
             new()
             {
                 Name = "Agent 2",
+                Description = "Random agent 2",
                 ChatModel = "qwen3:32b-q4_K_M",
                 EmbeddingModel = "mxbai-embed-large:latest",
                 VisionModel = "gemma3:12b",
@@ -48,6 +49,7 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
             new()
             {
                 Name = "Computer Use",
+                Description = "Agent that is allowed to take control of the computer",
                 ChatModel = "cogito:32b-v1-preview-qwen-q4_K_M",
                 EmbeddingModel = "mxbai-embed-large:latest",
                 VisionModel = "gemma3:12b",

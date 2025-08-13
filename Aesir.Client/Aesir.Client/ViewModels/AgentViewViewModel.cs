@@ -122,6 +122,7 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
         FormModel = new()
         {
             Name = agent.Name,
+            Description = agent.Description,
             Source = agent.Source,
             Prompt = agent.Prompt,
             ChatModel = agent.ChatModel,
@@ -260,31 +261,26 @@ public partial class AgentFormDataModel : ObservableValidator
     /// </summary>
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Name is required")] private string? _name;
 
-
     /// <summary>
     /// Represents the source of the model, specifying its origin or provider.
     /// </summary>
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Source is required")] private ModelSource? _source;
-
 
     /// <summary>
     /// Represents the current prompt context for the agent, which is required for processing.
     /// </summary>
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Prompt is required")] private PromptPersona? _prompt;
 
-
     /// <summary>
     /// Represents the selected chat model for the agent, which is a required field and is validated for compliance.
     /// </summary>
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Chat Model is required")] private string? _chatModel;
 
-
     /// <summary>
     /// The embedding model represented as a string, required for setting or validating the embedding configuration.
     /// </summary>
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Embedding Model is required")] private string? _embeddingModel;
-
-
+    
     /// <summary>
     /// Represents the vision model input, required for agent form data validation.
     /// </summary>
@@ -294,6 +290,11 @@ public partial class AgentFormDataModel : ObservableValidator
     /// Collection of tools used within the AgentFormDataModel
     /// </summary>
     [ObservableProperty] private ObservableCollection<string> _tools = new ObservableCollection<string>();
+    
+    /// <summary>
+    /// Represents the description of the agent, required for validation and user input.
+    /// </summary>
+    [ObservableProperty] string? _description;
 
     /// <summary>
     /// Validates all properties of the current object and checks if any validation errors exist.

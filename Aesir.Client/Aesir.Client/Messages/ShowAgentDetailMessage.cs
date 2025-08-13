@@ -3,7 +3,7 @@ using Aesir.Common.Models;
 namespace Aesir.Client.Messages;
 
 /// <summary>
-/// Represents a message that is used to show the details of an agent in the system.
+/// Represents a message used to show the details of an agent in the system.
 /// </summary>
 public class ShowAgentDetailMessage(AesirAgentBase? agent)
 {

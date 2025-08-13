@@ -1,25 +1,172 @@
 using System;
+using System.Collections.ObjectModel;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using Aesir.Client.Messages;
+using Aesir.Client.Services;
+using Aesir.Common.Models;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
 
 /// <summary>
-/// Provides the ViewModel for the Tools View within the application.
+/// Represents the view model for managing tools in the application.
 /// </summary>
 /// <remarks>
-/// This class extends <see cref="ObservableRecipient"/>, providing support for observing and responding
-/// to changes in property values and other notifications. Implements <see cref="IDisposable"/> to ensure
-/// proper resource management when instances of this ViewModel are no longer needed.
+/// This class extends <see cref="ObservableRecipient"/> to manage state and perform
+/// operations related to tool interactions. It provides commands to display chat,
+/// tools, and to add new tools. Additionally, it manages the collection of tools
+/// and tracks the selected tool.
 /// </remarks>
 public class ToolsViewViewModel : ObservableRecipient, IDisposable
 {
     /// <summary>
-    /// Releases all resources used by the ToolsViewViewModel instance.
+    /// Represents a command that triggers the display of the chat interface.
     /// </summary>
-    /// <param name="disposing">
-    /// A boolean value indicating whether the method is being called from the
-    /// Dispose method (true) or from the finalizer (false).
-    /// </param>
+    public ICommand ShowChat { get; protected set; }
+
+    /// <summary>
+    /// Represents a command that triggers the display of an interface for adding a new tool.
+    /// </summary>
+    public ICommand ShowAddTool { get; protected set; }
+
+    /// <summary>
+    /// Represents a collection of tools displayed in the tools view.
+    /// </summary>
+    public ObservableCollection<AesirToolBase> Tools { get; protected set; }
+
+    /// <summary>
+    /// Represents the currently selected tool from the collection of tools.
+    /// This property is bound to the selection within the user interface and updates whenever
+    /// a new tool is chosen. Triggers logic related to tool selection changes.
+    /// </summary>
+    public AesirToolBase? SelectedTool
+    {
+        get => _selectedTool;
+        set
+        {
+            if (SetProperty(ref _selectedTool, value))
+            {
+                OnToolSelected(value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Represents the logger instance used for capturing and recording log messages
+    /// within the context of the ToolsViewViewModel class. This includes logging
+    /// errors, warnings, and informational messages related to the execution of
+    /// various operations and application states in the view model.
+    /// </summary>
+    private readonly ILogger<ToolsViewViewModel> _logger;
+
+    /// <summary>
+    /// Provides navigation functionality to transition between various views or features
+    /// within the application.
+    /// </summary>
+    private readonly INavigationService _navigationService;
+
+    /// <summary>
+    /// Provides access to configuration-related operations and data
+    /// management for agents and tools within the system.
+    /// </summary>
+    private readonly IConfigurationService _configurationService;
+
+    /// <summary>
+    /// Backing field for the currently selected tool in the view model.
+    /// </summary>
+    private AesirToolBase? _selectedTool;
+
+    /// Represents the view model for managing tools within the application.
+    /// Provides commands to display the chat and tool creation interfaces.
+    /// Maintains a collection of tools and tracks the currently selected tool.
+    /// Integrates navigation and configuration services to coordinate application workflows.
+    public ToolsViewViewModel(
+        ILogger<ToolsViewViewModel> logger,
+        INavigationService navigationService,
+        IConfigurationService configurationService)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _navigationService = navigationService;
+        _configurationService = configurationService;
+
+        ShowChat = new RelayCommand(ExecuteShowChat);
+        ShowAddTool = new RelayCommand(ExecuteShowAddTool);
+
+        Tools = new ObservableCollection<AesirToolBase>();
+    }
+
+    /// Called when the view model is activated.
+    /// Invokes an asynchronous operation to load tool data into the view model's collection.
+    /// This method is designed to execute on the UI thread and ensures the proper initialization
+    /// of tool-related data when the view model becomes active.
+    protected override void OnActivated()
+    {
+        base.OnActivated();
+
+        Dispatcher.UIThread.InvokeAsync(LoadToolsAsync);
+    }
+
+    /// Asynchronously loads tools into the view model's Tools collection.
+    /// Fetches the tools from the configuration service and populates the collection.
+    /// Handles any exceptions that may occur during the loading process.
+    /// <returns>
+    /// A task that represents the asynchronous operation of loading tools.
+    /// </returns>
+    private async Task LoadToolsAsync()
+    {
+        try
+        {
+            var tools = await _configurationService.GetToolsAsync();
+            Tools.Clear();
+            foreach (var tool in tools)
+                Tools.Add(tool);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading tools: {ex.Message}");
+        }
+    }
+
+    /// Executes navigation to the Chat view within the application.
+    /// Invokes the navigation service to display the Chat interface, facilitating interaction with chat-specific UI components.
+    private void ExecuteShowChat()
+    {
+        _navigationService.NavigateToChat();
+    }
+
+    /// Executes the command to show the interface for adding a new tool.
+    /// Sends a message indicating that the interface for tool details should be displayed.
+    /// This method is bound to the `ShowAddTool` command in the view model and is triggered
+    /// when the corresponding user action is performed in the UI.
+    private void ExecuteShowAddTool()
+    {
+        WeakReferenceMessenger.Default.Send(new ShowToolDetailMessage(
+            new AesirToolBase()
+            {
+                Type = ToolType.McpServer // default to MCP Server for new tools
+            }));
+    }
+
+    /// Handles logic when a tool is selected in the ToolsViewViewModel.
+    /// Sends a message to display detailed information about the selected tool.
+    /// <param name="selectedTool">The tool that has been selected. If null, no action is taken.</param>
+    private void OnToolSelected(AesirToolBase? selectedTool)
+    {
+        if (selectedTool != null)
+        {
+            WeakReferenceMessenger.Default.Send(new ShowToolDetailMessage(selectedTool));
+        }
+    }
+
+    /// Releases the resources used by the view model.
+    /// Cleans up unmanaged resources and other disposable objects when the object is no longer needed.
+    /// <param name="disposing">Indicates whether to release managed resources along with unmanaged resources.
+    /// If set to true, both managed and unmanaged resources are disposed; if false, only unmanaged resources are released.</param>
     protected virtual void Dispose(bool disposing)
     {
         if (disposing)
@@ -28,10 +175,9 @@ public class ToolsViewViewModel : ObservableRecipient, IDisposable
         }
     }
 
-    /// Releases the resources used by the ToolsViewViewModel class.
-    /// This method calls the protected Dispose method and optionally schedules
-    /// the object for garbage collection by suppressing finalization.
-    /// Use this method to release resources explicitly before the object is reclaimed by garbage collection.
+    /// Disposes of the resources used by the ToolsViewViewModel.
+    /// Ensures proper release of managed resources and suppresses finalization
+    /// to optimize garbage collection.
     public void Dispose()
     {
         Dispose(true);

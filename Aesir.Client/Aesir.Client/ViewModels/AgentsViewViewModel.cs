@@ -25,14 +25,9 @@ namespace Aesir.Client.ViewModels;
 public class AgentsViewViewModel : ObservableRecipient, IDisposable
 {
     /// <summary>
-    /// Represents a command that triggers the display of the chat interface for an agent.
+    /// Represents a command that triggers the display of the chat interface.
     /// </summary>
     public ICommand ShowChat { get; protected set; }
-
-    /// <summary>
-    /// Represents a command that displays the tools view in the agents interface.
-    /// </summary>
-    public ICommand ShowTools { get; protected set; }
 
     /// <summary>
     /// Represents a command that triggers the display of an interface for adding a new agent.
@@ -87,7 +82,7 @@ public class AgentsViewViewModel : ObservableRecipient, IDisposable
     private AesirAgentBase? _selectedAgent;
 
     /// Represents the view model for managing agents within the application.
-    /// Provides commands to display the chat, tools, and agent creation interfaces.
+    /// Provides commands to display the chat and agent creation interfaces.
     /// Maintains a collection of agents and tracks the currently selected agent.
     /// Integrates navigation and configuration services to coordinate application workflows.
     public AgentsViewViewModel(
@@ -100,7 +95,6 @@ public class AgentsViewViewModel : ObservableRecipient, IDisposable
         _configurationService = configurationService;
 
         ShowChat = new RelayCommand(ExecuteShowChat);
-        ShowTools = new RelayCommand(ExecuteShowTools);
         ShowAddAgent = new RelayCommand(ExecuteShowAddAgent);
 
         Agents = new ObservableCollection<AesirAgentBase>();
@@ -143,14 +137,6 @@ public class AgentsViewViewModel : ObservableRecipient, IDisposable
     private void ExecuteShowChat()
     {
         _navigationService.NavigateToChat();
-    }
-
-    /// Executes the command to navigate the application to the Tools view.
-    /// Calls the navigation service to switch the application's current view
-    /// to display the tools available within the application.
-    private void ExecuteShowTools()
-    {
-        _navigationService.NavigateToTools();
     }
 
     /// Executes the command to show the interface for adding a new agent.

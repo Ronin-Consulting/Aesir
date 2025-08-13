@@ -18,7 +18,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     public async Task<IEnumerable<AesirAgent>> GetAgentsAsync()
     {
         const string sql = @"
-            SELECT id, name, chat_model as ChatModel, embedding_model as EmbeddingModel, vision_model as VisionModel, source, prompt
+            SELECT id, name, description, chat_model as ChatModel, embedding_model as EmbeddingModel, vision_model as VisionModel, source, prompt
             FROM aesir.aesir_agent
         ";
 
@@ -38,7 +38,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     public async Task<AesirAgent> GetAgentAsync(Guid id)
     {
         const string sql = @"
-            SELECT id, name, chat_model as ChatModel, embedding_model as EmbeddingModel, vision_model as VisionModel, source, prompt
+            SELECT id, name, description, chat_model as ChatModel, embedding_model as EmbeddingModel, vision_model as VisionModel, source, prompt
             FROM aesir.aesir_agent
             WHERE id = @Id::uuid
         ";
@@ -56,7 +56,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     public async Task<IEnumerable<AesirTool>> GetToolsAsync()
     {
         const string sql = @"
-            SELECT id, name
+            SELECT id, name, type, description
             FROM aesir.aesir_tool
         ";
 
@@ -72,7 +72,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     public async Task<IEnumerable<AesirTool>> GetToolsUsedByAgentAsync(Guid agentId)
     {
         const string sql = @"
-            SELECT t.id, t.name
+            SELECT t.id, t.name, t.type, t.description
             FROM aesir.aesir_tool t 
                 INNER JOIN aesir.aesir_agent_tool at ON t.id = at.tool_id
             WHERE at.agent_id = @AgentId::uuid
@@ -91,7 +91,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     public async Task<AesirTool> GetToolAsync(Guid id)
     {
         const string sql = @"
-            SELECT id, name
+            SELECT id, name, type, description
             FROM aesir.aesir_tool
             WHERE id = @Id::uuid
         ";
