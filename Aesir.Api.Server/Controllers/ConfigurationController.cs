@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services;
+using Aesir.Common.Prompts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Aesir.Api.Server.Controllers;
@@ -63,5 +64,11 @@ public class ConfigurationController(
         logger.LogDebug("Results = {Results}", JsonSerializer.Serialize(results));
 
         return results;
+    }
+    
+    [HttpGet("personas/default")]
+    public Task<PromptPersona?> GetDefaultPersonaAsync()
+    {
+        return Task.FromResult(DefaultPromptProvider.Instance.DefaultPromptPersona);
     }
 }

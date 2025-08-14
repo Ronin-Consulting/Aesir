@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 
 namespace Aesir.Client.Services.Implementations.NoOp;
 
@@ -30,5 +31,10 @@ public class NoOpConfigurationService : IConfigurationService
     public async Task<IEnumerable<AesirToolBase>> GetToolsForAgentAsync(Guid agentId)
     {
         return await Task.FromResult(new List<AesirToolBase>());
+    }
+
+    public Task<PromptPersona> GetDefaultPersonaAsync()
+    {
+        return Task.FromResult(PromptPersona.Business);
     }
 }

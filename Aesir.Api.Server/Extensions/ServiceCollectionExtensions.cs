@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services;
 using Aesir.Api.Server.Services.Implementations.Standard;
@@ -7,12 +6,9 @@ using Aesir.Common.Prompts;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Plugins.Web.Google;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
-using Microsoft.SemanticKernel.Plugins.Web;
 using OllamaSharp;
 using Qdrant.Client;
-using SamurAI = Aesir.Api.Server.Services.Implementations.Samurai;
 
 namespace Aesir.Api.Server.Extensions;
 
@@ -209,25 +205,7 @@ public static class ServiceCollectionExtensions
 
             kernelBuilder.Plugins.Add(plugin);
         }
-
-        var googleConnector = new GoogleConnector(
-            searchEngineId: "64cf6ca85e9454a44", //Environment.GetEnvironmentVariable("CSE_ID"),
-            apiKey: "AIzaSyByEQBfXtNjdxIGlpeLRz0C1isORMnsHNU"); //Environment.GetEnvironmentVariable("GOOGLE_KEY"))
-
-        var webSearchPlugin = new WebSearchEnginePlugin(googleConnector);
         
-        var methods = webSearchPlugin.GetType().GetMethods(
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-        
-        // only use the Search Results one because it has metadata...
-        var functions = 
-            (from method in methods where method.Name.StartsWith("GetSearchResults") 
-                select KernelFunctionFactory.CreateFromMethod(method, webSearchPlugin)).ToList();
-
-        kernelBuilder.Plugins.Add(
-            KernelPluginFactory.CreateFromFunctions("Web", functions)
-        );
-
         return services;
     }
 }

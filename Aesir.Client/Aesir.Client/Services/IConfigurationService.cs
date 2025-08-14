@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 
 namespace Aesir.Client.Services;
 
@@ -52,4 +53,13 @@ public interface IConfigurationService
     /// <returns>A task that represents the asynchronous operation.
     /// The task result contains a collection of <see cref="AesirToolBase"/> instances representing the tools associated with the specified agent.</returns>
     Task<IEnumerable<AesirToolBase>> GetToolsForAgentAsync(Guid agentId);
+
+    /// <summary>
+    /// Asynchronously retrieves the default persona for generating prompts within the system.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains a <see cref="PromptPersona"/> value
+    /// indicating the default persona.
+    /// </returns>
+    Task<PromptPersona> GetDefaultPersonaAsync();
 }

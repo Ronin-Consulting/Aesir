@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -145,5 +146,28 @@ public class ConfigurationService(
             await logger.LogFlurlExceptionAsync(ex);
             throw;
         }      
+    }
+
+    /// <summary>
+    /// Retrieves the default prompt persona asynchronously.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains
+    /// a <see cref="PromptPersona"/> value representing the default prompt persona.
+    /// </returns>
+    public async Task<PromptPersona> GetDefaultPersonaAsync()
+    {
+        try
+        {
+            return (await _flurlClient.Request()
+                .AppendPathSegment($"personas")
+                .AppendPathSegment("default")
+                .GetJsonAsync<PromptPersona>());
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }   
     }
 }
