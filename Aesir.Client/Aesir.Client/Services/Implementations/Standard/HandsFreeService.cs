@@ -432,7 +432,7 @@ public class HandsFreeService : IHandsFreeService
     /// <summary>
     /// Speaks the assistant response using text-to-speech capabilities.
     /// This method ensures the response speech is processed for conversational AI,
-    /// handling interruptions and managing the text-to-speech service lifecycle.
+    /// handling interruptions, and managing the text-to-speech service lifecycle.
     /// </summary>
     /// <param name="response">The response text to be spoken by the assistant.</param>
     /// <param name="cancellationToken">The cancellation token used to cancel the operation if needed.</param>
