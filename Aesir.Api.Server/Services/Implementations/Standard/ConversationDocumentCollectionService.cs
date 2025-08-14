@@ -4,6 +4,7 @@ using Aesir.Api.Server.Models;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Data;
+using Microsoft.SemanticKernel.Plugins.Web.Google;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
@@ -26,7 +27,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// Used to control the size of the result set returned by search operations, ensuring efficient
     /// performance and relevance by limiting outcomes to a specific count.
     /// </remarks>
-    private const int TopResults = 50;
+    private const int MaxTopResults = 50;
 
     /// <summary>
     /// Encapsulates a vector-based semantic search engine specifically designed for conversation document data management.
@@ -256,157 +257,54 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         
         var conversationId = (string)metaValue;
 
-        var kernelFunctions = new List<KernelFunction>();
+        var kernelFunctionLibrary = new KernelFunctionLibrary<Guid,AesirConversationDocumentTextData<Guid>>(
+            _conversationDocumentVectorSearch, _conversationDocumentHybridSearch
+        );
         
-        // add image functions
-        //AnalyzeImageContent
+        var kernelFunctions = new List<KernelFunction>();
+
+        if (kernelPluginArguments.TryGetValue("EnableWebSearch", out var enableWeSearchValue))
+        {
+            var enableWebSearch = Convert.ToBoolean(enableWeSearchValue);
+
+            if (enableWebSearch)
+            {
+                // add web search functions
+                // TODO: we meed to get the searchEnginId and apiKey from somewhere else not hard coded when it makes sense
+                var googleConnector = new GoogleConnector(
+                    searchEngineId: "64cf6ca85e9454a44", //Environment.GetEnvironmentVariable("CSE_ID"),
+                    apiKey: "AIzaSyByEQBfXtNjdxIGlpeLRz0C1isORMnsHNU"); //Environment.GetEnvironmentVariable("GOOGLE_KEY"))
+        
+                kernelFunctions.Add(
+                    kernelFunctionLibrary.GetWebSearchFunction(googleConnector)
+                );    
+            }
+        }
+        
+        // add image analysis functions
         var imageSearchFilter = new TextSearchFilter();
         imageSearchFilter.Equality(nameof(AesirConversationDocumentTextData<Guid>.ConversationId), conversationId);
         
-        var imageTextSearchOptions = new TextSearchOptions
-        {
-            Top = TopResults, 
-            Filter = imageSearchFilter
-        };
-
-        var imageTextSearchResultsFunctionOptions = new KernelFunctionFromMethodOptions()
-        {
-            FunctionName = "AnalyzeImageContent",
-            Description = "Analyzes an image to classify it as 'document' or 'non-document', transcribing text if a document or providing a detailed description otherwise.",
-            Parameters = [
-                new KernelParameterMetadata("query") { Description = "The name of the image file to process.", ParameterType = typeof(string), IsRequired = true },
-                // new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 25).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 25 },
-                // new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
-            ],
-            ReturnParameter = new KernelReturnParameterMetadata { ParameterType = typeof(KernelSearchResults<TextSearchResult>), Description = "A collection of search results, where each TextSearchResult contains properties like Name, Value, and Link."  },
-        };
-        
-        var imageSearchFunction = _conversationDocumentVectorSearch
-            .CreateGetTextSearchResults(searchOptions: imageTextSearchOptions, options: imageTextSearchResultsFunctionOptions);
-        
-        kernelFunctions.Add(imageSearchFunction);
+        kernelFunctions.Add(
+            kernelFunctionLibrary.GetImageAnalysisFunction(imageSearchFilter, MaxTopResults)
+        );
         
         // text searches
         if (_conversationDocumentHybridSearch != null)
         {
-            var hybridSearch = _conversationDocumentHybridSearch;
-
-            // ReSharper disable once MoveLocalFunctionAfterJumpStatement
-            async Task<IEnumerable<TextSearchResult>> GetHybridSearchResultAsync(Kernel kernel, KernelFunction function,
-                KernelArguments arguments, CancellationToken cancellationToken, int count = TopResults, int skip = 0)
+            var searchOptions = new HybridSearchOptions<AesirConversationDocumentTextData<Guid>>
             {
-                arguments.TryGetValue("query", out var query);
-                if (string.IsNullOrEmpty(query?.ToString()))
-                {
-                    return [];
-                }
-                
-                // NOTE: how to process the files parameter if we wanted to
-                // var files = new List<string>();
-                // arguments.TryGetValue("files", out var filesValue);
-                // if (filesValue is JsonElement jsonElement)
-                // {
-                //     files = jsonElement.EnumerateArray().Select(x => x.GetString()).ToList()!;
-                // }
-                //
-                // // if only a single file then determine if we can just load all of its text
-                // if (files.Count == 1)
-                // {
-                //     var found = await _vectorStoreRecordCollection.GetAsync(filter: data => data.ConversationId == conversationId,
-                //         int.MaxValue, cancellationToken: cancellationToken).ToListAsync(cancellationToken).ConfigureAwait(false);
-                //     
-                //     // for now total up the tokens.. if less than 16K then return results
-                //     if (found.Sum(r => r.TokenCount) <= 16384)
-                //     {
-                //         return found.OrderBy(r => r.CreatedAt).Select(r =>
-                //             new TextSearchResult(r.Text!)
-                //             {
-                //                 Link = r.ReferenceLink,
-                //                 Name = r.ReferenceDescription
-                //             }
-                //         );
-                //     }
-                // }
-
-                var searchOptions = new HybridSearchOptions<AesirConversationDocumentTextData<Guid>>
-                {
-                    Filter = data => data.ConversationId == conversationId,
-                    Skip = skip
-                };
-                
-                var searchValue = query.ToString()!;
-                var keywords = searchValue.KeywordsOnly();
-                var results = await hybridSearch.HybridSearchAsync(
-                    searchValue,
-                    keywords,
-                    count,
-                    searchOptions,
-                    cancellationToken
-                ).ToListAsync(cancellationToken).ConfigureAwait(false);
-                
-                if(results.Count < TopResults)
-                    return results.Select(r =>
-                        new TextSearchResult(r.Record.Text!)
-                        {
-                            Link = r.Record.ReferenceLink,
-                            Name = r.Record.ReferenceDescription
-                        }
-                    );
-                
-                return results.Where(r => r.Score >= 0.5f).Select(r =>
-                    new TextSearchResult(r.Record.Text!)
-                    {
-                        Link = r.Record.ReferenceLink,
-                        Name = r.Record.ReferenceDescription
-                    }
-                );
-            }
-
-            var functionOptions = new KernelFunctionFromMethodOptions()
-            {
-                FunctionName = "PerformHybridDocumentSearch",
-                Description = "Perform a search for content related to the specified query. The search will return the name, value and link for the related content.",
-                Parameters = [
-                    new KernelParameterMetadata("query") { Description = "The search query string, supporting keywords, phrases, or natural language input for hybrid matching.", ParameterType = typeof(string), IsRequired = true },
-                    new KernelParameterMetadata("files") { Description = "The files to search.", ParameterType = typeof(string[]), IsRequired = true },
-                    // new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 25).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 25 },
-                    // new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
-                ],
-                ReturnParameter = new KernelReturnParameterMetadata { ParameterType = typeof(KernelSearchResults<TextSearchResult>), Description = "A collection of search results, where each TextSearchResult contains properties like Name, Value, and Link." },
+                Filter = data => data.ConversationId == conversationId
             };
             
-            var hybridSearchFunction = KernelFunctionFactory.CreateFromMethod(GetHybridSearchResultAsync, functionOptions);
-            
-            kernelFunctions.Add(hybridSearchFunction);
+            kernelFunctions.Add(kernelFunctionLibrary.GetHybridDocumentSearchFunction(searchOptions, MaxTopResults));
         }
         else
         {
             var semanticSearchFilter = new TextSearchFilter();
             semanticSearchFilter.Equality(nameof(AesirConversationDocumentTextData<Guid>.ConversationId), conversationId);
             
-            var semanticTextSearchOptions = new TextSearchOptions
-            {
-                Top = TopResults, 
-                Filter = semanticSearchFilter
-            };
-
-            var semanticSearchResultsFunctionOptions = new KernelFunctionFromMethodOptions()
-            {
-                FunctionName = "PerformSemanticDocumentSearch",
-                Description = "Perform a search for content related to the specified query. The search will return the name, value and link for the related content.",
-                Parameters = [
-                    new KernelParameterMetadata("query") { Description = "The search query string, supporting keywords, phrases, or natural language input for semantic matching.", ParameterType = typeof(string), IsRequired = true },
-                    new KernelParameterMetadata("files") { Description = "The files to search.", ParameterType = typeof(string[]), IsRequired = true },
-                    // new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 25).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 25 },
-                    // new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
-                ],
-                ReturnParameter = new KernelReturnParameterMetadata { ParameterType = typeof(KernelSearchResults<TextSearchResult>), Description = "A collection of search results, where each TextSearchResult contains properties like Name, Value, and Link."  },
-            };
-            
-            var semanticSearchFunction = _conversationDocumentVectorSearch
-                .CreateGetTextSearchResults(searchOptions: semanticTextSearchOptions, options: semanticSearchResultsFunctionOptions);
-            
-            kernelFunctions.Add(semanticSearchFunction);
+            kernelFunctions.Add(kernelFunctionLibrary.GetSemanticDocumentSearchFunction(semanticSearchFilter, MaxTopResults));;
         }
         
         return KernelPluginFactory.CreateFromFunctions(

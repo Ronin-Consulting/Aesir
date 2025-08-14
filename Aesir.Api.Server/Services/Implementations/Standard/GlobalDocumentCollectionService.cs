@@ -17,7 +17,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
     /// <summary>
     /// Specifies the maximum number of search results to return when querying global documents.
     /// </summary>
-    private const int TopResults = 8;
+    private const int MaxTopResults = 50;
 
     /// <summary>
     /// A private instance of vector-based text search functionality for global document text data.
@@ -179,90 +179,37 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         if (!kernelPluginArguments.TryGetValue("PluginName", out var pluginNameValue))
             throw new ArgumentException("Kernel plugin args must contain a PluginName");
 
-        // if(!kernelPluginArguments.TryGetValue("PluginDescription", out var pluginDescriptionValue))
-        //     throw new ArgumentException("Kernel plugin args must contain a PluginDescription");
+        var kernelFunctionLibrary = new KernelFunctionLibrary<Guid,AesirGlobalDocumentTextData<Guid>>(
+            _globalDocumentVectorSearch, _globalDocumentHybridSearch
+        );
         
-        //var pluginDescription = (string)pluginDescriptionValue;
+        var kernelFunctions = new List<KernelFunction>();
+        
         var pluginName = (string)pluginNameValue;
-        
         var categoryId = (string)metaValue;
+        
         if (string.IsNullOrEmpty(categoryId)) throw new ArgumentNullException(nameof(categoryId));
 
         if (_globalDocumentHybridSearch != null)
         {
-            var hybridSearch = _globalDocumentHybridSearch;
-            // ReSharper disable once MoveLocalFunctionAfterJumpStatement
-            async Task<IEnumerable<TextSearchResult>> GetHybridSearchResultAsync(Kernel kernel, KernelFunction function,
-                KernelArguments arguments, CancellationToken cancellationToken, int count = TopResults, int skip = 0)
+            var searchOptions = new HybridSearchOptions<AesirGlobalDocumentTextData<Guid>>
             {
-                arguments.TryGetValue("query", out var query);
-                if (string.IsNullOrEmpty(query?.ToString()))
-                {
-                    return [];
-                }
-                
-                var searchOptions = new HybridSearchOptions<AesirGlobalDocumentTextData<Guid>>
-                {
-                    Filter = data => data.Category == categoryId,
-                    Skip = skip
-                };
-                
-                var searchValue = query.ToString()!;
-                var keywords = searchValue.KeywordsOnly();
-                var results = await hybridSearch.HybridSearchAsync(
-                    searchValue,
-                    keywords,
-                    count,
-                    searchOptions,
-                    cancellationToken
-                ).ToListAsync(cancellationToken).ConfigureAwait(false);
-                
-                return results.Select(r =>
-                    new TextSearchResult(r.Record.Text!)
-                    {
-                        Link = r.Record.ReferenceLink,
-                        Name = r.Record.ReferenceDescription
-                    }
-                );
-            }
-
-            var functionOptions = new KernelFunctionFromMethodOptions()
-            {
-                FunctionName = "HybridKeywordSearch",
-                Description = "Executes a hybrid search combining exact keyword matching with semantic relevance for the given query. Ideal for retrieving targeted content from local or indexed data sources on edge devices. Returns a collection of results, each including a name (e.g., title or identifier), value (e.g., snippet or full content), and link (e.g., URI or reference) for the matched items. Use 'count' to limit results and 'skip' for pagination.",
-                Parameters = [
-                    new KernelParameterMetadata("query") { Description = "The search query string, supporting keywords, phrases, or natural language input for hybrid matching.", ParameterType = typeof(string), IsRequired = true },
-                    new KernelParameterMetadata("count") { Description = "Maximum number of results to return (default: 8).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 8 },
-                    new KernelParameterMetadata("skip") { Description = "Number of initial results to skip for pagination (default: 0).", ParameterType = typeof(int), IsRequired = false, DefaultValue = 0 },
-                ],
-                ReturnParameter = new KernelReturnParameterMetadata { ParameterType = typeof(KernelSearchResults<TextSearchResult>), Description = "A collection of search results, where each TextSearchResult contains properties like Name, Value, and Link." },
+                Filter = data => data.Category == categoryId
             };
             
-            var hybridSearchFunction = KernelFunctionFactory.CreateFromMethod(GetHybridSearchResultAsync, functionOptions);
-            
-            return KernelPluginFactory.CreateFromFunctions(
-                pluginName,
-                [hybridSearchFunction]
-            );            
-            
+            kernelFunctions.Add(kernelFunctionLibrary.GetHybridDocumentSearchFunction(searchOptions, MaxTopResults));
         }
-
-        // standard vector search
-        var categoryFilter = new TextSearchFilter();
-        categoryFilter.Equality(nameof(AesirGlobalDocumentTextData<Guid>.Category), categoryId);
-        var globalDocumentTextSearchOptions = new TextSearchOptions
+        else
         {
-            Top = TopResults, 
-            Filter = categoryFilter
-        };
+            var semanticSearchFilter = new TextSearchFilter();
+            semanticSearchFilter.Equality(nameof(AesirGlobalDocumentTextData<Guid>.Category), categoryId);
             
-        var globalDocumentSearchFunction = _globalDocumentVectorSearch
-            .CreateGetTextSearchResults(searchOptions: globalDocumentTextSearchOptions);
+            kernelFunctions.Add(kernelFunctionLibrary.GetSemanticDocumentSearchFunction(semanticSearchFilter, MaxTopResults));;
+        }
         
         return KernelPluginFactory.CreateFromFunctions(
-            pluginName, 
-            //pluginDescription, 
-            [globalDocumentSearchFunction]
+            pluginName,
+            kernelFunctions
         );
     }
 }

@@ -31,4 +31,9 @@ public class ConversationDocumentCollectionArgs : Dictionary<string, object>
     {
         this["ConversationId"] = conversationId;   
     }
+    
+    public void SetEnableWebSearch(bool enableWebSearch)
+    {
+        this["EnableWebSearch"] = enableWebSearch;   
+    }
 }

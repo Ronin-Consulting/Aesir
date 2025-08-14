@@ -234,24 +234,26 @@ public class ChatService : BaseChatService
         if (_enableThinking)
             settings.ExtensionData.Add("think", true);
 
-        var globalPluginsExist = _kernel.Plugins.Count > 0;
-        if (globalPluginsExist)
-        {
-            settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
-            
-            // for now web search at some point we use tool name
-            systemPromptVariables["webSearchtoolsEnabled"] = true;
-        }
+        var kernelPluginArgs = ConversationDocumentCollectionArgs.Default;
+        
+        // TODO: For now always enable web search.  One day this will be setable from UI.
+        // if (request.EnabledWebSearch)
+        // {
+        kernelPluginArgs.SetEnableWebSearch(true);
+        _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs));
+        systemPromptVariables["webSearchtoolsEnabled"] = true;
+        //}
         
         if (request.Conversation.Messages.Any(m => m.HasFile()))
         {
             settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
 
             var conversationId = request.Conversation.Id;
-
-            var args = ConversationDocumentCollectionArgs.Default;
-            args.SetConversationId(conversationId);
-            _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(args));
+         
+            kernelPluginArgs = ConversationDocumentCollectionArgs.Default;
+            
+            kernelPluginArgs.SetConversationId(conversationId);
+            _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs));
 
             systemPromptVariables["docSearchToolsEnabled"] = true;
         }
