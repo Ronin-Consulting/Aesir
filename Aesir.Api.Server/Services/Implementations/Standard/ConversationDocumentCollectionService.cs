@@ -250,13 +250,11 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// </exception>
     public KernelPlugin GetKernelPlugin(IDictionary<string, object>? kernelPluginArguments = null)
     {
+        if(kernelPluginArguments == null)
+            throw new ArgumentException("Kernel plugin args must contain a ConversationId");
+        
         const string pluginName = "ChatTools";
         
-        if (kernelPluginArguments == null || !kernelPluginArguments.TryGetValue("ConversationId", out var metaValue))
-            throw new ArgumentException("File metadata must contain a ConversationId property");
-        
-        var conversationId = (string)metaValue;
-
         var kernelFunctionLibrary = new KernelFunctionLibrary<Guid,AesirConversationDocumentTextData<Guid>>(
             _conversationDocumentVectorSearch, _conversationDocumentHybridSearch
         );
@@ -280,31 +278,42 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
                 );    
             }
         }
-        
-        // add image analysis functions
-        var imageSearchFilter = new TextSearchFilter();
-        imageSearchFilter.Equality(nameof(AesirConversationDocumentTextData<Guid>.ConversationId), conversationId);
-        
-        kernelFunctions.Add(
-            kernelFunctionLibrary.GetImageAnalysisFunction(imageSearchFilter, MaxTopResults)
-        );
-        
-        // text searches
-        if (_conversationDocumentHybridSearch != null)
+
+        if (kernelPluginArguments.TryGetValue("EnableDocumentSearch", out var enableDocumentSearchValue))
         {
-            var searchOptions = new HybridSearchOptions<AesirConversationDocumentTextData<Guid>>
+            var enableDocumentSearch = Convert.ToBoolean(enableDocumentSearchValue);
+            if (enableDocumentSearch)
             {
-                Filter = data => data.ConversationId == conversationId
-            };
+                if (!kernelPluginArguments.TryGetValue("ConversationId", out var metaValue))
+                    throw new ArgumentException("File metadata must contain a ConversationId property");
+                var conversationId = (string)metaValue;
+                
+                // add image analysis functions
+                var imageSearchFilter = new TextSearchFilter();
+                imageSearchFilter.Equality(nameof(AesirConversationDocumentTextData<Guid>.ConversationId), conversationId);
+        
+                kernelFunctions.Add(
+                    kernelFunctionLibrary.GetImageAnalysisFunction(imageSearchFilter, MaxTopResults)
+                );
+        
+                // text searches
+                if (_conversationDocumentHybridSearch != null)
+                {
+                    var searchOptions = new HybridSearchOptions<AesirConversationDocumentTextData<Guid>>
+                    {
+                        Filter = data => data.ConversationId == conversationId
+                    };
             
-            kernelFunctions.Add(kernelFunctionLibrary.GetHybridDocumentSearchFunction(searchOptions, MaxTopResults));
-        }
-        else
-        {
-            var semanticSearchFilter = new TextSearchFilter();
-            semanticSearchFilter.Equality(nameof(AesirConversationDocumentTextData<Guid>.ConversationId), conversationId);
+                    kernelFunctions.Add(kernelFunctionLibrary.GetHybridDocumentSearchFunction(searchOptions, MaxTopResults));
+                }
+                else
+                {
+                    var semanticSearchFilter = new TextSearchFilter();
+                    semanticSearchFilter.Equality(nameof(AesirConversationDocumentTextData<Guid>.ConversationId), conversationId);
             
-            kernelFunctions.Add(kernelFunctionLibrary.GetSemanticDocumentSearchFunction(semanticSearchFilter, MaxTopResults));;
+                    kernelFunctions.Add(kernelFunctionLibrary.GetSemanticDocumentSearchFunction(semanticSearchFilter, MaxTopResults));;
+                }
+            }
         }
         
         return KernelPluginFactory.CreateFromFunctions(

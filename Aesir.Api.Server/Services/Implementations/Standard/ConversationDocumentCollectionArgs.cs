@@ -36,4 +36,9 @@ public class ConversationDocumentCollectionArgs : Dictionary<string, object>
     {
         this["EnableWebSearch"] = enableWebSearch;   
     }
+    
+    public void SetEnableDocumentSearch(bool enableWebSearch)
+    {
+        this["EnableDocumentSearch"] = enableWebSearch;   
+    }
 }

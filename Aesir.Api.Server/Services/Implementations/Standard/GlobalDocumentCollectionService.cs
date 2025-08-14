@@ -173,9 +173,9 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
     /// <exception cref="ArgumentNullException">Thrown when the value for CategoryId is null or empty</exception>
     public KernelPlugin GetKernelPlugin(IDictionary<string, object>? kernelPluginArguments = null)
     {
-        if (kernelPluginArguments == null || !kernelPluginArguments.TryGetValue("CategoryId", out var metaValue))
-            throw new ArgumentException("Kernel plugin args must contain a CategoryId");
-
+        if(kernelPluginArguments == null)
+            throw new ArgumentException("Kernel plugin args must contain a ConversationId");
+        
         if (!kernelPluginArguments.TryGetValue("PluginName", out var pluginNameValue))
             throw new ArgumentException("Kernel plugin args must contain a PluginName");
 
@@ -186,6 +186,9 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         var kernelFunctions = new List<KernelFunction>();
         
         var pluginName = (string)pluginNameValue;
+        
+        if (!kernelPluginArguments.TryGetValue("CategoryId", out var metaValue))
+            throw new ArgumentException("Kernel plugin args must contain a CategoryId");
         var categoryId = (string)metaValue;
         
         if (string.IsNullOrEmpty(categoryId)) throw new ArgumentNullException(nameof(categoryId));
