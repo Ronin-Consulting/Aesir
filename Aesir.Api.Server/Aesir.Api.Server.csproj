@@ -21,21 +21,21 @@
         <PackageReference Include="FluentMigrator.Runner.Postgres" Version="7.1.0"/>
         <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.8" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.8" />
-        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.61.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.61.0-alpha" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.61.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.PgVector" Version="1.61.0-preview" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Qdrant" Version="1.61.0-preview" />
-        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.61.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.PromptTemplates.Handlebars" Version="1.61.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.61.0-alpha" />
+        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.62.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.62.0-alpha" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.62.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.PgVector" Version="1.62.0-preview" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Qdrant" Version="1.62.0-preview" />
+        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.62.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.PromptTemplates.Handlebars" Version="1.62.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.62.0-alpha" />
         <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0"/>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
         <PackageReference Include="Npgsql" Version="9.0.3"/>
         <PackageReference Include="OllamaSharp" Version="5.3.4" />
         <PackageReference Include="OpenAI" Version="2.3.0" />
         <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.12.0"/>
-        <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.7" />
+        <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.8" />
         <PackageReference Include="PdfPig" Version="0.1.11" />
         <PackageReference Include="Pgvector" Version="0.3.2"/>
         <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1"/>
