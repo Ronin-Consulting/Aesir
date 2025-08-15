@@ -50,8 +50,8 @@
   - [x] Search
 - [ ] Tools/MCP Integration
 - [ ] AI Agents
-- [ ] Hands Free Mode
-  - [ ] hands free UI/UX
+- [X] Hands Free Mode
+  - [X] hands free UI/UX
   - [X] speech-to-text
   - [X] text-to-speech
 - [ ] Implement User Settings
