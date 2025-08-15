@@ -1,8 +1,12 @@
 using System;
+using System.Threading;
 using Aesir.Client.Services;
 using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.Threading;
 
 namespace Aesir.Client.Controls;
@@ -22,7 +26,15 @@ public partial class AssistantAvatarUserControl : UserControl
     public static readonly StyledProperty<string> StateTextProperty =
         AvaloniaProperty.Register<AssistantAvatarUserControl, string>(nameof(StateText),
             defaultValue: string.Empty);
+
+    public static readonly StyledProperty<string> UtteranceTextProperty =
+        AvaloniaProperty.Register<AssistantAvatarUserControl, string>(nameof(UtteranceText),
+            defaultValue: string.Empty);
     
+    public static readonly StyledProperty<string> UtteranceDisplayTextProperty =
+        AvaloniaProperty.Register<AssistantAvatarUserControl, string>(nameof(UtteranceDisplayText),
+            defaultValue: "No speech detected.");
+
     public static readonly StyledProperty<double> AnimationSpeedProperty =
         AvaloniaProperty.Register<AssistantAvatarUserControl, double>(
             nameof(AnimationSpeed),
@@ -52,11 +64,24 @@ public partial class AssistantAvatarUserControl : UserControl
         get => GetValue(StateTextProperty);
         set => SetValue(StateTextProperty, value);
     }
+
+    public string UtteranceText
+    {
+        get => GetValue(UtteranceTextProperty);
+        set => SetValue(UtteranceTextProperty, value);
+    }
     
+    private string UtteranceDisplayText
+    {
+        get => GetValue(UtteranceDisplayTextProperty);
+        set => SetValue(UtteranceDisplayTextProperty, value);
+    }
+
     private DispatcherTimer? _animationTimer;
     private readonly TimeSpan _animationDuration = TimeSpan.FromSeconds(1.5);
     private DateTime _animationStartTime;
-
+    private CancellationTokenSource? _fadeOutCancellationTokenSource;
+    
     public AssistantAvatarUserControl()
     {
         InitializeComponent();
@@ -82,6 +107,14 @@ public partial class AssistantAvatarUserControl : UserControl
                     };
                 }
             });
+        });
+        
+        this.GetObservable(UtteranceTextProperty).Subscribe(value =>
+        {
+            if (string.IsNullOrWhiteSpace(value)) return;
+            
+            UtteranceDisplayText = value;
+            Dispatcher.UIThread.InvokeAsync(StartUtteranceFadeOutAnimation);
         });
     }
 
@@ -132,4 +165,61 @@ public partial class AssistantAvatarUserControl : UserControl
     {
         AvatarImage?.InvalidateVisual();
     }
+    
+    private async void StartUtteranceFadeOutAnimation()
+    {
+        if (string.IsNullOrWhiteSpace(UtteranceText))
+            return;
+
+        _fadeOutCancellationTokenSource?.Cancel();
+        _fadeOutCancellationTokenSource = new CancellationTokenSource();
+        var token = _fadeOutCancellationTokenSource.Token;
+
+        try
+        {
+            var utteranceTextBlock = this.FindControl<TextBlock>("UtteranceDisplayTextBlock");
+            if (utteranceTextBlock == null) return;
+
+            utteranceTextBlock.Opacity = 1.0;
+
+            var animation = new Animation
+            {
+                Duration = TimeSpan.FromSeconds(4),
+                Easing = new LinearEasing(),
+                Children =
+                {
+                    new KeyFrame
+                    {
+                        Cue = new Cue(0.0),
+                        Setters = { new Setter(OpacityProperty, 1.0) }
+                    },
+                    new KeyFrame
+                    {
+                        Cue = new Cue(1.0),
+                        Setters = { new Setter(OpacityProperty, 0.0) }
+                    }
+                }
+            };
+
+            await animation.RunAsync(utteranceTextBlock, token);
+            
+            if (!token.IsCancellationRequested)
+            {
+                utteranceTextBlock.Opacity = 0.0;
+                UtteranceDisplayText = string.Empty;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+    
+    public void Dispose()
+    {
+        _animationTimer?.Stop();
+        _fadeOutCancellationTokenSource?.Cancel();
+        _fadeOutCancellationTokenSource?.Dispose();
+    }
+
+
 }

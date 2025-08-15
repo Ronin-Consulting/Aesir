@@ -9,63 +9,82 @@ using Microsoft.Extensions.Logging;
 namespace Aesir.Client.ViewModels;
 
 /// <summary>
-/// ViewModel responsible for managing the hands-free control functionality.
-/// Handles lifecycle events, commands, and interactions with services related to hands-free operations.
+/// ViewModel responsible for managing hands-free control functionality in the application.
+/// Implements lifecycle management, service interactions, and provides commands for starting, pausing, and exiting hands-free mode.
 /// </summary>
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public partial class HandsFreeControlViewModel : ObservableRecipient, IDisposable
 {
     /// <summary>
-    /// Logger instance used for logging messages, errors, and debugging information
-    /// within the HandsFreeControlViewModel class.
+    /// Private readonly logger instance used to log messages, errors, and debugging
+    /// information throughout the HandsFreeControlViewModel class.
     /// </summary>
     private readonly ILogger<HandsFreeControlViewModel> _logger;
 
     /// <summary>
-    /// An instance of the <see cref="IHandsFreeService"/> interface used to manage
-    /// hands-free voice interaction functionality. Provides capabilities such as
-    /// starting or stopping hands-free mode, monitoring its state, and responding
-    /// to relevant events like state changes and audio level updates.
+    /// Instance of the <see cref="IHandsFreeService"/> interface utilized to handle hands-free
+    /// operations including starting or stopping hands-free mode and monitoring related
+    /// events such as state changes or audio level updates.
     /// </summary>
     private readonly IHandsFreeService _handsFreeService;
 
     /// <summary>
-    /// Service responsible for handling navigation between views or features
-    /// within the application. Provides methods to navigate to specific
-    /// destinations such as Chat, Tools, Agents, or Hands-Free modes.
+    /// Navigation service used for directing the application to various views or features.
+    /// Facilitates transitions between different application components, such as Chat, Tools,
+    /// Agents, or Hands-Free modes.
     /// </summary>
     private readonly INavigationService _navigationService;
 
     /// <summary>
-    /// Represents the current operational state of the hands-free interaction system in the HandsFreeControlViewModel.
-    /// Tracks and updates the state for user interactions and state transitions, such as idle, listening, processing commands,
-    /// speaking, or encountering an error.
+    /// Represents the current state of the hands-free interaction system, indicating
+    /// the current mode of operation such as idle, listening, processing, speaking,
+    /// or error, in the HandsFreeControlViewModel class.
     /// </summary>
     [ObservableProperty] private HandsFreeState _currentState;
 
     /// <summary>
+    /// Indicates whether the hands-free control functionality is currently idle.
+    /// </summary>
+    [ObservableProperty] private bool _isIdle;
+
+    /// <summary>
     /// Represents the current audio level for hands-free voice control.
-    /// Used to monitor and adjust the volume or intensity of audio input/output
-    /// in the HandsFreeControl view model.
+    /// This property is used to track and manage the audio intensity
+    /// required for processing hands-free interactions.
     /// </summary>
     [ObservableProperty] private double _audioLevel = 1.0;
 
     /// <summary>
-    /// Represents the current processing state of the hands-free control.
-    /// When set to true, indicates that a process is ongoing (e.g., voice command recognition or execution).
-    /// When set to false, indicates that no active processing is happening.
+    /// Indicates whether a process related to hands-free control is currently active.
+    /// True denotes that a process is in progress (e.g., voice command handling),
+    /// while false signifies that no processing is occurring.
     /// </summary>
     [ObservableProperty] private bool _isProcessing;
 
+    [ObservableProperty] private string _currentUtteranceText;
+    
     /// <summary>
-    /// Gets the command invoked to exit hands-free mode.
-    /// This command triggers the necessary logic to stop hands-free
-    /// functionality and navigate back to the chat interface.
+    /// Command used to exit the hands-free mode within the application.
+    /// It triggers the associated logic to stop all hands-free operations and handle any necessary cleanup.
     /// </summary>
     public ICommand ExitHandsFreeCommand { get; }
 
     /// <summary>
-    /// ViewModel for managing the hands-free control feature, including state handling, animations, and user interactions.
+    /// Command that pauses the hands-free functionality by invoking the associated
+    /// asynchronous operation in the HandsFreeControlViewModel. Typically used to
+    /// momentarily stop hands-free interactions while keeping the functionality
+    /// initialized for resumption.
+    /// </summary>
+    public ICommand PauseHandsFreeCommand { get; }
+
+    /// <summary>
+    /// Command responsible for initiating hands-free mode operations within the application.
+    /// Triggers the execution of tasks or services required to start hands-free functionality.
+    /// </summary>
+    public ICommand StartHandsFreeCommand { get; }
+
+    /// <summary>
+    /// ViewModel responsible for managing the hands-free control functionalities, including state changes, handling user commands, and managing audio levels.
     /// </summary>
     public HandsFreeControlViewModel(
         ILogger<HandsFreeControlViewModel> logger,
@@ -77,15 +96,18 @@ public partial class HandsFreeControlViewModel : ObservableRecipient, IDisposabl
         _navigationService = navigationService;
 
         ExitHandsFreeCommand = new AsyncRelayCommand(ExitHandsFreeAsync);
+        PauseHandsFreeCommand = new AsyncRelayCommand(PauseHandsFreeAsync);
+        StartHandsFreeCommand = new AsyncRelayCommand(StartHandsFreeAsync);
         
         // Subscribe to hands-free service events
         _handsFreeService.StateChanged += OnHandsFreeStateChanged;
         _handsFreeService.AudioLevelChanged += OnAudioLevelChanged;
+        _handsFreeService.UtteranceTextRecognized += OnUtteranceTextRecognized;
     }
 
     /// <summary>
     /// Called when the ViewModel is activated.
-    /// Initiates the process to start the hands-free mode asynchronously.
+    /// Triggers the asynchronous initialization of hands-free mode by invoking the appropriate startup workflows.
     /// </summary>
     protected override async void OnActivated()
     {
@@ -99,19 +121,29 @@ public partial class HandsFreeControlViewModel : ObservableRecipient, IDisposabl
     private async Task ExitHandsFreeAsync()
     {
         await StopHandsFreeAsync();
-        
+
         _navigationService.NavigateToChat();
     }
 
     /// <summary>
-    /// Initiates hands-free mode by ensuring all necessary preconditions are met
-    /// and starting the hands-free service if not already active.
+    /// Asynchronously pauses the hands-free control functionality.
+    /// Ensures any active hands-free operations are stopped.
     /// </summary>
-    /// <returns>A task that represents the asynchronous operation of starting hands-free mode.</returns>
+    /// <returns>A task that represents the asynchronous pause operation.</returns>
+    private async Task PauseHandsFreeAsync()
+    {
+        await StopHandsFreeAsync();
+    }
+
+    /// <summary>
+    /// Starts hands-free mode by stopping any active instance, ensuring preconditions are met,
+    /// and initializing the hands-free service if not already running.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation of starting hands-free mode.</returns>
     private async Task StartHandsFreeAsync()
     {
         await StopHandsFreeAsync();
-        
+
         if (IsProcessing) return;
 
         try
@@ -133,9 +165,9 @@ public partial class HandsFreeControlViewModel : ObservableRecipient, IDisposabl
     }
 
     /// <summary>
-    /// Stops the hands-free mode, ensuring any active hands-free state is deactivated.
+    /// Stops the hands-free mode, ensuring any active hands-free state is properly deactivated.
     /// </summary>
-    /// <returns>A task that represents the asynchronous operation of stopping hands-free mode.</returns>
+    /// <returns>A task representing the asynchronous operation of stopping the hands-free mode.</returns>
     private async Task StopHandsFreeAsync()
     {
         if (!IsProcessing) return;
@@ -161,39 +193,45 @@ public partial class HandsFreeControlViewModel : ObservableRecipient, IDisposabl
     }
 
     /// <summary>
-    /// Handles events raised when the hands-free state changes.
-    /// Updates the current state based on the event arguments.
+    /// Handles the event triggered when the hands-free state changes.
+    /// Updates the relevant properties based on the new state.
     /// </summary>
-    /// <param name="sender">The source of the event.</param>
-    /// <param name="e">Provides data for the hands-free state change event.</param>
+    /// <param name="sender">The object that raised the event.</param>
+    /// <param name="e">Event arguments containing details about the hands-free state change.</param>
     private void OnHandsFreeStateChanged(object? sender, HandsFreeStateChangedEventArgs e)
     {
         CurrentState = e.CurrentState;
+
+        IsIdle = CurrentState == HandsFreeState.Idle;
     }
 
     /// <summary>
-    /// Handles changes in audio level during hands-free mode TTS playback.
-    /// Scales and adjusts the audio level for visual feedback purposes.
+    /// Handles the event triggered when the audio level changes during hands-free mode.
+    /// Adjusts the audio level dynamically for visual feedback or other purposes.
     /// </summary>
-    /// <param name="sender">The source of the event, typically the hands-free service.</param>
-    /// <param name="e">The event data containing the audio level information and activity state.</param>
+    /// <param name="sender">The source of the event, generally the hands-free service.</param>
+    /// <param name="e">An instance of <see cref="AudioLevelEventArgs"/> containing information about the audio level and its activity state.</param>
     private void OnAudioLevelChanged(object? sender, AudioLevelEventArgs e)
     {
         // Scale audio level for visual effect (1.0 to 1.3 range)
         AudioLevel = e.IsAudioActive ? Math.Max(1.0, 1.0 + (e.AudioLevel * 0.3)) : 1.0;
     }
 
+    private void OnUtteranceTextRecognized(object? sender, UtteranceTextEventArgs e)
+    {
+        CurrentUtteranceText = e.Text;
+    }
 
     /// <summary>
-    /// Releases the unmanaged resources used by the HandsFreeControlViewModel and optionally releases the managed resources.
+    /// Releases resources used by the HandsFreeControlViewModel, both managed and unmanaged.
     /// </summary>
-    /// <param name="disposing">A boolean value indicating whether to release managed resources (true) or only unmanaged resources (false).</param>
+    /// <param name="disposing">Indicates whether to release managed resources (true) or only unmanaged resources (false).</param>
     protected virtual void Dispose(bool disposing)
     {
         if (disposing)
         {
             IsActive = false;
-            
+
             _handsFreeService.StateChanged -= OnHandsFreeStateChanged;
             _handsFreeService.AudioLevelChanged -= OnAudioLevelChanged;
         }
@@ -201,6 +239,8 @@ public partial class HandsFreeControlViewModel : ObservableRecipient, IDisposabl
 
     /// <summary>
     /// Releases the resources used by the HandsFreeControlViewModel.
+    /// Ensures proper cleanup of both managed and unmanaged resources
+    /// to prevent memory leaks and other resource-related issues.
     /// </summary>
     public void Dispose()
     {

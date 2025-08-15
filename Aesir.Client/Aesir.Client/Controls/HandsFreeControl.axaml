@@ -9,7 +9,10 @@
              x:Class="Aesir.Client.Controls.HandsFreeControl"
              x:DataType="viewModels:HandsFreeControlViewModel">
     <Grid RowDefinitions="*,*,*" ColumnDefinitions="*,*,*">
-        <controls:AssistantAvatarUserControl Name="AssistantAvatar" Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Grid.ColumnSpan="3" CurrentState="{Binding CurrentState}" />
+        <controls:AssistantAvatarUserControl Name="AssistantAvatar" Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Grid.ColumnSpan="3" 
+                                             CurrentState="{Binding CurrentState}"
+                                             UtteranceText="{Binding CurrentUtteranceText}"
+        />
         <Button Grid.Row="0" Grid.Column="2"
                 Name="CloseButton"
                 VerticalAlignment="Top"
@@ -17,12 +20,44 @@
                 Classes="Large Primary"
                 Margin="12"
                 Command="{Binding ExitHandsFreeCommand}"
-                ToolTip.Tip="Stop Hands Free Mode">
+                ToolTip.Tip="Exit Hands Free Mode">
             <Panel>
                 <avalonia:MaterialIcon
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Kind="Close" />
+            </Panel>
+        </Button>
+        <Button Grid.Row="0" Grid.Column="2"
+                IsVisible="{Binding IsIdle}"
+                Name="PlayButton"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Right"
+                Classes="Large Primary"
+                Margin="12"
+                Command="{Binding StartHandsFreeCommand}"
+                ToolTip.Tip="Start Hands Free Mode">
+            <Panel>
+                <avalonia:MaterialIcon
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Kind="Play" />
+            </Panel>
+        </Button>
+        <Button Grid.Row="0" Grid.Column="2"
+                IsVisible="{Binding !IsIdle}"
+                Name="PauseButton"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Right"
+                Classes="Large Primary"
+                Margin="12"
+                Command="{Binding PauseHandsFreeCommand}"
+                ToolTip.Tip="Pause Hands Free Mode">
+            <Panel>
+                <avalonia:MaterialIcon
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Kind="Pause" />
             </Panel>
         </Button>
     </Grid>

@@ -14,111 +14,141 @@ namespace Aesir.Client.Services.Implementations.Standard;
 
 /// <summary>
 /// The <see cref="HandsFreeService"/> class provides functionality to manage and control
-/// hands-free mode interactions, which includes voice-based input and interaction handling
-/// within the application.
+/// the hands-free mode, enabling voice-based interaction and providing accessibility
+/// features for users within the application.
 /// </summary>
 /// <remarks>
-/// This service is used to start, stop, and monitor the state of hands-free mode.
-/// It uses the <see cref="ISpeechService"/> for speech-related tasks and integrates
-/// with the <see cref="ApplicationState"/> to get application context.
-/// Events for state and audio level changes are also provided to enable event-driven mechanisms.
+/// This service is responsible for activating and deactivating hands-free mode,
+/// monitoring its current state, and handling voice input processing. It leverages
+/// dependencies like <see cref="ISpeechService"/> for managing speech recognition and
+/// integrates with <see cref="ApplicationState"/> for obtaining the application's context.
+/// Additionally, it provides events to notify state changes, audio level updates,
+/// and recognized utterances, allowing seamless integration with other components.
 /// </remarks>
 /// <example>
-/// This class is generally used in scenarios where hands-free interaction is required,
-/// such as voice commands or conversational interfaces.
+/// Typical use cases for this class include enabling voice commands, conversational
+/// interfaces, or hands-free accessibility features in applications.
 /// </example>
 public class HandsFreeService : IHandsFreeService
 {
     /// <summary>
-    /// Logger instance used for logging messages, warnings, errors, and informational events
+    /// Logger instance used for recording diagnostic information, warnings, errors, and state changes
     /// within the <see cref="HandsFreeService"/> class.
     /// </summary>
     private readonly ILogger<HandsFreeService> _logger;
 
     /// <summary>
-    /// Provides access to the speech service for speech recognition and synthesis functionalities
-    /// within the hands-free mode of the application.
+    /// Instance of <see cref="ISpeechService"/> used to handle speech recognition and synthesis
+    /// processes within the hands-free functionality of the application.
     /// </summary>
     private readonly ISpeechService _speechService;
 
     /// <summary>
-    /// Represents the shared application state utilized by the hands-free service
-    /// to access and manage application-wide configurations or states.
+    /// Represents the shared application state utilized by the <see cref="HandsFreeService"/>
+    /// to manage and retrieve application-wide data and configurations.
     /// </summary>
     private readonly ApplicationState _appState;
 
     /// <summary>
-    /// Manages chat sessions and processes chat requests, facilitating interactions
-    /// within the hands-free service workflow.
+    /// Responsible for managing chat sessions and facilitating the processing of chat requests
+    /// within the hands-free service operations.
     /// </summary>
     private readonly IChatSessionManager _chatSessionManager;
 
+    /// <summary>
+    /// Service instance for processing and rendering markdown content.
+    /// Utilized within the <see cref="HandsFreeService"/> class for converting markdown into
+    /// plain text for scenarios such as text-to-speech processing.
+    /// </summary>
     private readonly IMarkdownService _markdownService;
 
     /// <summary>
-    /// Represents the current operational state of the hands-free service.
+    /// Represents the current operational state of the hands-free service, indicating
+    /// whether the service is idle, listening, processing, speaking, or in an error state.
     /// </summary>
     private HandsFreeState _currentState = HandsFreeState.Idle;
 
-    /// Indicates whether hands-free mode is currently active within the HandsFreeService.
-    /// This field is used internally to track the status of the hands-free mode and prevent
-    /// multiple activation or deactivation attempts concurrently.
+    /// <summary>
+    /// Indicates whether the hands-free mode is currently active within the <see cref="HandsFreeService"/>.
+    /// This variable helps manage hands-free mode state and ensures that concurrent activation or deactivation
+    /// attempts are handled appropriately.
+    /// </summary>
     private bool _isHandsFreeActive;
 
     /// <summary>
-    /// Represents a cancellation token source used to manage the lifecycle of the hands-free mode operation.
+    /// Cancellation token source used to control and cancel ongoing operations
+    /// associated with the hands-free mode within the <see cref="HandsFreeService"/> class.
     /// </summary>
     private CancellationTokenSource? _handsFreeToken;
 
-    /// Represents a task that handles the hands-free processing loop asynchronously.
-    /// It is initiated when the hands-free mode starts and manages the core processing logic
-    /// until the mode is stopped, at which point the task completes.
-    /// This is set to null when no hands-free processing is active.
+    /// <summary>
+    /// Represents a task that manages the asynchronous processing logic for hands-free mode
+    /// within the <see cref="HandsFreeService"/> class. This task is responsible for executing
+    /// the core flow of the hands-free operation and runs until the mode is stopped.
+    /// It is initialized when hands-free mode starts and set to null when the mode is inactive.
+    /// </summary>
     private Task? _processingTask;
 
     // Conversation management - mimicking ChatViewViewModel
     /// <summary>
-    /// Stores the collection of conversation messages used in the hands-free interaction flow.
-    /// Manages the messages exchanged between the user and the assistant, including user inputs and assistant responses.
+    /// Represents a collection of conversation messages utilized in the hands-free interaction feature
+    /// for tracking and handling exchanges between the user and the assistant.
+    /// This collection includes messages from various roles such as user, assistant, and system.
     /// </summary>
     private readonly ObservableCollection<MessageViewModel?> _conversationMessages = [];
 
-    /// Represents the identifier of the currently selected model used during hands-free operations.
-    /// This variable is assigned from the current application state to ensure that a valid model
-    /// is selected before starting hands-free mode or processing chat requests.
-    /// It is expected to be non-null and non-whitespace when functionality dependent on it is executed.
+    /// <summary>
+    /// Holds the identifier of the currently selected model used during hands-free operations
+    /// and chat processing within the <see cref="HandsFreeService"/> class.
+    /// This variable is updated based on the application state and is required to be
+    /// valid (non-null and non-whitespace) for operations dependent on the selected model.
+    /// </summary>
     private string? _selectedModelId;
 
-    /// Indicates whether the hands-free mode is currently active.
+    /// <summary>
+    /// Indicates whether the hands-free mode is currently active in the <see cref="HandsFreeService"/> class.
+    /// </summary>
     public bool IsHandsFreeActive => _isHandsFreeActive;
 
     /// <summary>
-    /// Gets the current state of the hands-free service.
+    /// Represents the current operational state of the hands-free service,
+    /// defined as a value of the <see cref="HandsFreeState"/> enumeration.
     /// </summary>
     public HandsFreeState CurrentState => _currentState;
 
     /// <summary>
-    /// Provides access to the collection of conversation messages in the hands-free service.
-    /// This collection is an observable sequence of <see cref="MessageViewModel" /> instances
-    /// that represent individual messages within a conversation.
+    /// Collection of conversation messages represented as <see cref="MessageViewModel"/> objects.
+    /// This property provides access to the messages being exchanged in the hands-free mode
+    /// within the <see cref="HandsFreeService"/>.
     /// </summary>
     public ObservableCollection<MessageViewModel?> ConversationMessages => _conversationMessages;
 
     /// <summary>
-    /// Event triggered when the hands-free state changes.
+    /// Event that is triggered whenever the hands-free state changes within the
+    /// <see cref="HandsFreeService"/> class. Provides information regarding the
+    /// previous state, current state, and any associated error messages.
     /// </summary>
     public event EventHandler<HandsFreeStateChangedEventArgs>? StateChanged;
 
-    /// Event triggered when the audio level changes.
+    /// <summary>
+    /// Event triggered when the audio level changes, providing details
+    /// about the new audio level within the <see cref="HandsFreeService"/> class.
+    /// </summary>
     public event EventHandler<AudioLevelEventArgs>? AudioLevelChanged;
 
     /// <summary>
-    /// Provides an implementation of the <see cref="IHandsFreeService"/> interface, enabling hands-free operation functionality.
+    /// Event triggered when an utterance text is recognized during the speech processing cycle
+    /// within the <see cref="HandsFreeService"/> class.
+    /// </summary>
+    public event EventHandler<UtteranceTextEventArgs>? UtteranceTextRecognized;
+
+    /// <summary>
+    /// Implements hands-free operation functionalities using speech synthesis, recognition, and state management.
     /// </summary>
     /// <remarks>
-    /// The <see cref="HandsFreeService"/> class integrates with <see cref="ISpeechService"/> for speech synthesis and recognition,
-    /// the application's current state via <see cref="ApplicationState"/>, and manages chat sessions with <see cref="IChatSessionManager"/>.
-    /// It also provides events to track state changes and monitor audio levels during hands-free operations.
+    /// This class collaborates with various services, such as <see cref="ISpeechService"/> for voice operations,
+    /// <see cref="ApplicationState"/> for managing the application's state, and <see cref="IChatSessionManager"/> for handling chat session coordination.
+    /// It is designed to facilitate seamless hands-free interactions, including monitoring audio levels and tracking application state transitions.
     /// </remarks>
     public HandsFreeService(
         ILogger<HandsFreeService> logger,
@@ -134,7 +164,7 @@ public class HandsFreeService : IHandsFreeService
         _markdownService = markdownService;
 
         if (appState.ChatSession == null) return;
-        
+
         foreach (var message in appState.ChatSession.GetMessages())
         {
             switch (message.Role)
@@ -163,7 +193,17 @@ public class HandsFreeService : IHandsFreeService
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Initiates the hands-free mode by activating necessary components, setting the selected model,
+    /// and starting the hands-free processing loop.
+    /// </summary>
+    /// <remarks>
+    /// This method first verifies the current state to prevent duplicate activation of hands-free mode.
+    /// It initializes the required cancellation token, retrieves the selected model from the application's state,
+    /// and transitions to the initial idle state. Upon successful setup, the processing loop for hands-free mode is started.
+    /// If an error occurs during initialization, the state is updated to reflect the error and the exception is logged or propagated.
+    /// </remarks>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     public async Task StartHandsFreeMode()
     {
         if (_isHandsFreeActive)
@@ -200,10 +240,10 @@ public class HandsFreeService : IHandsFreeService
     }
 
     /// <summary>
-    /// Stops the hands-free mode if it is currently active. Performs necessary cleanup and resets
-    /// the state to idle. Logs relevant information or errors during the operation.
+    /// Stops the hands-free mode if it is currently active, performing cleanup operations and resetting
+    /// the state to idle. Ensures proper state management and logs any relevant information or encountered errors.
     /// </summary>
-    /// <returns>A task that represents the asynchronous stop operation.</returns>
+    /// <returns>A task that represents the asynchronous operation of stopping hands-free mode.</returns>
     public async Task StopHandsFreeMode()
     {
         if (!_isHandsFreeActive)
@@ -214,7 +254,7 @@ public class HandsFreeService : IHandsFreeService
         try
         {
             _logger.LogInformation("Stopping hands-free mode");
-            
+
             _isHandsFreeActive = false;
             await _handsFreeToken!.CancelAsync();
 
@@ -239,14 +279,13 @@ public class HandsFreeService : IHandsFreeService
     }
 
     /// <summary>
-    /// Executes the main processing loop for managing hands-free interactions.
+    /// Executes the main processing loop for managing hands-free operations, handling user interactions and system state transitions.
     /// </summary>
     /// <param name="cancellationToken">
-    /// A CancellationToken to observe while waiting for the loop to process.
-    /// This allows the operation to be cancelled gracefully.
+    /// A token that signals the request to cancel the processing loop, enabling graceful termination.
     /// </param>
     /// <returns>
-    /// A Task representing the asynchronous operation of the hands-free processing loop.
+    /// A task representing the asynchronous execution of the hands-free processing loop.
     /// </returns>
     private async Task ProcessHandsFreeLoop(CancellationToken cancellationToken)
     {
@@ -269,11 +308,10 @@ public class HandsFreeService : IHandsFreeService
     }
 
     /// <summary>
-    /// Processes a single speech interaction cycle, consisting of the following stages:
-    /// Listening for user speech, processing the input, generating a response, and speaking the response.
+    /// Processes a single speech interaction cycle, including listening for user speech, processing the input, generating a response, and speaking the response.
     /// </summary>
-    /// <param name="cancellationToken">A token to observe while waiting for the task to complete, used to cancel the operation if required.</param>
-    /// <returns>A Task that represents the asynchronous operation.</returns>
+    /// <param name="cancellationToken">A token to monitor for task cancellation, allowing the operation to be terminated prematurely.</param>
+    /// <returns>A task that represents the asynchronous operation of the speech interaction cycle.</returns>
     private async Task ProcessSpeechCycle(CancellationToken cancellationToken)
     {
         try
@@ -285,12 +323,21 @@ public class HandsFreeService : IHandsFreeService
             foreach (var utterance in await ListenForUserSpeechAsync(cancellationToken))
             {
                 _logger.LogDebug("User speech detected: {Speech}", utterance);
+
+                var utteranceTextEventArgs = new UtteranceTextEventArgs()
+                {
+                    Text = utterance
+                };
+            
+                UtteranceTextRecognized?.Invoke(this, utteranceTextEventArgs);
+                
                 userMessage.Append(utterance);
             }
             
             if (string.IsNullOrWhiteSpace(userMessage.ToString()))
             {
                 // No speech detected, continue listening
+                await ChangeStateAsync(HandsFreeState.Idle);
                 return;
             }
 
@@ -304,7 +351,7 @@ public class HandsFreeService : IHandsFreeService
                 return;
             }
 
-            // Step 3: Speak the response (with interruption detection)
+            // Step 3: Speak the response
             await ChangeStateAsync(HandsFreeState.Speaking);
             await SpeakResponse(assistantResponse, cancellationToken);
 
@@ -324,18 +371,17 @@ public class HandsFreeService : IHandsFreeService
     }
 
     /// <summary>
-    /// Listens for user speech asynchronously and returns a list of recognized text fragments.
-    /// This method utilizes the speech service to process user input, stopping on silence or cancellation.
+    /// Listens for user speech asynchronously and retrieves a collection of recognized speech fragments.
     /// </summary>
-    /// <param name="cancellationToken">A cancellation token to monitor for cancellation requests.</param>
-    /// <returns>A task that represents the asynchronous operation. The task result contains a list of strings representing recognized speech fragments.</returns>
+    /// <param name="cancellationToken">A cancellation token to monitor and handle task cancellation.</param>
+    /// <returns>A task representing the asynchronous operation. The task result contains a list of recognized speech fragments as strings.</returns>
     private async Task<IList<string>> ListenForUserSpeechAsync(CancellationToken cancellationToken)
     {
         // stop on silence
         // ReSharper disable once ConvertToLocalFunction
         Func<int, bool> shouldStopIfSilence = millisecondsOfSilence =>
         {
-            if (TimeSpan.FromMilliseconds(millisecondsOfSilence) > TimeSpan.FromSeconds(1))
+            if (TimeSpan.FromMilliseconds(millisecondsOfSilence) > TimeSpan.FromMilliseconds(750))
             {
                 _logger.LogDebug("Stopping speech recognition due to silence");
                 return true;
@@ -355,11 +401,12 @@ public class HandsFreeService : IHandsFreeService
     }
 
     /// <summary>
-    /// Processes the user message through the chat completion system and generates an assistant response.
+    /// Processes a user message through the chat completion system, enabling the generation of a conversational response
+    /// based on the provided input and the current state of the chat session.
     /// </summary>
-    /// <param name="userMessage">The message provided by the user that will be processed.</param>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    /// <returns>A task that represents the asynchronous operation. The task result contains the assistant's response as a string.</returns>
+    /// <param name="userMessage">The input message from the user to be processed.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests during the asynchronous operation.</param>
+    /// <returns>A task representing the asynchronous operation. The task result contains the assistant's response as a string, or an error message if processing fails.</returns>
     private async Task<string> ProcessChatCompletion(string userMessage, CancellationToken cancellationToken)
     {
         try
@@ -369,8 +416,6 @@ public class HandsFreeService : IHandsFreeService
                 throw new InvalidOperationException("No model selected");
             }
 
-            // Mimic ChatViewViewModel.SendMessageAsync pattern:
-            
             // 1. Add user message to conversation
             var userChatMessage = AesirChatMessage.NewUserMessage(userMessage);
             await AddMessageToConversationAsync(userChatMessage);
@@ -401,10 +446,11 @@ public class HandsFreeService : IHandsFreeService
     }
 
     /// <summary>
-    /// Asynchronously adds a message to the conversation by creating and adding the appropriate view model and updating the conversation list.
+    /// Asynchronously adds a message to the conversation by creating and configuring the corresponding view model,
+    /// and updating the conversation collection.
     /// </summary>
-    /// <param name="message">The <see cref="AesirChatMessage"/> instance representing the message to be added to the conversation.</param>
-    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <param name="message">The <see cref="AesirChatMessage"/> representing the message to be added to the conversation.</param>
+    /// <returns>A <see cref="Task"/> that represents the completion of the asynchronous operation.</returns>
     private async Task AddMessageToConversationAsync(AesirChatMessage message)
     {
         try
@@ -430,19 +476,21 @@ public class HandsFreeService : IHandsFreeService
     }
 
     /// <summary>
-    /// Speaks the assistant response using text-to-speech capabilities.
-    /// This method ensures the response speech is processed for conversational AI,
-    /// handling interruptions, and managing the text-to-speech service lifecycle.
+    /// Speaks the assistant's response using text-to-speech functionality.
+    /// Handles potential interruptions, converts markdown to plain text, and manages
+    /// the text-to-speech process lifecycle throughout the operation.
     /// </summary>
-    /// <param name="response">The response text to be spoken by the assistant.</param>
-    /// <param name="cancellationToken">The cancellation token used to cancel the operation if needed.</param>
-    /// <returns>A task that represents the asynchronous speak operation.</returns>
+    /// <param name="response">The response text to be converted to speech and spoken by the assistant.</param>
+    /// <param name="cancellationToken">A cancellation token to monitor for cancellation requests.</param>
+    /// <returns>A task representing the asynchronous operation of speaking the given response.</returns>
     private async Task SpeakResponse(string response, CancellationToken cancellationToken)
     {
         try
         {
             var plainTextResponse = await _markdownService.RenderMarkdownAsPlainTextAsync(response);
+
             await _speechService.SpeakAsync(plainTextResponse);
+
             _logger.LogDebug("AI response speech completed");
         }
         catch (Exception ex)
@@ -459,13 +507,15 @@ public class HandsFreeService : IHandsFreeService
     /// Changes the current hands-free state and notifies subscribers about the state transition.
     /// </summary>
     /// <param name="newState">The new state to transition to.</param>
-    /// <param name="errorMessage">An optional error message, relevant when transitioning to the <see cref="HandsFreeState.Error"/> state.</param>
+    /// <param name="errorMessage">
+    /// An optional error message, relevant when transitioning to the <see cref="HandsFreeState.Error"/> state.
+    /// </param>
     /// <returns>A task that represents the asynchronous operation of changing the state.</returns>
     private async Task ChangeStateAsync(HandsFreeState newState, string? errorMessage = null)
     {
-        if(newState == HandsFreeState.Error)
+        if (newState == HandsFreeState.Error)
             await _handsFreeToken!.CancelAsync();
-        
+
         var previousState = _currentState;
         _currentState = newState;
 
