@@ -91,4 +91,9 @@ public class NoOpConfigurationService : IConfigurationService
     {
         await Task.CompletedTask;
     }
+
+    public Task<PromptPersona> GetDefaultPersonaAsync()
+    {
+        return Task.FromResult(PromptPersona.Business);
+    }
 }

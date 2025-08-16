@@ -2,12 +2,15 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Aesir.Client.Models;
+using Aesir.Client.Services;
+using Aesir.Common.Prompts;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Irihi.Avalonia.Shared.Contracts;
 using Microsoft.Extensions.Logging;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using Microsoft.Extensions.Configuration;
 
 namespace Aesir.Client.ViewModels;
 
@@ -31,7 +34,9 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
     /// components of the Aesir client application.
     /// </summary>
     private readonly ApplicationState _appState;
-    
+
+    private readonly IConfigurationService _configurationService;
+
     /// Represents the current progress value in the range of 0.0 to 100.0, used for tracking the state of an operation or process in the SplashViewModel.
     /// This field is observable and notifies the UI or other bound components when its value changes.
     [ObservableProperty] 
@@ -54,11 +59,13 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
     /// initialization tasks and manages the loading of the application state.
     public SplashViewModel(
         ILogger<SplashViewModel> logger, 
-        ApplicationState appState)
+        ApplicationState appState,
+        IConfigurationService configurationService)
     {
         _logger = logger;
         _appState = appState;
-        
+        _configurationService = configurationService;
+
         DispatcherTimer.RunOnce(LoadApplication, TimeSpan.FromMilliseconds(20), DispatcherPriority.Default);
     }
 
@@ -94,6 +101,11 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
 
                     await _appState.LoadAvailableModelsAsync();
                     _appState.SelectedModel = _appState.AvailableModels.FirstOrDefault(m => m.IsChatModel);
+                    
+                    // for now load the default persona here
+                    var defaultPersona = await _configurationService.GetDefaultPersonaAsync();
+                    
+                    DefaultPromptProvider.Instance.DefaultPromptPersona = defaultPersona;
                     
                     break;
                 }

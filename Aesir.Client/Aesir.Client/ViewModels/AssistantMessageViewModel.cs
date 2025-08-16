@@ -110,7 +110,7 @@ public partial class AssistantMessageViewModel(
     /// </returns>
     protected override ICommand CreatePlayMessageCommand()
     {
-        return new AsyncRelayCommand(PlayMessageAsyc);
+        return new AsyncRelayCommand(PlayMessageAsync);
     }
 
     /// Plays the current assistant message as speech using the speech service.
@@ -120,7 +120,7 @@ public partial class AssistantMessageViewModel(
     /// A Task that represents the asynchronous operation of rendering the
     /// message and initiating the speech playback.
     /// </returns>
-    private async Task PlayMessageAsyc()
+    private async Task PlayMessageAsync()
     {
         var plainText = await markdownService.RenderMarkdownAsPlainTextAsync(Content);
         await speechService.SpeakAsync(plainText);

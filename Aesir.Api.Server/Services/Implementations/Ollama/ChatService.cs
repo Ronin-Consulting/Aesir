@@ -234,28 +234,30 @@ public class ChatService : BaseChatService
         if (_enableThinking)
             settings.ExtensionData.Add("think", true);
 
-        var globalPluginsExist = _kernel.Plugins.Count > 0;
-        if (globalPluginsExist)
-        {
-            settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
+        var kernelPluginArgs = ConversationDocumentCollectionArgs.Default;
+        var enableWebSearch = true; //request.EnabledWebSearch <-- One day
+        var enableDocumentSearch = request.Conversation.Messages.Any(m => m.HasFile());
             
-            // for now web search at some point we use tool name
-            systemPromptVariables["webSearchtoolsEnabled"] = true;
-        }
+        systemPromptVariables["webSearchtoolsEnabled"] = enableWebSearch;
+        kernelPluginArgs.SetEnableWebSearch(true);
         
-        if (request.Conversation.Messages.Any(m => m.HasFile()))
+        if (enableDocumentSearch)
+        {
+            systemPromptVariables["docSearchToolsEnabled"] = true;
+            kernelPluginArgs.SetEnableDocumentSearch(true);
+        }
+
+        if (enableWebSearch || enableDocumentSearch)
         {
             settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
 
             var conversationId = request.Conversation.Id;
-
-            var args = ConversationDocumentCollectionArgs.Default;
-            args.SetConversationId(conversationId);
-            _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(args));
-
-            systemPromptVariables["docSearchToolsEnabled"] = true;
+            
+            kernelPluginArgs.SetConversationId(conversationId);
+            
+            _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs));    
         }
-
+        
         if (request.Temperature.HasValue)
             settings.Temperature = (float?)request.Temperature;
         else if (request.TopP.HasValue)

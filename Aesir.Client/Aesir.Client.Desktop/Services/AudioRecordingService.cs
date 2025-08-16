@@ -39,7 +39,7 @@ public class AudioRecordingConfig
     /// Affects the granularity of audio processing and determines how audio data
     /// is segmented for tasks such as silence detection or chunk-based streaming.
     /// </summary>
-    public int SamplesPerChunk { get; set; } = (16000 / 10) * 7; // 11,200 samples by default
+    public int SamplesPerChunk { get; set; } = (16000 / 10) * 6; // 9600 samples by default
 
     /// <summary>
     /// Specifies the number of bytes used to store a single audio sample in PCM format.
@@ -52,14 +52,14 @@ public class AudioRecordingConfig
     /// Specifies the root mean square (RMS) amplitude threshold used to detect silence in the audio signal.
     /// Values below this threshold are considered silent, impacting silence detection logic.
     /// </summary>
-    public float SilenceRmsThreshold { get; set; } = 0.02f; // Adjustable RMS threshold for silence
+    public float SilenceRmsThreshold { get; set; } = 0.03f; // Adjustable RMS threshold for silence
 
     /// <summary>
     /// Specifies the number of consecutive silent chunks required to trigger the silence detection event.
     /// A larger value ensures that only prolonged silence is detected, while a smaller value increases sensitivity.
     /// Measured based on the RMS threshold defined by <see cref="SilenceRmsThreshold"/>.
     /// </summary>
-    public int SilenceChunkThreshold { get; set; } = 5; // ~500ms of consecutive silence to trigger event
+    public int SilenceChunkThreshold { get; set; } = 3; // ~300ms of consecutive silence to trigger event
 
     /// <summary>
     /// Specifies the number of audio channels used in recording. Determines whether audio

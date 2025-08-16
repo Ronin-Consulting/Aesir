@@ -13,12 +13,12 @@ public class DefaultPromptProvider : IPromptProvider
     /// <summary>
     /// Provides access to the singleton instance of the DefaultPromptProvider.
     /// </summary>
-    public static DefaultPromptProvider Instance { get; } = new DefaultPromptProvider();
+    public static readonly DefaultPromptProvider Instance = new();
 
     /// <summary>
     /// Gets or sets the default prompt persona used when no specific context is provided.
     /// </summary>
-    public PromptPersona DefaultPromptPersona { get; set; } = PromptPersona.Business;
+    public PromptPersona? DefaultPromptPersona { get; set; }
 
     /// <summary>
     /// Provides default implementations for generating system prompts, title generation prompts,

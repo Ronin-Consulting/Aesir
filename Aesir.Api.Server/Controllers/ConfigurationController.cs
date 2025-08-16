@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services;
+using Aesir.Common.Prompts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Aesir.Api.Server.Controllers;
@@ -317,5 +318,11 @@ public class ConfigurationController(
             logger.LogError(ex, "Error deleting MCP Server with ID = {Id}", id);
             return StatusCode(500, "An error occurred while deleting the MCP Server");
         }
+    }
+    
+    [HttpGet("personas/default")]
+    public Task<PromptPersona?> GetDefaultPersonaAsync()
+    {
+        return Task.FromResult(DefaultPromptProvider.Instance.DefaultPromptPersona);
     }
 }

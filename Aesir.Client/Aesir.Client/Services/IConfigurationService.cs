@@ -121,4 +121,13 @@ public interface IConfigurationService
     /// </summary>
     /// <param name="id">The unique identifier of the AesirMcpServer to delete.</param>
     Task DeleteMcpServerAsync(Guid id);
+
+    /// <summary>
+    /// Asynchronously retrieves the default persona for generating prompts within the system.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains a <see cref="PromptPersona"/> value
+    /// indicating the default persona.
+    /// </returns>
+    Task<PromptPersona> GetDefaultPersonaAsync();
 }
