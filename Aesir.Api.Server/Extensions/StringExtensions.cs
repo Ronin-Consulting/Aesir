@@ -68,6 +68,12 @@ public static class StringExtensions
         fileContentType = GetContentType(filePath);
         return contentType == fileContentType;
     }
+    
+    public static bool ValidFileContentType(this string filePath, out string fileContentType, params string[] contentTypes)
+    {
+        fileContentType = GetContentType(filePath);
+        return contentTypes.Contains(fileContentType);
+    }
 
 
     /// <summary>
