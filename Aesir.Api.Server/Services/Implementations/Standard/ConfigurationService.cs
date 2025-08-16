@@ -10,6 +10,21 @@ namespace Aesir.Api.Server.Services.Implementations.Standard;
 public class ConfigurationService(ILogger<ConfigurationService> logger, IDbContext dbContext) : IConfigurationService
 {
     /// <summary>
+    /// Handles the management of configuration by providing operations such as
+    /// upserting, retrieving, deleting, and searching configurations in a database.
+    /// </summary>
+    /// <remarks>
+    /// The service uses a database as the backend for storing and retrieving
+    /// chat-related data such as chat sessions and messages. It leverages
+    /// custom type handling for JSON data types using Dapper.
+    /// </remarks>
+    static ConfigurationService()
+    {
+        SqlMapper.AddTypeHandler(new JsonTypeHandler<IList<string?>>());
+        SqlMapper.AddTypeHandler(new JsonTypeHandler<IDictionary<string, string?>>());
+    }
+    
+    /// <summary>
     /// Retrieves a list of Aesir agents stored in the database asynchronously.
     /// </summary>
     /// <returns>
@@ -46,6 +61,74 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
         return await dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryFirstOrDefaultAsync<AesirAgent>(sql, new { Id = id }));
     }
+    
+    /// <summary>
+    /// Inserts a new AesirAgent into the database.
+    /// </summary>
+    /// <param name="agent">The agent to insert.</param>
+    /// <returns>The number of rows affected.</returns>
+    public async Task CreateAgentAsync(AesirAgent agent)
+    {
+        const string sql = @"
+            INSERT INTO aesir.aesir_agent 
+            (name, description, chat_model, embedding_model, vision_model, source, prompt)
+            VALUES 
+            (@Name, @Description, @ChatModel, @EmbeddingModel, @VisionModel, @Source, @Prompt)
+        ";
+
+        var rows = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, agent));
+
+        if (rows == 0)
+            throw new Exception("No rows created");
+    }
+
+    /// <summary>
+    /// Updates an existing AesirAgent in the database.
+    /// </summary>
+    /// <param name="agent">The agent with updated values.</param>
+    public async Task UpdateAgentAsync(AesirAgent agent)
+    {
+        const string sql = @"
+            UPDATE aesir.aesir_agent
+            SET name = @Name,
+                description = @Description,
+                chat_model = @ChatModel,
+                embedding_model = @EmbeddingModel,
+                vision_model = @VisionModel,
+                source = @Source,
+                prompt = @Prompt
+            WHERE id = @Id
+        ";
+
+        var rows =  await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, agent));
+        
+        if (rows == 0)
+            throw new Exception("No rows updated");
+        if (rows > 1)
+            throw new Exception("Multiple rows updated");
+    }
+
+    /// <summary>
+    /// Delete an existing AesirAgent from the database.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirAgent to delete.</param>
+    public async Task DeleteAgentAsync(Guid id)
+    {
+        const string sql = @"
+            DELETE FROM aesir.aesir_agent
+            WHERE id = @Id::uuid
+        ";
+
+        var rows = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, new { Id = id }));
+
+        if (rows == 0)
+            throw new Exception("No rows deleted");
+        if (rows > 1)
+            throw new Exception("Multiple rows deleted");
+    }
 
     /// Asynchronously retrieves a collection of tools from the configuration database.
     /// This method queries and returns a list of all tools available in the database.
@@ -67,9 +150,9 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <summary>
     /// Retrieves a collection of tools associated with a specific agent.
     /// </summary>
-    /// <param name="agentId">The unique identifier of the agent whose tools are to be fetched.</param>
+    /// <param name="id">The unique identifier of the agent whose tools are to be fetched.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains a collection of tools used by the specified agent.</returns>
-    public async Task<IEnumerable<AesirTool>> GetToolsUsedByAgentAsync(Guid agentId)
+    public async Task<IEnumerable<AesirTool>> GetToolsUsedByAgentAsync(Guid id)
     {
         const string sql = @"
             SELECT t.id, t.name, t.type, t.description
@@ -79,7 +162,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
         ";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<AesirTool>(sql, new { AgentId = agentId }));
+            await connection.QueryAsync<AesirTool>(sql, new { AgentId = id }));
     }
 
     /// <summary>
@@ -98,5 +181,173 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
 
         return await dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryFirstOrDefaultAsync<AesirTool>(sql, new { Id = id }));
+    }
+    
+    /// <summary>
+    /// Inserts a new AesirTool into the database.
+    /// </summary>
+    /// <param name="tool">The tool to insert.</param>
+    /// <returns>The number of rows affected.</returns>
+    public async Task CreateToolAsync(AesirTool tool)
+    {
+        const string sql = @"
+            INSERT INTO aesir.aesir_tool 
+            (name, description, type)
+            VALUES 
+            (@Name, @Description, @Type)
+        ";
+
+        var rows = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, tool));
+
+        if (rows == 0)
+            throw new Exception("No rows created");
+    }
+    
+    /// <summary>
+    /// Updates an existing AesirTool in the database.
+    /// </summary>
+    /// <param name="tool">The agent with updated values.</param>
+    public async Task UpdateToolAsync(AesirTool tool)
+    {
+        const string sql = @"
+            UPDATE aesir.aesir_tool
+            SET name = @Name,
+                description = @Description,
+                type = @Type
+            WHERE id = @Id
+        ";
+
+        var rows =  await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, tool));
+        
+        if (rows == 0)
+            throw new Exception("No rows updated");
+        if (rows > 1)
+            throw new Exception("Multiple rows updated");
+    }
+
+    /// <summary>
+    /// Delete an existing AesirTool from the database.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirTool to delete.</param>
+    public async Task DeleteToolAsync(Guid id)
+    {
+        const string sql = @"
+            DELETE FROM aesir.aesir_tool
+            WHERE id = @Id::uuid
+        ";
+
+        var rows = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, new { Id = id }));
+
+        if (rows == 0)
+            throw new Exception("No rows deleted");
+        if (rows > 1)
+            throw new Exception("Multiple rows deleted");
+    }
+    
+    /// <summary>
+    /// Retrieves a list of Aesir MCP Servers stored in the database asynchronously.
+    /// </summary>
+    /// <returns>
+    /// An enumerable collection of <c>AesirMcpServer</c> representing the agents retrieved from the database.
+    /// </returns>
+    public async Task<IEnumerable<AesirMcpServer>> GetMcpServersAsync()
+    {
+        const string sql = @"
+            SELECT id, name, description, command, arguments, environment_variables as EnvironmentVariables
+            FROM aesir.aesir_mcp_server
+        ";
+
+        return await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QueryAsync<AesirMcpServer>(sql));
+    }
+
+    /// <summary>
+    /// Retrieves an AesirMcpServer by its unique identifier asynchronously.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirMcpServer to retrieve.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation.
+    /// The task result contains the <see cref="AesirMcpServer"/> object corresponding to the given identifier.
+    /// If no MCP Server is found, returns null.
+    /// </returns>
+    public async Task<AesirMcpServer> GetMcpServerAsync(Guid id)
+    {
+        const string sql = @"
+            SELECT id, name, description, command, arguments, environment_variables as EnvironmentVariables
+            FROM aesir.aesir_mcp_server
+            WHERE id = @Id::uuid
+        ";
+        
+        return await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QueryFirstOrDefaultAsync<AesirMcpServer>(sql, new { Id = id }));
+    }
+    
+    /// <summary>
+    /// Inserts a new AesirMcpServer into the database.
+    /// </summary>
+    /// <param name="mcpServer">The MCP server to insert.</param>
+    /// <returns>The number of rows affected.</returns>
+    public async Task CreateMcpServerAsync(AesirMcpServer mcpServer)
+    {
+        const string sql = @"
+            INSERT INTO aesir.aesir_mcp_server 
+            (name, description, command, arguments, environment_variables)
+            VALUES 
+            (@Name, @Description, @Command, @Arguments::jsonb, @EnvironmentVariables::jsonb)
+        ";
+
+        var rows = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, mcpServer));
+
+        if (rows == 0)
+            throw new Exception("No rows created");
+    }
+    
+    /// <summary>
+    /// Updates an existing AesirMcpServer in the database.
+    /// </summary>
+    /// <param name="mcpServer">The MCP server with updated values.</param>
+    public async Task UpdateMcpServerAsync(AesirMcpServer mcpServer)
+    {
+        const string sql = @"
+            UPDATE aesir.aesir_mcp_server 
+            SET name = @Name,
+                description = @Description,
+                command = @Command,
+                arguments = @Arguments::jsonb,
+                environment_variables = @EnvironmentVariables::jsonb
+            WHERE id = @Id
+        ";
+
+        var rows =  await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, mcpServer));
+        
+        if (rows == 0)
+            throw new Exception("No rows updated");
+        if (rows > 1)
+            throw new Exception("Multiple rows updated");
+    }
+
+    /// <summary>
+    /// Delete an existing AesirMcpServer from the database.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirMcpServer to delete.</param>
+    public async Task DeleteMcpServerAsync(Guid id)
+    {
+        const string sql = @"
+        DELETE FROM aesir.aesir_mcp_server
+        WHERE id = @Id::uuid
+    ";
+
+        var rows = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, new { Id = id }));
+
+        if (rows == 0)
+            throw new Exception("No rows deleted");
+        if (rows > 1)
+            throw new Exception("Multiple rows deleted");
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using Aesir.Client.Services.Implementations.NoOp;
 using Aesir.Common.Models;
@@ -28,6 +29,7 @@ public class DesignAgentViewViewModel : AgentViewViewModel
     /// </remarks>
     public DesignAgentViewViewModel() : base(new AesirAgentBase()
     {
+        Id = Guid.NewGuid(),
         Name = "My Test Agent",
         Source = ModelSource.Ollama,
         Prompt = PromptPersona.Military,

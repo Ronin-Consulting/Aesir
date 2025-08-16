@@ -6,6 +6,10 @@ public class NoOpNavigationService : INavigationService
     {
     }
 
+    public void NavigateToMcpServers()
+    {
+    }
+
     public void NavigateToTools()
     {
     }

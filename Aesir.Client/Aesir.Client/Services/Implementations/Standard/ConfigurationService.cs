@@ -86,6 +86,64 @@ public class ConfigurationService(
     }
 
     /// <summary>
+    /// Creates an agent
+    /// </summary>
+    /// <param name="agent">The <see cref="AesirAgentBase"/> object to create</param>
+    public async Task CreateAgentAsync(AesirAgentBase agent)
+    {    
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment("agents")
+                .PostJsonAsync(agent);
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Updates an agent
+    /// </summary>
+    /// <param name="agent">The <see cref="AesirAgentBase"/> object to update</param>
+    public async Task UpdateAgentAsync(AesirAgentBase agent)
+    {
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment($"agents/{agent.Id}")
+                .PutJsonAsync(agent);
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+
+
+    /// <summary>
+    /// Deletes an agent by its unique identifier asynchronously.
+    /// </summary>
+    /// <param name="id">The unique identifier of the agent to delete.</param>
+    public async Task DeleteAgentAsync(Guid id)
+    {
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment($"agents/{id}")
+                .DeleteAsync();
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Asynchronously retrieves a collection of tools available in the system.
     /// </summary>
     /// <returns>
@@ -145,5 +203,162 @@ public class ConfigurationService(
             await logger.LogFlurlExceptionAsync(ex);
             throw;
         }      
+    }
+
+    /// <summary>
+    /// Creates a tool
+    /// </summary>
+    /// <param name="tool">The <see cref="AesirToolBase"/> object to create</param>
+    public async Task CreateToolAsync(AesirToolBase tool)
+    {    
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment("tools")
+                .PostJsonAsync(tool);
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Updates a tool
+    /// </summary>
+    /// <param name="tool">The <see cref="AesirToolBase"/> object to update</param>
+    public async Task UpdateToolAsync(AesirToolBase tool)
+    {
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment($"tools/{tool.Id}")
+                .PutJsonAsync(tool);
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+
+
+    /// <summary>
+    /// Deletes a tool by its unique identifier asynchronously.
+    /// </summary>
+    /// <param name="id">The unique identifier of the tool to delete.</param>
+    public async Task DeleteToolAsync(Guid id)
+    {
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment($"tools/{id}")
+                .DeleteAsync();
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Asynchronously retrieves a collection of MCP Servers available in the system.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains a collection of <see cref="AesirMcpServerBase"/> objects.
+    /// </returns>
+    public async Task<IEnumerable<AesirMcpServerBase>> GetMcpServersAsync()
+    {
+        try
+        {
+            return (await _flurlClient.Request()
+                .AppendPathSegment("mcpservers")
+                .GetJsonAsync<IEnumerable<AesirMcpServerBase>>());
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }   
+    }
+
+    /// <summary>
+    /// Retrieves an MCP Server by its unique identifier asynchronously.
+    /// </summary>
+    /// <param name="id">The unique identifier of the MCP Server to retrieve.</param>
+    /// <returns>An asynchronous task that returns an <see cref="AesirMcpServerBase"/> object representing the requested MCP Server.</returns>
+    public async Task<AesirMcpServerBase> GetMcpServerAsync(Guid id)
+    {
+        try
+        {
+            return (await _flurlClient.Request()
+                .AppendPathSegment($"mcpservers/{id}")
+                .GetJsonAsync<AesirMcpServerBase>());
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }      
+    }
+
+    /// <summary>
+    /// Creates an MCP Server
+    /// </summary>
+    /// <param name="mcpServer">The <see cref="AesirMcpServerBase"/> object to create</param>
+    public async Task CreateMcpServerAsync(AesirMcpServerBase mcpServer)
+    {    
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment("mcpservers")
+                .PostJsonAsync(mcpServer);
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Updates an MCP Server
+    /// </summary>
+    /// <param name="mcpServer">The <see cref="AesirMcpServerBase"/> object to update</param>
+    public async Task UpdateMcpServerAsync(AesirMcpServerBase mcpServer)
+    {
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment($"mcpservers/{mcpServer.Id}")
+                .PutJsonAsync(mcpServer);
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+
+
+    /// <summary>
+    /// Deletes an MCP Server by its unique identifier asynchronously.
+    /// </summary>
+    /// <param name="id">The unique identifier of the MCP Server to delete.</param>
+    public async Task DeleteMcpServerAsync(Guid id)
+    {
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment($"mcpservers/{id}")
+                .DeleteAsync();
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
     }
 }

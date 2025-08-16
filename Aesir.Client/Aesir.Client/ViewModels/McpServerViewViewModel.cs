@@ -1,12 +1,11 @@
 using System;
-using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Services;
 using Aesir.Client.Shared;
 using Aesir.Common.Models;
-using Aesir.Common.Prompts;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -15,28 +14,27 @@ using Irihi.Avalonia.Shared.Contracts;
 namespace Aesir.Client.ViewModels;
 
 /// <summary>
-/// Represents the view model for tool-related views, providing properties, commands,
-/// and events to manage tool configurations and interactions in the user interface.
+/// Represents the view model for MCP Server-related views, providing properties, commands,
+/// and events to manage MCP Server configurations and interactions in the user interface.
 /// </summary>
 /// <remarks>
 /// This class extends <see cref="ObservableRecipient"/> and implements <see cref="IDialogContext"/>,
 /// enabling it to work with MVVM patterns and dialog-based user interactions. It manages
-/// collections of available models, tools, and prompts, as well as command bindings for
-/// managing tool configuration lifecycle actions such as save, cancel, and delete.
+/// command bindings for managing MCP Server configuration lifecycle actions such as save, cancel, and delete.
 /// </remarks>
 /// <example>
-/// Typically used in the context of tool detail views within the application. The view model
-/// is activated and bound to the associated user control for displaying and managing tool
+/// Typically used in the context of MCP Server detail views within the application. The view model
+/// is activated and bound to the associated user control for displaying and managing MCP Server
 /// data.
 /// </example>
 /// <seealso cref="ObservableRecipient" />
 /// <seealso cref="IDialogContext" />
-public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
+public partial class McpServerViewViewModel : ObservableRecipient, IDialogContext
 {
     /// <summary>
-    /// Represents the underlying tool configuration and details used by the view model, including properties such as ID, name, and type.
+    /// Represents the underlying MCP Server configuration and details used by the view model, including properties such as ID, name, and type.
     /// </summary>
-    private AesirToolBase _tool;
+    private AesirMcpServerBase _mcpServer;
 
     /// <summary>
     /// Notification service responsible for displaying various types of user notifications.
@@ -44,21 +42,16 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     private INotificationService _notificationService;
 
     /// <summary>
-    /// Service for accessing and managing configuration data, including tools
-    /// and tools, within the application.
+    /// Service for accessing and managing configuration data, including MCP Servers
+    /// and MCP Servers, within the application.
     /// </summary>
     private readonly IConfigurationService _configurationService;
 
     /// <summary>
-    /// Represents the form data model for the tool view, used to handle data
-    /// binding and validation within the ToolViewViewModel.
+    /// Represents the form data model for the MCP Server view, used to handle data
+    /// binding and validation within the McpServerViewViewModel.
     /// </summary>
-    [ObservableProperty] private ToolFormDataModel _formModel;
-
-    /// <summary>
-    /// Collection of available tool types that can be selected or used within the application.
-    /// </summary>
-    public ObservableCollection<ToolType> AvailableTypes { get; } = new(Enum.GetValues<ToolType>());
+    [ObservableProperty] private McpServerFormDataModel _formModel;
 
     /// <summary>
     /// Indicates whether the view model has unsaved changes.
@@ -66,17 +59,17 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     public bool IsDirty { get; set; }
 
     /// <summary>
-    /// Command executed to save the current state or data of the tool view.
+    /// Command executed to save the current state or data of the MCP Server view.
     /// </summary>
     public ICommand SaveCommand { get; set; }
 
     /// <summary>
-    /// Command used to cancel the current operation or revert changes in the Tool View.
+    /// Command used to cancel the current operation or revert changes in the MCP Server View.
     /// </summary>
     public ICommand CancelCommand { get; set; }
 
     /// <summary>
-    /// Command used to delete the associated tool or entity.
+    /// Command used to delete the associated MCP Server or entity.
     /// </summary>
     public ICommand DeleteCommand { get; set; }
 
@@ -85,27 +78,26 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     /// </summary>
     public event EventHandler<object?>? RequestClose;
 
-    /// Represents the view model for the tool view. Handles the binding of tool data
+    /// Represents the view model for the MCP Server view. Handles the binding of MCP Server data
     /// and communication between the user interface and underlying services.
-    public ToolViewViewModel(AesirToolBase tool, 
+    public McpServerViewViewModel(AesirMcpServerBase mcpServer, 
             INotificationService notificationService,
             IConfigurationService configurationService)
     {
-        _tool = tool;
+        _mcpServer = mcpServer;
         _notificationService = notificationService;
         _configurationService = configurationService;
         
         FormModel = new()
         {
-            IsExisting = tool.Id.HasValue,
-            Name = tool.Name,
-            Type = tool.Type,
-            Description = tool.Description
+            IsExisting = mcpServer.Id.HasValue,
+            Name = mcpServer.Name,
+            Description = mcpServer.Description
         };
         IsDirty = false;
-        SaveCommand = new AsyncRelayCommand(ExecuteSaveCommand);
+        SaveCommand = new AsyncRelayCommand(ExecuteSaveCommandAsync);
         CancelCommand = new RelayCommand(ExecuteCancelCommand);
-        DeleteCommand = new AsyncRelayCommand(ExecuteDeleteCommand);
+        DeleteCommand = new AsyncRelayCommand(ExecuteDeleteCommandAsync);
     }
 
     /// <summary>
@@ -120,10 +112,7 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     }
 
     /// <summary>
-    /// Asynchronously loads and initializes available tools, model sources, and models for the tool.
-    /// This method retrieves available tools through the configuration service, updates relevant observable collections
-    /// with the data, and configures the tools associated with the current tool.
-    /// Clears and repopulates available collections for chat models, embedding models, and vision models.
+    /// TODO
     /// </summary>
     /// <returns>A task representing the asynchronous operation of loading data.</returns>
     private async Task LoadAvailableAsync()
@@ -139,29 +128,35 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     /// <summary>
     /// Executes the logic to save the changes made in the form.
     /// This method validates the form model before saving the data.
-    /// If validation is successful, the method applies the changes from the form model to the underlying tool object,
+    /// If validation is successful, the method applies the changes from the form model to the underlying MCP Server object,
     /// persists the data, and displays a success notification to the user.
     /// The method also initiates the closure of the associated dialog or view.
     /// </summary>
-    private async Task ExecuteSaveCommand()
+    private async Task ExecuteSaveCommandAsync()
     {
         if (FormModel.Validate())
         {
-            var tool = new AesirToolBase()
+            var mcpServer = new AesirMcpServerBase()
             {
                 Name = FormModel.Name,
                 Description = FormModel.Description,
-                Type = FormModel.Type
-                // TODO - if MCP tool
+                Command = "/Users/ryan/Documents/Development/python/mcp-email-server/mcp-email/bin/mcp-email-server",
+                Arguments = ["stdio"],
+                EnvironmentVariables = new Dictionary<string, string?>
+                {
+                    { "MyEnvVar", "value"}
+                }
             };
+            
+// TODO need tool arguments on the tool when MCP Server
 
             var closeResult = CloseResult.Errored;
             
             try
             {
-                if (_tool.Id == null)
+                if (_mcpServer.Id == null)
                 {
-                    await _configurationService.CreateToolAsync(tool);
+                    await _configurationService.CreateMcpServerAsync(mcpServer);
 
                     _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' created");
 
@@ -169,8 +164,8 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
                 }
                 else
                 {
-                    tool.Id = _tool.Id;
-                    await _configurationService.UpdateToolAsync(tool);
+                    mcpServer.Id = _mcpServer.Id;
+                    await _configurationService.UpdateMcpServerAsync(mcpServer);
 
                     _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' updated");
                     
@@ -208,15 +203,15 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     /// Executes a command to delete the current form model associated with the view model,
     /// triggers a success notification upon completion, and closes the dialog.
     /// </summary>
-    private async Task ExecuteDeleteCommand()
+    private async Task ExecuteDeleteCommandAsync()
     {
         var closeResult = CloseResult.Errored;
         
         try
         {
-            if (_tool.Id != null)
+            if (_mcpServer.Id != null)
             {
-                await _configurationService.DeleteToolAsync(_tool.Id.Value);
+                await _configurationService.DeleteMcpServerAsync(_mcpServer.Id.Value);
 
                 _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' deleted");
 
@@ -259,27 +254,22 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
 }
 
 /// <summary>
-/// Represents a model for the tool form data used to bind properties and validate inputs in the tool view.
+/// Represents a model for the MCP Server form data used to bind properties and validate inputs in the MCP Server view.
 /// </summary>
-public partial class ToolFormDataModel : ObservableValidator
+public partial class McpServerFormDataModel : ObservableValidator
 {
     /// <summary>
-    /// Represents if the agent is new or existing
+    /// Represents if the MCP server is new or existing
     /// </summary>
     [ObservableProperty] private bool? _isExisting;
     
     /// <summary>
-    /// Represents the name of the tool, required for validation and user input.
+    /// Represents the name of the MCP Server, required for validation and user input.
     /// </summary>
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Name is required")] private string? _name;
     
     /// <summary>
-    /// Represents the type of the tool
-    /// </summary>
-    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Type is required")] private ToolType? _type;
-    
-    /// <summary>
-    /// Represents the description of the tool, required for validation and user input.
+    /// Represents the description of the MCP Server, required for validation and user input.
     /// </summary>
     [ObservableProperty] string? _description;
 

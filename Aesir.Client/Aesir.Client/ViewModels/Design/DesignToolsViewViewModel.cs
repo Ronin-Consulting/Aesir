@@ -16,7 +16,7 @@ namespace Aesir.Client.ViewModels.Design;
 public class DesignToolsViewViewModel : ToolsViewViewModel
 {
     /// <summary>
-    /// A design-time implementation of the <see cref="AgentsViewViewModel"/> class,
+    /// A design-time implementation of the <see cref="ToolsViewViewModel"/> class,
     /// primarily used for populating sample data and providing commands suitable for
     /// use during UI design in tools like visual editors.
     /// </summary>

@@ -111,13 +111,18 @@ public class AgentsViewViewModel : ObservableRecipient, IDisposable
         Dispatcher.UIThread.InvokeAsync(LoadAgentsAsync);
     }
 
+    /// <summary>
+    /// Does the initial load of the agents.
+    /// </summary>
+    private async Task LoadAgentsAsync()
+    {
+        await RefreshAgentsAsync();
+    }
+
     /// Asynchronously loads agents into the view model's Agents collection.
     /// Fetches the agents from the configuration service and populates the collection.
     /// Handles any exceptions that may occur during the loading process.
-    /// <returns>
-    /// A task that represents the asynchronous operation of loading agents.
-    /// </returns>
-    private async Task LoadAgentsAsync()
+    public async Task RefreshAgentsAsync()
     {
         try
         {
@@ -129,7 +134,7 @@ public class AgentsViewViewModel : ObservableRecipient, IDisposable
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error loading agents: {ex.Message}");
-        }
+        } 
     }
 
     /// Executes navigation to the Chat view within the application.

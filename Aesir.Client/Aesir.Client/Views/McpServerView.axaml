@@ -8,11 +8,11 @@
     xmlns:dvm="clr-namespace:Aesir.Client.ViewModels.Design"
     xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
     mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
-    x:Class="Aesir.Client.Views.ToolView"
-    x:DataType="vm:ToolViewViewModel">
+    x:Class="Aesir.Client.Views.McpServerView"
+    x:DataType="vm:McpServerViewViewModel">
     
     <Design.DataContext>    
-        <dvm:DesignToolViewViewModel />
+        <dvm:DesignMcpServerViewViewModel />
     </Design.DataContext>
     
     <Grid
@@ -25,7 +25,7 @@
             Margin="8"
             FontSize="16"
             FontWeight="600"
-            Text="Tool Detail" />
+            Text="MCP Server Detail" />
         
         <!-- Form Body -->
         <u:Form
@@ -35,7 +35,7 @@
             LabelPosition="Top">
             <u:Form.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, *" HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, *" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem 
@@ -51,22 +51,6 @@
                 Grid.ColumnSpan="3" 
                 Label="Description">
                 <TextBox TextWrapping="Wrap" MinHeight="100" VerticalContentAlignment="Top" Text="{Binding FormModel.Description}" />
-            </u:FormItem>
-            <u:FormItem 
-                Grid.Row="2" 
-                Grid.Column="0"
-                Grid.ColumnSpan="3"
-                Label="Type" >
-                <ComboBox HorizontalAlignment="Stretch"
-                          ItemsSource="{Binding AvailableTypes}"
-                          SelectedItem="{Binding FormModel.Type}" 
-                          IsEnabled="False">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
             </u:FormItem>
         </u:Form>
         

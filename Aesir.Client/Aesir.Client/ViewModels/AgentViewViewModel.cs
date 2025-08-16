@@ -1,15 +1,18 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Services;
+using Aesir.Client.Shared;
 using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Irihi.Avalonia.Shared.Contracts;
+using Ursa.Controls;
 
 namespace Aesir.Client.ViewModels;
 
@@ -121,6 +124,7 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
         
         FormModel = new()
         {
+            IsExisting = agent.Id.HasValue,
             Name = agent.Name,
             Description = agent.Description,
             Source = agent.Source,
@@ -131,9 +135,9 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
             Tools = new ObservableCollection<string>()
         };
         IsDirty = false;
-        SaveCommand = new RelayCommand(ExecuteSaveCommand);
+        SaveCommand = new AsyncRelayCommand(ExecuteSaveCommand);
         CancelCommand = new RelayCommand(ExecuteCancelCommand);
-        DeleteCommand = new RelayCommand(ExecuteDeleteCommand);
+        DeleteCommand = new AsyncRelayCommand(ExecuteDeleteCommand);
 
         AvailableChatModels = new ObservableCollection<string>();
         AvailableEmbeddingModels = new ObservableCollection<string>();
@@ -163,6 +167,18 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     {
         try
         {
+            // TODO actually load - sources will determine the models
+            AvailableChatModels.Clear();
+            AvailableChatModels.Add("gpt-4.1-2025-04-14");
+            AvailableChatModels.Add("qwen3:32b-q4_K_M");
+            AvailableChatModels.Add("cogito:32b-v1-preview-qwen-q4_K_M");
+            AvailableEmbeddingModels.Clear();
+            AvailableEmbeddingModels.Add("text-embedding-3-large");
+            AvailableEmbeddingModels.Add("mxbai-embed-large:latest");
+            AvailableVisionModels.Clear();
+            AvailableVisionModels.Add("gpt-4.1-2025-04-14");
+            AvailableVisionModels.Add("gemma3:12b");
+            
             // get available tools
             var availableTools = await _configurationService.GetToolsAsync();
             AvailableTools.Clear();
@@ -184,17 +200,25 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
             System.Diagnostics.Debug.WriteLine($"Error loading agents: {ex.Message}");
         }
         
-        // TODO actually load - sources will determine the models
-        AvailableChatModels.Clear();
-        AvailableChatModels.Add("gpt-4.1-2025-04-14");
-        AvailableChatModels.Add("qwen3:32b-q4_K_M");
-        AvailableChatModels.Add("cogito:32b-v1-preview-qwen-q4_K_M");
-        AvailableEmbeddingModels.Clear();
-        AvailableEmbeddingModels.Add("text-embedding-3-large");
-        AvailableEmbeddingModels.Add("mxbai-embed-large:latest");
-        AvailableVisionModels.Clear();
-        AvailableVisionModels.Add("gpt-4.1-2025-04-14");
-        AvailableVisionModels.Add("gemma3:12b");
+        // The SelectedItem wasn't in the ComboBox's collection initially since we just loaded it. Ideally it
+        // would re-evaluate, but it doesn't want to. There is a very talked about issue with this timing.
+        // We have to force the ComboBox to re-bind the SelectedItem to get it to work.
+        
+        var currentChatModel = FormModel.ChatModel;
+        var currentEmbeddingModel = FormModel.EmbeddingModel;
+        var currentVisionModel = FormModel.VisionModel;
+        
+        FormModel.ChatModel = null;
+        FormModel.EmbeddingModel = null;
+        FormModel.VisionModel = null;
+
+        // Be a little wiser and only set the value if they exist in the collections (may have been removed from db)
+        if (!string.IsNullOrEmpty(currentChatModel) && AvailableChatModels.Contains(currentChatModel))
+            FormModel.ChatModel = currentChatModel;
+        if (!string.IsNullOrEmpty(currentEmbeddingModel) && AvailableEmbeddingModels.Contains(currentEmbeddingModel))
+            FormModel.EmbeddingModel = currentEmbeddingModel;
+        if (!string.IsNullOrEmpty(currentVisionModel) && AvailableVisionModels.Contains(currentVisionModel))
+            FormModel.VisionModel = currentVisionModel;
     }
 
     /// <summary>
@@ -204,13 +228,54 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     /// persists the data, and displays a success notification to the user.
     /// The method also initiates the closure of the associated dialog or view.
     /// </summary>
-    private void ExecuteSaveCommand()
+    private async Task ExecuteSaveCommand()
     {
         if (FormModel.Validate())
         {
-            // TODO - apply FormModel to AesirAgentBase, store, store tool selection
-            _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' updated");
-            Close();
+            var agent = new AesirAgentBase()
+            {
+                Name = FormModel.Name,
+                Description = FormModel.Description,
+                ChatModel = FormModel.ChatModel,
+                EmbeddingModel = FormModel.EmbeddingModel,
+                VisionModel = FormModel.VisionModel,
+                Source = FormModel.Source,
+                Prompt = FormModel.Prompt
+            };
+
+            var closeResult = CloseResult.Errored;
+            
+            try
+            {
+                if (_agent.Id == null)
+                {
+                    await _configurationService.CreateAgentAsync(agent);
+
+                    _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' created");
+
+                    closeResult = CloseResult.Created;
+                }
+                else
+                {
+                    agent.Id = _agent.Id;
+                    await _configurationService.UpdateAgentAsync(agent);
+
+                    _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' updated");
+                    
+                    closeResult = CloseResult.Updated;
+                }
+            }
+            catch (Exception e)
+            {   
+                _notificationService.ShowErrorNotification("Error",
+                    $"'{FormModel.Name}' failed to save with: {e.Message}");
+
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                Close(closeResult);
+            }
         }
     }
 
@@ -224,18 +289,39 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     /// </remarks>
     private void ExecuteCancelCommand()
     {
-        Close();
+        Close(CloseResult.Cancelled);
     }
 
     /// <summary>
     /// Executes a command to delete the current form model associated with the view model,
     /// triggers a success notification upon completion, and closes the dialog.
     /// </summary>
-    private void ExecuteDeleteCommand()
+    private async Task ExecuteDeleteCommand()
     {
-        // TODO - delete, toast?
-        _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' deleted");
-        Close();
+        var closeResult = CloseResult.Errored;
+        
+        try
+        {
+            if (_agent.Id != null)
+            {
+                await _configurationService.DeleteAgentAsync(_agent.Id.Value);
+
+                _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' deleted");
+
+                closeResult = CloseResult.Deleted;
+            }
+        }
+        catch (Exception e)
+        {
+            _notificationService.ShowErrorNotification("Error",
+                $"'{FormModel.Name}' failed to delete with: {e.Message}");
+
+            Console.WriteLine(e);
+        }
+        finally
+        {
+            Close(closeResult);
+        }
     }
 
     /// <summary>
@@ -247,7 +333,16 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     /// </remarks>
     public void Close()
     {
-        RequestClose?.Invoke(this, null);
+        Close(CloseResult.Cancelled);
+    }
+
+    /// <summary>
+    /// Triggers the request to close the associated view or dialog by invoking the <see cref="RequestClose"/> event.
+    /// </summary>
+    /// <param name="closeResult">The results to send to the close event</param>
+    private void Close(CloseResult closeResult)
+    {
+        RequestClose?.Invoke(this, closeResult);
     }
 }
 
@@ -256,6 +351,11 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
 /// </summary>
 public partial class AgentFormDataModel : ObservableValidator
 {
+    /// <summary>
+    /// Represents if the agent is new or existing
+    /// </summary>
+    [ObservableProperty] private bool? _isExisting;
+    
     /// <summary>
     /// Represents the name of the agent, required for validation and user input.
     /// </summary>

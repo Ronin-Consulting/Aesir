@@ -111,13 +111,18 @@ public class ToolsViewViewModel : ObservableRecipient, IDisposable
         Dispatcher.UIThread.InvokeAsync(LoadToolsAsync);
     }
 
-    /// Asynchronously loads tools into the view model's Tools collection.
-    /// Fetches the tools from the configuration service and populates the collection.
-    /// Handles any exceptions that may occur during the loading process.
-    /// <returns>
-    /// A task that represents the asynchronous operation of loading tools.
-    /// </returns>
+    /// <summary>
+    /// Does the initial load of the tools.
+    /// </summary>
     private async Task LoadToolsAsync()
+    {
+        await RefreshToolsAsync();
+    }
+
+    /// Asynchronously loads agents into the view model's Agents collection.
+    /// Fetches the agents from the configuration service and populates the collection.
+    /// Handles any exceptions that may occur during the loading process.
+    public async Task RefreshToolsAsync()
     {
         try
         {

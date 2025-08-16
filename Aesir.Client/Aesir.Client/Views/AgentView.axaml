@@ -54,7 +54,7 @@
                 Label="Source">
                 <ComboBox Width="150"
                           ItemsSource="{Binding AvailableSources}"
-                          SelectedItem="{Binding FormModel.Source}">
+                          SelectedValue="{Binding FormModel.Source}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
@@ -69,7 +69,7 @@
                 Margin="32,8,0,8">
                 <ComboBox Width="150"
                           ItemsSource="{Binding AvailablePrompts}"
-                          SelectedItem="{Binding FormModel.Prompt}">
+                          SelectedValue="{Binding FormModel.Prompt}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
@@ -165,6 +165,7 @@
                 Classes="Danger"
                 Content="Delete"
                 IconPlacement="Left" 
+                IsEnabled="{Binding FormModel.IsExisting}"
                 Command="{Binding DeleteCommand}">
                 <u:IconButton.Icon>
                     <avalonia:MaterialIcon Kind="Delete" Width="20" Height="20" />

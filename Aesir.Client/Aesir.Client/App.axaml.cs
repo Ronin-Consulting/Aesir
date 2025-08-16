@@ -123,6 +123,7 @@ public partial class App : Application
         AppServices.AddTransient<ChatHistoryButtonViewModel>();
         AppServices.AddTransient<FileToUploadViewModel>();
         AppServices.AddTransient<SplashViewModel>();
+        AppServices.AddTransient<McpServersViewViewModel>();
         AppServices.AddTransient<ToolsViewViewModel>();
         AppServices.AddTransient<AgentsViewViewModel>();
         AppServices.AddTransient<HandsFreeControlViewModel>();

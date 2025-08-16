@@ -61,6 +61,14 @@
         <DependentUpon>ToolView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\McpServersView.axaml.cs">
+        <DependentUpon>McpServersView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\McpServerView.axaml.cs">
+        <DependentUpon>McpServerView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     
     <ItemGroup>

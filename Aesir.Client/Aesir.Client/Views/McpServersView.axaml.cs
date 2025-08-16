@@ -13,16 +13,16 @@ using Ursa.Controls.Options;
 
 namespace Aesir.Client.Views;
 
-public partial class ToolsView : UserControl, IRecipient<ShowToolDetailMessage>
+public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetailMessage>
 {
-    public ToolsView()
+    public McpServersView()
     {
         InitializeComponent();
         
-        WeakReferenceMessenger.Default.Register<ShowToolDetailMessage>(this);
+        WeakReferenceMessenger.Default.Register<ShowMcpServerDetailMessage>(this);
     }
 
-    public void Receive(ShowToolDetailMessage detailMessage)
+    public void Receive(ShowMcpServerDetailMessage detailMessage)
     {
         Dispatcher.UIThread.Post(async void () =>
         {
@@ -30,9 +30,9 @@ public partial class ToolsView : UserControl, IRecipient<ShowToolDetailMessage>
             {
                 var notificationService = Ioc.Default.GetService<INotificationService>()!;
                 var configurationService = Ioc.Default.GetService<IConfigurationService>()!;
-                var viewModel = new ToolViewViewModel(detailMessage.Tool, notificationService, configurationService);
+                var mcpServerViewModel = new McpServerViewViewModel(detailMessage.McpServer, notificationService, configurationService);
 
-                viewModel.IsActive = true;
+                mcpServerViewModel.IsActive = true;
 
                 var options = new DrawerOptions()
                 {
@@ -43,16 +43,16 @@ public partial class ToolsView : UserControl, IRecipient<ShowToolDetailMessage>
                     CanResize = false
                 };
 
-                var result = await Drawer.ShowCustomModal<ToolView, ToolViewViewModel, object?>(
-                    viewModel, options: options);
+                var result = await Drawer.ShowCustomModal<McpServerView, McpServerViewViewModel, object?>(
+                    mcpServerViewModel, options: options);
 
-                viewModel.IsActive = false;
+                mcpServerViewModel.IsActive = false;
 
                 if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
                 {
-                    if (DataContext is ToolsViewViewModel toolsViewModel)
+                    if (DataContext is McpServersViewViewModel mcpServersViewModel)
                     {
-                        await toolsViewModel.RefreshToolsAsync();
+                        await mcpServersViewModel.RefreshMcpServersAsync();
                     }
                 }
             }

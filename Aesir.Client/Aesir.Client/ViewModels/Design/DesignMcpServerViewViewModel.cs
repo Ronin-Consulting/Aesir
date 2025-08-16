@@ -8,31 +8,30 @@ using CommunityToolkit.Mvvm.Input;
 namespace Aesir.Client.ViewModels.Design;
 
 /// <summary>
-/// Provides the design-time implementation of the ToolViewViewModel class. This class is
+/// Provides the design-time implementation of the McpServerViewViewModel class. This class is
 /// primarily used for providing mock data and behavior in a design-time environment.
 /// </summary>
 /// <remarks>
-/// This view model is used to simulate the ToolViewViewModel at design time,
+/// This view model is used to simulate the McpServerViewViewModel at design time,
 /// with preconfigured mock properties, commands, and data that are used to facilitate
-/// UI development in design tools. The data and implementation are static and not connected
+/// UI development in design MCP Servers. The data and implementation are static and not connected
 /// to real runtime services or data.
 /// </remarks>
-public class DesignToolViewViewModel : ToolViewViewModel
+public class DesignMcpServerViewViewModel : McpServerViewViewModel
 {
     /// <summary>
-    /// Represents a design-time implementation of the ToolViewViewModel class.
+    /// Represents a design-time implementation of the McpServerViewViewModel class.
     /// </summary>
     /// <remarks>
-    /// The DesignToolViewViewModel class provides specific configurations for
+    /// The DesignMcpServerViewViewModel class provides specific configurations for
     /// testing or design-time scenarios. It initializes an instance with hardcoded
-    /// values representing an tool and other properties for use in design environments.
+    /// values representing an MCP Server and other properties for use in design environments.
     /// </remarks>
-    public DesignToolViewViewModel() : base(new AesirToolBase()
+    public DesignMcpServerViewViewModel() : base(new AesirMcpServerBase()
     {
         Id = Guid.NewGuid(),
-        Name = "My Test Tool",
+        Name = "My Test MCP Server",
         Description = "This is a test of a very long description. There could be a lot more words here to show. Just depends on how many lines of text you'd like to see pop-up in the description. At minimum I'd like to see maybe 5 lines or so.",
-        Type = ToolType.Internal
     }, new NoOpNotificationService(), new NoOpConfigurationService())
     {
         IsDirty = false;

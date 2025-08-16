@@ -1,6 +1,7 @@
 using System;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;
+using Aesir.Client.Shared;
 using Aesir.Client.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Threading;
@@ -47,8 +48,13 @@ public partial class AgentsView : UserControl, IRecipient<ShowAgentDetailMessage
 
                 viewModel.IsActive = false;
 
-                //if (result == DialogResult.None)
-                //    throw new ApplicationException("PdfViewerService.ShowPdfAsync failed.");
+                if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
+                {
+                    if (DataContext is AgentsViewViewModel agentsViewModel)
+                    {
+                        await agentsViewModel.RefreshAgentsAsync();
+                    }
+                }
             }
             catch (Exception e)
             {

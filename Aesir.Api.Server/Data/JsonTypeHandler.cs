@@ -18,7 +18,7 @@ public class JsonTypeHandler<T> : SqlMapper.TypeHandler<T>
     /// <param name="value">The object to serialize into a JSON string to set as the parameter value.</param>
     public override void SetValue(IDbDataParameter parameter, T? value)
     {
-        parameter.Value = JsonConvert.SerializeObject(value);
+        parameter.Value = value == null ? DBNull.Value : JsonConvert.SerializeObject(value);
     }
 
     /// <summary>
@@ -26,8 +26,24 @@ public class JsonTypeHandler<T> : SqlMapper.TypeHandler<T>
     /// </summary>
     /// <param name="value">The JSON string to be deserialized.</param>
     /// <returns>An object of type <typeparamref name="T"/> deserialized from the provided JSON string.</returns>
-    public override T Parse(object value)
+    public override T? Parse(object? value)
     {
-        return JsonConvert.DeserializeObject<T>((string)value)!;
+        if (value == null || value == DBNull.Value)
+            return default(T);
+
+        if (value is string jsonString)
+        {
+            if (string.IsNullOrWhiteSpace(jsonString))
+                return default(T);
+            
+            return JsonConvert.DeserializeObject<T>(jsonString);
+        }
+
+        // Handle cases where the value might already be the correct type
+        if (value is T directValue)
+            return directValue;
+
+        // Last resort: try to convert to string first
+        return JsonConvert.DeserializeObject<T>(value.ToString()!);
     }
 }

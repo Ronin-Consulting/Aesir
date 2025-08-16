@@ -27,6 +27,24 @@ public interface IConfigurationService
     Task<AesirAgent> GetAgentAsync(Guid id);
 
     /// <summary>
+    /// Inserts a new AesirAgent into the database.
+    /// </summary>
+    /// <param name="agent">The agent to insert.</param>
+    Task CreateAgentAsync(AesirAgent agent);
+
+    /// <summary>
+    /// Updates an existing AesirAgentServer in the database.
+    /// </summary>
+    /// <param name="agent">The agent with updated values.</param>
+    Task UpdateAgentAsync(AesirAgent agent);
+
+    /// <summary>
+    /// Delete an existing AesirAgent from the database.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirAgent to delete.</param>
+    Task DeleteAgentAsync(Guid id);
+
+    /// <summary>
     /// Asynchronously retrieves a collection of tools from the configuration database.
     /// This method queries and returns a list of all tools available within the database by fetching relevant records.
     /// </summary>
@@ -38,9 +56,9 @@ public interface IConfigurationService
     /// <summary>
     /// Retrieves a collection of tools associated with a specific agent.
     /// </summary>
-    /// <param name="agentId">The unique identifier of the agent whose tools are to be retrieved.</param>
+    /// <param name="id">The unique identifier of the agent whose tools are to be retrieved.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains a collection of <see cref="AesirTool"/> objects used by the specified agent.</returns>
-    Task<IEnumerable<AesirTool>> GetToolsUsedByAgentAsync(Guid agentId);
+    Task<IEnumerable<AesirTool>> GetToolsUsedByAgentAsync(Guid id);
 
     /// <summary>
     /// Asynchronously retrieves an Aesir tool by its unique identifier.
@@ -48,4 +66,59 @@ public interface IConfigurationService
     /// <param name="id">The unique identifier of the Aesir tool to retrieve.</param>
     /// <returns>A task representing the asynchronous operation. The task result contains the <see cref="AesirTool"/> object if it exists, or null if not found.</returns>
     Task<AesirTool> GetToolAsync(Guid id);
+
+    /// <summary>
+    /// Inserts a new AesirTool into the database.
+    /// </summary>
+    /// <param name="tool">The tool to insert.</param>
+    Task CreateToolAsync(AesirTool tool);
+
+    /// <summary>
+    /// Updates an existing AesirTool in the database.
+    /// </summary>
+    /// <param name="tool">The tool with updated values.</param>
+    Task UpdateToolAsync(AesirTool agent);
+
+    /// <summary>
+    /// Delete an existing AesirTool from the database.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirTool to delete.</param>
+    Task DeleteToolAsync(Guid id);
+    
+    /// <summary>
+    /// Retrieves a list of Aesir MCP Servers stored in the database asynchronously.
+    /// </summary>
+    /// <returns>
+    /// An enumerable collection of <c>AesirMcpServer</c> representing the MCP Servers retrieved from the database.
+    /// </returns>
+    Task<IEnumerable<AesirMcpServer>> GetMcpServersAsync();
+
+    /// <summary>
+    /// Retrieves an AesirMcpServer by its unique identifier asynchronously.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirMcpServer to retrieve.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation.
+    /// The task result contains the <see cref="AesirMcpServer"/> object corresponding to the given identifier.
+    /// If no MCP Server is found, returns null.
+    /// </returns>
+    Task<AesirMcpServer> GetMcpServerAsync(Guid id);
+
+    /// <summary>
+    /// Inserts a new AesirMcpServer into the database.
+    /// </summary>
+    /// <param name="mcpServer">The MCP server to insert.</param>
+    Task CreateMcpServerAsync(AesirMcpServer mcpServer);
+
+    /// <summary>
+    /// Updates an existing AesirMcpServer in the database.
+    /// </summary>
+    /// <param name="mcpServer">The MCP server with updated values.</param>
+    Task UpdateMcpServerAsync(AesirMcpServer mcpServer);
+
+    /// <summary>
+    /// Delete an existing AesirMcpServer from the database.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirMcpServer to delete.</param>
+    Task DeleteMcpServerAsync(Guid id);
 }

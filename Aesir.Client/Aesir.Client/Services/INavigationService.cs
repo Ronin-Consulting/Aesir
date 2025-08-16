@@ -18,6 +18,13 @@ public interface INavigationService
     void NavigateToChat();
 
     /// <summary>
+    /// Navigates the application to the MCP Servers view.
+    /// Utilizes the application's messaging system to send a
+    /// <see cref="NavigationMessage"/> with the ViewType set to MCP Servers.
+    /// </summary>
+    void NavigateToMcpServers();
+
+    /// <summary>
     /// Navigates the application to the Tools view.
     /// Utilizes the application's messaging system to send a
     /// <see cref="NavigationMessage"/> with the ViewType set to Tools.

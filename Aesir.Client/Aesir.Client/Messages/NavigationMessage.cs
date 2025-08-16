@@ -11,16 +11,20 @@ public class NavigationMessage
     public enum ViewType
     {
         /// <summary>
-        /// Represents the "Chat"
+        /// Represents the "Chat" view
         Chat,
+        
+        /// <summary>
+        /// Represents the "MCP Servers" view
+        /// </summary>
+        McpServers,
 
         /// <summary>
-        /// Represents the Tools view in the application.
-        /// Used for navigating to the Tools section through the
+        /// Represents the "Tools" view
         Tools,
 
         /// <summary>
-        /// Represents a
+        /// Represents the "Agents" view
         Agents,
 
         /// <summary>
