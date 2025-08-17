@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 
 namespace Aesir.Client.Services.Implementations.NoOp;
 

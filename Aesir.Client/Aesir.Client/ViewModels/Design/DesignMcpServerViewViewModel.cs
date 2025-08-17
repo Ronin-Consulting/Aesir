@@ -38,5 +38,9 @@ public class DesignMcpServerViewViewModel : McpServerViewViewModel
         SaveCommand = new RelayCommand(() => { });
         CancelCommand = new RelayCommand(() => { });
         DeleteCommand = new RelayCommand(() => { });
+        DeleteArgumentCommand = new RelayCommand(() => { });
+        AddArgumentCommand = new RelayCommand(() => { });
+        DeleteEnvironmentVariableCommand = new RelayCommand(() => { });
+        AddEnvironmentVariableCommand = new RelayCommand(() => { });
     }
 }

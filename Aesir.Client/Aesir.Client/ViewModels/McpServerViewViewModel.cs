@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Services;
@@ -57,6 +59,26 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
     /// Indicates whether the view model has unsaved changes.
     /// </summary>
     public bool IsDirty { get; set; }
+    
+    /// <summary>
+    /// Command executed to delete an argument
+    /// </summary>
+    public ICommand DeleteArgumentCommand { get; set; }
+    
+    /// <summary>
+    /// Command executed to add an argument
+    /// </summary>
+    public ICommand AddArgumentCommand { get; set; }
+    
+    /// <summary>
+    /// Command executed to delete an environment variable
+    /// </summary>
+    public ICommand DeleteEnvironmentVariableCommand { get; set; }
+    
+    /// <summary>
+    /// Command executed to add an environment variable
+    /// </summary>
+    public ICommand AddEnvironmentVariableCommand { get; set; }
 
     /// <summary>
     /// Command executed to save the current state or data of the MCP Server view.
@@ -92,12 +114,21 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
         {
             IsExisting = mcpServer.Id.HasValue,
             Name = mcpServer.Name,
-            Description = mcpServer.Description
+            Description = mcpServer.Description,
+            Command = mcpServer.Command
         };
+        foreach (var argument in mcpServer.Arguments)
+            FormModel.Arguments.Add(new ArgumentItem { Value = argument });
+        foreach (var environmentVariable in mcpServer.EnvironmentVariables)
+            FormModel.EnvironmentVariables.Add(new EnvironmentVariableItem() { Name = environmentVariable.Key, Value = environmentVariable.Value ?? "" });
         IsDirty = false;
         SaveCommand = new AsyncRelayCommand(ExecuteSaveCommandAsync);
         CancelCommand = new RelayCommand(ExecuteCancelCommand);
         DeleteCommand = new AsyncRelayCommand(ExecuteDeleteCommandAsync);
+        DeleteArgumentCommand = new RelayCommand<ArgumentItem>(ExecuteDeleteArgumentCommand);
+        AddArgumentCommand = new RelayCommand(ExecuteAddArgumentCommand);
+        DeleteEnvironmentVariableCommand = new RelayCommand<EnvironmentVariableItem>(ExecuteDeleteEnvironmentVariableCommand);
+        AddEnvironmentVariableCommand = new RelayCommand(ExecuteAddEnvironmentVariableCommand);
     }
 
     /// <summary>
@@ -124,6 +155,32 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
         //AvailableMcpServerTools.Add("gpt-4.1-2025-04-14");
         //AvailableMcpServerTools.Add("qwen3:32b-q4_K_M");
     }
+    
+    private void ExecuteDeleteArgumentCommand(ArgumentItem? argument)
+    {
+        if (argument != null && FormModel.Arguments.Contains(argument))
+        {
+            FormModel.Arguments.Remove(argument);
+        }
+    }
+
+    private void ExecuteAddArgumentCommand()
+    {
+        FormModel.Arguments.Add(new ArgumentItem { Value = "" });
+    }
+    
+    private void ExecuteDeleteEnvironmentVariableCommand(EnvironmentVariableItem? environmentVariable)
+    {
+        if (environmentVariable != null && FormModel.EnvironmentVariables.Contains(environmentVariable))
+        {
+            FormModel.EnvironmentVariables.Remove(environmentVariable);
+        }
+    }
+
+    private void ExecuteAddEnvironmentVariableCommand()
+    {
+        FormModel.EnvironmentVariables.Add(new EnvironmentVariableItem() { Name = "", Value = "" });
+    }
 
     /// <summary>
     /// Executes the logic to save the changes made in the form.
@@ -140,15 +197,18 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
             {
                 Name = FormModel.Name,
                 Description = FormModel.Description,
-                Command = "/Users/ryan/Documents/Development/python/mcp-email-server/mcp-email/bin/mcp-email-server",
-                Arguments = ["stdio"],
-                EnvironmentVariables = new Dictionary<string, string?>
-                {
-                    { "MyEnvVar", "value"}
-                }
+                Command = FormModel.Command,
+                Arguments = FormModel.Arguments
+                    .Where(arg => !string.IsNullOrWhiteSpace(arg.Value))
+                    .Select(arg => arg.Value.Trim())
+                    .ToList(),
+                EnvironmentVariables = FormModel.EnvironmentVariables
+                    .Where(env => !string.IsNullOrWhiteSpace(env.Name))
+                    .ToDictionary(
+                        env => env.Name.Trim(), 
+                        env => string.IsNullOrWhiteSpace(env.Value) ? null : env.Value.Trim()
+                    )
             };
-            
-// TODO need tool arguments on the tool when MCP Server
 
             var closeResult = CloseResult.Errored;
             
@@ -272,6 +332,21 @@ public partial class McpServerFormDataModel : ObservableValidator
     /// Represents the description of the MCP Server, required for validation and user input.
     /// </summary>
     [ObservableProperty] string? _description;
+    
+    /// <summary>
+    /// Represents the command of the MCP Server, required for validation and user input.
+    /// </summary>
+    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Command is required")] private string? _command;
+    
+    /// <summary>
+    /// Represents the collection of arguments
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<ArgumentItem> _arguments = new();
+    
+    /// <summary>
+    /// Represents the collection of environment variables
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<EnvironmentVariableItem> _environmentVariables = new();
 
     /// <summary>
     /// Validates all properties of the current object and checks if any validation errors exist.
@@ -285,4 +360,19 @@ public partial class McpServerFormDataModel : ObservableValidator
         ValidateAllProperties();
         return !HasErrors;
     }
+}
+
+public partial class ArgumentItem : ObservableObject
+{
+    [ObservableProperty]
+    private string _value = string.Empty;
+}
+
+public partial class EnvironmentVariableItem : ObservableObject
+{
+    [ObservableProperty]
+    private string _name = string.Empty;
+    
+    [ObservableProperty]
+    private string _value = string.Empty;
 }

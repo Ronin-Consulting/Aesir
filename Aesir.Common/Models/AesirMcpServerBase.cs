@@ -34,7 +34,7 @@ public class AesirMcpServerBase
     /// Gets or sets the arguments
     /// </summary>
     [JsonPropertyName("arguments")]
-    public IList<string?> Arguments { get; set; }
+    public IList<string> Arguments { get; set; }
 
     /// <summary>
     /// Gets or sets the environment variables

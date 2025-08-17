@@ -31,7 +31,8 @@ public class DesignMcpServersViewViewModel : McpServersViewViewModel
             {
                 Id = Guid.NewGuid(),
                 Name = "Email",
-                Description = "Supports sending email through the tool's configured account"
+                Description = "Supports sending email through the tool's configured account",
+                Command = "/Users/Byron/Documents/CatPictures/cat-pic-downloader.sh"
             }
         };
         McpServers = new ObservableCollection<AesirMcpServerBase>(mcpServers);

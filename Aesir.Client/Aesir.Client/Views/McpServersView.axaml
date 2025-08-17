@@ -69,6 +69,7 @@
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
                         <DataGridTextColumn Header="Description" Binding="{Binding Description}" />
+                        <DataGridTextColumn Header="Command" Binding="{Binding Command}" />
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>

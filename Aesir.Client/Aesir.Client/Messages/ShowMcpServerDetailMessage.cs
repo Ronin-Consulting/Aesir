@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Aesir.Common.Models;
 
 namespace Aesir.Client.Messages;
@@ -12,5 +13,9 @@ public class ShowMcpServerDetailMessage(AesirMcpServerBase? mcpServer)
     /// This property holds an instance of <see cref="AesirMcpServerBase"/> which provides core MCP Server information such as
     /// ID, name, type, and description
     /// </summary>
-    public AesirMcpServerBase McpServer { get; set; } = mcpServer ?? new AesirMcpServerBase();
+    public AesirMcpServerBase McpServer { get; set; } = mcpServer ?? new AesirMcpServerBase()
+    {
+        Arguments = new List<string>(), 
+        EnvironmentVariables = new Dictionary<string, string?>()
+    };
 }

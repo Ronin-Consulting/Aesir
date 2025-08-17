@@ -17,6 +17,7 @@
     
     <Grid
         MinWidth="400"
+        MaxWidth="400"
         Margin="8"
         RowDefinitions="Auto, *, Auto">
         <!-- Header -->
@@ -35,7 +36,7 @@
             LabelPosition="Top">
             <u:Form.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, *" HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem 
@@ -51,6 +52,82 @@
                 Grid.ColumnSpan="3" 
                 Label="Description">
                 <TextBox TextWrapping="Wrap" MinHeight="100" VerticalContentAlignment="Top" Text="{Binding FormModel.Description}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="2" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3" 
+                Label="Command">
+                <TextBox TextWrapping="Wrap" MinHeight="60" VerticalContentAlignment="Top" Text="{Binding FormModel.Command}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="3" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3" 
+                Label="Arguments">
+                <StackPanel>
+                        <ItemsControl ItemsSource="{Binding FormModel.Arguments}" HorizontalAlignment="Stretch">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel HorizontalAlignment="Stretch" Spacing="4" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:ArgumentItem">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Grid.Column="0" Text="{Binding Value}" VerticalAlignment="Center" Margin="0 0 6 0 "/>
+                                        <Button Grid.Column="1"
+                                                Classes="Primary" 
+                                                Theme="{DynamicResource OutlineButton}"
+                                                Command="{Binding $parent[ItemsControl].((vm:McpServerViewViewModel)DataContext).DeleteArgumentCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="Remove Argument">
+                                            <avalonia:MaterialIcon Kind="Remove" Width="16" Height="16" />
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    <HyperlinkButton Content="Add Argument" 
+                                     HorizontalAlignment="Right" 
+                                     Margin="0,8,0,0"
+                                     Command="{Binding AddArgumentCommand}"/>
+                </StackPanel>
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="4" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3" 
+                Label="Environment Variables">
+                <StackPanel>
+                        <ItemsControl ItemsSource="{Binding FormModel.EnvironmentVariables}" HorizontalAlignment="Stretch">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel HorizontalAlignment="Stretch" Spacing="4" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:EnvironmentVariableItem">
+                                    <Grid ColumnDefinitions="*, *, Auto">
+                                        <TextBox Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center" Margin="0 0 6 0 "/>
+                                        <TextBox Grid.Column="1" Text="{Binding Value}" VerticalAlignment="Center" Margin="0 0 6 0 "/>
+                                        <Button Grid.Column="2"
+                                                Classes="Primary" 
+                                                Theme="{DynamicResource OutlineButton}"
+                                                Command="{Binding $parent[ItemsControl].((vm:McpServerViewViewModel)DataContext).DeleteEnvironmentVariableCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="Remove EnvironmentVariable">
+                                            <avalonia:MaterialIcon Kind="Remove" Width="16" Height="16" />
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    <HyperlinkButton Content="Add Environment Variable" 
+                                     HorizontalAlignment="Right" 
+                                     Margin="0,8,0,0"
+                                     Command="{Binding AddEnvironmentVariableCommand}"/>
+                </StackPanel>
             </u:FormItem>
         </u:Form>
         
