@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using ColorCode.Styling;
 using Markdig;
@@ -9,60 +10,44 @@ using Microsoft.Extensions.Logging;
 namespace Aesir.Client.Services.Implementations.MarkdigMarkdown;
 
 /// <summary>
-/// Service class for handling Markdown rendering operations, such as converting
-/// Markdown content into HTML and plain text, utilizing the Markdig library.
+/// Service class for processing Markdown content, supporting conversion to both HTML
+/// and plain text formats. Utilizes the Markdig library to parse and render the Markdown,
+/// enabling customization and extensibility of the Markdown rendering pipeline.
 /// Implements the <see cref="IMarkdownService"/> interface.
 /// </summary>
 public class MarkdigMarkdownService(ILogger<MarkdigMarkdownService> logger) : IMarkdownService
 {
     /// <summary>
-    /// Used for logging diagnostic messages and runtime information within the
-    /// <see cref="MarkdigMarkdownService"/> class. Facilitates tracking and debugging
-    /// Markdown rendering processes and other operations of the service.
+    /// Provides a mechanism for logging diagnostic information, errors, warnings, and other runtime
+    /// details specific to the operations of the <see cref="MarkdigMarkdownService"/> class, aiding
+    /// in debugging and monitoring Markdown rendering workflows.
     /// </summary>
     private readonly ILogger<MarkdigMarkdownService> _logger = logger;
-
-    /// <summary>
-    /// Represents the Markdown processing pipeline used for rendering Markdown content to HTML or
-    /// plain text within the <see cref="MarkdigMarkdownService"/> class.
-    /// </summary>
-    /// <remarks>
-    /// This pipeline is configured with a set of extensions to enhance Markdown rendering, including:
-    /// support for pipe tables, advanced Markdown features, syntax highlighting, automatic links,
-    /// emoji parsing, media links, and citations.
-    /// </remarks>
-    private readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder()
-        .UsePipeTables()
-        .UseAdvancedExtensions()
-        .UseColorCode(styleDictionary: StyleDictionary.DefaultDark)
-        .UseAutoLinks()
-        .UseEmojiAndSmiley()
-        .UseMediaLinks()
-        .UseCitations()
-        .Build();
 
     /// <summary>
     /// Converts the provided Markdown string to its equivalent HTML representation asynchronously.
     /// </summary>
     /// <param name="markdown">The input Markdown string to be converted to HTML.</param>
+    /// <param name="shouldRenderFencedCodeBlocks">A boolean flag indicating whether fenced code blocks in the Markdown should be rendered.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the HTML string generated from the Markdown input.</returns>
-    public Task<string> RenderMarkdownAsHtmlAsync(string markdown)
+    public Task<string> RenderMarkdownAsHtmlAsync(string markdown, bool shouldRenderFencedCodeBlocks = false)
     {
-        using var writer = new StringWriter();
+        var writer = new StringWriter(new StringBuilder(100000));
         var renderer = new Markdig.Renderers.HtmlRenderer(writer);
 
         renderer.ObjectRenderers.RemoveAll(r => r is LinkInlineRenderer);
         renderer.ObjectRenderers.Add(new AesirLinkRenderer());
 
-        _pipeline.Setup(renderer);
+        var pipeline = GetMarkdownPipeline(shouldRenderFencedCodeBlocks);
+        pipeline.Setup(renderer);
 
-        var doc = Markdig.Markdown.Parse(markdown, _pipeline);
+        var doc = Markdig.Markdown.Parse(markdown, pipeline);
         renderer.Render(doc);
         writer.Flush();
-        
+
         var html = writer.ToString();
-        
-        _logger.LogDebug("Rendered markdown to HTML: {html}", html);
+
+        //_logger.LogDebug("Rendered markdown to HTML: {html}", html);
 
         return Task.FromResult(html);
     }
@@ -74,8 +59,26 @@ public class MarkdigMarkdownService(ILogger<MarkdigMarkdownService> logger) : IM
     /// <returns>A task representing the asynchronous operation, with a string result containing the converted plain text.</returns>
     public Task<string> RenderMarkdownAsPlainTextAsync(string markdown)
     {
-        var plainText = Markdig.Markdown.ToPlainText(markdown, _pipeline);
-        
+        var plainText = Markdig.Markdown.ToPlainText(markdown, GetMarkdownPipeline());
+
         return Task.FromResult(plainText);
+    }
+
+    /// <summary>
+    /// Creates and configures a Markdown pipeline for processing Markdown content,
+    /// optionally supporting syntax highlighting for fenced code blocks.
+    /// </summary>
+    /// <param name="useColorCode">Indicates whether the pipeline should enable syntax highlighting for fenced code blocks using ColorCode.</param>
+    /// <returns>A configured instance of <see cref="MarkdownPipeline"/> for processing Markdown content.</returns>
+    private MarkdownPipeline GetMarkdownPipeline(bool useColorCode = false)
+    {
+        var builder = new MarkdownPipelineBuilder()
+            .UseAdvancedExtensions()
+            .UseEmojiAndSmiley();
+
+        if (useColorCode)
+            builder.UseColorCode(styleDictionary: StyleDictionary.DefaultDark);
+        
+        return builder.Build();
     }
 }

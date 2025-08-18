@@ -7,6 +7,7 @@ using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
+using Aesir.Common.FileTypes;
 using Aesir.Common.Models;
 using Avalonia;
 using Avalonia.Controls;
@@ -258,32 +259,6 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// Throws an exception if there is an unexpected error during the process, which will be logged accordingly.
     private async void ExecuteShowHandsFree()
     {
-        // try
-        // {
-        //     MicOn = !MicOn;
-        //     ErrorMessage = null;
-        //
-        //     if (MicOn)
-        //     {
-        //         if (_speechService == null)
-        //         {
-        //             _logger.LogWarning("Speech service is not available");
-        //             ErrorMessage = "Speech recognition is not available on this platform.";
-        //             MicOn = false;
-        //             return;
-        //         }
-        //
-        //         await _speechService.SpeakAsync("Aesir is listening.");
-        //         
-        //         
-        //     }
-        // }
-        // catch (Exception ex)
-        // {
-        //     _logger.LogError(ex, "Failed to toggle microphone");
-        //     ErrorMessage = "Failed to toggle microphone. Please try again.";
-        //     MicOn = false;
-        // }
         _navigationService.NavigateToHandsFree();
     }
 
@@ -596,15 +571,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             {
                 Title = "Upload File",
                 AllowMultiple = false,
-                FileTypeFilter =
-                [
-                    new FilePickerFileType("Documents")
-                    {
-                        Patterns = ["*.pdf", "*.png"],
-                        MimeTypes = ["application/pdf", "image/png"],
-                        AppleUniformTypeIdentifiers = ["com.adobe.pdf", "public.png"]
-                    }
-                ]
+                FileTypeFilter = CreateDocumentFileTypeFilter()
             });
         }
         catch (Exception ex)
@@ -820,5 +787,44 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             _logger.LogError(ex, "Failed to get top level control");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Creates a file type filter for document processing using centralized file type definitions.
+    /// </summary>
+    /// <returns>A list of FilePickerFileType for document processing files.</returns>
+    private static List<FilePickerFileType> CreateDocumentFileTypeFilter()
+    {
+        // Generate patterns (*.ext format)
+        var patterns = FileTypeManager.DocumentProcessingExtensions
+            .Select(ext => $"*{ext}")
+            .ToArray();
+
+        // Get corresponding MIME types
+        var mimeTypes = FileTypeManager.DocumentProcessingMimeTypes;
+
+        // Generate Apple UTIs for common document processing types
+        var appleUtis = new List<string>
+        {
+            FileTypeManager.AppleUTIs.Pdf,
+            FileTypeManager.AppleUTIs.Png,
+            FileTypeManager.AppleUTIs.Jpeg,
+            FileTypeManager.AppleUTIs.PlainText,
+            FileTypeManager.AppleUTIs.Html,
+            FileTypeManager.AppleUTIs.Markdown,
+            FileTypeManager.AppleUTIs.Xml,
+            FileTypeManager.AppleUTIs.Json
+        };
+
+        var extensionsAllowed = string.Join(",", patterns);
+        return
+        [
+            new FilePickerFileType(extensionsAllowed)
+            {
+                Patterns = patterns,
+                MimeTypes = mimeTypes,
+                AppleUniformTypeIdentifiers = appleUtis.ToArray()
+            }
+        ];
     }
 }
