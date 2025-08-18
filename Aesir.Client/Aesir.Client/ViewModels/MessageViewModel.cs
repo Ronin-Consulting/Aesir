@@ -123,7 +123,7 @@ public abstract partial class MessageViewModel : ObservableRecipient
     {
         Content = message.Content;
 
-        var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(message.Content);
+        var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(message.Content, shouldRenderFencedCodeBlocks: true);
         Message = htmlMessage;
 
         IsLoaded = true;

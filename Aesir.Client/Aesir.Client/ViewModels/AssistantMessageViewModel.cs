@@ -245,6 +245,9 @@ public partial class AssistantMessageViewModel(
                 await Task.Delay(TimeSpan.FromMilliseconds(35));
             }
 
+            if(!string.IsNullOrWhiteSpace(Content))
+                Message = await markdownService.RenderMarkdownAsHtmlAsync(Content, shouldRenderFencedCodeBlocks: true);
+            
             return title;
         });
     }
