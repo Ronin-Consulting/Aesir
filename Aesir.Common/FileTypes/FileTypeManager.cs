@@ -283,8 +283,8 @@ public static class FileTypeManager
     /// Common file extensions used in document processing operations.
     /// </summary>
     public static readonly string[] DocumentProcessingExtensions = Documents.AllExtensions
-        .Concat(Images.AllExtensions)
         .Concat(Text.AllExtensions)
+        .Concat(Images.AllExtensions)
         .ToArray();
     
     /// <summary>

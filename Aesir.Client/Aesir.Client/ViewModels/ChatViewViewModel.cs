@@ -816,9 +816,10 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             FileTypeManager.AppleUTIs.Json
         };
 
+        var extensionsAllowed = string.Join(",", patterns);
         return
         [
-            new FilePickerFileType("Documents")
+            new FilePickerFileType(extensionsAllowed)
             {
                 Patterns = patterns,
                 MimeTypes = mimeTypes,
