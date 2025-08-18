@@ -4,6 +4,7 @@ using Aesir.Client.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -83,9 +84,11 @@ public partial class FileToUploadViewModel(
     {
         FileName = file.Name;
 
-        if (Path.GetExtension(FileName).Equals(".png", StringComparison.OrdinalIgnoreCase))
+        var imageFileExtensions = new string[] { ".jpg", ".jpeg", ".png", ".tiff", ".bmp" };
+        if(imageFileExtensions.Contains(Path.GetExtension(FileName)))
         {
             IconKind = MaterialIconKind.FileImage;
+            return;
         }
     }
 
@@ -187,6 +190,8 @@ public partial class FileToUploadViewModel(
                 });
 
                 await dialogService.ShowErrorDialogAsync("Upload Error", $"An error occurred while uploading the file: {ex.Message}");
+
+                await RemoveFileAsync();
             }
         });
     }

@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Extensions;
+using Aesir.Common.FileTypes;
 using Aesir.Api.Server.Models;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;

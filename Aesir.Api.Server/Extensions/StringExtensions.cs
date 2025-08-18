@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.StaticFiles;
+using Aesir.Common.FileTypes;
 using StopWord;
 
 namespace Aesir.Api.Server.Extensions;
@@ -44,38 +44,8 @@ public static class StringExtensions
     /// </summary>
     /// <param name="filePath">The file path to determine the content type for.</param>
     /// <returns>The MIME content type or "application/octet-stream" if the content type cannot be determined.</returns>
-    public static string GetContentType(this string filePath)
-    {
-        var provider = new FileExtensionContentTypeProvider();
-        if (!provider.TryGetContentType(filePath, out var contentType))
-        {
-            // If the content type cannot be determined, you can default to a generic one
-            contentType = "application/octet-stream";
-        }
-        
-        return contentType;
-    }
-
-    /// <summary>
-    /// Validates whether the expected content type matches the actual content type of the specified file path.
-    /// </summary>
-    /// <param name="filePath">The file path whose content type needs to be validated.</param>
-    /// <param name="contentType">The expected content type for validation.</param>
-    /// <param name="fileContentType">The actual content type determined from the file path.</param>
-    /// <returns>True if the file's actual content type matches the expected content type; otherwise, false.</returns>
-    public static bool ValidFileContentType(this string filePath, string contentType, out string fileContentType)
-    {
-        fileContentType = GetContentType(filePath);
-        return contentType == fileContentType;
-    }
+    public static string GetContentType(this string filePath) => FileTypeManager.GetMimeType(filePath);
     
-    public static bool ValidFileContentType(this string filePath, out string fileContentType, params string[] contentTypes)
-    {
-        fileContentType = GetContentType(filePath);
-        return contentTypes.Contains(fileContentType);
-    }
-
-
     /// <summary>
     /// Removes a specified prefix from the beginning of a string if present.
     /// </summary>

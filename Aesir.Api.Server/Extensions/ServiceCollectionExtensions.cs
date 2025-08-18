@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
+using Aesir.Common.FileTypes;
 using Aesir.Api.Server.Services;
 using Aesir.Api.Server.Services.Implementations.Standard;
 using Aesir.Common.Prompts;
@@ -172,6 +173,52 @@ public static class ServiceCollectionExtensions
             );
         });
         
+        services.AddSingleton<ITextFileLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>(serviceProvider =>
+        {
+            return new TextFileLoaderService<Guid, AesirConversationDocumentTextData<Guid>>(
+                serviceProvider.GetRequiredService<UniqueKeyGenerator<Guid>>(),
+                serviceProvider
+                    .GetRequiredService<VectorStoreCollection<Guid, AesirConversationDocumentTextData<Guid>>>(),
+                serviceProvider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
+                (rawContent, request) =>
+                {
+                    var metadata = request.Metadata ?? new Dictionary<string, object>();
+                    var conversationId = metadata.TryGetValue("ConversationId", out var conversationIdObj)
+                        ? conversationIdObj.ToString()
+                        : null;
+
+                    if (request.TextFileFileName!.GetContentType() == SupportedFileContentTypes.JsonContentType)
+                    {
+                        return new AesirConversationJsonTextData<Guid>
+                        {
+                            ConversationId = conversationId,
+                            Key = Guid.Empty // This will be replaced in the service
+                        };
+                    }
+                    
+                    if (request.TextFileFileName!.GetContentType() == SupportedFileContentTypes.XmlContentType)
+                    {
+                        // not done
+                        return new AesirConversationDocumentTextData<Guid>
+                        {
+                            ConversationId = conversationId,
+                            Key = Guid.Empty // This will be replaced in the service
+                        };
+                    }
+
+                    return new AesirConversationDocumentTextData<Guid>
+                    {
+                        ConversationId = conversationId,
+                        Key = Guid.Empty // This will be replaced in the service
+                    };
+                },
+                serviceProvider.GetRequiredService<IModelsService>(),
+                serviceProvider
+                    .GetRequiredService<ILogger<TextFileLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
+            );
+        });
+            
+            
         kernelBuilder.AddVectorStoreTextSearch<AesirConversationDocumentTextData<Guid>>();
         kernelBuilder.AddVectorStoreTextSearch<AesirGlobalDocumentTextData<Guid>>();
 

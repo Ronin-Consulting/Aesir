@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Extensions;
+using Aesir.Common.FileTypes;
 using Aesir.Api.Server.Models;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
@@ -75,6 +76,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     private readonly IPdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> _pdfDataLoader;
 
     private readonly IImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> _imageDataLoader;
+    private readonly ITextFileLoaderService<Guid, AesirConversationDocumentTextData<Guid>> _textFileLoader;
 
     /// <summary>
     /// Logger instance for the <see cref="ConversationDocumentCollectionService"/> class.
@@ -95,6 +97,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         VectorStoreCollection<Guid, AesirConversationDocumentTextData<Guid>> vectorStoreRecordCollection,
         IPdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> pdfDataLoader,
         IImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> imageDataLoader,
+        ITextFileLoaderService<Guid, AesirConversationDocumentTextData<Guid>> textFileLoader,
         ILogger<ConversationDocumentCollectionService> logger
     )
     {
@@ -103,6 +106,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         _vectorStoreRecordCollection = vectorStoreRecordCollection;
         _pdfDataLoader = pdfDataLoader;
         _imageDataLoader = imageDataLoader;
+        _textFileLoader = textFileLoader;
         _logger = logger;
     }
 
@@ -117,11 +121,23 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     public async Task LoadDocumentAsync(string documentPath, IDictionary<string, object>? fileMetaData,
         CancellationToken cancellationToken)
     {
-        // for now enforce only PDFs and PNGs
-        if (!documentPath.ValidFileContentType(SupportedFileContentTypes.PdfContentType, out var actualContentType) && 
-            !documentPath.ValidFileContentType(SupportedFileContentTypes.PngContentType, out actualContentType))
+        var supportedFileContentTypes = new List<string>
         {
-            throw new InvalidDataException($"Invalid file content type: {actualContentType}");
+            // PDFs
+            SupportedFileContentTypes.PdfContentType,
+            // Image files
+            SupportedFileContentTypes.PngContentType,
+            // text files 
+            SupportedFileContentTypes.PlainTextContentType,
+            SupportedFileContentTypes.MarkdownContentType,
+            SupportedFileContentTypes.HtmlContentType,
+            SupportedFileContentTypes.XmlContentType,
+            SupportedFileContentTypes.JsonContentType
+        }.ToArray();
+        
+        if (!documentPath.ValidFileContentType(out var actualContentType, supportedFileContentTypes))
+        {
+            throw new InvalidDataException($"Unsupported file content type: {actualContentType}");
         }
         
         if (fileMetaData == null || !fileMetaData.TryGetValue("FileName", out var fileNameMetaData))
@@ -151,6 +167,27 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             };
             
             await _imageDataLoader.LoadImageAsync(imageRequest, cancellationToken);
+        }
+        
+        var supportedTextFileContentTypes = new List<string>
+        {
+            SupportedFileContentTypes.PlainTextContentType,
+            SupportedFileContentTypes.MarkdownContentType,
+            SupportedFileContentTypes.HtmlContentType,
+            SupportedFileContentTypes.XmlContentType,
+            SupportedFileContentTypes.JsonContentType
+        }.ToArray();
+
+        if (supportedTextFileContentTypes.Contains(actualContentType))
+        {
+            var textFileRequest = new LoadTextFileRequest()
+            {
+                TextFileLocalPath = documentPath,
+                TextFileFileName = fileNameMetaData.ToString(),
+                Metadata = fileMetaData
+            };
+            
+            await _textFileLoader.LoadTextFileAsync(textFileRequest, cancellationToken);
         }
     }
 

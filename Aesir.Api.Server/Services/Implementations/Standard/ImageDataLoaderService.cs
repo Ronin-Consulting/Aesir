@@ -2,6 +2,7 @@ using System.ClientModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using Aesir.Api.Server.Extensions;
+using Aesir.Common.FileTypes;
 using Aesir.Api.Server.Models;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
@@ -124,7 +125,7 @@ public class ImageDataLoaderService<TKey, TRecord>(
         };
 
         // Chunk the text for better processing
-        var textChunks = DocumentChunker.ChunkText(rawContent.Text!, $"Image: {request.ImageFileName}\nPage: {rawContent.PageNumber}");
+        var textChunks = DocumentChunker.ChunkText(rawContent.Text!, $"Image: {request.ImageFileName}\nPage: {rawContent.PageNumber}\n");
         
         // Process each chunk
         var recordTasks = textChunks.Select(async chunk =>

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Aesir.Common.FileTypes;
 using Avalonia.Platform.Storage;
 using Flurl.Http;
 using Flurl.Http.Configuration;
@@ -35,10 +36,9 @@ public class DocumentCollectionService(
     /// </summary>
     /// <remarks>
     /// This array defines the file format restrictions applicable to file operations within the service.
-    /// Currently, the allowed file extensions are ".pdf" and ".png".
-    /// Attempts to process files with extensions not included in this array will result in an error.
+    /// Uses the centralized FileTypeManager to ensure consistency across all projects.
     /// </remarks>
-    private static readonly string[] AllowedFileExtensions = [".pdf", ".png"];
+    private static readonly string[] AllowedFileExtensions = FileTypeManager.DocumentProcessingExtensions;
 
     /// <summary>
     /// Represents the Flurl client instance used for executing HTTP requests to the Document Collection service.
@@ -269,35 +269,8 @@ public class DocumentCollectionService(
     /// <param name="filePath">The path to the file.</param>
     /// <returns>The MIME content type for the file based on its extension.</returns>
     /// <remarks>
-    /// Uses a mapping approach to determine common MIME types. For PDF files, returns "application/pdf".
-    /// For other file types, attempts to determine the appropriate MIME type based on extension.
+    /// Uses the centralized FileTypeManager to determine MIME types, ensuring consistency across all projects.
     /// Falls back to "application/octet-stream" if the content type cannot be determined.
     /// </remarks>
-    private string GetContentTypeForFile(string filePath)
-    {
-        var extension = Path.GetExtension(filePath).ToLowerInvariant();
-
-        // Map common extensions to MIME types
-        return extension switch
-        {
-            ".pdf" => "application/pdf",
-            ".png" => "image/png",
-            ".jpg" => "image/jpeg",
-            ".jpeg" => "image/jpeg",
-            ".gif" => "image/gif",
-            ".txt" => "text/plain",
-            ".html" => "text/html",
-            ".htm" => "text/html",
-            ".json" => "application/json",
-            ".xml" => "application/xml",
-            ".doc" => "application/msword",
-            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            ".xls" => "application/vnd.ms-excel",
-            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            ".ppt" => "application/vnd.ms-powerpoint",
-            ".pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            ".zip" => "application/zip",
-            _ => "application/octet-stream" // Default fallback for unknown types
-        };
-    }
+    private string GetContentTypeForFile(string filePath) => FileTypeManager.GetMimeType(filePath);
 }
