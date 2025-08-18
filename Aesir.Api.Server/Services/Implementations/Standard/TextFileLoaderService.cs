@@ -1,6 +1,7 @@
 using System.ClientModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Nodes;
+using System.Xml.Linq;
 using Aesir.Api.Server.Extensions;
 using Aesir.Common.FileTypes;
 using Aesir.Api.Server.Models;
@@ -35,37 +36,39 @@ public class TextFileLoaderService<TKey, TRecord>(
     where TRecord : AesirTextData<TKey>
 {
     /// <summary>
-    /// A static instance of the encoder used for token counting operations within the service.
-    /// Utilizes the default encoding from the <see cref="DocumentChunker"/> class.
+    /// A static instance of the encoder utilized for counting tokens in text data within the service.
+    /// Leverages the default encoding provided by the <see cref="DocumentChunker"/> class.
     /// </summary>
     private static readonly Encoder TokenCounter = new(DocumentChunker.DefaultEncoding);
 
-    /// Represents a utility class for chunking text into smaller sections based on token limits.
-    /// This class is designed to break down large blocks of text, such as documents or raw content,
-    /// into manageable chunks for further processing or analysis. The chunking process can optionally
-    /// include a header for each chunk, allowing metadata to be prepended to the content.
-    /// This class is marked as experimental and its API or behavior may be subject to changes in future versions.
-    /// Thread Safety:
-    /// This class is not guaranteed to be thread-safe.
-    /// Experimental:
-    /// The usage of this class is currently experimental (Code: SKEXP0050).
-    /// Remarks:
-    /// The token limits, such as `tokensPerParagraph` and `tokensPerLine`, govern the chunking logic
-    /// to ensure the text sections are suitable for downstream consumption.
+    /// <summary>
+    /// Represents a utility class for splitting text into smaller chunks based on token constraints.
+    /// Primarily used for processing large text inputs such as documents or raw content while ensuring
+    /// the resulting partitions conform to specified token limits. Supports optional functionality
+    /// for adding a header to each chunk for metadata inclusion.
+    /// </summary>
+    /// <remarks>
+    /// - This class is marked as experimental and is subject to API or behavioral changes (Code: SKEXP0050).
+    /// - The token distribution logic takes into account parameters like `tokensPerParagraph` and `tokensPerLine`.
+    /// - Not guaranteed to be thread-safe.
+    /// </remarks>
     private static readonly DocumentChunker DocumentChunker = new();
 
-    /// Asynchronously loads a text file, processes its content based on the file type, and updates the underlying vector store collection with the extracted data.
+    /// Asynchronously loads a text file, processes its contents, and integrates the extracted data into a vector store collection.
     /// <param name="request">
-    /// An instance of <see cref="LoadTextFileRequest"/> containing the details of the text file to load, such as its local path and file name.
+    /// An instance of <see cref="LoadTextFileRequest"/> containing the details of the text file, such as its path, name, and additional properties.
     /// </param>
     /// <param name="cancellationToken">
-    /// A token to monitor for cancellation requests, allowing the operation to be canceled.
+    /// A token to monitor for cancellation requests, enabling the operation to be canceled.
     /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown if the provided <paramref name="request"/> is null.
+    /// </exception>
     /// <exception cref="InvalidOperationException">
-    /// Thrown if the local file path or file name in <paramref name="request"/> is null or empty.
+    /// Thrown if the specified file path or file content is invalid or cannot be processed.
     /// </exception>
     /// <exception cref="NotSupportedException">
-    /// Thrown if the file type of the requested file is not supported.
+    /// Thrown if the file type is unsupported for processing.
     /// </exception>
     /// <returns>
     /// A <see cref="Task"/> representing the asynchronous operation.
@@ -137,11 +140,11 @@ public class TextFileLoaderService<TKey, TRecord>(
                     ? throw new InvalidOperationException("Record is not of type IJsonTextData")
                     : data;
             }
-            
+
             var jsonConverter = new JsonToAesirTextDataConverter<IJsonTextData>();
-            records = (await jsonConverter.ConvertJsonAsync(CreateJsonRecord, content).ConfigureAwait(false))
+            records = (await jsonConverter.ConvertJsonAsync(CreateJsonRecord, content, request.TextFileFileName).ConfigureAwait(false))
                 .Cast<TRecord>().ToArray();
-            
+
             var processedRecords = new List<TRecord>(records.Length);
             for (var i = 0; i < records.Length; i += batchSize)
             {
@@ -162,16 +165,54 @@ public class TextFileLoaderService<TKey, TRecord>(
 
                 processedRecords.AddRange(await Task.WhenAll(recordTasks).ConfigureAwait(false));
             }
-            
+
             records = processedRecords.ToArray();
         }
-        else
-        if (actualContentType == SupportedFileContentTypes.XmlContentType)
+        else if (actualContentType == SupportedFileContentTypes.XmlContentType)
         {
-            throw new NotImplementedException();
+            var rawContent = new RawContent
+            {
+                Text = content,
+                PageNumber = 1
+            };
+
+            IXmlTextData CreateXmlRecord()
+            {
+                var record = recordFactory(rawContent, request);
+
+                return record is not IXmlTextData data
+                    ? throw new InvalidOperationException("Record is not of type IXmlTextData")
+                    : data;
+            }
+
+            var xmlConverter = new XmlToAesirTextDataConverter<IXmlTextData>();
+            records = (await xmlConverter.ConvertXmlAsync(CreateXmlRecord, content, request.TextFileFileName).ConfigureAwait(false))
+                .Cast<TRecord>().ToArray();
+
+            var processedRecords = new List<TRecord>(records.Length);
+            for (var i = 0; i < records.Length; i += batchSize)
+            {
+                var batch = records.Skip(i).Take(batchSize);
+                var recordTasks = batch.Select(async record =>
+                {
+                    var textChunk = record.Text ?? throw new InvalidOperationException("Text is null");
+
+                    record.Key = uniqueKeyGenerator.GenerateKey();
+                    record.ReferenceDescription ??= request.TextFileFileName.TrimStart("file://");
+                    record.ReferenceLink ??=
+                        new Uri($"file://{request.TextFileFileName.TrimStart("file://")}").AbsoluteUri;
+                    record.TextEmbedding ??= await GenerateEmbeddings(textChunk, cancellationToken);
+                    record.TokenCount ??= TokenCounter.CountTokens(textChunk);
+
+                    return record;
+                }).ToArray();
+
+                processedRecords.AddRange(await Task.WhenAll(recordTasks).ConfigureAwait(false));
+            }
+
+            records = processedRecords.ToArray();
         }
-        else
-        if (actualContentType == SupportedFileContentTypes.CsvContentType)
+        else if (actualContentType == SupportedFileContentTypes.CsvContentType)
         {
             throw new NotImplementedException();
         }
@@ -185,7 +226,7 @@ public class TextFileLoaderService<TKey, TRecord>(
 
             var textChunks = DocumentChunker.ChunkText(rawContent.Text!,
                 $"File: {request.TextFileFileName}\nPage: {rawContent.PageNumber}");
-            
+
             var chunks = textChunks.ToArray();
             var processedRecords = new List<TRecord>(chunks.Length);
 
@@ -229,12 +270,22 @@ public class TextFileLoaderService<TKey, TRecord>(
         await modelsService.UnloadEmbeddingModelAsync();
     }
 
-    /// Generates embeddings for the given text with retry logic to handle specific transient errors.
-    /// <param name="text">The text input for which embeddings are to be generated.</param>
-    /// <param name="cancellationToken">A cancellation token to observe while waiting for the embedding generation task to complete.</param>
-    /// <returns>An Embedding instance containing the generated vector representation of the input text.</returns>
-    /// <exception cref="HttpOperationException">Thrown when a transient error such as too many requests occurs, and retries are exhausted.</exception>
-    /// <exception cref="ClientResultException">Thrown when there is an error during the embedding generation process that is not transient.</exception>
+    /// Generates embeddings for the provided text with built-in retry mechanisms for handling transient errors.
+    /// <param name="text">
+    /// The text input for which the embedding vectors are to be generated.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// A token to monitor for cancellation requests, allowing the operation to be terminated early if required.
+    /// </param>
+    /// <returns>
+    /// A <see cref="Task{TResult}"/> that resolves to an <see cref="Embedding{T}"/> instance containing the generated vector representation of the input text.
+    /// </returns>
+    /// <exception cref="HttpOperationException">
+    /// Thrown if a transient error, such as too many requests, occurs and maximum retry attempts are reached.
+    /// </exception>
+    /// <exception cref="ClientResultException">
+    /// Thrown if the embedding generation operation fails due to a non-transient issue.
+    /// </exception>
     private async Task<Embedding<float>> GenerateEmbeddings(string text,
         CancellationToken cancellationToken)
     {
@@ -279,7 +330,7 @@ public class TextFileLoaderService<TKey, TRecord>(
     /// The local file path of the text file from which raw content is to be retrieved.
     /// </param>
     /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains the raw text content read from the file.
+    /// A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains the raw text content read from the file.
     /// </returns>
     protected virtual async Task<string> GetTextRawContentAsync(string textFileLocalPath)
     {
@@ -288,27 +339,29 @@ public class TextFileLoaderService<TKey, TRecord>(
 }
 
 /// <summary>
-/// Converts plain text into Markdown-formatted text asynchronously.
+/// Converts plain text into Markdown-formatted text.
 /// </summary>
 /// <remarks>
-/// This class is designed for converting raw plain text into its Markdown representation.
-/// It utilizes Markdown formatting rules to process the input text in order to produce
-/// its equivalent well-structured Markdown output.
+/// This class provides functionality for transforming plain text input into its Markdown-formatted equivalent
+/// based on standard Markdown formatting rules.
 /// </remarks>
 internal class PlainTextToMarkdownConverter
 {
     /// <summary>
-    /// Represents an instance of a <see cref="MarkdownPipeline"/> used to process and transform
-    /// plain text or markdown content into alternative formats. This instance is pre-configured
-    /// with advanced extensions to enhance markdown parsing capabilities.
+    /// An instance of the <see cref="MarkdownPipeline"/> pre-configured with advanced extensions
+    /// to enhance markdown processing, enabling comprehensive parsing and transformation of content.
     /// </summary>
     private readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
         .Build();
 
     /// Converts plain text into Markdown format asynchronously.
-    /// <param name="plainText">The plain text content to be converted.</param>
-    /// <returns>A task representing the asynchronous operation. The task result contains the converted Markdown content as a string.
+    /// <param name="plainText">
+    /// The plain text content to be converted.
+    /// </param>
+    /// <returns>
+    /// A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains the converted Markdown content as a string.
+    /// </returns>
     public async Task<string> ConvertAsync(string plainText)
     {
         return await Task.FromResult(Markdown.ToPlainText(plainText, _pipeline));
@@ -316,25 +369,27 @@ internal class PlainTextToMarkdownConverter
 }
 
 /// <summary>
-/// The <c>MarkdownToMarkdownConverter</c> class provides functionality for processing and converting
-/// markdown text while maintaining its markdown format. It parses the provided markdown content, processes
-/// it, and returns the result as a markdown string with minimal modifications.
+/// Provides functionality to process and convert markdown text while preserving its markdown structure.
 /// </summary>
 internal class MarkdownToMarkdownConverter
 {
     /// <summary>
-    /// Represents the instance of a <see cref="MarkdownPipeline"/> used for parsing and rendering markdown content.
-    /// Configured to use advanced extensions within the pipeline.
+    /// A private readonly instance of the <see cref="MarkdownPipeline"/>, configured to utilize
+    /// advanced markdown processing extensions. Used for parsing and rendering markdown content
+    /// within the <see cref="MarkdownToMarkdownConverter"/> class.
     /// </summary>
     private readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
         .Build();
 
-    /// <summary>
-    /// Converts the input markdown text into a processed markdown format.
-    /// </summary>
-    /// <param name="markdownText">The original markdown text to be processed.</param>
-    /// <returns>A task representing the asynchronous operation. The task result contains the processed markdown text as a string.</returns>
+    /// Asynchronously converts the input markdown text into a processed markdown text format.
+    /// <param name="markdownText">
+    /// The original markdown text to be converted.
+    /// </param>
+    /// <returns>
+    /// A <see cref="Task{TResult}"/> representing the asynchronous operation.
+    /// The task result contains the processed markdown text as a string.
+    /// </returns>
     public async Task<string> ConvertAsync(string markdownText)
     {
         var document = Markdown.Parse(markdownText, _pipeline);
@@ -351,17 +406,20 @@ internal class MarkdownToMarkdownConverter
 
 /// <summary>
 /// Provides functionality to convert HTML content into Markdown format.
-/// This class leverages the ReverseMarkdown library to perform the conversion while
-/// allowing for configurable options for handling unknown tags, GitHub-flavored Markdown,
-/// comment removal, and other behaviors.
 /// </summary>
+/// <remarks>
+/// This class utilizes the ReverseMarkdown library for the conversion process
+/// and supports customizable configurations for handling various HTML and Markdown-related behaviors.
+/// </remarks>
 internal class HtmlToMarkdownConverter
 {
-    /// <summary>
     /// Converts the provided HTML content to its Markdown equivalent using the specified configuration.
-    /// </summary>
-    /// <param name="html">The input HTML string to be converted to Markdown.</param>
-    /// <returns>A task representing the asynchronous operation. The task result contains the converted Markdown string.</returns>
+    /// <param name="html">
+    /// The input HTML string to be converted to Markdown.
+    /// </param>
+    /// <returns>
+    /// A <see cref="Task{TResult}"/> representing the asynchronous operation that returns the converted Markdown string.
+    /// </returns>
     public async Task<string> ConvertAsync(string html)
     {
         var config = new ReverseMarkdown.Config
@@ -379,33 +437,38 @@ internal class HtmlToMarkdownConverter
 }
 
 /// <summary>
-/// A utility class that converts JSON content into Aesir-compatible text data records
-/// by flattening JSON structures and mapping them to instances of type <typeparamref name="TRecord"/>.
+/// A utility class that facilitates the conversion of JSON content into structured Aesir text data records.
+/// This conversion involves flattening hierarchical JSON structures and mapping them to instances
+/// of the specified type <typeparamref name="TRecord"/>.
 /// </summary>
 /// <typeparam name="TRecord">
-/// The type of text data record that implements the <see cref="IJsonTextData"/> interface.
+/// The type of text data record that must implement the <see cref="IJsonTextData"/> interface.
 /// </typeparam>
 [Experimental("SKEXP0001")]
 internal class JsonToAesirTextDataConverter<TRecord> where TRecord : IJsonTextData
 {
     /// <summary>
-    /// Represents a utility class for chunking large text documents into smaller, manageable divisions
-    /// based on configurable token limits per paragraph and per line.
+    /// A static utility for splitting large text documents into smaller chunks
+    /// based on token count constraints, such as tokens per paragraph and per line.
+    /// Provides methods to facilitate text chunking operations while preserving structural integrity.
     /// </summary>
     private static readonly DocumentChunker DocumentChunker = new();
 
-    /// Converts a JSON string into a list of records of type TRecord.
+    /// Converts a JSON string into a list of records of the specified type asynchronously.
     /// <param name="recordFactory">
-    /// A function that provides a default instance of the TRecord type to be used for creating records.
+    /// A function that provides an instance of the record type for creating records from the JSON data.
     /// </param>
     /// <param name="jsonContent">
-    /// The JSON content in string format to be parsed and converted into records.
+    /// A string containing the JSON data to be parsed and converted into records.
+    /// </param>
+    /// <param name="filename">
+    /// The name of the file from which the JSON content originates, used for contextual processing.
     /// </param>
     /// <returns>
-    /// A task representing the asynchronous operation. The task result contains a list of records parsed from the JSON content.
+    /// A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a list of records parsed from the JSON content.
     /// </returns>
     public async Task<List<TRecord>> ConvertJsonAsync(
-        Func<TRecord> recordFactory, string jsonContent)
+        Func<TRecord> recordFactory, string jsonContent, string filename)
     {
         var root = JsonNode.Parse(jsonContent);
         List<TRecord> records = [];
@@ -460,7 +523,7 @@ internal class JsonToAesirTextDataConverter<TRecord> where TRecord : IJsonTextDa
                     if (arr[i] is JsonValue val)
                     {
                         var jsonValString = val.ToString();
-                        var chunks = DocumentChunker.ChunkText(jsonValString, $"Key: {jsonKey}=");
+                        var chunks = DocumentChunker.ChunkText(jsonValString, $"File: {filename}\nKey: {jsonKey}=");
 
                         foreach (var chunk in chunks)
                         {
@@ -482,7 +545,7 @@ internal class JsonToAesirTextDataConverter<TRecord> where TRecord : IJsonTextDa
             else if (node is JsonValue rootVal && string.IsNullOrEmpty(prefix))
             {
                 var jsonValString = rootVal.ToString();
-                var chunks = DocumentChunker.ChunkText(jsonValString, $"Key: root=");
+                var chunks = DocumentChunker.ChunkText(jsonValString, $"File: {filename}\nKey: root=");
                 foreach (var chunk in chunks)
                 {
                     var record = recordFactory();
@@ -493,6 +556,97 @@ internal class JsonToAesirTextDataConverter<TRecord> where TRecord : IJsonTextDa
 
                     records.Add(record);
                 }
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Provides functionality to convert XML content into a structured representation of Aesir text data records.
+/// </summary>
+/// <typeparam name="TRecord">
+/// The type of the records being generated from the XML content. Must implement <see cref="IXmlTextData"/>.
+/// </typeparam>
+[Experimental("SKEXP0001")]
+internal class XmlToAesirTextDataConverter<TRecord> where TRecord : IXmlTextData
+{
+    /// <summary>
+    /// A utility class utilized for splitting large text documents into smaller, manageable chunks
+    /// based on configurable token limits, aiding in efficient text processing workflows.
+    /// </summary>
+    private static readonly DocumentChunker DocumentChunker = new();
+
+    /// Asynchronously converts the provided XML content into a collection of records using the specified record factory.
+    /// Each record represents flattened XML content with associated metadata, including path, node type, and parent information.
+    /// <param name="recordFactory">
+    /// A factory function used to create instances of <typeparamref name="TRecord"/>.
+    /// </param>
+    /// <param name="xmlContent">
+    /// The XML content as a string to be parsed and converted into records.
+    /// </param>
+    /// <param name="filename">
+    /// The name of the XML file being processed. This may be used for logging or additional metadata.
+    /// </param>
+    /// <returns>
+    /// A <see cref="Task{TResult}"/> representing the asynchronous operation that contains a list of records of type <typeparamref name="TRecord"/>.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown if <paramref name="recordFactory"/> or <paramref name="xmlContent"/> is null.
+    /// </exception>
+    /// <exception cref="System.Xml.XmlException">
+    /// Thrown if <paramref name="xmlContent"/> contains invalid XML and cannot be parsed.
+    /// </exception>
+    public async Task<List<TRecord>> ConvertXmlAsync(Func<TRecord> recordFactory, string xmlContent, string filename)
+    {
+        var document = XDocument.Parse(xmlContent);
+        List<TRecord> records = [];
+        Flatten(document.Root, "");
+        return records;
+
+        void Flatten(XElement? element, string prefix, string parentType = "root")
+        {
+            if (element == null) return;
+
+            var nodeType = "element";
+            var elementName = element.Name.LocalName;
+            var xmlPath = string.IsNullOrEmpty(prefix) ? elementName : $"{prefix}/{elementName}";
+
+            // Process attributes
+            foreach (var attr in element.Attributes())
+            {
+                var attrPath = $"{xmlPath}/@{attr.Name.LocalName}";
+                var chunks = DocumentChunker.ChunkText(attr.Value, $"File: {filename}\nAttribute: {attrPath}=");
+                foreach (var chunk in chunks)
+                {
+                    var record = recordFactory();
+                    record.Text = chunk;
+                    record.XmlPath = attrPath; // Using JsonPath for consistency with JSON converter
+                    record.NodeType = "value";
+                    record.ParentInfo = nodeType;
+                    records.Add(record);
+                }
+            }
+
+            // Process text content
+            var textContent = element.Value.Trim();
+            if (!string.IsNullOrEmpty(textContent) && !element.HasElements)
+            {
+                var chunks = DocumentChunker.ChunkText(textContent, $"File: {filename}\nElement: {xmlPath}=");
+                foreach (var chunk in chunks)
+                {
+                    var record = recordFactory();
+                    record.Text = chunk;
+                    record.XmlPath = xmlPath;
+                    record.NodeType = "value";
+                    record.ParentInfo = nodeType;
+                    records.Add(record);
+                }
+            }
+
+            // Process child elements
+            foreach (var child in element.Elements())
+            {
+                Flatten(child, xmlPath, nodeType);
             }
         }
     }

@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Text.Json;
 using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Models;
 using Microsoft.Extensions.VectorData;
@@ -90,45 +91,29 @@ public class KernelFunctionLibrary<TKey, TRecord>(
             KernelArguments arguments, CancellationToken cancellationToken, int count = 5, int skip = 0)
         {
             arguments.TryGetValue("query", out var query);
-            if (string.IsNullOrEmpty(query?.ToString()))
+            
+            var files = new List<string>();
+            arguments.TryGetValue("files", out var filesValue);
+            
+            if (filesValue is JsonElement jsonElement)
+            {
+                files = jsonElement.EnumerateArray().Select(x => x.GetString()).ToList()!;
+            }
+            
+            if (string.IsNullOrEmpty(query?.ToString()) && files.Count == 0)
             {
                 return [];
             }
-
-            // NOTE: how to process the files parameter if we wanted to
-            // var files = new List<string>();
-            // arguments.TryGetValue("files", out var filesValue);
-            // if (filesValue is JsonElement jsonElement)
-            // {
-            //     files = jsonElement.EnumerateArray().Select(x => x.GetString()).ToList()!;
-            // }
-            //
-            // // if only a single file then determine if we can just load all of its text
-            // if (files.Count == 1)
-            // {
-            //     var found = await _vectorStoreRecordCollection.GetAsync(filter: data => data.ConversationId == conversationId,
-            //         int.MaxValue, cancellationToken: cancellationToken).ToListAsync(cancellationToken).ConfigureAwait(false);
-            //     
-            //     // for now total up the tokens.. if less than 16K then return results
-            //     if (found.Sum(r => r.TokenCount) <= 16384)
-            //     {
-            //         return found.OrderBy(r => r.CreatedAt).Select(r =>
-            //             new TextSearchResult(r.Text!)
-            //             {
-            //                 Link = r.ReferenceLink,
-            //                 Name = r.ReferenceDescription
-            //             }
-            //         );
-            //     }
-            // }
-
+            
+            var searchValue = string.IsNullOrEmpty(query?.ToString()) ?
+                string.Join(" ", files) : query.ToString();
+            
             if (searchOptions != null)
                 searchOptions.Skip = skip;
-
-            var searchValue = query.ToString()!;
-            var keywords = searchValue.KeywordsOnly();
+            
+            var keywords = searchValue!.KeywordsOnly();
             var results = await hybridSearch.HybridSearchAsync(
-                searchValue,
+                searchValue!,
                 keywords,
                 overrideTopResults ?? count,
                 searchOptions,

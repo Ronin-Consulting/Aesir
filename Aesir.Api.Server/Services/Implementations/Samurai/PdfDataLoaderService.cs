@@ -132,7 +132,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
             var chunkingTasks = rawTextContents.Select(rawTextContent => 
                 Task.Run(() =>
                 {
-                    var chunkHeader = $"Page: {rawTextContent.PageNumber}\n";
+                    var chunkHeader = $"File: {request.PdfFileName}\nPage: {rawTextContent.PageNumber}\n";
                     logger.LogDebug("Created Chunk: {ChunkHeader}",chunkHeader);
                     var textChunks = DocumentChunker.ChunkText(rawTextContent.Text!, chunkHeader);
                     return textChunks.Select(textChunk => new RawContent

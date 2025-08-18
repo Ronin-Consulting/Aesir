@@ -198,8 +198,7 @@ public static class ServiceCollectionExtensions
                     
                     if (request.TextFileFileName!.GetContentType() == SupportedFileContentTypes.XmlContentType)
                     {
-                        // not done
-                        return new AesirConversationDocumentTextData<Guid>
+                        return new AesirConversationXmlTextData<Guid>()
                         {
                             ConversationId = conversationId,
                             Key = Guid.Empty // This will be replaced in the service

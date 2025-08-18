@@ -142,33 +142,6 @@ public class AesirConversationJsonTextData<TKey> : AesirConversationDocumentText
     /// </summary>
     [VectorStoreData(StorageName = "parent_info")]
     public string? ParentInfo { get; set; }
-
-    /// <summary>
-    /// Creates a new instance of <see cref="AesirConversationJsonTextData{TKey}"/>
-    /// by copying data from the provided <see cref="AesirConversationDocumentTextData{TKey}"/> instance.
-    /// </summary>
-    /// <param name="other">
-    /// The <see cref="AesirConversationDocumentTextData{TKey}"/> instance
-    /// from which to copy data for the new <see cref="AesirConversationJsonTextData{TKey}"/> instance.
-    /// </param>
-    /// <returns>
-    /// A new <see cref="AesirConversationJsonTextData{TKey}"/> instance
-    /// containing the copied data from the provided <see cref="AesirConversationDocumentTextData{TKey}"/>.
-    /// </returns>
-    public static AesirConversationJsonTextData<TKey> NewFrom(AesirConversationDocumentTextData<TKey> other)
-    {
-        return new AesirConversationJsonTextData<TKey>()
-        {
-            Key = other.Key,
-            Text = other.Text,
-            ReferenceDescription = other.ReferenceDescription,
-            ReferenceLink = other.ReferenceLink,
-            TextEmbedding = other.TextEmbedding,
-            TokenCount = other.TokenCount,
-            CreatedAt = other.CreatedAt,
-            ConversationId = other.ConversationId
-        };
-    }
 }
 
 /// <summary>
@@ -197,28 +170,60 @@ public class AesirGlobalJsonTextData<TKey> : AesirGlobalDocumentTextData<TKey>, 
     /// </summary>
     [VectorStoreData(StorageName = "parent_info")]
     public string? ParentInfo { get; set; }
+}
+
+/// <summary>
+/// Defines the structure for XML text data with associated metadata and path information.
+/// </summary>
+public interface IXmlTextData
+{
+    /// <summary>
+    /// Gets or sets the text data content.
+    /// </summary>
+    public string? Text { get; set; }
 
     /// <summary>
-    /// Creates a new instance of <see cref="AesirGlobalJsonTextData{TKey}"/>
-    /// from an existing <see cref="AesirGlobalDocumentTextData{TKey}"/> instance.
+    /// Gets or sets the file path or navigation path to the XML data associated with the object.
     /// </summary>
-    /// <typeparam name="TKey">The type of the key used to identify the text data.</typeparam>
-    /// <param name="other">The instance of <see cref="AesirGlobalDocumentTextData{TKey}"/>
-    /// from which to create the new <see cref="AesirGlobalJsonTextData{TKey}"/>.</param>
-    /// <returns>A new instance of <see cref="AesirGlobalJsonTextData{TKey}"/>
-    /// populated with values from the provided <see cref="AesirGlobalDocumentTextData{TKey}"/>.</returns>
-    public static AesirGlobalJsonTextData<TKey> NewFrom(AesirGlobalDocumentTextData<TKey> other)
-    {
-        return new AesirGlobalJsonTextData<TKey>()
-        {
-            Key = other.Key,
-            Text = other.Text,
-            ReferenceDescription = other.ReferenceDescription,
-            ReferenceLink = other.ReferenceLink,
-            TextEmbedding = other.TextEmbedding,
-            TokenCount = other.TokenCount,
-            CreatedAt = other.CreatedAt,
-            Category = other.Category
-        };
-    }
+    public string? XmlPath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the type of the XML node.
+    /// </summary>
+    public string? NodeType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the information about the parent node in the XML structure.
+    /// </summary>
+    public string? ParentInfo { get; set; }
+}
+
+/// <summary>
+/// Represents conversation-specific XML text data with additional metadata, such as XML path, node type, and parent information,
+/// for advanced semantic search and retrieval.
+/// Inherits from <see cref="AesirConversationDocumentTextData{TKey}"/> and implements <see cref="IXmlTextData"/>.
+/// </summary>
+/// <typeparam name="TKey">The type of the key used to uniquely identify the text data.</typeparam>
+[Experimental("SKEXP0001")]
+public class AesirConversationXmlTextData<TKey> : AesirConversationDocumentTextData<TKey>, IXmlTextData
+{
+    /// <summary>
+    /// Gets or sets the path of the associated XML element or node.
+    /// </summary>
+    [VectorStoreData(StorageName = "xml_path", IsFullTextIndexed = true, IsIndexed = true)]
+    public string? XmlPath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the type of the node within the XML structure, typically representing
+    /// the role or classification of the element in the document hierarchy.
+    /// </summary>
+    [VectorStoreData(StorageName = "node_type", IsIndexed = true)]
+    public string? NodeType { get; set; }
+
+    /// <summary>
+    /// Gets or sets information about the parent node in the XML structure.
+    /// Typically used to provide context or hierarchy information for the current node.
+    /// </summary>
+    [VectorStoreData(StorageName = "parent_info")]
+    public string? ParentInfo { get; set; }
 }
