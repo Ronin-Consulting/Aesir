@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Aesir.Common.FileTypes;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
@@ -84,12 +85,8 @@ public partial class FileToUploadViewModel(
     {
         FileName = file.Name;
 
-        var imageFileExtensions = new string[] { ".jpg", ".jpeg", ".png", ".tiff", ".bmp" };
-        if(imageFileExtensions.Contains(Path.GetExtension(FileName)))
-        {
-            IconKind = MaterialIconKind.FileImage;
-            return;
-        }
+        if (!FileTypeManager.IsImage(FileName)) return;
+        IconKind = MaterialIconKind.FileImage;
     }
 
     /// Toggles the processing state of the file currently being handled.

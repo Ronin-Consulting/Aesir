@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;
+using Aesir.Common.FileTypes;
 using Aesir.Common.Models;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -70,7 +71,7 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
         {
             FileName = message.GetFileName();
             
-            if (Path.GetExtension(FileName ?? string.Empty).Equals(".png", StringComparison.OrdinalIgnoreCase))
+            if (FileTypeManager.IsImage(FileName ?? string.Empty))
             {
                 FileIconKind = MaterialIconKind.FileImage;
             }
