@@ -18,4 +18,6 @@ public sealed class LoadTextFileRequest
     public string? TextFileFileName { get; set; }
     
     public IDictionary<string, object>? Metadata { get; set; }
+    
+    public int BatchSize { get; set; } = Math.Max(1, Environment.ProcessorCount / 2);
 }

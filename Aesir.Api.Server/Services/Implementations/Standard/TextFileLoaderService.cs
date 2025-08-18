@@ -1,6 +1,5 @@
 using System.ClientModel;
 using System.Diagnostics.CodeAnalysis;
-using System.Net;
 using System.Text.Json.Nodes;
 using Aesir.Api.Server.Extensions;
 using Aesir.Common.FileTypes;
@@ -120,6 +119,7 @@ public class TextFileLoaderService<TKey, TRecord>(
         };
 
         TRecord[] records;
+        var batchSize = request.BatchSize;
 
         if (actualContentType == SupportedFileContentTypes.JsonContentType)
         {
@@ -137,26 +137,43 @@ public class TextFileLoaderService<TKey, TRecord>(
                     ? throw new InvalidOperationException("Record is not of type IJsonTextData")
                     : data;
             }
-
-
+            
             var jsonConverter = new JsonToAesirTextDataConverter<IJsonTextData>();
             records = (await jsonConverter.ConvertJsonAsync(CreateJsonRecord, content).ConfigureAwait(false))
                 .Cast<TRecord>().ToArray();
-
-            var recordTasks = records.Select(async record =>
+            
+            var processedRecords = new List<TRecord>(records.Length);
+            for (var i = 0; i < records.Length; i += batchSize)
             {
-                var textChunk = record.Text ?? throw new InvalidOperationException("Text is null");
-                ;
-                record.Key = uniqueKeyGenerator.GenerateKey();
-                record.ReferenceDescription ??= request.TextFileFileName.TrimStart("file://");
-                record.ReferenceLink ??= new Uri($"file://{request.TextFileFileName.TrimStart("file://")}").AbsoluteUri;
-                record.TextEmbedding ??= await GenerateEmbeddingsWithRetryAsync(textChunk, cancellationToken);
-                record.TokenCount ??= TokenCounter.CountTokens(textChunk);
+                var batch = records.Skip(i).Take(batchSize);
+                var recordTasks = batch.Select(async record =>
+                {
+                    var textChunk = record.Text ?? throw new InvalidOperationException("Text is null");
 
-                return record;
-            });
+                    record.Key = uniqueKeyGenerator.GenerateKey();
+                    record.ReferenceDescription ??= request.TextFileFileName.TrimStart("file://");
+                    record.ReferenceLink ??=
+                        new Uri($"file://{request.TextFileFileName.TrimStart("file://")}").AbsoluteUri;
+                    record.TextEmbedding ??= await GenerateEmbeddings(textChunk, cancellationToken);
+                    record.TokenCount ??= TokenCounter.CountTokens(textChunk);
 
-            records = await Task.WhenAll(recordTasks).ConfigureAwait(false);
+                    return record;
+                }).ToArray();
+
+                processedRecords.AddRange(await Task.WhenAll(recordTasks).ConfigureAwait(false));
+            }
+            
+            records = processedRecords.ToArray();
+        }
+        else
+        if (actualContentType == SupportedFileContentTypes.XmlContentType)
+        {
+            throw new NotImplementedException();
+        }
+        else
+        if (actualContentType == SupportedFileContentTypes.CsvContentType)
+        {
+            throw new NotImplementedException();
         }
         else
         {
@@ -168,28 +185,39 @@ public class TextFileLoaderService<TKey, TRecord>(
 
             var textChunks = DocumentChunker.ChunkText(rawContent.Text!,
                 $"File: {request.TextFileFileName}\nPage: {rawContent.PageNumber}");
+            
+            var chunks = textChunks.ToArray();
+            var processedRecords = new List<TRecord>(chunks.Length);
 
-            // Process each chunk
-            var recordTasks = textChunks.Select(async chunk =>
+            for (var i = 0; i < chunks.Length; i += batchSize)
             {
-                var chunkContent = new RawContent
+                var batch = chunks.Skip(i).Take(batchSize);
+
+                // Process each chunk
+                var recordTasks = batch.Select(async chunk =>
                 {
-                    Text = chunk,
-                    PageNumber = 1
-                };
+                    var chunkContent = new RawContent
+                    {
+                        Text = chunk,
+                        PageNumber = 1
+                    };
 
-                var record = recordFactory(chunkContent, request);
-                record.Key = uniqueKeyGenerator.GenerateKey();
-                record.Text ??= chunk;
-                record.ReferenceDescription ??= request.TextFileFileName.TrimStart("file://");
-                record.ReferenceLink ??= new Uri($"file://{request.TextFileFileName.TrimStart("file://")}").AbsoluteUri;
-                record.TextEmbedding ??= await GenerateEmbeddingsWithRetryAsync(chunk, cancellationToken);
-                record.TokenCount ??= TokenCounter.CountTokens(record.Text!);
+                    var record = recordFactory(chunkContent, request);
+                    record.Key = uniqueKeyGenerator.GenerateKey();
+                    record.Text ??= chunk;
+                    record.ReferenceDescription ??= request.TextFileFileName.TrimStart("file://");
+                    record.ReferenceLink ??=
+                        new Uri($"file://{request.TextFileFileName.TrimStart("file://")}").AbsoluteUri;
+                    record.TextEmbedding ??= await GenerateEmbeddings(chunk, cancellationToken);
+                    record.TokenCount ??= TokenCounter.CountTokens(record.Text!);
 
-                return record;
-            });
+                    return record;
+                }).ToArray();
 
-            records = await Task.WhenAll(recordTasks).ConfigureAwait(false);
+                processedRecords.AddRange(await Task.WhenAll(recordTasks).ConfigureAwait(false));
+            }
+
+            records = processedRecords.ToArray();
         }
 
         // Upsert the records into the vector store
@@ -207,46 +235,26 @@ public class TextFileLoaderService<TKey, TRecord>(
     /// <returns>An Embedding instance containing the generated vector representation of the input text.</returns>
     /// <exception cref="HttpOperationException">Thrown when a transient error such as too many requests occurs, and retries are exhausted.</exception>
     /// <exception cref="ClientResultException">Thrown when there is an error during the embedding generation process that is not transient.</exception>
-    private async Task<Embedding<float>> GenerateEmbeddingsWithRetryAsync(string text,
+    private async Task<Embedding<float>> GenerateEmbeddings(string text,
         CancellationToken cancellationToken)
     {
-        var tries = 0;
-
-        while (true)
+        try
         {
-            try
+            var options = new EmbeddingGenerationOptions()
             {
-                var options = new EmbeddingGenerationOptions()
-                {
-                    Dimensions = 1024
-                };
-                var vector = (await embeddingGenerator
-                    .GenerateAsync(text, options, cancellationToken: cancellationToken).ConfigureAwait(false)).Vector;
+                Dimensions = 1024
+            };
+            var vector = (await embeddingGenerator
+                .GenerateAsync(text, options, cancellationToken: cancellationToken).ConfigureAwait(false)).Vector;
 
-                return new Embedding<float>(vector);
-            }
-            catch (HttpOperationException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                tries++;
+            return new Embedding<float>(vector);
+        }
+        catch (ClientResultException ex)
+        {
+            logger.LogError("Failed to generate embedding. Error: {HttpOperationException}",
+                ex.GetRawResponse()?.Content.ToString() ?? ex.ToString());
 
-                if (tries < 3)
-                {
-                    logger.LogWarning("Failed to generate embedding. Error: {Exception}", ex);
-                    logger.LogWarning("Retrying embedding generation...");
-                    await Task.Delay(10_000, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    throw;
-                }
-            }
-            catch (ClientResultException ex)
-            {
-                logger.LogError("Failed to generate embedding. Error: {HttpOperationException}",
-                    ex.GetRawResponse()?.Content.ToString() ?? ex.ToString());
-
-                throw;
-            }
+            throw;
         }
     }
 
