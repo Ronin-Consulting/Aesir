@@ -29,7 +29,7 @@ public class TtsConfig
     /// Specifies the number of threads used for TTS processing.
     /// This influences performance and multi-threading optimization.
     /// </summary>
-    public int NumThreads { get; set; } = Math.Min(Environment.ProcessorCount / 2, 4);
+    public int NumThreads { get; set; } = Math.Min(Environment.ProcessorCount / 2 + 1, 4);
 
     /// <summary>
     /// Defines the rate of speech synthesis playback.

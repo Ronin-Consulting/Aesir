@@ -84,7 +84,7 @@ public class SttConfig
     /// Determines the number of threads to be utilized for processing tasks, with a default value
     /// calculated based on the system's available processor count, optimized for performance.
     /// </summary>
-    public int NumThreads { get; set; } = Math.Min(Environment.ProcessorCount / 2, 4);
+    public int NumThreads { get; set; } = Math.Min(Environment.ProcessorCount / 2 + 1, 4);
 
     /// <summary>
     /// Represents a debug level setting for the <see cref="SttConfig"/> class,
