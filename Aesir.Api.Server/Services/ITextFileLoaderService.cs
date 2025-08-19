@@ -19,5 +19,5 @@ public sealed class LoadTextFileRequest
     
     public IDictionary<string, object>? Metadata { get; set; }
     
-    public int BatchSize { get; set; } = Math.Min(Environment.ProcessorCount / 2 + 1, 4);
+    public int BatchSize { get; set; } = Math.Min(Environment.ProcessorCount / 2 + 1, 10);
 }
