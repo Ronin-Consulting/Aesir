@@ -6,7 +6,6 @@ using System.Windows.Input;
 using Aesir.Client.Services;
 using Aesir.Client.Shared;
 using Aesir.Common.Models;
-using Aesir.Common.Prompts;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;

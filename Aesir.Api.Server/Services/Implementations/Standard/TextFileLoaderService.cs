@@ -1,16 +1,12 @@
-using System.ClientModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
-using Aesir.Api.Server.Extensions;
 using Aesir.Common.FileTypes;
 using Aesir.Api.Server.Models;
 using Markdig;
 using Markdig.Renderers.Roundtrip;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
-using Microsoft.SemanticKernel;
-using Tiktoken;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
@@ -31,28 +27,118 @@ public class TextFileLoaderService<TKey, TRecord>(
     Func<RawContent, LoadTextFileRequest, TRecord> recordFactory,
     IModelsService modelsService,
     ILogger<TextFileLoaderService<TKey, TRecord>> logger
-) : ITextFileLoaderService<TKey, TRecord>
+) : BaseDataLoaderService<TKey, TRecord>(uniqueKeyGenerator, vectorStoreRecordCollection, embeddingGenerator, modelsService, logger), ITextFileLoaderService<TKey, TRecord>
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
-    /// <summary>
-    /// A static instance of the encoder utilized for counting tokens in text data within the service.
-    /// Leverages the default encoding provided by the <see cref="DocumentChunker"/> class.
-    /// </summary>
-    private static readonly Encoder TokenCounter = new(DocumentChunker.DefaultEncoding);
+    private readonly Func<RawContent, LoadTextFileRequest, TRecord> _recordFactory = recordFactory;
 
     /// <summary>
-    /// Represents a utility class for splitting text into smaller chunks based on token constraints.
-    /// Primarily used for processing large text inputs such as documents or raw content while ensuring
-    /// the resulting partitions conform to specified token limits. Supports optional functionality
-    /// for adding a header to each chunk for metadata inclusion.
+    /// Abstract base class for content type handlers.
     /// </summary>
-    /// <remarks>
-    /// - This class is marked as experimental and is subject to API or behavioral changes (Code: SKEXP0050).
-    /// - The token distribution logic takes into account parameters like `tokensPerParagraph` and `tokensPerLine`.
-    /// - Not guaranteed to be thread-safe.
-    /// </remarks>
-    private static readonly DocumentChunker DocumentChunker = new();
+    private abstract class ContentTypeHandler
+    {
+        public abstract Task<TRecord[]> ProcessContentAsync(
+            string content,
+            LoadTextFileRequest request,
+            Func<RawContent, LoadTextFileRequest, TRecord> recordFactory);
+    }
+
+    /// <summary>
+    /// Handler for JSON content processing.
+    /// </summary>
+    private class JsonContentHandler : ContentTypeHandler
+    {
+        public override async Task<TRecord[]> ProcessContentAsync(
+            string content,
+            LoadTextFileRequest request,
+            Func<RawContent, LoadTextFileRequest, TRecord> recordFactory)
+        {
+            var rawContent = new RawContent
+            {
+                Text = content,
+                PageNumber = 1
+            };
+
+            IJsonTextData CreateJsonRecord()
+            {
+                var record = recordFactory(rawContent, request);
+                return record is not IJsonTextData data
+                    ? throw new InvalidOperationException("Record is not of type IJsonTextData")
+                    : data;
+            }
+
+            var jsonConverter = new JsonToAesirTextDataConverter<IJsonTextData>();
+            return (await jsonConverter.ConvertJsonAsync(CreateJsonRecord, content, request.TextFileFileName).ConfigureAwait(false))
+                .Cast<TRecord>().ToArray();
+        }
+    }
+
+    /// <summary>
+    /// Handler for XML content processing.
+    /// </summary>
+    private class XmlContentHandler : ContentTypeHandler
+    {
+        public override async Task<TRecord[]> ProcessContentAsync(
+            string content,
+            LoadTextFileRequest request,
+            Func<RawContent, LoadTextFileRequest, TRecord> recordFactory)
+        {
+            var rawContent = new RawContent
+            {
+                Text = content,
+                PageNumber = 1
+            };
+
+            IXmlTextData CreateXmlRecord()
+            {
+                var record = recordFactory(rawContent, request);
+                return record is not IXmlTextData data
+                    ? throw new InvalidOperationException("Record is not of type IXmlTextData")
+                    : data;
+            }
+
+            var xmlConverter = new XmlToAesirTextDataConverter<IXmlTextData>();
+            return (await xmlConverter.ConvertXmlAsync(CreateXmlRecord, content, request.TextFileFileName).ConfigureAwait(false))
+                .Cast<TRecord>().ToArray();
+        }
+    }
+
+    /// <summary>
+    /// Handler for default text content processing (plain text, markdown, HTML).
+    /// </summary>
+    private class DefaultContentHandler : ContentTypeHandler
+    {
+        public override Task<TRecord[]> ProcessContentAsync(
+            string content,
+            LoadTextFileRequest request,
+            Func<RawContent, LoadTextFileRequest, TRecord> recordFactory)
+        {
+            var rawContent = new RawContent
+            {
+                Text = content,
+                PageNumber = 1
+            };
+
+            var textChunks = DocumentChunker.ChunkText(rawContent.Text!,
+                $"File: {request.TextFileFileName}\nPage: {rawContent.PageNumber}");
+
+            var records = textChunks.Select(chunk =>
+            {
+                var chunkContent = new RawContent
+                {
+                    Text = chunk,
+                    PageNumber = 1
+                };
+
+                var record = recordFactory(chunkContent, request);
+                record.Text ??= chunk;
+                return record;
+            }).ToArray();
+
+            return Task.FromResult(records);
+        }
+    }
 
     /// Asynchronously loads a text file, processes its contents, and integrates the extracted data into a vector store collection.
     /// <param name="request">
@@ -75,245 +161,82 @@ public class TextFileLoaderService<TKey, TRecord>(
     /// </returns>
     public async Task LoadTextFileAsync(LoadTextFileRequest request, CancellationToken cancellationToken)
     {
+        ValidateRequest(request);
+        var actualContentType = GetAndValidateContentType(request.TextFileFileName!);
+        
+        await InitializeCollectionAsync(cancellationToken);
+        await DeleteExistingRecordsAsync(request.TextFileFileName!, cancellationToken);
+        
+        var fileContent = await GetTextRawContentAsync(request.TextFileLocalPath!);
+        var content = await ConvertContentAsync(fileContent, actualContentType);
+        
+        var handler = CreateContentHandler(actualContentType);
+        var records = await handler.ProcessContentAsync(content, request, _recordFactory);
+        var processedRecords = await ProcessRecordsInBatchesAsync(records, request.TextFileFileName!, request.BatchSize, cancellationToken);
+        
+        await UpsertRecordsAsync(processedRecords, cancellationToken);
+        await UnloadModelsAsync();
+    }
+
+    /// <summary>
+    /// Validates the request parameters.
+    /// </summary>
+    private static void ValidateRequest(LoadTextFileRequest request)
+    {
         if (string.IsNullOrEmpty(request.TextFileLocalPath))
             throw new InvalidOperationException("TextFileLocalPath is empty");
-
         if (string.IsNullOrEmpty(request.TextFileFileName))
             throw new InvalidOperationException("TextFileFileName is empty");
+    }
 
+    /// <summary>
+    /// Gets and validates the content type of the file.
+    /// </summary>
+    private static string GetAndValidateContentType(string fileName)
+    {
         var supportedFileContentTypes = GetSupportedFileContentTypes();
-        if (!request.TextFileFileName.ValidFileContentType(
-                out var actualContentType,
-                supportedFileContentTypes
-            ))
+        if (!fileName.ValidFileContentType(out var actualContentType, supportedFileContentTypes))
             throw new NotSupportedException(
                 $"Only [{string.Join(", ", supportedFileContentTypes)}] files are currently supported and not: {actualContentType}");
+        return actualContentType;
+    }
 
-        // Create the collection if it doesn't exist
-        await vectorStoreRecordCollection.EnsureCollectionExistsAsync(cancellationToken).ConfigureAwait(false);
-
-        var toDelete = await vectorStoreRecordCollection.GetAsync(
-                filter: data => data.Text != null,
-                int.MaxValue,
-                cancellationToken: cancellationToken)
-            .ToListAsync(cancellationToken: cancellationToken);
-
-        toDelete = toDelete.Where(data =>
-            data.ReferenceDescription!.Contains(request.TextFileFileName.TrimStart("file://"))).ToList();
-
-        if (toDelete.Count > 0)
-            await vectorStoreRecordCollection.DeleteAsync(
-                toDelete.Select(td => td.Key), cancellationToken);
-
-        var fileContent = await GetTextRawContentAsync(request.TextFileLocalPath);
-
-        var plainTextConverter = new PlainTextToMarkdownConverter();
-        var markdownConverter = new MarkdownToMarkdownConverter();
-        var htmlConverter = new HtmlToMarkdownConverter();
-
-        var content = actualContentType switch
+    /// <summary>
+    /// Converts file content based on the content type.
+    /// </summary>
+    private static async Task<string> ConvertContentAsync(string fileContent, string contentType)
+    {
+        return contentType switch
         {
-            SupportedFileContentTypes.PlainTextContentType => await plainTextConverter.ConvertAsync(fileContent),
-            SupportedFileContentTypes.MarkdownContentType => await markdownConverter.ConvertAsync(fileContent),
-            SupportedFileContentTypes.HtmlContentType => await htmlConverter.ConvertAsync(fileContent),
+            SupportedFileContentTypes.PlainTextContentType => await new PlainTextToMarkdownConverter().ConvertAsync(fileContent),
+            SupportedFileContentTypes.MarkdownContentType => await new MarkdownToMarkdownConverter().ConvertAsync(fileContent),
+            SupportedFileContentTypes.HtmlContentType => await new HtmlToMarkdownConverter().ConvertAsync(fileContent),
             SupportedFileContentTypes.JsonContentType => fileContent,
             SupportedFileContentTypes.XmlContentType => fileContent,
-            _ => throw new NotSupportedException($"Content type {actualContentType} is not supported")
+            _ => throw new NotSupportedException($"Content type {contentType} is not supported")
         };
-
-        TRecord[] records;
-        var batchSize = request.BatchSize;
-
-        if (actualContentType == SupportedFileContentTypes.JsonContentType)
-        {
-            var rawContent = new RawContent
-            {
-                Text = content,
-                PageNumber = 1
-            };
-
-            IJsonTextData CreateJsonRecord()
-            {
-                var record = recordFactory(rawContent, request);
-
-                return record is not IJsonTextData data
-                    ? throw new InvalidOperationException("Record is not of type IJsonTextData")
-                    : data;
-            }
-
-            var jsonConverter = new JsonToAesirTextDataConverter<IJsonTextData>();
-            records = (await jsonConverter.ConvertJsonAsync(CreateJsonRecord, content, request.TextFileFileName).ConfigureAwait(false))
-                .Cast<TRecord>().ToArray();
-
-            var processedRecords = new List<TRecord>(records.Length);
-            for (var i = 0; i < records.Length; i += batchSize)
-            {
-                var batch = records.Skip(i).Take(batchSize);
-                var recordTasks = batch.Select(async record =>
-                {
-                    var textChunk = record.Text ?? throw new InvalidOperationException("Text is null");
-
-                    record.Key = uniqueKeyGenerator.GenerateKey();
-                    record.ReferenceDescription ??= request.TextFileFileName.TrimStart("file://");
-                    record.ReferenceLink ??=
-                        new Uri($"file://{request.TextFileFileName.TrimStart("file://")}").AbsoluteUri;
-                    record.TextEmbedding ??= await GenerateEmbeddings(textChunk, cancellationToken);
-                    record.TokenCount ??= TokenCounter.CountTokens(textChunk);
-
-                    return record;
-                }).ToArray();
-
-                processedRecords.AddRange(await Task.WhenAll(recordTasks).ConfigureAwait(false));
-            }
-
-            records = processedRecords.ToArray();
-        }
-        else if (actualContentType == SupportedFileContentTypes.XmlContentType)
-        {
-            var rawContent = new RawContent
-            {
-                Text = content,
-                PageNumber = 1
-            };
-
-            IXmlTextData CreateXmlRecord()
-            {
-                var record = recordFactory(rawContent, request);
-
-                return record is not IXmlTextData data
-                    ? throw new InvalidOperationException("Record is not of type IXmlTextData")
-                    : data;
-            }
-
-            var xmlConverter = new XmlToAesirTextDataConverter<IXmlTextData>();
-            records = (await xmlConverter.ConvertXmlAsync(CreateXmlRecord, content, request.TextFileFileName).ConfigureAwait(false))
-                .Cast<TRecord>().ToArray();
-
-            var processedRecords = new List<TRecord>(records.Length);
-            for (var i = 0; i < records.Length; i += batchSize)
-            {
-                var batch = records.Skip(i).Take(batchSize);
-                var recordTasks = batch.Select(async record =>
-                {
-                    var textChunk = record.Text ?? throw new InvalidOperationException("Text is null");
-
-                    record.Key = uniqueKeyGenerator.GenerateKey();
-                    record.ReferenceDescription ??= request.TextFileFileName.TrimStart("file://");
-                    record.ReferenceLink ??=
-                        new Uri($"file://{request.TextFileFileName.TrimStart("file://")}").AbsoluteUri;
-                    record.TextEmbedding ??= await GenerateEmbeddings(textChunk, cancellationToken);
-                    record.TokenCount ??= TokenCounter.CountTokens(textChunk);
-
-                    return record;
-                }).ToArray();
-
-                processedRecords.AddRange(await Task.WhenAll(recordTasks).ConfigureAwait(false));
-            }
-
-            records = processedRecords.ToArray();
-        }
-        else if (actualContentType == SupportedFileContentTypes.CsvContentType)
-        {
-            throw new NotImplementedException();
-        }
-        else
-        {
-            var rawContent = new RawContent
-            {
-                Text = content,
-                PageNumber = 1
-            };
-
-            var textChunks = DocumentChunker.ChunkText(rawContent.Text!,
-                $"File: {request.TextFileFileName}\nPage: {rawContent.PageNumber}");
-
-            var chunks = textChunks.ToArray();
-            var processedRecords = new List<TRecord>(chunks.Length);
-
-            for (var i = 0; i < chunks.Length; i += batchSize)
-            {
-                var batch = chunks.Skip(i).Take(batchSize);
-
-                // Process each chunk
-                var recordTasks = batch.Select(async chunk =>
-                {
-                    var chunkContent = new RawContent
-                    {
-                        Text = chunk,
-                        PageNumber = 1
-                    };
-
-                    var record = recordFactory(chunkContent, request);
-                    record.Key = uniqueKeyGenerator.GenerateKey();
-                    record.Text ??= chunk;
-                    record.ReferenceDescription ??= request.TextFileFileName.TrimStart("file://");
-                    record.ReferenceLink ??=
-                        new Uri($"file://{request.TextFileFileName.TrimStart("file://")}").AbsoluteUri;
-                    record.TextEmbedding ??= await GenerateEmbeddings(chunk, cancellationToken);
-                    record.TokenCount ??= TokenCounter.CountTokens(record.Text!);
-
-                    return record;
-                }).ToArray();
-
-                processedRecords.AddRange(await Task.WhenAll(recordTasks).ConfigureAwait(false));
-            }
-
-            records = processedRecords.ToArray();
-        }
-
-        // Upsert the records into the vector store
-        await vectorStoreRecordCollection
-            .UpsertAsync(records, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        // Unload models to free resources
-        await modelsService.UnloadVisionModelAsync();
-        await modelsService.UnloadEmbeddingModelAsync();
     }
 
-    /// Generates embeddings for the provided text with built-in retry mechanisms for handling transient errors.
-    /// <param name="text">
-    /// The text input for which the embedding vectors are to be generated.
-    /// </param>
-    /// <param name="cancellationToken">
-    /// A token to monitor for cancellation requests, allowing the operation to be terminated early if required.
-    /// </param>
-    /// <returns>
-    /// A <see cref="Task{TResult}"/> that resolves to an <see cref="Embedding{T}"/> instance containing the generated vector representation of the input text.
-    /// </returns>
-    /// <exception cref="HttpOperationException">
-    /// Thrown if a transient error, such as too many requests, occurs and maximum retry attempts are reached.
-    /// </exception>
-    /// <exception cref="ClientResultException">
-    /// Thrown if the embedding generation operation fails due to a non-transient issue.
-    /// </exception>
-    private async Task<Embedding<float>> GenerateEmbeddings(string text,
-        CancellationToken cancellationToken)
+    /// <summary>
+    /// Creates the appropriate content handler based on content type.
+    /// </summary>
+    private static ContentTypeHandler CreateContentHandler(string contentType)
     {
-        try
+        return contentType switch
         {
-            var options = new EmbeddingGenerationOptions()
-            {
-                Dimensions = 1024
-            };
-            var vector = (await embeddingGenerator
-                .GenerateAsync(text, options, cancellationToken: cancellationToken).ConfigureAwait(false)).Vector;
-
-            return new Embedding<float>(vector);
-        }
-        catch (ClientResultException ex)
-        {
-            logger.LogError("Failed to generate embedding. Error: {HttpOperationException}",
-                ex.GetRawResponse()?.Content.ToString() ?? ex.ToString());
-
-            throw;
-        }
+            SupportedFileContentTypes.JsonContentType => new JsonContentHandler(),
+            SupportedFileContentTypes.XmlContentType => new XmlContentHandler(),
+            SupportedFileContentTypes.CsvContentType => throw new NotImplementedException(),
+            _ => new DefaultContentHandler()
+        };
     }
+
 
     /// Retrieves the list of file content types that are supported by the service.
     /// <returns>
     /// An array of strings representing the supported file content types.
     /// </returns>
-    protected virtual string[] GetSupportedFileContentTypes()
+    protected static string[] GetSupportedFileContentTypes()
     {
         return new[]
         {

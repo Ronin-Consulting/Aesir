@@ -3,8 +3,6 @@ using Aesir.Client.Messages;
 using Aesir.Client.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
-using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Aesir.Common.FileTypes;
 using Avalonia.Platform.Storage;

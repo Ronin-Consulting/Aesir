@@ -10,7 +10,6 @@ using Irihi.Avalonia.Shared.Contracts;
 using Microsoft.Extensions.Logging;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Microsoft.Extensions.Configuration;
 
 namespace Aesir.Client.ViewModels;
 
