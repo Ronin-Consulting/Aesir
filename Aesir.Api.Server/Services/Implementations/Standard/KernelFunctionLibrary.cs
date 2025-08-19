@@ -10,6 +10,17 @@ using Microsoft.SemanticKernel.Plugins.Web;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
+/// <summary>
+/// A library providing a set of kernel functions for performing various data analysis and search operations on
+/// textual data. The class is parameterized by a key type and a record type, enabling it to handle diverse data
+/// structures in a flexible manner.
+/// </summary>
+/// <typeparam name="TKey">
+/// The type of the keys for the records being processed. This type must be non-nullable.
+/// </typeparam>
+/// <typeparam name="TRecord">
+/// The type of the data records being processed. The type must derive from AesirTextData<TKey>.
+/// </typeparam>
 [Experimental("SKEXP0001")]
 public class KernelFunctionLibrary<TKey, TRecord>(
     ITextSearch textSearch,
@@ -17,6 +28,21 @@ public class KernelFunctionLibrary<TKey, TRecord>(
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
+    /// Creates a kernel function for analyzing images to classify them as either 'document' or 'non-document'.
+    /// If classified as a document, processes the image with OCR to extract text. If classified as non-document,
+    /// provides a detailed visual description. This function is intended for image files like PNG, JPG, and BMP
+    /// and is not suitable for other file types such as PDFs or text files.
+    /// <param name="imageFilter">
+    /// A filter to constrain the scope of the image analysis, based on custom search criteria.
+    /// Pass null for no filtering.
+    /// </param>
+    /// <param name="top">
+    /// The maximum number of results to return. Default is 5.
+    /// </param>
+    /// <returns>
+    /// A kernel function that processes and analyzes the specified images, returning results that contain
+    /// details such as name, value, and link for each analyzed image.
+    /// </returns>
     public KernelFunction GetImageAnalysisFunction(TextSearchFilter? imageFilter = null, int top = 5)
     {
         var imageTextSearchOptions = new TextSearchOptions
@@ -52,6 +78,19 @@ public class KernelFunctionLibrary<TKey, TRecord>(
             options: imageTextSearchResultsFunctionOptions);
     }
 
+    /// <summary>
+    /// Creates a kernel function that performs a hybrid document search based on the given query criteria.
+    /// </summary>
+    /// <param name="searchOptions">
+    /// Optional search options of type <see cref="HybridSearchOptions{TRecord}"/> that define custom filtering or behavior for the hybrid search.
+    /// </param>
+    /// <param name="top">
+    /// Optional parameter specifying the maximum number of results to return. Overrides the default result count if provided.
+    /// </param>
+    /// <returns>
+    /// A <see cref="KernelFunction"/> that can be used to execute a hybrid search for documents. The search returns a collection of results
+    /// with properties Name, Value, and Link that match the query.
+    /// </returns>
     public KernelFunction GetHybridDocumentSearchFunction(HybridSearchOptions<TRecord>? searchOptions = null, int? top = null)
     {
         ArgumentNullException.ThrowIfNull(hybridSearch);
@@ -130,7 +169,7 @@ public class KernelFunctionLibrary<TKey, TRecord>(
                     }
                 );
 
-            return results.Where(r => r.Score >= 0.5f).Select(r =>
+            return results.Where(r => r.Score >= 0.6f).Select(r =>
                 new TextSearchResult(r.Record.Text!)
                 {
                     Link = r.Record.ReferenceLink,
@@ -140,6 +179,20 @@ public class KernelFunctionLibrary<TKey, TRecord>(
         }
     }
 
+    /// <summary>
+    /// Retrieves a semantic document search function for performing searches on a collection of documents
+    /// using specified filtering and result count criteria.
+    /// </summary>
+    /// <param name="semanticSearchFilter">
+    /// An optional filter used to apply specific constraints to the semantic search. If null, no filtering is applied.
+    /// </param>
+    /// <param name="top">
+    /// Specifies the maximum number of top results to return. Default value is 5.
+    /// </param>
+    /// <returns>
+    /// A <see cref="KernelFunction"/> that represents the semantic document search functionality,
+    /// capable of searching content based on a query and returning relevant results.
+    /// </returns>
     public KernelFunction GetSemanticDocumentSearchFunction(TextSearchFilter? semanticSearchFilter = null, int top = 5)
     {
             var semanticTextSearchOptions = new TextSearchOptions
@@ -165,6 +218,18 @@ public class KernelFunctionLibrary<TKey, TRecord>(
                 .CreateGetTextSearchResults(searchOptions: semanticTextSearchOptions, options: semanticSearchResultsFunctionOptions);        
     }
 
+    /// <summary>
+    /// Creates and returns a KernelFunction for performing web searches using the provided web search engine connector.
+    /// </summary>
+    /// <param name="webSearchEngineConnector">
+    /// The connector instance for the desired web search engine, which allows executing web searches and retrieving results.
+    /// </param>
+    /// <returns>
+    /// A KernelFunction object configured to perform web searches for content related to a specified query.
+    /// </returns>
+    /// <exception cref="Exception">
+    /// Thrown when no valid web search function can be retrieved from the specified plugin.
+    /// </exception>
     public KernelFunction GetWebSearchFunction(IWebSearchEngineConnector webSearchEngineConnector)
     {
         // var googleConnector = new GoogleConnector(

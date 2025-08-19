@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.SemanticKernel.Text;
 using Tiktoken;
 using Tiktoken.Encodings;
-//using Encoder = Tiktoken.Encoder;
 
 namespace Aesir.Api.Server.Services;
 
@@ -20,6 +19,16 @@ public class DocumentChunker(int tokensPerParagraph = 384, int tokensPerLine = 1
     public static Encoding DefaultEncoding => new Cl100KBase();
     
     private readonly Encoder _encoder = new(DefaultEncoding);
+
+    /// <summary>
+    /// Counts the number of tokens in the provided text using the default encoder.
+    /// </summary>
+    /// <param name="text">The text for which the tokens will be counted.</param>
+    /// <returns>The total number of tokens in the input text.</returns>
+    public int CountTokens(string text)
+    {
+        return _encoder.CountTokens(text);
+    }
     
     /// <summary>
     /// Chunks the provided text into smaller segments based on the configured token limits.

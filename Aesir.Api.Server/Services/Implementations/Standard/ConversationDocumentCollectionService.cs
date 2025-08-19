@@ -121,21 +121,26 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     public async Task LoadDocumentAsync(string documentPath, IDictionary<string, object>? fileMetaData,
         CancellationToken cancellationToken)
     {
+        var supportedTextFileContentTypes = new List<string>
+        {
+            SupportedFileContentTypes.PlainTextContentType,
+            SupportedFileContentTypes.MarkdownContentType,
+            SupportedFileContentTypes.HtmlContentType,
+            SupportedFileContentTypes.XmlContentType,
+            SupportedFileContentTypes.JsonContentType,
+            SupportedFileContentTypes.CsvContentType
+        };
+
         var supportedFileContentTypes = new List<string>
         {
             // PDFs
             SupportedFileContentTypes.PdfContentType,
             // Image files
             SupportedFileContentTypes.PngContentType,
-            // text files 
-            SupportedFileContentTypes.PlainTextContentType,
-            SupportedFileContentTypes.MarkdownContentType,
-            SupportedFileContentTypes.HtmlContentType,
-            SupportedFileContentTypes.XmlContentType,
-            SupportedFileContentTypes.JsonContentType
-        }.ToArray();
+        };
+        supportedFileContentTypes.AddRange(supportedTextFileContentTypes);
         
-        if (!documentPath.ValidFileContentType(out var actualContentType, supportedFileContentTypes))
+        if (!documentPath.ValidFileContentType(out var actualContentType, supportedFileContentTypes.ToArray()))
         {
             throw new InvalidDataException($"Unsupported file content type: {actualContentType}");
         }
@@ -169,15 +174,6 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             await _imageDataLoader.LoadImageAsync(imageRequest, cancellationToken);
         }
         
-        var supportedTextFileContentTypes = new List<string>
-        {
-            SupportedFileContentTypes.PlainTextContentType,
-            SupportedFileContentTypes.MarkdownContentType,
-            SupportedFileContentTypes.HtmlContentType,
-            SupportedFileContentTypes.XmlContentType,
-            SupportedFileContentTypes.JsonContentType
-        }.ToArray();
-
         if (supportedTextFileContentTypes.Contains(actualContentType))
         {
             var textFileRequest = new LoadTextFileRequest()

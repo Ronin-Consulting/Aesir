@@ -204,6 +204,15 @@ public static class ServiceCollectionExtensions
                             Key = Guid.Empty // This will be replaced in the service
                         };
                     }
+                    
+                    if (request.TextFileFileName!.GetContentType() == SupportedFileContentTypes.CsvContentType)
+                    {
+                        return new AesirConversationCsvTextData<Guid>()
+                        {
+                            ConversationId = conversationId,
+                            Key = Guid.Empty // This will be replaced in the service
+                        };
+                    }
 
                     return new AesirConversationDocumentTextData<Guid>
                     {
