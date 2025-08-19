@@ -11,14 +11,17 @@ using Microsoft.Extensions.VectorData;
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 /// <summary>
-/// Provides functionality to load and process text files into a structured format.
+/// Provides functionality to load and process text files into a structured format by converting raw content into domain-specific record representations.
 /// </summary>
 /// <typeparam name="TKey">
-/// The type of the unique identifier for the records. Must be non-nullable.
+/// The type of the unique identifier for the records. Must be a non-nullable type.
 /// </typeparam>
 /// <typeparam name="TRecord">
-/// The type of the record used to store text content. Must derive from <see cref="AesirTextData{TKey}"/>.
+/// The type of the record used to store processed text content. Must inherit from <see cref="AesirTextData{TKey}"/>.
 /// </typeparam>
+/// <remarks>
+/// This class integrates functionality for generating unique identifiers, managing vector-based storage, generating embeddings, and processing model-driven operations.
+/// </remarks>
 [Experimental("SKEXP0001")]
 public class TextFileLoaderService<TKey, TRecord>(
     UniqueKeyGenerator<TKey> uniqueKeyGenerator,
@@ -27,17 +30,46 @@ public class TextFileLoaderService<TKey, TRecord>(
     Func<RawContent, LoadTextFileRequest, TRecord> recordFactory,
     IModelsService modelsService,
     ILogger<TextFileLoaderService<TKey, TRecord>> logger
-) : BaseDataLoaderService<TKey, TRecord>(uniqueKeyGenerator, vectorStoreRecordCollection, embeddingGenerator, modelsService, logger), ITextFileLoaderService<TKey, TRecord>
+) : BaseDataLoaderService<TKey, TRecord>(uniqueKeyGenerator, vectorStoreRecordCollection, embeddingGenerator,
+    modelsService, logger), ITextFileLoaderService<TKey, TRecord>
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
+    /// <summary>
+    /// A factory delegate used to create instances of <typeparamref name="TRecord"/> objects,
+    /// based on the raw content and file loading request provided.
+    /// Facilitates the structured transformation of raw text content into strongly typed record representations.
+    /// </summary>
     private readonly Func<RawContent, LoadTextFileRequest, TRecord> _recordFactory = recordFactory;
 
     /// <summary>
-    /// Abstract base class for content type handlers.
+    /// Serves as an abstract base class for handling different content types during text file processing.
     /// </summary>
     private abstract class ContentTypeHandler
     {
+        /// Asynchronously processes the provided raw content using a specified content handler, transforming it into a collection of records.
+        /// <param name="content">
+        /// The raw content to be processed.
+        /// </param>
+        /// <param name="request">
+        /// An instance of <see cref="LoadTextFileRequest"/> containing detailed information about the loading operation,
+        /// such as metadata and configuration parameters.
+        /// </param>
+        /// <param name="recordFactory">
+        /// A function used to create instances of <typeparamref name="TRecord"/>
+        /// using the provided raw content and request details.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if any required argument, such as <paramref name="content"/>, <paramref name="request"/>,
+        /// or <paramref name="recordFactory"/>, is null.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown if the content cannot be processed or does not follow a valid format.
+        /// </exception>
+        /// <returns>
+        /// A task that represents the asynchronous operation. The task result contains
+        /// an array of <typeparamref name="TRecord"/> objects generated from the processed content.
+        /// </returns>
         public abstract Task<TRecord[]> ProcessContentAsync(
             string content,
             LoadTextFileRequest request,
@@ -45,10 +77,26 @@ public class TextFileLoaderService<TKey, TRecord>(
     }
 
     /// <summary>
-    /// Handler for JSON content processing.
+    /// Provides specialized handling and processing of JSON content within the context of loading text files.
     /// </summary>
     private class JsonContentHandler : ContentTypeHandler
     {
+        /// Asynchronously processes the content of a text file and converts it into records using the provided record factory.
+        /// <param name="content">
+        /// The string content of the text file to be processed.
+        /// </param>
+        /// <param name="request">
+        /// An instance of <see cref="LoadTextFileRequest"/> containing metadata about the text file, such as name and other properties.
+        /// </param>
+        /// <param name="recordFactory">
+        /// A function that creates a record of type <typeparamref name="TRecord"/> using instances of <see cref="RawContent"/> and <see cref="LoadTextFileRequest"/>.
+        /// </param>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the record created by the factory is not of type <see cref="IJsonTextData"/>.
+        /// </exception>
+        /// <returns>
+        /// A <see cref="Task{TResult}"/> representing the asynchronous operation that returns an array of records of type <typeparamref name="TRecord"/>.
+        /// </returns>
         public override async Task<TRecord[]> ProcessContentAsync(
             string content,
             LoadTextFileRequest request,
@@ -69,16 +117,33 @@ public class TextFileLoaderService<TKey, TRecord>(
             }
 
             var jsonConverter = new JsonToAesirTextDataConverter<IJsonTextData>();
-            return (await jsonConverter.ConvertJsonAsync(CreateJsonRecord, content, request.TextFileFileName).ConfigureAwait(false))
+            return (await jsonConverter.ConvertJsonAsync(CreateJsonRecord, content, request.TextFileFileName)
+                    .ConfigureAwait(false))
                 .Cast<TRecord>().ToArray();
         }
     }
 
     /// <summary>
-    /// Handler for XML content processing.
+    /// Provides an implementation for handling XML content within the data loading pipeline.
     /// </summary>
     private class XmlContentHandler : ContentTypeHandler
     {
+        /// Asynchronously processes XML content and transforms it into an array of records.
+        /// <param name="content">
+        /// The XML content in string format to process.
+        /// </param>
+        /// <param name="request">
+        /// An instance of <see cref="LoadTextFileRequest"/> containing details about the file, such as the file name.
+        /// </param>
+        /// <param name="recordFactory">
+        /// A factory method that creates instances of <see cref="TRecord"/> based on the provided raw content and request.
+        /// </param>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown if the record created by the factory is not of type <see cref="IXmlTextData"/>.
+        /// </exception>
+        /// <returns>
+        /// A <see cref="Task"/> representing the asynchronous operation, containing an array of <see cref="TRecord"/> objects created from the XML content.
+        /// </returns>
         public override async Task<TRecord[]> ProcessContentAsync(
             string content,
             LoadTextFileRequest request,
@@ -99,16 +164,30 @@ public class TextFileLoaderService<TKey, TRecord>(
             }
 
             var xmlConverter = new XmlToAesirTextDataConverter<IXmlTextData>();
-            return (await xmlConverter.ConvertXmlAsync(CreateXmlRecord, content, request.TextFileFileName).ConfigureAwait(false))
+            return (await xmlConverter.ConvertXmlAsync(CreateXmlRecord, content, request.TextFileFileName)
+                    .ConfigureAwait(false))
                 .Cast<TRecord>().ToArray();
         }
     }
 
     /// <summary>
-    /// Handler for default text content processing (plain text, markdown, HTML).
+    /// Handles processing of default content types such as plain text, markdown, and HTML.
     /// </summary>
     private class DefaultContentHandler : ContentTypeHandler
     {
+        /// Processes the provided text content, chunks it into manageable parts, and generates records using the specified factory function.
+        /// <param name="content">
+        /// The text content to be processed.
+        /// </param>
+        /// <param name="request">
+        /// An instance of <see cref="LoadTextFileRequest"/> containing details about the original text file.
+        /// </param>
+        /// <param name="recordFactory">
+        /// A factory function used to generate records from the chunked text and the provided file request details.
+        /// </param>
+        /// <returns>
+        /// A <see cref="Task{TResult}"/> containing an array of <typeparamref name="TRecord"/> representing the processed records.
+        /// </returns>
         public override Task<TRecord[]> ProcessContentAsync(
             string content,
             LoadTextFileRequest request,
@@ -140,21 +219,24 @@ public class TextFileLoaderService<TKey, TRecord>(
         }
     }
 
-    /// Asynchronously loads a text file, processes its contents, and integrates the extracted data into a vector store collection.
+    /// Asynchronously loads and processes a text file, storing its content into a vector store collection.
     /// <param name="request">
-    /// An instance of <see cref="LoadTextFileRequest"/> containing the details of the text file, such as its path, name, and additional properties.
+    /// An instance of <see cref="LoadTextFileRequest"/> containing details of the text file, such as its filename, file path, and additional processing configurations.
     /// </param>
     /// <param name="cancellationToken">
-    /// A token to monitor for cancellation requests, enabling the operation to be canceled.
+    /// A token to monitor for cancellation requests, allowing the operation to be canceled.
     /// </param>
     /// <exception cref="ArgumentNullException">
-    /// Thrown if the provided <paramref name="request"/> is null.
+    /// Thrown when the <paramref name="request"/> is null.
     /// </exception>
     /// <exception cref="InvalidOperationException">
-    /// Thrown if the specified file path or file content is invalid or cannot be processed.
+    /// Thrown when the content type or file content cannot be correctly identified or processed.
+    /// </exception>
+    /// <exception cref="FileNotFoundException">
+    /// Thrown when the specified file path does not exist or is inaccessible.
     /// </exception>
     /// <exception cref="NotSupportedException">
-    /// Thrown if the file type is unsupported for processing.
+    /// Thrown when the file's format or content type is unsupported.
     /// </exception>
     /// <returns>
     /// A <see cref="Task"/> representing the asynchronous operation.
@@ -163,24 +245,32 @@ public class TextFileLoaderService<TKey, TRecord>(
     {
         ValidateRequest(request);
         var actualContentType = GetAndValidateContentType(request.TextFileFileName!);
-        
+
         await InitializeCollectionAsync(cancellationToken);
         await DeleteExistingRecordsAsync(request.TextFileFileName!, cancellationToken);
-        
+
         var fileContent = await GetTextRawContentAsync(request.TextFileLocalPath!);
         var content = await ConvertContentAsync(fileContent, actualContentType);
-        
+
         var handler = CreateContentHandler(actualContentType);
         var records = await handler.ProcessContentAsync(content, request, _recordFactory);
-        var processedRecords = await ProcessRecordsInBatchesAsync(records, request.TextFileFileName!, request.BatchSize, cancellationToken);
-        
+        var processedRecords =
+            await ProcessRecordsInBatchesAsync(records, request.TextFileFileName!, request.BatchSize,
+                cancellationToken);
+
         await UpsertRecordsAsync(processedRecords, cancellationToken);
         await UnloadModelsAsync();
     }
 
-    /// <summary>
-    /// Validates the request parameters.
-    /// </summary>
+    /// Validates the request parameters ensuring they meet the required criteria.
+    /// <param name="request">
+    /// An instance of <see cref="LoadTextFileRequest"/> representing the details of the request,
+    /// including the local file path and file name of the text file.
+    /// </param>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the <see cref="LoadTextFileRequest.TextFileLocalPath"/> or
+    /// <see cref="LoadTextFileRequest.TextFileFileName"/> is null or empty.
+    /// </exception>
     private static void ValidateRequest(LoadTextFileRequest request)
     {
         if (string.IsNullOrEmpty(request.TextFileLocalPath))
@@ -190,8 +280,17 @@ public class TextFileLoaderService<TKey, TRecord>(
     }
 
     /// <summary>
-    /// Gets and validates the content type of the file.
+    /// Determines and validates the content type of a given file based on its name.
     /// </summary>
+    /// <param name="fileName">
+    /// The name or path of the file to validate.
+    /// </param>
+    /// <exception cref="NotSupportedException">
+    /// Thrown if the file's content type is not among the supported types.
+    /// </exception>
+    /// <returns>
+    /// A string representing the validated content type of the file.
+    /// </returns>
     private static string GetAndValidateContentType(string fileName)
     {
         var supportedFileContentTypes = GetSupportedFileContentTypes();
@@ -201,15 +300,27 @@ public class TextFileLoaderService<TKey, TRecord>(
         return actualContentType;
     }
 
-    /// <summary>
-    /// Converts file content based on the content type.
-    /// </summary>
+    /// Asynchronously converts the provided file content into a standardized format based on its content type.
+    /// <param name="fileContent">
+    /// The raw file content as a string that requires conversion.
+    /// </param>
+    /// <param name="contentType">
+    /// The content type of the file, determining the appropriate conversion process. Supported content types include plain text, Markdown, HTML, JSON, and XML.
+    /// </param>
+    /// <exception cref="NotSupportedException">
+    /// Thrown when the specified <paramref name="contentType"/> is unsupported for conversion.
+    /// </exception>
+    /// <returns>
+    /// A <see cref="Task{String}"/> representing the asynchronous conversion operation. The result is the standardized content as a string.
+    /// </returns>
     private static async Task<string> ConvertContentAsync(string fileContent, string contentType)
     {
         return contentType switch
         {
-            SupportedFileContentTypes.PlainTextContentType => await new PlainTextToMarkdownConverter().ConvertAsync(fileContent),
-            SupportedFileContentTypes.MarkdownContentType => await new MarkdownToMarkdownConverter().ConvertAsync(fileContent),
+            SupportedFileContentTypes.PlainTextContentType => await new PlainTextToMarkdownConverter().ConvertAsync(
+                fileContent),
+            SupportedFileContentTypes.MarkdownContentType => await new MarkdownToMarkdownConverter().ConvertAsync(
+                fileContent),
             SupportedFileContentTypes.HtmlContentType => await new HtmlToMarkdownConverter().ConvertAsync(fileContent),
             SupportedFileContentTypes.JsonContentType => fileContent,
             SupportedFileContentTypes.XmlContentType => fileContent,
@@ -218,8 +329,17 @@ public class TextFileLoaderService<TKey, TRecord>(
     }
 
     /// <summary>
-    /// Creates the appropriate content handler based on content type.
+    /// Creates the appropriate content handler based on the specified content type.
     /// </summary>
+    /// <param name="contentType">
+    /// A string representing the MIME type of the content (e.g., JSON, XML, or CSV).
+    /// </param>
+    /// <exception cref="NotImplementedException">
+    /// Thrown if the content type is CSV, indicating that a handler for this file type is not yet implemented.
+    /// </exception>
+    /// <returns>
+    /// An instance of a class derived from <see cref="ContentTypeHandler"/> that handles the specified content type.
+    /// </returns>
     private static ContentTypeHandler CreateContentHandler(string contentType)
     {
         return contentType switch
@@ -250,11 +370,20 @@ public class TextFileLoaderService<TKey, TRecord>(
 
     /// Asynchronously retrieves the raw text content from a specified file path.
     /// <param name="textFileLocalPath">
-    /// The local file path of the text file from which raw content is to be retrieved.
+    /// The local file path of the text file from which the raw content will be retrieved.
     /// </param>
     /// <returns>
-    /// A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains the raw text content read from the file.
+    /// A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains the raw text content of the file as a string.
     /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown if the provided <paramref name="textFileLocalPath"/> is null or empty.
+    /// </exception>
+    /// <exception cref="FileNotFoundException">
+    /// Thrown if the file specified by <paramref name="textFileLocalPath"/> does not exist.
+    /// </exception>
+    /// <exception cref="IOException">
+    /// Thrown if an I/O error occurs while attempting to read the file.
+    /// </exception>
     protected virtual async Task<string> GetTextRawContentAsync(string textFileLocalPath)
     {
         return await File.ReadAllTextAsync(textFileLocalPath);
@@ -266,19 +395,21 @@ public class TextFileLoaderService<TKey, TRecord>(
 /// </summary>
 /// <remarks>
 /// This class provides functionality for transforming plain text input into its Markdown-formatted equivalent
-/// based on standard Markdown formatting rules.
+/// based on standard Markdown conversion rules.
 /// </remarks>
 internal class PlainTextToMarkdownConverter
 {
     /// <summary>
-    /// An instance of the <see cref="MarkdownPipeline"/> pre-configured with advanced extensions
-    /// to enhance markdown processing, enabling comprehensive parsing and transformation of content.
+    /// An instance of the <see cref="MarkdownPipeline"/> configured with advanced extensions
+    /// to facilitate markdown processing, supporting detailed parsing and formatting of markdown content.
     /// </summary>
     private readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
         .Build();
 
-    /// Converts plain text into Markdown format asynchronously.
+    /// <summary>
+    /// Asynchronously converts plain text into Markdown-formatted text.
+    /// </summary>
     /// <param name="plainText">
     /// The plain text content to be converted.
     /// </param>
@@ -297,15 +428,17 @@ internal class PlainTextToMarkdownConverter
 internal class MarkdownToMarkdownConverter
 {
     /// <summary>
-    /// A private readonly instance of the <see cref="MarkdownPipeline"/>, configured to utilize
-    /// advanced markdown processing extensions. Used for parsing and rendering markdown content
-    /// within the <see cref="MarkdownToMarkdownConverter"/> class.
+    /// A private readonly instance of the <see cref="MarkdownPipeline"/> configured with advanced
+    /// extensions for enhanced processing of markdown content, utilized specifically within the
+    /// <see cref="MarkdownToMarkdownConverter"/> to parse and render markdown documents.
     /// </summary>
     private readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
         .Build();
 
+    /// <summary>
     /// Asynchronously converts the input markdown text into a processed markdown text format.
+    /// </summary>
     /// <param name="markdownText">
     /// The original markdown text to be converted.
     /// </param>
@@ -331,17 +464,24 @@ internal class MarkdownToMarkdownConverter
 /// Provides functionality to convert HTML content into Markdown format.
 /// </summary>
 /// <remarks>
-/// This class utilizes the ReverseMarkdown library for the conversion process
-/// and supports customizable configurations for handling various HTML and Markdown-related behaviors.
+/// This class leverages the ReverseMarkdown library for the conversion process to transform HTML
+/// into Markdown text. It supports various configuration options to customize the output,
+/// such as handling unknown tags, enabling GitHub-flavored Markdown, and managing table formatting.
 /// </remarks>
 internal class HtmlToMarkdownConverter
 {
-    /// Converts the provided HTML content to its Markdown equivalent using the specified configuration.
-    /// <param name="html">
-    /// The input HTML string to be converted to Markdown.
+    /// Converts the provided content from one format to Markdown based on the specific content type.
+    /// <param name="fileContent">
+    /// The input content as a string to be converted.
     /// </param>
+    /// <param name="contentType">
+    /// The type of the input content, such as plain text, HTML, or markdown.
+    /// </param>
+    /// <exception cref="NotSupportedException">
+    /// Thrown if the specified <paramref name="contentType"/> is not supported for conversion.
+    /// </exception>
     /// <returns>
-    /// A <see cref="Task{TResult}"/> representing the asynchronous operation that returns the converted Markdown string.
+    /// A <see cref="Task{TResult}"/> representing the asynchronous operation that returns the converted content as a Markdown string.
     /// </returns>
     public async Task<string> ConvertAsync(string html)
     {
@@ -360,20 +500,20 @@ internal class HtmlToMarkdownConverter
 }
 
 /// <summary>
-/// A utility class that facilitates the conversion of JSON content into structured Aesir text data records.
-/// This conversion involves flattening hierarchical JSON structures and mapping them to instances
-/// of the specified type <typeparamref name="TRecord"/>.
+/// A utility class designed for converting JSON content into structured instances of <typeparamref name="TRecord"/>.
+/// This conversion process involves flattening complex JSON data and mapping it to the specified record type,
+/// providing a standardized format for text data processing.
 /// </summary>
 /// <typeparam name="TRecord">
-/// The type of text data record that must implement the <see cref="IJsonTextData"/> interface.
+/// The type of the text data record to which the JSON content will be mapped. Must implement the <see cref="IJsonTextData"/> interface.
 /// </typeparam>
 [Experimental("SKEXP0001")]
 internal class JsonToAesirTextDataConverter<TRecord> where TRecord : IJsonTextData
 {
     /// <summary>
-    /// A static utility for splitting large text documents into smaller chunks
-    /// based on token count constraints, such as tokens per paragraph and per line.
-    /// Provides methods to facilitate text chunking operations while preserving structural integrity.
+    /// A static instance of the <see cref="DocumentChunker"/> class, configured for splitting large text documents
+    /// into manageable chunks based on specified token constraints, such as tokens per paragraph and tokens per line.
+    /// This utility aims to preserve the contextual integrity of the original document while ensuring optimized text handling.
     /// </summary>
     private static readonly DocumentChunker DocumentChunker = new();
 
@@ -494,30 +634,30 @@ internal class JsonToAesirTextDataConverter<TRecord> where TRecord : IJsonTextDa
 internal class XmlToAesirTextDataConverter<TRecord> where TRecord : IXmlTextData
 {
     /// <summary>
-    /// A utility class utilized for splitting large text documents into smaller, manageable chunks
-    /// based on configurable token limits, aiding in efficient text processing workflows.
+    /// A utility class designed to split large text documents into smaller chunks
+    /// for efficient text processing, based on specified token limits.
     /// </summary>
     private static readonly DocumentChunker DocumentChunker = new();
 
-    /// Asynchronously converts the provided XML content into a collection of records using the specified record factory.
-    /// Each record represents flattened XML content with associated metadata, including path, node type, and parent information.
+    /// Asynchronously converts XML content into a collection of records using a specified factory function,
+    /// with each record representing flattened XML structures enriched with metadata such as node type and parent information.
     /// <param name="recordFactory">
-    /// A factory function used to create instances of <typeparamref name="TRecord"/>.
+    /// A factory function responsible for creating instances of <typeparamref name="TRecord"/>.
     /// </param>
     /// <param name="xmlContent">
-    /// The XML content as a string to be parsed and converted into records.
+    /// A string containing the XML content to be parsed and transformed into records.
     /// </param>
     /// <param name="filename">
-    /// The name of the XML file being processed. This may be used for logging or additional metadata.
+    /// The name of the XML file being converted, potentially used for logging or additional metadata purposes.
     /// </param>
     /// <returns>
-    /// A <see cref="Task{TResult}"/> representing the asynchronous operation that contains a list of records of type <typeparamref name="TRecord"/>.
+    /// A <see cref="Task{TResult}"/> representing the asynchronous operation, resulting in a list of records of type <typeparamref name="TRecord"/>.
     /// </returns>
     /// <exception cref="ArgumentNullException">
-    /// Thrown if <paramref name="recordFactory"/> or <paramref name="xmlContent"/> is null.
+    /// Thrown when <paramref name="recordFactory"/> or <paramref name="xmlContent"/> is null.
     /// </exception>
     /// <exception cref="System.Xml.XmlException">
-    /// Thrown if <paramref name="xmlContent"/> contains invalid XML and cannot be parsed.
+    /// Thrown when <paramref name="xmlContent"/> contains invalid XML that cannot be parsed.
     /// </exception>
     public async Task<List<TRecord>> ConvertXmlAsync(Func<TRecord> recordFactory, string xmlContent, string filename)
     {
