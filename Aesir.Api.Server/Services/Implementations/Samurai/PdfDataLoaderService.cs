@@ -1,8 +1,5 @@
-using System.ClientModel;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using System.Net;
-using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services.Implementations.Standard;
 using Aspose.Pdf;
@@ -11,28 +8,26 @@ using Aspose.Pdf.Facades;
 using Aspose.Pdf.Text;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
-using Microsoft.SemanticKernel;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
-using Tiktoken;
 using Image = SixLabors.ImageSharp.Image;
 using Path = System.IO.Path;
 
 namespace Aesir.Api.Server.Services.Implementations.Samurai;
 
 /// <summary>
-/// Provides functionality for extracting text content from PDF files, generating embeddings,
-/// and storing the extracted text along with associated metadata in a vector store.
+/// Provides services for loading and processing data from PDF documents, including text extraction,
+/// embedding generation, and saving the processed data into a vector store with metadata.
 /// </summary>
-/// <typeparam name="TKey">The type of the unique key used to identify stored records.</typeparam>
-/// <typeparam name="TRecord">The type of the text data record to be stored.</typeparam>
-/// <param name="uniqueKeyGenerator">The service responsible for generating unique keys for records.</param>
-/// <param name="vectorStoreRecordCollection">The collection responsible for storing text records in a vectorized format.</param>
-/// <param name="embeddingGenerator">The generator used to create embeddings from the extracted text.</param>
-/// <param name="recordFactory">A factory function for creating instances of TRecord using raw content and request parameters.</param>
-/// <param name="visionService">The service used for handling vision-related tasks, such as OCR on PDF images.</param>
-/// <param name="modelsService">The service providing access to AI models for text processing tasks.</param>
-/// <param name="logger">The logger instance used for logging operations and events in the data loading process.</param>
+/// <typeparam name="TKey">The type of the unique identifier for stored records.</typeparam>
+/// <typeparam name="TRecord">The type representing the structured text data to be stored.</typeparam>
+/// <param name="uniqueKeyGenerator">Service to generate unique identifiers for each record.</param>
+/// <param name="vectorStoreRecordCollection">Collection handling storage and retrieval of vectorized records.</param>
+/// <param name="embeddingGenerator">Generator responsible for producing embeddings from text data.</param>
+/// <param name="recordFactory">Factory function for creating instances of TRecord using raw content and request parameters.</param>
+/// <param name="visionService">Service for performing image processing tasks like OCR within PDFs.</param>
+/// <param name="modelsService">Service providing AI models for text analysis and additional transformations.</param>
+/// <param name="logger">Logger instance for recording events and debugging information during operations.</param>
 [Experimental("SKEXP0001")]
 public class PdfDataLoaderService<TKey, TRecord>(
     UniqueKeyGenerator<TKey> uniqueKeyGenerator,
@@ -41,72 +36,56 @@ public class PdfDataLoaderService<TKey, TRecord>(
     Func<RawContent, LoadPdfRequest, TRecord> recordFactory,
     IVisionService visionService,
     IModelsService modelsService,
-    ILogger<PdfDataLoaderService<TKey, TRecord>> logger) : IPdfDataLoaderService<TKey, TRecord>
+    ILogger<PdfDataLoaderService<TKey, TRecord>> logger)
+    : BaseDataLoaderService<TKey, TRecord>(uniqueKeyGenerator, vectorStoreRecordCollection, embeddingGenerator,
+        modelsService, logger), IPdfDataLoaderService<TKey, TRecord>
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
     /// <summary>
-    /// Represents the MIME type for PNG image files.
+    /// Represents the MIME type for PNG image files as a constant string.
     /// </summary>
     /// <remarks>
-    /// This constant is used to specify the MIME type "image/png" when handling PNG image data,
-    /// particularly for scenarios involving image processing or passing image data to external services.
+    /// The value of this constant is "image/png". It is primarily used to specify the MIME type
+    /// when working with PNG image data, such as during image processing or converting images
+    /// for specific use cases requiring this MIME type.
     /// </remarks>
     private const string PngMimeType = "image/png";
-    
-    // ReSharper disable once StaticMemberInGenericType
+
     /// <summary>
-    /// A static readonly instance of the <see cref="Encoder"/> class used to count tokens in a string of text.
+    /// A delegate responsible for generating a record instance of type <typeparamref name="TRecord"/>
+    /// based on the provided <see cref="RawContent"/> and <see cref="LoadPdfRequest"/> input parameters.
     /// </summary>
     /// <remarks>
-    /// The <c>TokenCounter</c> leverages the default encoding provided by <see cref="DocumentChunker.DefaultEncoding"/>.
-    /// It is utilized for counting the number of tokens in text data within the PDF processing workflow.
+    /// This delegate enables the customization of how a record is created during the processing of PDF data.
     /// </remarks>
-    private static readonly Encoder TokenCounter = new(DocumentChunker.DefaultEncoding);
-    // ReSharper disable once StaticMemberInGenericType
+    private readonly Func<RawContent, LoadPdfRequest, TRecord> _recordFactory = recordFactory;
+
     /// <summary>
-    /// Provides functionality for chunking text into smaller segments based on specified token limits.
-    /// Designed for use in applications where text needs to be divided into manageable pieces,
-    /// such as processing large documents or preparing data for machine learning models.
+    /// Represents the vision service used for processing and analyzing image data.
+    /// This service provides functionality for extracting text or other relevant information
+    /// from image-based input. It is utilized in scenarios where translation of visual data
+    /// into textual or structured formats is required.
     /// </summary>
-    /// <remarks>
-    /// The chunking process divides text into paragraphs and lines, with a maximum number of tokens
-    /// per paragraph and tokens per line. This is useful for efficiently handling large textual data,
-    /// while maintaining contextual integrity of the content.
-    /// </remarks>
-    private static readonly DocumentChunker DocumentChunker = new();
+    private readonly IVisionService _visionService = visionService;
 
     /// <summary>
     /// Loads a PDF document, processes its contents, and stores the data into a vector store collection.
     /// </summary>
-    /// <param name="request">An object containing details about the PDF file to process, including its local path, file name, and other parameters.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <param name="request">An object containing details related to the processing of the PDF file, such as its path, file name, and batch size.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to observe for cancellation notifications.</param>
+    /// <returns>A task that represents the asynchronous operation of loading and processing the PDF document.</returns>
     public async Task LoadPdfAsync(LoadPdfRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.PdfLocalPath))
             throw new InvalidOperationException("PdfPath is empty");
 
-        // Create the collection if it doesn't exist.
-        await vectorStoreRecordCollection.EnsureCollectionExistsAsync(cancellationToken).ConfigureAwait(false);
-        
-        // First delete any existing PDFs with same name
-        var toDelete = await vectorStoreRecordCollection.GetAsync(
-                filter: data => data.Text != null,// dumb because contains is not supported across vectorstore providers
-                int.MaxValue, // this is dumb 
-                cancellationToken: cancellationToken)
-            .ToListAsync(cancellationToken: cancellationToken);
-
-        toDelete = toDelete.Where(data =>
-            data.ReferenceDescription!.Contains(request.PdfFileName!.TrimStart("file://"))).ToList();
-
-        if (toDelete.Count > 0)
-            await vectorStoreRecordCollection.DeleteAsync(
-                toDelete.Select(td => td.Key), cancellationToken);
+        await InitializeCollectionAsync(cancellationToken);
+        await DeleteExistingRecordsAsync(request.PdfFileName!, cancellationToken);
 
         // Load the text and images from the PDF file and split them into batches.
         var pages = LoadTextAndImages(request.PdfLocalPath, cancellationToken);
-        
+
         var batches = pages.Chunk(request.BatchSize);
 
         // Process each batch of content items.
@@ -120,20 +99,20 @@ public class PdfDataLoaderService<TKey, TRecord>(
                     return content;
                 }
 
-                var textFromImage = await ConvertImageToTextWithRetryAsync(
+                var textFromImage = await ConvertImageToTextAsync(
                     content.Image!.Value,
                     cancellationToken).ConfigureAwait(false);
-                
+
                 return new RawContent { Text = textFromImage, PageNumber = content.PageNumber };
             });
             var rawTextContents = await Task.WhenAll(extractTextTasks).ConfigureAwait(false);
-            
+
             // now need to break all the pages into smaller chunks with overlap to preserve mean context
-            var chunkingTasks = rawTextContents.Select(rawTextContent => 
+            var chunkingTasks = rawTextContents.Select(rawTextContent =>
                 Task.Run(() =>
                 {
                     var chunkHeader = $"File: {request.PdfFileName}\nPage: {rawTextContent.PageNumber}\n";
-                    logger.LogDebug("Created Chunk: {ChunkHeader}",chunkHeader);
+                    logger.LogDebug("Created Chunk: {ChunkHeader}", chunkHeader);
                     var textChunks = DocumentChunker.ChunkText(rawTextContent.Text!, chunkHeader);
                     return textChunks.Select(textChunk => new RawContent
                     {
@@ -144,93 +123,41 @@ public class PdfDataLoaderService<TKey, TRecord>(
             );
             var chunkedResults = await Task.WhenAll(chunkingTasks).ConfigureAwait(false);
             var textContents = chunkedResults.SelectMany(x => x);
-            
-            // Map each paragraph to a TextSnippet and generate an embedding for it.
-            var recordTasks = textContents.Select(async content =>
+
+            // Create records from content and process them
+            var records = textContents.Select(content =>
             {
-                var record = recordFactory(content, request);
-
-                record.Key = uniqueKeyGenerator.GenerateKey();
-
+                var record = _recordFactory(content, request);
                 record.Text ??= content.Text;
-                record.ReferenceDescription ??= $"{request.PdfFileName!.TrimStart("file://")}#page={content.PageNumber}";
-                record.ReferenceLink ??=
-                    $"{new Uri($"file://{request.PdfFileName!.TrimStart("file://")}").AbsoluteUri}#page={content.PageNumber}";
-                record.TextEmbedding ??= await GenerateEmbeddingsWithRetryAsync(content.Text!, cancellationToken);
-
-                record.TokenCount ??= TokenCounter.CountTokens(record.Text!);
-                
+                var cleanFileName = request.PdfFileName!.StartsWith("file://")
+                    ? request.PdfFileName.Substring(7)
+                    : request.PdfFileName;
+                var fileUri = request.PdfFileName!.StartsWith("file://")
+                    ? request.PdfFileName
+                    : $"file://{request.PdfFileName}";
+                record.ReferenceDescription ??= $"{cleanFileName}#page={content.PageNumber}";
+                record.ReferenceLink ??= $"{fileUri}#page={content.PageNumber}";
                 return record;
-            });
+            }).ToArray();
 
-            var records = await Task.WhenAll(recordTasks).ConfigureAwait(false);
-
-            // Upsert the records into the vector store.
-            await vectorStoreRecordCollection
-                .UpsertAsync(records, cancellationToken: cancellationToken).ConfigureAwait(false);
+            var processedRecords =
+                await ProcessRecordsInBatchesAsync(records, request.PdfFileName!, records.Length, cancellationToken);
+            await UpsertRecordsAsync(processedRecords, cancellationToken);
 
             await Task.Delay(request.BetweenBatchDelayInMs, cancellationToken).ConfigureAwait(false);
         }
 
-        await modelsService.UnloadVisionModelAsync();
-        await modelsService.UnloadEmbeddingModelAsync();
+        await UnloadModelsAsync();
     }
 
+
     /// <summary>
-    /// Add a simple retry mechanism to embedding generation.
+    /// Extracts text and image data from a PDF file, processes its pages concurrently,
+    /// and returns the result as a collection of raw content.
     /// </summary>
-    /// <param name="text">The text to generate the embedding for.</param>
+    /// <param name="pdfPath">The file path of the PDF document to be processed.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
-    /// <returns>The generated embedding.</returns>
-    private async Task<Embedding<float>> GenerateEmbeddingsWithRetryAsync(string text,
-        CancellationToken cancellationToken)
-    {
-        var tries = 0;
-
-        while (true)
-        {
-            try
-            {
-                var options = new EmbeddingGenerationOptions()
-                {
-                    Dimensions = 1024
-                };
-                var vector = (await embeddingGenerator
-                    .GenerateAsync(text, options, cancellationToken: cancellationToken).ConfigureAwait(false)).Vector;
-
-                return new Embedding<float>(vector);
-            }
-            catch (HttpOperationException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                tries++;
-
-                if (tries < 3)
-                {
-                    logger.LogWarning($"Failed to generate embedding. Error: {ex}");
-                    logger.LogWarning("Retrying embedding generation...");
-                    await Task.Delay(10_000, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    throw;
-                }
-            }
-            catch (ClientResultException ex)
-            {
-                logger.LogError("Failed to generate embedding. Error: {HttpOperationException}", 
-                    ex.GetRawResponse()?.Content.ToString() ?? ex.ToString());
-                
-                throw;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Reads the text and images from each page in the provided PDF file.
-    /// </summary>
-    /// <param name="pdfPath">The path to the PDF file to extract text and images from.</param>
-    /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to monitor for cancellation requests.</param>
-    /// <returns>A collection of <see cref="RawContent"/> objects containing the extracted text, images, and associated page numbers.</returns>
+    /// <returns>A collection of <see cref="RawContent"/> instances representing the extracted text and image data.</returns>
     private IEnumerable<RawContent> LoadTextAndImages(string pdfPath, CancellationToken cancellationToken = default)
     {
         //Aspose.PDFfor.NET.lic
@@ -364,51 +291,29 @@ public class PdfDataLoaderService<TKey, TRecord>(
     }
 
     /// <summary>
-    /// Adds a retry mechanism to convert an image into text using OCR or other vision services.
+    /// Converts an image into text with a retry mechanism using OCR or vision services.
     /// </summary>
     /// <param name="imageBytes">The byte data of the image to process.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
-    /// <returns>The extracted text from the image.</returns>
-    private async Task<string> ConvertImageToTextWithRetryAsync(
+    /// <returns>A task that represents the asynchronous operation, yielding the extracted text from the image.</returns>
+    private async Task<string> ConvertImageToTextAsync(
         ReadOnlyMemory<byte> imageBytes,
         CancellationToken cancellationToken)
     {
-        var tries = 0;
-
-        while (true)
-        {
-            try
+        // Resize the image to a resolution that works well with the vision model
+        using var image = Image.Load(imageBytes.Span);
+        image.Mutate(x =>
+            x.Resize(new ResizeOptions
             {
-                // Resize the image to a resolution that works well with the vision model
-                using var image = Image.Load(imageBytes.Span);
-                image.Mutate(x => 
-                    x.Resize(new ResizeOptions
-                {
-                    Size = new Size(1024, 1024),
-                    Mode = ResizeMode.Max
-                }));
-                
-                using var ms = new MemoryStream();
-                await image.SaveAsPngAsync(ms, cancellationToken);
-                var resizedImageBytes = new ReadOnlyMemory<byte>(ms.ToArray());
-                
-                return await visionService.GetImageTextAsync(resizedImageBytes, PngMimeType, cancellationToken).ConfigureAwait(false);
-            }
-            catch (HttpOperationException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                tries++;
+                Size = new Size(1024, 1024),
+                Mode = ResizeMode.Max
+            }));
 
-                if (tries < 3)
-                {
-                    logger.LogInformation("Failed to generate text from image. Error: {HttpOperationException}", ex);
-                    logger.LogInformation("Retrying text to image conversion...");
-                    await Task.Delay(10_000, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    throw;
-                }
-            }
-        }
+        using var ms = new MemoryStream();
+        await image.SaveAsPngAsync(ms, cancellationToken);
+        var resizedImageBytes = new ReadOnlyMemory<byte>(ms.ToArray());
+
+        return await _visionService.GetImageTextAsync(resizedImageBytes, PngMimeType, cancellationToken)
+            .ConfigureAwait(false);
     }
 }
