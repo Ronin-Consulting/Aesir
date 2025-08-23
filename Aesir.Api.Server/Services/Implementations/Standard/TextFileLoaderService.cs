@@ -891,7 +891,8 @@ internal class CsvToAesirTextDataConverter<TRecord> where TRecord : ICsvTextData
         using var reader = new StreamReader(stream);
         using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
-            DetectDelimiter = true
+            DetectDelimiter = true,
+            ShouldSkipRecord = args => args.Row.Parser.Record?.All(string.IsNullOrWhiteSpace) ?? true
         });
         
         // Read headers
@@ -913,6 +914,7 @@ internal class CsvToAesirTextDataConverter<TRecord> where TRecord : ICsvTextData
             {
                 // Small row: Chunk as full Markdown table
                 var rowBuilder = new StringBuilder();
+                rowBuilder.AppendLine($"Row {rowIndex + 1}");
                 rowBuilder.AppendLine($"| {string.Join(" | ", headers)} |");
                 rowBuilder.AppendLine($"| {string.Join(" | ", Enumerable.Repeat("---", headers.Count))} |"); // Simple separator
                 rowBuilder.AppendLine($"| {string.Join(" | ", rowData)} |");
@@ -927,7 +929,7 @@ internal class CsvToAesirTextDataConverter<TRecord> where TRecord : ICsvTextData
                 record = recordFactory();
                 
                 record.Text = tableText;
-                record.CsvPath = $"{filename}:row:{rowIndex}";
+                record.CsvPath = $"{filename}:row:{rowIndex + 1}";
                 record.NodeType = "FullRow";
                 record.ParentInfo =filename;
                 
@@ -944,6 +946,7 @@ internal class CsvToAesirTextDataConverter<TRecord> where TRecord : ICsvTextData
                     var groupData = rowData.Skip(colStart).Take(groupSize).ToList();
 
                     var subBuilder = new StringBuilder();
+                    subBuilder.AppendLine($"Row {rowIndex + 1}, Columns {colStart + 1}-{colStart + groupHeaders.Count}");
                     subBuilder.AppendLine($"| {string.Join(" | ", groupHeaders)} |");
                     subBuilder.AppendLine($"| {string.Join(" | ", Enumerable.Repeat("---", groupHeaders.Count))} |"); // Simple separator
                     subBuilder.AppendLine($"| {string.Join(" | ", groupData)} |");
@@ -970,9 +973,9 @@ internal class CsvToAesirTextDataConverter<TRecord> where TRecord : ICsvTextData
                 
                     record.Text = subChunkText;
                     record.CsvPath =
-                        $"{filename}:row:{rowIndex}:columns:{colStart + 1}-{colStart + groupHeaders.Count}";
+                        $"{filename}:row:{rowIndex + 1}:columns:{colStart + 1}-{colStart + groupHeaders.Count}";
                     record.NodeType = "SubRow";
-                    record.ParentInfo = $"{filename}:row:{rowIndex}";
+                    record.ParentInfo = $"{filename}:row:{rowIndex + 1}";
                 
                     records.Add(record);
                 }
@@ -982,7 +985,7 @@ internal class CsvToAesirTextDataConverter<TRecord> where TRecord : ICsvTextData
         var summaryBuilder = new StringBuilder();
         summaryBuilder.AppendLine($"# CSV File Summary: {filename}");
         summaryBuilder.AppendLine($"Column Count: {headers.Count}");
-        summaryBuilder.AppendLine($"Row Count: {rowIndex}");
+        summaryBuilder.AppendLine($"Row Count: {rowIndex + 1}");
         summaryBuilder.AppendLine("Headers:");
         summaryBuilder.AppendLine(string.Join(" | ", headers.Select(EscapeMarkdownCell)));
         
