@@ -82,7 +82,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         CancellationToken cancellationToken = default)
     {
         // for now enforce only PDFs
-        if (!documentPath.ValidFileContentType(SupportedFileContentTypes.PdfContentType, out var actualContentType))
+        if (!documentPath.ValidFileContentType(FileTypeManager.MimeTypes.Pdf, out var actualContentType))
         {
             throw new InvalidDataException($"Invalid file content type: {actualContentType}");
         }

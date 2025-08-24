@@ -44,8 +44,8 @@ public static class StringExtensions
     /// </summary>
     /// <param name="filePath">The file path to determine the content type for.</param>
     /// <returns>The MIME content type or "application/octet-stream" if the content type cannot be determined.</returns>
-    public static string GetContentType(this string filePath) => FileTypeManager.GetMimeType(filePath);
-    
+    public static string GetMimeType(this string filePath) => FileTypeManager.GetMimeType(filePath);
+
     /// <summary>
     /// Removes a specified prefix from the beginning of a string if present.
     /// </summary>

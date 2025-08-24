@@ -10,11 +10,11 @@ using SixLabors.ImageSharp.Processing;
 namespace Aesir.Api.Server.Services.Implementations.Ollama;
 
 /// <summary>
-/// A service for processing images to extract textual content using a vision AI model backend.
+/// A service for analyzing images and extracting textual content using the specified vision AI model and configurations.
 /// </summary>
-/// <param name="logger">The logging provider used for recording activity and errors occurring within the service.</param>
-/// <param name="visionModelConfig">Configuration parameters for the vision AI model, including any necessary model-specific settings.</param>
-/// <param name="chatCompletionService">Service utilized to manage interactions with the backend vision processing system.</param>
+/// <param name="logger">Instance of a logger to capture and record service-related activities and errors.</param>
+/// <param name="visionModelConfig">Provides model-specific parameters and settings required for the AI vision processing.</param>
+/// <param name="chatCompletionService">Facilitates coordination and interactions with the backend AI vision model.</param>
 [Experimental("SKEXP0070")]
 public class VisionService(
     ILogger<VisionService> logger,
@@ -23,27 +23,26 @@ public class VisionService(
     : IVisionService
 {
     /// <summary>
-    /// A static instance of <see cref="IPromptProvider"/> for managing and retrieving prompt templates
-    /// tailored to specific contexts within the application.
+    /// Represents an instance of <see cref="IPromptProvider"/> used to handle prompt template management
+    /// and delivery for defined application-specific contexts.
     /// </summary>
     private static readonly IPromptProvider PromptProvider = DefaultPromptProvider.Instance;
 
     /// <summary>
-    /// Represents the configured vision model identifier used to control which model is employed
-    /// for image analysis and processing tasks.
+    /// Holds the identifier of the vision model configured for image analysis and processing operations.
     /// </summary>
     /// <remarks>
-    /// This field is initialized from the <see cref="VisionModelConfig"/> property <c>ModelId</c>
-    /// and is essential for performing vision-related operations. If not configured correctly,
-    /// related methods may fail due to the absence of a valid model identifier.
+    /// This field is derived from the <see cref="VisionModelConfig"/> class's <c>ModelId</c> property
+    /// and is critical for determining which vision model is engaged during tasks requiring image processing.
+    /// Proper configuration is mandatory to ensure the functionality of vision-related operations.
     /// </remarks>
     private readonly string _visionModel = visionModelConfig.ModelId;
 
     /// <summary>
-    /// Extracts and returns the text content visible in the provided image as plain text.
+    /// Extracts and returns the textual content from the provided image using the configured vision model.
     /// </summary>
-    /// <param name="imageBytes">The image data from which to extract text, provided as a read-only memory byte buffer.</param>
-    /// <param name="contentType">The MIME type of the provided image, such as "image/png" or "image/jpeg".</param>
+    /// <param name="imageBytes">The raw bytes of the image to be analyzed.</param>
+    /// <param name="contentType">The MIME type of the image, such as "image/png", "image/jpeg", or "image/tiff".</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task representing the asynchronous operation. The task result contains the extracted text from the image as a plain string.</returns>
     public async Task<string> GetImageTextAsync(ReadOnlyMemory<byte> imageBytes, string contentType,
@@ -66,13 +65,13 @@ public class VisionService(
         using var ms = new MemoryStream();
         switch (contentType)
         {
-            case SupportedFileContentTypes.JpegContentType:
+            case FileTypeManager.MimeTypes.Jpeg:
                 await image.SaveAsJpegAsync(ms, cancellationToken);
                 break;
-            case SupportedFileContentTypes.PngContentType:
+            case FileTypeManager.MimeTypes.Png:
                 await image.SaveAsPngAsync(ms, cancellationToken);
                 break;
-            case SupportedFileContentTypes.TiffContentType:
+            case FileTypeManager.MimeTypes.Tiff:
                 await image.SaveAsTiffAsync(ms, cancellationToken);
                 break;
             default:

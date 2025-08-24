@@ -8,21 +8,20 @@ using Microsoft.SemanticKernel;
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 /// <summary>
-/// A service for processing and loading image data into a structured format. It integrates
-/// vision services, embedding generators, and AI models to transform raw image inputs into
-/// meaningful records suitable for downstream applications and storage in vectorized formats.
+/// A class responsible for loading and processing image data to create structured records for
+/// vectorized storage and downstream applications.
 /// </summary>
 /// <typeparam name="TKey">
-/// The type of the unique key associated with each record. This must be non-null and ensure unique identification.
+/// The type of the unique identifier associated with each generated record. Must be a non-nullable type.
 /// </typeparam>
 /// <typeparam name="TRecord">
-/// The type representing the structured data record derived from image content. This type
-/// must extend from <see cref="AesirTextData{TKey}"/>.
+/// The type of the output record containing structured data derived from the processed image content.
+/// This type must inherit from <see cref="AesirTextData{TKey}"/>.
 /// </typeparam>
 /// <remarks>
-/// Marked experimental under the identifier "SKEXP0001," this service is designed to manage
-/// scalable and systematic image processing workflows. It leverages a combination of vision
-/// recognition, embedding models, and configurable data pipelines to create structured outputs.
+/// An experimental class marked with identifier "SKEXP0001" designed for scalable image data ingestion.
+/// It combines vision services, embedding generation, and configurable processing pipelines to extract
+/// insights and generate structured outputs that are compatible with vector stores.
 /// </remarks>
 /// <seealso cref="BaseDataLoaderService{TKey, TRecord}"/>
 /// <seealso cref="IImageDataLoaderService{TKey, TRecord}"/>
@@ -41,28 +40,29 @@ public class ImageDataLoaderService<TKey, TRecord>(
     where TRecord : AesirTextData<TKey>
 {
     /// <summary>
-    /// A delegate function used to create an instance of <typeparamref name="TRecord"/>.
-    /// This factory function takes a <see cref="RawContent"/> and a <see cref="LoadImageRequest"/>
-    /// as parameters and produces a record of type <typeparamref name="TRecord"/>.
+    /// A function delegate that instantiates an object of type <typeparamref name="TRecord"/>.
+    /// This factory function takes an instance of <see cref="RawContent"/> and <see cref="LoadImageRequest"/>
+    /// as input to generate and return a corresponding record of type <typeparamref name="TRecord"/>.
     /// </summary>
-    /// <typeparam name="TRecord">The type of record being created.</typeparam>
+    /// <typeparam name="TRecord">The type of the record to be created.</typeparam>
     private readonly Func<RawContent, LoadImageRequest, TRecord> _recordFactory = recordFactory;
 
     /// <summary>
-    /// Represents a private, readonly dependency on the <see cref="IVisionService"/> interface,
-    /// used for operations and functionality related to vision or image processing.
+    /// A private, readonly dependency on the <see cref="IVisionService"/> interface,
+    /// utilized for vision or image processing-related operations such as analyzing images
+    /// and extracting relevant information.
     /// </summary>
     private readonly IVisionService _visionService = visionService;
 
     /// <summary>
-    /// Asynchronously loads an image, processes its contents to extract textual information and metadata, and updates the vector store with the processed records.
+    /// Asynchronously loads and processes an image to extract textual content and metadata, and updates the vector store with the resulting records.
     /// </summary>
-    /// <param name="request">An object containing the image file's local path, file name, and other metadata required for processing.</param>
-    /// <param name="cancellationToken">A token to observe during the asynchronous operation, allowing it to be canceled if requested.</param>
-    /// <returns>A task representing the completion of the image processing and data storage operation.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when the image path or file name in the request is invalid or empty.</exception>
-    /// <exception cref="NotSupportedException">Thrown when the file's content type is unsupported, such as formats other than PNG.</exception>
-    /// <exception cref="OperationCanceledException">Thrown when the operation is canceled using the provided cancellation token.</exception>
+    /// <param name="request">Contains information about the image to be processed, including its local file path and file name.</param>
+    /// <param name="cancellationToken">A token used to monitor for cancellation requests during the asynchronous operation.</param>
+    /// <returns>A task that completes when the image has been successfully processed and the data has been stored.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the image's local path or file name is null or empty.</exception>
+    /// <exception cref="NotSupportedException">Thrown if the image file type is unsupported (e.g., formats other than PNG, JPEG, or TIFF).</exception>
+    /// <exception cref="OperationCanceledException">Thrown if the operation is cancelled via the provided cancellation token.</exception>
     public async Task LoadImageAsync(LoadImageRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(request.ImageLocalPath))
@@ -72,12 +72,12 @@ public class ImageDataLoaderService<TKey, TRecord>(
             throw new InvalidOperationException("ImageFileName is empty");
 
         // Validate PNG support
-        if (!request.ImageFileName.ValidFileContentType(out var actualContentType, 
-                SupportedFileContentTypes.PngContentType,
-                SupportedFileContentTypes.JpegContentType,
-                SupportedFileContentTypes.TiffContentType
-        ))
-        throw new NotSupportedException($"Only PNG images are currently supported and not: {actualContentType}");
+        if (!request.ImageFileName.ValidFileContentType(out var actualContentType,
+                FileTypeManager.MimeTypes.Png,
+                FileTypeManager.MimeTypes.Jpeg,
+                FileTypeManager.MimeTypes.Tiff
+            ))
+            throw new NotSupportedException($"Only PNG images are currently supported and not: {actualContentType}");
 
         await InitializeCollectionAsync(cancellationToken);
         await DeleteExistingRecordsAsync(request.ImageFileName!, cancellationToken);
@@ -125,14 +125,15 @@ public class ImageDataLoaderService<TKey, TRecord>(
 
 
     /// <summary>
-    /// Attempts to extract text from the provided image bytes by processing the image data and retrying up to three times
-    /// in case of a "Too Many Requests" error from the service.
+    /// Attempts to extract text from the given image data with a retry mechanism, handling "Too Many Requests" errors
+    /// by retrying the operation up to three times before failing.
     /// </summary>
-    /// <param name="imageBytes">The image data in the form of a read-only memory of bytes.</param>
-    /// <param name="cancellationToken">A token for observing and potentially canceling the asynchronous operation.</param>
-    /// <returns>A task that represents the asynchronous operation, containing the extracted text from the image.</returns>
+    /// <param name="imageBytes">The image data as a read-only memory of bytes.</param>
+    /// <param name="contentType">The content type of the image, used to validate and process the image format.</param>
+    /// <param name="cancellationToken">A token to observe for cancellation requests during the asynchronous operation.</param>
+    /// <returns>A task that represents the asynchronous operation, returning the extracted text from the image.</returns>
     /// <exception cref="HttpOperationException">
-    /// Thrown if an HTTP error, other than "Too Many Requests", occurs or if the maximum retry limit is exceeded.
+    /// Thrown if an HTTP error occurs during the operation, excluding "Too Many Requests", or if the retry limit is exceeded.
     /// </exception>
     private async Task<string> ConvertImageToTextWithRetryAsync(
         ReadOnlyMemory<byte> imageBytes,

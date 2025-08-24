@@ -187,7 +187,7 @@ public static class ServiceCollectionExtensions
                         ? conversationIdObj.ToString()
                         : null;
 
-                    if (request.TextFileFileName!.GetContentType() == SupportedFileContentTypes.JsonContentType)
+                    if (request.TextFileFileName!.GetMimeType() == FileTypeManager.MimeTypes.Json)
                     {
                         return new AesirConversationJsonTextData<Guid>
                         {
@@ -196,7 +196,7 @@ public static class ServiceCollectionExtensions
                         };
                     }
                     
-                    if (request.TextFileFileName!.GetContentType() == SupportedFileContentTypes.XmlContentType)
+                    if (request.TextFileFileName!.GetMimeType() == FileTypeManager.MimeTypes.Xml)
                     {
                         return new AesirConversationXmlTextData<Guid>()
                         {
@@ -205,7 +205,7 @@ public static class ServiceCollectionExtensions
                         };
                     }
                     
-                    if (request.TextFileFileName!.GetContentType() == SupportedFileContentTypes.CsvContentType)
+                    if (request.TextFileFileName!.GetMimeType() == FileTypeManager.MimeTypes.Csv)
                     {
                         return new AesirConversationCsvTextData<Guid>()
                         {
