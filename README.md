@@ -23,7 +23,8 @@
   - [X] Regenerate assistant message
   - [X] Edit user message
   - [X] Play message
-- [X] Support "Thinking" In Chat 
+- [X] Support "Thinking" In Chat
+- [ ] Support Showing Execution Of Tools In Chat Thoughts
 - [X] Implement RAG
   - [x] Upload - Global Documents
   - [x] Upload - Conversation Documents
@@ -98,3 +99,6 @@ Note:
 - [ ] True up web and desktop fonts
 - [ ] When rendering the response of an assistant message, if a code block is present we need to foce it to "scroll" horizontally.  Need CSS tweaks. Noticed when testing JSON files.
 - [ ] When click a citation from a non-pdf or image based document you get error. Its because the citation viewer expects image.
+
+### Randome Notes
+- Test Vision Models with this repo... https://github.com/JensWalter/my-receipts
