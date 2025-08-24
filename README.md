@@ -82,7 +82,8 @@ To use OpenAI as the backend:
 
 ### LLM Models Tested
 1. **cogito:32b-v1-preview-qwen-q4_K_M - This one is the best non-reasoning**
-2. **qwen3:32b-q4_K_M - The best reasoning/thinking model**
+2. **gpt-oss - The best reasoning/thinking model**
+    1. This requires Ronin's patch to OllamSharp.
 
 Note: 
 1. Tried deepseek-r1:32b-qwen-distill-q4_K_M its great! But sad with tools. Looks like a bug in Ollama.
@@ -92,13 +93,14 @@ Note:
 2. nomic-embed-text:latest
 
 ### Vision Models Tested
-1. gemma3:12b (works pretty good)
+1. gemma3:12b-it-q4_K_M - is this best so far
 
 ### KNOW BUGS
 - [ ] When using OpenAI Compatible Models (specfically ChatGPT 4.1) the model will not auto run function tools if a document is attached to the conversation it was pre-trained on.
 - [ ] True up web and desktop fonts
 - [ ] When rendering the response of an assistant message, if a code block is present we need to foce it to "scroll" horizontally.  Need CSS tweaks. Noticed when testing JSON files.
 - [ ] When click a citation from a non-pdf or image based document you get error. Its because the citation viewer expects image.
+- [ ] The use of mime-types in the API is requiring major refactoring and centralization. It has been started.
 
-### Randome Notes
+### Random Notes
 - Test Vision Models with this repo... https://github.com/JensWalter/my-receipts
