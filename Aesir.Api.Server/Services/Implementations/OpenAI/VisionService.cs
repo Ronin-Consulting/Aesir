@@ -27,11 +27,11 @@ public class VisionService(
     /// <summary>
     /// Extracts text content from a provided image asynchronously.
     /// </summary>
-    /// <param name="image">The image data provided as a read-only memory byte array.</param>
+    /// <param name="imageBytes">The image data provided as a read-only memory byte array.</param>
     /// <param name="contentType">The MIME type of the image (e.g., "image/png", "image/jpeg").</param>
     /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
     /// <returns>Returns the text extracted from the image as a plain string.</returns>
-    public async Task<string> GetImageTextAsync(ReadOnlyMemory<byte> image, string contentType,
+    public async Task<string> GetImageTextAsync(ReadOnlyMemory<byte> imageBytes, string contentType,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_visionModel))
@@ -41,7 +41,7 @@ public class VisionService(
         chatHistory.AddSystemMessage(PromptProvider.GetSystemPrompt(PromptPersona.Ocr).Content);
         chatHistory.AddUserMessage([
             new TextContent("Analyze this image."),
-            new ImageContent(image, contentType),
+            new ImageContent(imageBytes, contentType),
         ]);
 
         var settings = new OpenAIPromptExecutionSettings

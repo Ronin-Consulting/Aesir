@@ -9,7 +9,6 @@ using Aspose.Pdf.Text;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
 using Image = SixLabors.ImageSharp.Image;
 using Path = System.IO.Path;
 
@@ -300,15 +299,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
         ReadOnlyMemory<byte> imageBytes,
         CancellationToken cancellationToken)
     {
-        // Resize the image to a resolution that works well with the vision model
         using var image = Image.Load(imageBytes.Span);
-        image.Mutate(x =>
-            x.Resize(new ResizeOptions
-            {
-                Size = new Size(1024, 1024),
-                Mode = ResizeMode.Max
-            }));
-
         using var ms = new MemoryStream();
         await image.SaveAsPngAsync(ms, cancellationToken);
         var resizedImageBytes = new ReadOnlyMemory<byte>(ms.ToArray());

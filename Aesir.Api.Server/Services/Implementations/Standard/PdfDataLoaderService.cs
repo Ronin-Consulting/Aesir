@@ -86,7 +86,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
                     return content;
                 }
 
-                var textFromImage = await ConvertImageToTextWithRetryAsync(
+                var textFromImage = await ConvertImageToTextAsync(
                     content.Image!.Value,
                     cancellationToken).ConfigureAwait(false);
 
@@ -207,13 +207,18 @@ public class PdfDataLoaderService<TKey, TRecord>(
     /// <param name="imageBytes">The image data to be processed for text extraction.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous operation, producing the extracted text from the image.</returns>
-    private async Task<string> ConvertImageToTextWithRetryAsync(
+    private async Task<string> ConvertImageToTextAsync(
         ReadOnlyMemory<byte> imageBytes,
         CancellationToken cancellationToken)
     {
         try
         {
-            return await _visionService.GetImageTextAsync(imageBytes, PngMimeType, cancellationToken)
+            using var image = Image.Load(imageBytes.Span);
+            using var ms = new MemoryStream();
+            await image.SaveAsPngAsync(ms, cancellationToken);
+            var resizedImageBytes = new ReadOnlyMemory<byte>(ms.ToArray());
+
+            return await _visionService.GetImageTextAsync(resizedImageBytes, PngMimeType, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (ClientResultException ex)

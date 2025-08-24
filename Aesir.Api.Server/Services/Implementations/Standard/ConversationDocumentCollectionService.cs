@@ -123,24 +123,27 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     {
         var supportedTextFileContentTypes = new List<string>
         {
+            SupportedFileContentTypes.CsvContentType,
             SupportedFileContentTypes.PlainTextContentType,
             SupportedFileContentTypes.MarkdownContentType,
             SupportedFileContentTypes.HtmlContentType,
             SupportedFileContentTypes.XmlContentType,
             SupportedFileContentTypes.JsonContentType,
-            SupportedFileContentTypes.CsvContentType
+            
         };
 
-        var supportedFileContentTypes = new List<string>
+        var allSupportedFileContentTypes = new List<string>
         {
-            // PDFs
+            // Office type files
             SupportedFileContentTypes.PdfContentType,
             // Image files
             SupportedFileContentTypes.PngContentType,
+            SupportedFileContentTypes.JpegContentType,
+            SupportedFileContentTypes.TiffContentType
         };
-        supportedFileContentTypes.AddRange(supportedTextFileContentTypes);
+        allSupportedFileContentTypes.AddRange(supportedTextFileContentTypes);
         
-        if (!documentPath.ValidFileContentType(out var actualContentType, supportedFileContentTypes.ToArray()))
+        if (!documentPath.ValidFileContentType(out var actualContentType, allSupportedFileContentTypes.ToArray()))
         {
             throw new InvalidDataException($"Unsupported file content type: {actualContentType}");
         }
@@ -159,10 +162,10 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
                 BetweenBatchDelayInMs = 10,
                 Metadata = fileMetaData
             };
-            await _pdfDataLoader.LoadPdfAsync(pdfRequest, cancellationToken);   
+            await _pdfDataLoader.LoadPdfAsync(pdfRequest, cancellationToken);
         }
 
-        if (actualContentType == SupportedFileContentTypes.PngContentType)
+        if (FileTypeManager.IsImage(documentPath))
         {
             var imageRequest = new LoadImageRequest()
             {

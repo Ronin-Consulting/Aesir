@@ -72,9 +72,12 @@ public class ImageDataLoaderService<TKey, TRecord>(
             throw new InvalidOperationException("ImageFileName is empty");
 
         // Validate PNG support
-        if (!request.ImageFileName.ValidFileContentType(SupportedFileContentTypes.PngContentType,
-                out var actualContentType))
-            throw new NotSupportedException($"Only PNG images are currently supported and not: {actualContentType}");
+        if (!request.ImageFileName.ValidFileContentType(out var actualContentType, 
+                SupportedFileContentTypes.PngContentType,
+                SupportedFileContentTypes.JpegContentType,
+                SupportedFileContentTypes.TiffContentType
+        ))
+        throw new NotSupportedException($"Only PNG images are currently supported and not: {actualContentType}");
 
         await InitializeCollectionAsync(cancellationToken);
         await DeleteExistingRecordsAsync(request.ImageFileName!, cancellationToken);
@@ -85,6 +88,7 @@ public class ImageDataLoaderService<TKey, TRecord>(
         // Convert image to text using vision service
         var extractedText = await ConvertImageToTextWithRetryAsync(
             new ReadOnlyMemory<byte>(imageBytes),
+            actualContentType,
             cancellationToken).ConfigureAwait(false);
 
         // Create raw content for processing
@@ -132,10 +136,11 @@ public class ImageDataLoaderService<TKey, TRecord>(
     /// </exception>
     private async Task<string> ConvertImageToTextWithRetryAsync(
         ReadOnlyMemory<byte> imageBytes,
+        string contentType,
         CancellationToken cancellationToken)
     {
         return await _visionService
-            .GetImageTextAsync(imageBytes, SupportedFileContentTypes.PngContentType, cancellationToken)
+            .GetImageTextAsync(imageBytes, contentType, cancellationToken)
             .ConfigureAwait(false);
     }
 }

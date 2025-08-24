@@ -1,8 +1,11 @@
 using System.Diagnostics.CodeAnalysis;
+using Aesir.Common.FileTypes;
 using Aesir.Common.Prompts;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.Ollama;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 
 namespace Aesir.Api.Server.Services.Implementations.Ollama;
 
@@ -39,21 +42,50 @@ public class VisionService(
     /// <summary>
     /// Extracts and returns the text content visible in the provided image as plain text.
     /// </summary>
-    /// <param name="image">The image data from which to extract text, provided as a read-only memory byte buffer.</param>
+    /// <param name="imageBytes">The image data from which to extract text, provided as a read-only memory byte buffer.</param>
     /// <param name="contentType">The MIME type of the provided image, such as "image/png" or "image/jpeg".</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task representing the asynchronous operation. The task result contains the extracted text from the image as a plain string.</returns>
-    public async Task<string> GetImageTextAsync(ReadOnlyMemory<byte> image, string contentType,
+    public async Task<string> GetImageTextAsync(ReadOnlyMemory<byte> imageBytes, string contentType,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_visionModel))
             throw new InvalidOperationException("No vision model provided");
 
+        // Resize the image to a resolution that works well with the vision model
+        using var image = Image.Load(imageBytes.Span);
+        image.Mutate(x =>
+            x.Resize(new ResizeOptions
+            {
+                // gemma 3 vision model preferred resolution
+                // its our default tested vision model
+                Size = new Size(896, 896),
+                Mode = ResizeMode.Max
+            }));
+
+        using var ms = new MemoryStream();
+        switch (contentType)
+        {
+            case SupportedFileContentTypes.JpegContentType:
+                await image.SaveAsJpegAsync(ms, cancellationToken);
+                break;
+            case SupportedFileContentTypes.PngContentType:
+                await image.SaveAsPngAsync(ms, cancellationToken);
+                break;
+            case SupportedFileContentTypes.TiffContentType:
+                await image.SaveAsTiffAsync(ms, cancellationToken);
+                break;
+            default:
+                throw new NotSupportedException($"Unsupported image content type: {contentType}");
+        }
+
+        var resizedImageBytes = new ReadOnlyMemory<byte>(ms.ToArray());
+        
         var chatHistory = new ChatHistory();
         chatHistory.AddSystemMessage(PromptProvider.GetSystemPrompt(PromptPersona.Ocr).Content);
         chatHistory.AddUserMessage([
             new TextContent("Analyze this image."),
-            new ImageContent(image, contentType),
+            new ImageContent(resizedImageBytes, contentType),
         ]);
 
         var settings = new OllamaPromptExecutionSettings

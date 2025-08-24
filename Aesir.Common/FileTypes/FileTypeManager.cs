@@ -29,13 +29,19 @@ public static class FileTypeManager
         public const string Png = ".png";
         public const string Jpg = ".jpg";
         public const string Jpeg = ".jpeg";
-        public const string Gif = ".gif";
-        public const string Bmp = ".bmp";
+        //public const string Gif = ".gif";
+        //public const string Bmp = ".bmp";
         public const string Tiff = ".tiff";
         public const string Tif = ".tif";
-        public const string Svg = ".svg";
+        //public const string Svg = ".svg";
         
-        public static readonly string[] AllExtensions = { Png, Jpg, Jpeg, Gif, Bmp, Tiff, Tif, Svg };
+        public static readonly string[] AllExtensions =
+        {
+            Png, Jpg, Jpeg, 
+            //Gif, Bmp, 
+            Tiff, Tif, 
+            //Svg
+        };
     }
     
     /// <summary>
@@ -214,11 +220,11 @@ public static class FileTypeManager
         { Images.Png, MimeTypes.Png },
         { Images.Jpg, MimeTypes.Jpeg },
         { Images.Jpeg, MimeTypes.Jpeg },
-        { Images.Gif, MimeTypes.Gif },
-        { Images.Bmp, MimeTypes.Bmp },
+        //{ Images.Gif, MimeTypes.Gif },
+        //{ Images.Bmp, MimeTypes.Bmp },
         { Images.Tiff, MimeTypes.Tiff },
         { Images.Tif, MimeTypes.Tiff },
-        { Images.Svg, MimeTypes.Svg },
+        //{ Images.Svg, MimeTypes.Svg },
         
         // Text
         { Text.PlainText, MimeTypes.PlainText },
@@ -287,8 +293,8 @@ public static class FileTypeManager
     /// </summary>
     public static readonly string[] DocumentProcessingMimeTypes = new[]
     {
-        MimeTypes.Pdf, MimeTypes.Png, MimeTypes.Jpeg, MimeTypes.PlainText,
-        MimeTypes.Html, MimeTypes.Markdown, MimeTypes.Xml, MimeTypes.Json
+        MimeTypes.Csv, MimeTypes.Jpeg, MimeTypes.Pdf, MimeTypes.Html, MimeTypes.Markdown,
+        MimeTypes.Png, MimeTypes.PlainText, MimeTypes.Tiff, MimeTypes.Xml, MimeTypes.Json
     };
     
     #endregion
