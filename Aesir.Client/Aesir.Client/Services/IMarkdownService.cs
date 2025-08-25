@@ -2,21 +2,25 @@ using System.Threading.Tasks;
 
 namespace Aesir.Client.Services;
 
-/// Defines a service for processing Markdown content, including rendering it
-/// into various formats such as HTML or plain text.
+/// Represents a service interface for processing and rendering Markdown content.
+/// This interface provides methods for converting Markdown into formats such
+/// as HTML or plain text, supporting various rendering options.
 public interface IMarkdownService
 {
     /// <summary>
-    /// Asynchronously converts the provided Markdown string to its HTML equivalent.
+    /// Asynchronously converts the provided Markdown string to its equivalent HTML representation.
     /// </summary>
-    /// <param name="markdown">The Markdown-formatted string that needs to be rendered as HTML.</param>
-    /// <returns>A task that represents the asynchronous operation, producing a string containing the rendered HTML output.</returns>
-    Task<string> RenderMarkdownAsHtmlAsync(string markdown);
+    /// <param name="markdown">The Markdown-formatted string to be converted.</param>
+    /// <param name="shouldRenderFencedCodeBlocks">
+    /// Indicates whether fenced code blocks in the Markdown content should be rendered into corresponding HTML.
+    /// </param>
+    /// <returns>A task that represents the asynchronous operation, producing a string containing the HTML representation of the Markdown content.</returns>
+    Task<string> RenderMarkdownAsHtmlAsync(string markdown, bool shouldRenderFencedCodeBlocks = false);
 
     /// <summary>
-    /// Converts the provided Markdown string into its plain text representation asynchronously.
+    /// Asynchronously converts the provided Markdown string to its plain text equivalent.
     /// </summary>
-    /// <param name="markdown">The Markdown content to be converted into plain text.</param>
-    /// <returns>A task representing the asynchronous operation, with a string result containing the converted plain text.</returns>
+    /// <param name="markdown">The Markdown-formatted string to be rendered as plain text.</param>
+    /// <returns>A task that represents the asynchronous operation, producing a string containing the plain text output.</returns>
     Task<string> RenderMarkdownAsPlainTextAsync(string markdown);
 }

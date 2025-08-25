@@ -116,8 +116,7 @@ public abstract class BaseChatService(
     public async IAsyncEnumerable<AesirChatStreamedResult> ChatCompletionsStreamedAsync(AesirChatRequest request)
     {
         request = request ?? throw new ArgumentNullException(nameof(request));
-        //request.SetClientDateTimeInSystemMessage();
-
+        
         var completionId = Guid.NewGuid().ToString();
         var messageToSave = AesirChatMessage.NewAssistantMessage("");
 
@@ -161,10 +160,11 @@ public abstract class BaseChatService(
         // Process streaming results - only execute if no initialization error occurred
         if (streamingResults != null)
         {
-            title = await titleTask;
-            
             await foreach (var (content, isThinking, isComplete) in streamingResults)
             {
+                if(title == request.Title)
+                    title = await titleTask;
+                
                 //_logger.LogDebug("Received streaming content: {Content}", content);
 
                 if (!string.IsNullOrEmpty(content))

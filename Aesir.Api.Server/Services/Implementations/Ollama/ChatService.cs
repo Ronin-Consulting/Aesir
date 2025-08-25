@@ -276,7 +276,7 @@ public class ChatService : BaseChatService
     private async Task<ChatHistory> CreateChatHistoryAsync(AesirChatRequest request)
     {
         var chatHistoryReducer = new ChatHistorySummarizationReducer(
-            _chatCompletionService, 8, 5);
+            _chatCompletionService, 4,8);
         
         var chatHistory = new ChatHistory();
         chatHistory.AddRange(request.Conversation.Messages.Select(ConvertToSemanticKernelMessage));

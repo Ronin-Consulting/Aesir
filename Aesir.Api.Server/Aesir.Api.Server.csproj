@@ -13,34 +13,40 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Aspose.PDF.Drawing" Version="25.7.0"/>
+        <PackageReference Include="Aspose.PDF.Drawing" Version="25.8.0" />
+        <PackageReference Include="CsvHelper" Version="33.1.0" />
         <PackageReference Include="Dapper" Version="2.1.66"/>
         <PackageReference Include="dotnet-stop-words" Version="1.1.0"/>
         <PackageReference Include="FluentMigrator" Version="7.1.0"/>
         <PackageReference Include="FluentMigrator.Extensions.Postgres" Version="7.1.0"/>
         <PackageReference Include="FluentMigrator.Runner.Postgres" Version="7.1.0"/>
+        <PackageReference Include="Markdig" Version="0.41.3" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.8" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.8" />
-        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.62.0" />
+        <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="9.0.8" />
+        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.63.0" />
         <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.62.0-alpha" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.62.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.63.0" />
         <PackageReference Include="Microsoft.SemanticKernel.Connectors.PgVector" Version="1.62.0-preview" />
         <PackageReference Include="Microsoft.SemanticKernel.Connectors.Qdrant" Version="1.62.0-preview" />
-        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.62.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.PromptTemplates.Handlebars" Version="1.62.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.63.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.PromptTemplates.Handlebars" Version="1.63.0" />
         <PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.62.0-alpha" />
         <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0"/>
         <PackageReference Include="ModelContextProtocol-SemanticKernel" Version="0.3.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
         <PackageReference Include="Npgsql" Version="9.0.3"/>
-        <PackageReference Include="OllamaSharp" Version="5.3.4" />
+        <PackageReference Include="OllamaSharp" Version="5.3.6" />
         <PackageReference Include="OpenAI" Version="2.3.0" />
         <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.12.0"/>
-        <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.8" />
+        <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.9" />
         <PackageReference Include="PdfPig" Version="0.1.11" />
         <PackageReference Include="Pgvector" Version="0.3.2"/>
+        <PackageReference Include="Polly" Version="8.6.3" />
+        <PackageReference Include="Polly.Contrib.WaitAndRetry" Version="1.1.1" />
         <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1"/>
-        <PackageReference Include="Qdrant.Client" Version="1.15.0"/>
+        <PackageReference Include="Qdrant.Client" Version="1.15.1" />
+        <PackageReference Include="ReverseMarkdown" Version="4.7.0" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3"/>
         <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="9.0.3"/>

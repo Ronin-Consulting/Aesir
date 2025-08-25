@@ -11,6 +11,9 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using OllamaSharp;
 using OpenAI;
+using Polly;
+using Polly.Contrib.WaitAndRetry;
+using Polly.Extensions.Http;
 using AesirOllama = Aesir.Api.Server.Services.Implementations.Ollama;
 using AesirOpenAI = Aesir.Api.Server.Services.Implementations.OpenAI;
 
@@ -22,7 +25,7 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-        
+
         #region AI Backend Clients
         var useOpenAi = builder.Configuration.GetValue<bool>("Inference:UseOpenAICompatible");
 
@@ -42,9 +45,9 @@ public class Program
             });
             // should be transient so during dispose we unload model
             builder.Services.AddTransient<IVisionService, AesirOpenAI.VisionService>();
-            
+
             var apiKey = builder.Configuration["Inference:OpenAI:ApiKey"] ??
-                throw new InvalidOperationException("OpenAI API key not configured");
+                         throw new InvalidOperationException("OpenAI API key not configured");
 
             var apiCreds = new ApiKeyCredential(apiKey);
             var endPoint = builder.Configuration["Inference:OpenAI:Endpoint"];
@@ -70,21 +73,22 @@ public class Program
                 var kernel = serviceProvider.GetRequiredService<Kernel>();
                 var chatCompletionService = serviceProvider.GetRequiredService<IChatCompletionService>();
                 var chatHistoryService = serviceProvider.GetRequiredService<IChatHistoryService>();
-                var conversationDocumentCollectionService = serviceProvider.GetRequiredService<IConversationDocumentCollectionService>();
+                var conversationDocumentCollectionService =
+                    serviceProvider.GetRequiredService<IConversationDocumentCollectionService>();
 
                 var enableThinking = builder.Configuration.GetValue<bool?>("Inference:Ollama:EnableChatModelThinking");
-                
+
                 return new AesirOllama.ChatService(
-                    logger, 
-                    ollamApiClient, 
-                    kernel, 
-                    chatCompletionService, 
+                    logger,
+                    ollamApiClient,
+                    kernel,
+                    chatCompletionService,
                     chatHistoryService,
                     conversationDocumentCollectionService,
                     enableThinking ?? false
                 );
             });
-            
+
             builder.Services.AddTransient<AesirOllama.VisionModelConfig>(serviceProvider =>
             {
                 var configuration = serviceProvider.GetRequiredService<IConfiguration>();
@@ -95,20 +99,24 @@ public class Program
             });
             // should be transient so during dispose we unload model
             builder.Services.AddTransient<IVisionService, AesirOllama.VisionService>();
-            
+
             const string ollamaClientName = "OllamaApiClient";
             builder.Services.AddHttpClient(ollamaClientName, client =>
-            {
-                var endpoint = builder.Configuration["Inference:Ollama:Endpoint"] ??
-                              throw new InvalidOperationException();
-                client.BaseAddress = new Uri($"{endpoint}/api");
-                
-                client.Timeout = TimeSpan.FromSeconds(240);
-            })
-            .AddHttpMessageHandler<LoggingHttpMessageHandler>();
+                {
+                    var endpoint = builder.Configuration["Inference:Ollama:Endpoint"] ??
+                                   throw new InvalidOperationException();
+                    client.BaseAddress = new Uri($"{endpoint}/api");
+                }).SetHandlerLifetime(TimeSpan.FromMinutes(2))
+                .AddPolicyHandler(HttpPolicyExtensions
+                    .HandleTransientHttpError()
+                    .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    .WaitAndRetryAsync(
+                        Backoff.DecorrelatedJitterBackoffV2(medianFirstRetryDelay: TimeSpan.FromMilliseconds(500),
+                            retryCount: 5))
+                ).AddHttpMessageHandler<LoggingHttpMessageHandler>();
 
             builder.Services.AddTransient<LoggingHttpMessageHandler>();
-            
+
             builder.Services.AddTransient<OllamaApiClient>(p =>
             {
                 var httpClientFactory = p.GetRequiredService<IHttpClientFactory>();
@@ -117,23 +125,23 @@ public class Program
 
                 // I don't like this... but need default model to do chat history summarization later..
                 // because Semantic Kernel is inflexible in this area
-                var modelNames = 
+                var modelNames =
                     builder.Configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>();
-                
+
                 return new OllamaApiClient(httpClient, modelNames?.FirstOrDefault() ?? string.Empty);
             });
         }
-        
+
         builder.Services.AddSingleton<ITtsService>(sp =>
         {
             var ttsModelPath = builder.Configuration.GetValue<string>("Inference:Onnx:Tts");
             var useCudaValue = Environment.GetEnvironmentVariable("USE_CUDA");
             _ = bool.TryParse(useCudaValue, out var useCuda);
-            
+
             var ttsConfig = TtsConfig.Default;
             ttsConfig.ModelPath = ttsModelPath ?? throw new InvalidOperationException();
             ttsConfig.CudaEnabled = useCuda;
-            
+
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             return new TtsService(loggerFactory.CreateLogger<TtsService>(), ttsConfig);
         });
@@ -143,26 +151,27 @@ public class Program
             var vadModelPath = builder.Configuration.GetValue<string>("Inference:Onnx:Vad");
             var useCudaValue = Environment.GetEnvironmentVariable("USE_CUDA");
             _ = bool.TryParse(useCudaValue, out var useCuda);
-            
+
             var sttConfig = SttConfig.Default;
             sttConfig.WhisperModelPath = sttModelPath ?? throw new InvalidOperationException();
             sttConfig.VadModelPath = vadModelPath ?? throw new InvalidOperationException();
             sttConfig.CudaEnabled = useCuda;
-            
+
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             return new SttService(loggerFactory.CreateLogger<SttService>(), sttConfig);
         });
+
         #endregion
-        
+
         builder.Services.AddSingleton<IDbContext, PgDbContext>(p =>
             new PgDbContext(builder.Configuration.GetConnectionString("DefaultConnection")!)
         );
-        
+
         builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
         builder.Services.AddSingleton<IMcpServerService, McpServerService>();
         builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
         builder.Services.AddSingleton<IFileStorageService, FileStorageService>();
-        
+
         builder.Services.SetupSemanticKernel(builder.Configuration);
 
         builder.Services
@@ -189,7 +198,7 @@ public class Program
                     .AllowAnyHeader();
             });
         });
-        
+
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
@@ -197,7 +206,7 @@ public class Program
         builder.Services.AddHealthChecks();
 
         builder.Services.AddSignalR();
-        
+
         var app = builder.Build();
 
         app.MapHub<TtsHub>("/ttshub");
@@ -215,9 +224,9 @@ public class Program
         //app.UseHttpsRedirection();
 
         app.UseCors("AllowAvaloniaApp");
-        
+
         app.UseAuthorization();
-        
+
         app.MapControllers();
 
         app.MigrateDatabase();
@@ -226,16 +235,13 @@ public class Program
         {
             app.EnsureOllamaBackend();
         }
-        
+
         var modelsService = app.Services.GetRequiredService<IModelsService>();
         var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 
-        appLifetime.ApplicationStopping.Register(() =>
-        {
-            modelsService.UnloadAllModelsAsync().Wait();
-        });
+        appLifetime.ApplicationStopping.Register(() => { modelsService.UnloadAllModelsAsync().Wait(); });
 
-        
+
         app.Run();
     }
 }

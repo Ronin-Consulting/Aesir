@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using Aesir.Client.Services.Implementations.NoOp;
 using Aesir.Common.Models;
-using Aesir.Common.Prompts;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Aesir.Client.ViewModels.Design;

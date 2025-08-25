@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Extensions;
+using Aesir.Common.FileTypes;
 using Aesir.Api.Server.Models;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
@@ -81,7 +82,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         CancellationToken cancellationToken = default)
     {
         // for now enforce only PDFs
-        if (!documentPath.ValidFileContentType(SupportedFileContentTypes.PdfContentType, out var actualContentType))
+        if (!documentPath.ValidFileContentType(FileTypeManager.MimeTypes.Pdf, out var actualContentType))
         {
             throw new InvalidDataException($"Invalid file content type: {actualContentType}");
         }
