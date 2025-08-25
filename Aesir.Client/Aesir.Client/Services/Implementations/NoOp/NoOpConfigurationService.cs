@@ -53,11 +53,6 @@ public class NoOpConfigurationService : IConfigurationService
         await Task.CompletedTask;
     }
 
-    public Task UpdateAToolAsync(AesirToolBase tool)
-    {
-        throw new NotImplementedException();
-    }
-
     public async Task UpdateToolAsync(AesirToolBase tool)
     {
         await Task.CompletedTask;
@@ -66,6 +61,11 @@ public class NoOpConfigurationService : IConfigurationService
     public async Task DeleteToolAsync(Guid id)
     {
         await Task.CompletedTask;
+    }
+
+    public async Task<AesirMcpServerBase> CreateMcpServerFromConfigAsync(string clientConfigurationJson)
+    {
+        return await Task.FromResult(new AesirMcpServerBase());
     }
 
     public async Task<IEnumerable<AesirMcpServerBase>> GetMcpServersAsync()
@@ -91,6 +91,11 @@ public class NoOpConfigurationService : IConfigurationService
     public async Task DeleteMcpServerAsync(Guid id)
     {
         await Task.CompletedTask;
+    }
+
+    public async Task<IEnumerable<AesirMcpServerToolBase>> GetMcpServerTools(Guid id)
+    {
+        return await Task.FromResult(new List<AesirMcpServerToolBase>());   
     }
 
     public Task<PromptPersona> GetDefaultPersonaAsync()

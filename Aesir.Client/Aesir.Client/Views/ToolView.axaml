@@ -35,7 +35,7 @@
             LabelPosition="Top">
             <u:Form.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, *" HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem 
@@ -68,38 +68,44 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
             </u:FormItem>
+            <u:FormItem 
+                Grid.Row="3" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Server Selection" >
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding AvailableMcpServers}"
+                          SelectedItem="{Binding FormModel.McpServer}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Path=Name}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="4" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Server Tool" >
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding AvailableMcpServerTools}"
+                          SelectedItem="{Binding FormModel.McpServerTool}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </u:FormItem>
         </u:Form>
         
         <!-- Buttons -->
         <DockPanel
             Grid.Row="2"
             Margin="8">
-            <StackPanel
-                DockPanel.Dock="Left"
-                Orientation="Horizontal"
-                Spacing="8">
-                <u:IconButton 
-                    HorizontalAlignment="Right"
-                    Content="Save"
-                    IconPlacement="Left" 
-                    Command="{Binding SaveCommand}">
-                    <u:IconButton.Icon>
-                        <avalonia:MaterialIcon Kind="CheckBold" Width="20" Height="20" />
-                    </u:IconButton.Icon>
-                </u:IconButton>
-                <u:IconButton 
-                    HorizontalAlignment="Right"
-                    Classes="Tertiary"
-                    Content="Cancel"
-                    IconPlacement="Left" 
-                    Command="{Binding CancelCommand}">
-                    <u:IconButton.Icon>
-                        <avalonia:MaterialIcon Kind="Cancel" Width="20" Height="20" />
-                    </u:IconButton.Icon>
-                </u:IconButton>
-            </StackPanel>
             <u:IconButton 
-                HorizontalAlignment="Right"
+                DockPanel.Dock="Left"
                 Classes="Danger"
                 Content="Delete"
                 IconPlacement="Left" 
@@ -109,6 +115,28 @@
                     <avalonia:MaterialIcon Kind="Delete" Width="20" Height="20" />
                 </u:IconButton.Icon>
             </u:IconButton>
+            <StackPanel
+                Orientation="Horizontal"
+                Spacing="8"
+                HorizontalAlignment="Right">
+                <u:IconButton 
+                    Classes="Tertiary"
+                    Content="Cancel"
+                    IconPlacement="Left" 
+                    Command="{Binding CancelCommand}">
+                    <u:IconButton.Icon>
+                        <avalonia:MaterialIcon Kind="Cancel" Width="20" Height="20" />
+                    </u:IconButton.Icon>
+                </u:IconButton>
+                <u:IconButton 
+                    Content="Save"
+                    IconPlacement="Left" 
+                    Command="{Binding SaveCommand}">
+                    <u:IconButton.Icon>
+                        <avalonia:MaterialIcon Kind="CheckBold" Width="20" Height="20" />
+                    </u:IconButton.Icon>
+                </u:IconButton>
+            </StackPanel>
         </DockPanel>
     </Grid>
     

@@ -11,7 +11,8 @@ namespace Aesir.Api.Server.Controllers;
 [Produces("application/json")]
 public class ConfigurationController(
     ILogger<ChatHistoryController> logger,
-    IConfigurationService configurationService) : ControllerBase
+    IConfigurationService configurationService,
+    IMcpServerService mcpServerService) : ControllerBase
 {
     [HttpGet("agents")]
     public async Task<IActionResult> GetAgentsAsync()
@@ -146,12 +147,12 @@ public class ConfigurationController(
         }
     }
     
-    [HttpGet("agents/{agentId:guid}/tools")]
-    public async Task<IActionResult> GetToolsForAgentAsync([FromRoute] Guid agentId)
+    [HttpGet("agents/{id:guid}/tools")]
+    public async Task<IActionResult> GetToolsForAgentAsync([FromRoute] Guid id)
     {
         try
         {
-            var results = (await configurationService.GetToolsUsedByAgentAsync(agentId)).ToList();
+            var results = (await configurationService.GetToolsUsedByAgentAsync(id)).ToList();
 
             logger.LogDebug("Found {Count} tools", results.Count);
             logger.LogDebug("Results = {Results}", JsonSerializer.Serialize(results));
@@ -160,7 +161,7 @@ public class ConfigurationController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error retrieving tools for agent with ID = {AgentId}", agentId);
+            logger.LogError(ex, "Error retrieving tools for agent with ID = {Id}", id);
             return StatusCode(500, "An error occurred while retrieving tools for the agent");
         }
     }
@@ -317,6 +318,44 @@ public class ConfigurationController(
         {
             logger.LogError(ex, "Error deleting MCP Server with ID = {Id}", id);
             return StatusCode(500, "An error occurred while deleting the MCP Server");
+        }
+    }
+    
+    [HttpPost("mcpservers/from-config")]
+    public async Task<IActionResult> CreateMcpServerFromConfigAsync([FromBody] string clientConfigurationJson)
+    {
+        try
+        {
+            var mcpServer = mcpServerService.ParseMcpServerFromClientConfiguration(clientConfigurationJson);
+
+            logger.LogDebug("Created unsaved MCP Server from client configuration = {McpServer}", JsonSerializer.Serialize(mcpServer));
+
+            return await Task.FromResult(Created("", mcpServer));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating MCP server from client configuration");
+            return StatusCode(500, "An error occurred while creating the MCP server from configuration");
+        }
+    }
+    
+    [HttpGet("mcpservers/{id:guid}/tools")]
+    public async Task<IActionResult> GetToolsForMcpServerAsync([FromRoute] Guid id)
+    {
+        try
+        {
+            var mcpServer = await configurationService.GetMcpServerAsync(id);
+            var results = (await mcpServerService.GetMcpServerToolsAsync(mcpServer)).ToList();
+
+            logger.LogDebug("Found {Count} tools", results.Count);
+            logger.LogDebug("Results = {Results}", JsonSerializer.Serialize(results));
+
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving MCP Server tools in MCP Server with ID = {Id}", id);
+            return StatusCode(500, "An error occurred while retrieving tools in the MCP Servers");
         }
     }
     

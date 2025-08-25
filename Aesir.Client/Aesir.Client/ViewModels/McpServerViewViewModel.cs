@@ -7,11 +7,12 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Services;
 using Aesir.Client.Shared;
+using Aesir.Client.Validators;
 using Aesir.Common.Models;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Irihi.Avalonia.Shared.Contracts;
+using Ursa.Controls;
 
 namespace Aesir.Client.ViewModels;
 
@@ -50,6 +51,11 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
     private readonly IConfigurationService _configurationService;
 
     /// <summary>
+    /// Collection of available tool types that can be selected or used within the application.
+    /// </summary>
+    public ObservableCollection<ServerLocation> AvailableLocations { get; } = new(Enum.GetValues<ServerLocation>());
+
+    /// <summary>
     /// Represents the form data model for the MCP Server view, used to handle data
     /// binding and validation within the McpServerViewViewModel.
     /// </summary>
@@ -79,6 +85,16 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
     /// Command executed to add an environment variable
     /// </summary>
     public ICommand AddEnvironmentVariableCommand { get; set; }
+    
+    /// <summary>
+    /// Command executed to delete an HTTP Header 
+    /// </summary>
+    public ICommand DeleteHttpHeaderCommand { get; set; }
+    
+    /// <summary>
+    /// Command executed to add an HTTP Header
+    /// </summary>
+    public ICommand AddHttpHeaderCommand { get; set; }
 
     /// <summary>
     /// Command executed to save the current state or data of the MCP Server view.
@@ -115,12 +131,24 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
             IsExisting = mcpServer.Id.HasValue,
             Name = mcpServer.Name,
             Description = mcpServer.Description,
-            Command = mcpServer.Command
+            Location = mcpServer.Location,
+            Command = mcpServer.Command,
+            Url = mcpServer.Url
         };
-        foreach (var argument in mcpServer.Arguments)
-            FormModel.Arguments.Add(new ArgumentItem { Value = argument });
-        foreach (var environmentVariable in mcpServer.EnvironmentVariables)
-            FormModel.EnvironmentVariables.Add(new EnvironmentVariableItem() { Name = environmentVariable.Key, Value = environmentVariable.Value ?? "" });
+        if (mcpServer.Location == ServerLocation.Local)
+        {
+            foreach (var argument in mcpServer.Arguments)
+                FormModel.Arguments.Add(new ArgumentItem { Value = argument });
+            foreach (var environmentVariable in mcpServer.EnvironmentVariables)
+                FormModel.EnvironmentVariables.Add(new EnvironmentVariableItem()
+                    { Name = environmentVariable.Key, Value = environmentVariable.Value ?? "" });
+        }
+        if (mcpServer.Location == ServerLocation.Remote)
+        {
+            foreach (var httpHeader in mcpServer.HttpHeaders)
+                FormModel.HttpHeaders.Add(
+                    new HttpHeaderItem() { Name = httpHeader.Key, Value = httpHeader.Value ?? "" });
+        }
         IsDirty = false;
         SaveCommand = new AsyncRelayCommand(ExecuteSaveCommandAsync);
         CancelCommand = new RelayCommand(ExecuteCancelCommand);
@@ -129,33 +157,13 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
         AddArgumentCommand = new RelayCommand(ExecuteAddArgumentCommand);
         DeleteEnvironmentVariableCommand = new RelayCommand<EnvironmentVariableItem>(ExecuteDeleteEnvironmentVariableCommand);
         AddEnvironmentVariableCommand = new RelayCommand(ExecuteAddEnvironmentVariableCommand);
+        DeleteHttpHeaderCommand = new RelayCommand<HttpHeaderItem>(ExecuteDeleteHttpHeaderCommand);
+        AddHttpHeaderCommand = new RelayCommand(ExecuteAddHttpHeaderCommand);
     }
 
-    /// <summary>
-    /// Invoked when the view model is activated. This method executes initialization logic such as
-    /// invoking UI-thread-specific tasks and loading the necessary resources or state for operation.
-    /// </summary>
-    protected override void OnActivated()
-    {
-        base.OnActivated();
-
-        Dispatcher.UIThread.InvokeAsync(LoadAvailableAsync);
-    }
-
-    /// <summary>
-    /// TODO
-    /// </summary>
-    /// <returns>A task representing the asynchronous operation of loading data.</returns>
-    private async Task LoadAvailableAsync()
-    {
-        await Task.CompletedTask;
-        
-        // TODO actually load - list mcp server tools .. could be a lot of MCP Servers, maybe wait till selected???
-        //AvailableMcpServerTools.Clear();
-        //AvailableMcpServerTools.Add("gpt-4.1-2025-04-14");
-        //AvailableMcpServerTools.Add("qwen3:32b-q4_K_M");
-    }
-    
+    /// Removes the specified argument from the list of arguments in the form model.
+    /// Ensures the argument exists in the list before attempting to remove it.
+    /// <param name="argument">The argument to be deleted. If null or not found in the list, no operation is performed.</param>
     private void ExecuteDeleteArgumentCommand(ArgumentItem? argument)
     {
         if (argument != null && FormModel.Arguments.Contains(argument))
@@ -164,11 +172,18 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
         }
     }
 
+    /// Adds a new argument to the form model's argument collection. The newly added
+    /// argument initializes with an empty value. Typically used to allow users to
+    /// dynamically add more arguments to the MCP Server configuration.
     private void ExecuteAddArgumentCommand()
     {
         FormModel.Arguments.Add(new ArgumentItem { Value = "" });
     }
-    
+
+    /// Removes the specified environment variable from the collection of environment variables
+    /// in the form model, if it exists.
+    /// <param name="environmentVariable">The environment variable to be removed. If null or not present
+    /// in the collection, the method performs no operation.</param>
     private void ExecuteDeleteEnvironmentVariableCommand(EnvironmentVariableItem? environmentVariable)
     {
         if (environmentVariable != null && FormModel.EnvironmentVariables.Contains(environmentVariable))
@@ -177,9 +192,31 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
         }
     }
 
+    /// Adds a new environment variable to the form model with empty name and value properties.
+    /// This command modifies the collection of environment variables bound to the user interface.
     private void ExecuteAddEnvironmentVariableCommand()
     {
         FormModel.EnvironmentVariables.Add(new EnvironmentVariableItem() { Name = "", Value = "" });
+    }
+
+    /// Executes the command to delete a specified HTTP header from the current form model's list of HTTP headers.
+    /// <param name="httpHeader">
+    /// The HTTP header item to be removed. If null or not present in the list, no action is performed.
+    /// </param>
+    private void ExecuteDeleteHttpHeaderCommand(HttpHeaderItem? httpHeader)
+    {
+        if (httpHeader != null && FormModel.HttpHeaders.Contains(httpHeader))
+        {
+            FormModel.HttpHeaders.Remove(httpHeader);
+        }
+    }
+
+    /// Handles the execution of the command to add a new HTTP header to the form model.
+    /// This method appends an empty HTTP header entry to the HttpHeaders collection,
+    /// allowing users to define a new header name and value within the user interface.
+    private void ExecuteAddHttpHeaderCommand()
+    {
+        FormModel.HttpHeaders.Add(new HttpHeaderItem() { Name = "", Value = "" });
     }
 
     /// <summary>
@@ -197,18 +234,36 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
             {
                 Name = FormModel.Name,
                 Description = FormModel.Description,
-                Command = FormModel.Command,
-                Arguments = FormModel.Arguments
+                Location = FormModel.Location,
+                Arguments = new List<string>(),
+                EnvironmentVariables = new Dictionary<string, string?>(),
+                HttpHeaders = new Dictionary<string, string?>()
+            };
+
+            if (FormModel.Location == ServerLocation.Local)
+            {
+                mcpServer.Command = FormModel.Command;
+                mcpServer.Arguments = FormModel.Arguments
                     .Where(arg => !string.IsNullOrWhiteSpace(arg.Value))
                     .Select(arg => arg.Value.Trim())
-                    .ToList(),
-                EnvironmentVariables = FormModel.EnvironmentVariables
+                    .ToList();
+                mcpServer.EnvironmentVariables = FormModel.EnvironmentVariables
                     .Where(env => !string.IsNullOrWhiteSpace(env.Name))
                     .ToDictionary(
-                        env => env.Name.Trim(), 
+                        env => env.Name.Trim(),
                         env => string.IsNullOrWhiteSpace(env.Value) ? null : env.Value.Trim()
-                    )
-            };
+                    );
+            }
+            else
+            {
+                mcpServer.Url = FormModel.Url;
+                mcpServer.HttpHeaders = FormModel.HttpHeaders
+                    .Where(env => !string.IsNullOrWhiteSpace(env.Name))
+                    .ToDictionary(
+                        env => env.Name.Trim(),
+                        env => string.IsNullOrWhiteSpace(env.Value) ? null : env.Value.Trim()
+                    );
+            }
 
             var closeResult = CloseResult.Errored;
             
@@ -324,29 +379,55 @@ public partial class McpServerFormDataModel : ObservableValidator
     [ObservableProperty] private bool? _isExisting;
     
     /// <summary>
-    /// Represents the name of the MCP Server, required for validation and user input.
+    /// Represents the name of the MCP Server.
     /// </summary>
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Name is required")] private string? _name;
     
     /// <summary>
-    /// Represents the description of the MCP Server, required for validation and user input.
+    /// Represents the description of the MCP Server.
     /// </summary>
     [ObservableProperty] string? _description;
     
     /// <summary>
-    /// Represents the command of the MCP Server, required for validation and user input.
+    /// Represents the location of the MCP Server.
     /// </summary>
-    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Command is required")] private string? _command;
+    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Location is required")] private ServerLocation? _location;
     
     /// <summary>
-    /// Represents the collection of arguments
+    /// Represents the command for a Local MCP Server.
+    /// </summary>
+    [ObservableProperty] 
+    [NotifyDataErrorInfo] 
+    [ConditionalRequired(nameof(Location), ServerLocation.Local, ErrorMessage = "Command is required")] 
+    private string? _command;
+    
+    /// <summary>
+    /// Represents the collection of arguments for a Local Server
     /// </summary>
     [ObservableProperty] private ObservableCollection<ArgumentItem> _arguments = new();
     
     /// <summary>
-    /// Represents the collection of environment variables
+    /// Represents the collection of environment variables for a Local Server
     /// </summary>
     [ObservableProperty] private ObservableCollection<EnvironmentVariableItem> _environmentVariables = new();
+    
+    /// <summary>
+    /// Represents the URL of a Remote MCP Server.
+    /// </summary>
+    [ObservableProperty] 
+    [NotifyDataErrorInfo] 
+    [ConditionalRequired(nameof(Location), ServerLocation.Remote, ErrorMessage = "URL is required")] 
+    private string? _url;
+    
+    /// <summary>
+    /// Represents the collection of HTTP Headers for a Remote Server
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<HttpHeaderItem> _httpHeaders = new();
+
+    /// <summary>
+    /// Tracks whether validation has been explicitly triggered (e.g., on save attempt)
+    /// </summary>
+    private bool _validateHiddenProperties = false;
 
     /// <summary>
     /// Validates all properties of the current object and checks if any validation errors exist.
@@ -357,8 +438,28 @@ public partial class McpServerFormDataModel : ObservableValidator
     /// </returns>
     public bool Validate()
     {
+        _validateHiddenProperties = true;
+
         ValidateAllProperties();
+        
+        _validateHiddenProperties = false;
+        
         return !HasErrors;
+    }
+    
+    /// <summary>
+    /// Handles location changes to trigger re-validation of dependent properties.
+    /// </summary>
+    /// <param name="value">The new location value.</param>
+    partial void OnLocationChanged(ServerLocation? value)
+    {
+        // Only validate these hidden properties when the location just changed and form validation from user event
+        // occurred
+        if (_validateHiddenProperties)
+        {
+            ValidateProperty(Command, nameof(Command));
+            ValidateProperty(Url, nameof(Url));
+        }
     }
 }
 
@@ -369,6 +470,15 @@ public partial class ArgumentItem : ObservableObject
 }
 
 public partial class EnvironmentVariableItem : ObservableObject
+{
+    [ObservableProperty]
+    private string _name = string.Empty;
+    
+    [ObservableProperty]
+    private string _value = string.Empty;
+}
+
+public partial class HttpHeaderItem : ObservableObject
 {
     [ObservableProperty]
     private string _name = string.Empty;

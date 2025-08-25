@@ -256,7 +256,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     public async Task<IEnumerable<AesirMcpServer>> GetMcpServersAsync()
     {
         const string sql = @"
-            SELECT id, name, description, command, arguments, environment_variables as EnvironmentVariables
+            SELECT id, name, description, location, command, arguments, environment_variables as EnvironmentVariables, url, http_headers as HttpHeaders
             FROM aesir.aesir_mcp_server
         ";
 
@@ -276,7 +276,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     public async Task<AesirMcpServer> GetMcpServerAsync(Guid id)
     {
         const string sql = @"
-            SELECT id, name, description, command, arguments, environment_variables as EnvironmentVariables
+            SELECT id, name, description, location, command, arguments, environment_variables as EnvironmentVariables, url, http_headers as HttpHeaders
             FROM aesir.aesir_mcp_server
             WHERE id = @Id::uuid
         ";
@@ -294,9 +294,9 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     {
         const string sql = @"
             INSERT INTO aesir.aesir_mcp_server 
-            (name, description, command, arguments, environment_variables)
+            (name, description, location, command, arguments, environment_variables, url, http_headers)
             VALUES 
-            (@Name, @Description, @Command, @Arguments::jsonb, @EnvironmentVariables::jsonb)
+            (@Name, @Description, @Location, @Command, @Arguments::jsonb, @EnvironmentVariables::jsonb, @Url, @HttpHeaders::jsonb)
         ";
 
         var rows = await dbContext.UnitOfWorkAsync(async connection =>
@@ -316,9 +316,12 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
             UPDATE aesir.aesir_mcp_server 
             SET name = @Name,
                 description = @Description,
+                location = @Location,
                 command = @Command,
                 arguments = @Arguments::jsonb,
-                environment_variables = @EnvironmentVariables::jsonb
+                environment_variables = @EnvironmentVariables::jsonb,
+                url = @Url,
+                http_headers = @HttpHeaders::jsonb
             WHERE id = @Id
         ";
 

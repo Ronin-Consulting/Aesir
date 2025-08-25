@@ -6,7 +6,6 @@ using System.Windows.Input;
 using Aesir.Client.Services;
 using Aesir.Client.Shared;
 using Aesir.Common.Models;
-using Aesir.Common.Prompts;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -61,6 +60,16 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     public ObservableCollection<ToolType> AvailableTypes { get; } = new(Enum.GetValues<ToolType>());
 
     /// <summary>
+    /// Collection of available MCP Servers that can be selected or used within the application.
+    /// </summary>
+    public ObservableCollection<AesirMcpServerBase> AvailableMcpServers { get; set; }
+
+    /// <summary>
+    /// Collection of available MCP Server Tools that can be selected or used within the application.
+    /// </summary>
+    public ObservableCollection<string> AvailableMcpServerTools { get; set; }
+
+    /// <summary>
     /// Indicates whether the view model has unsaved changes.
     /// </summary>
     public bool IsDirty { get; set; }
@@ -106,6 +115,12 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
         SaveCommand = new AsyncRelayCommand(ExecuteSaveCommand);
         CancelCommand = new RelayCommand(ExecuteCancelCommand);
         DeleteCommand = new AsyncRelayCommand(ExecuteDeleteCommand);
+        
+        AvailableMcpServers = new ObservableCollection<AesirMcpServerBase>();
+        AvailableMcpServerTools = new ObservableCollection<string>();
+    
+        FormModel.PropertyChanged += OnFormModelPropertyChanged;
+
     }
 
     /// <summary>
@@ -127,14 +142,52 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     /// </summary>
     /// <returns>A task representing the asynchronous operation of loading data.</returns>
     private async Task LoadAvailableAsync()
-    {
-        await Task.CompletedTask;
-        
-        // TODO actually load - list mcp server tools .. could be a lot of MCP Servers, maybe wait till selected???
-        //AvailableMcpServerTools.Clear();
-        //AvailableMcpServerTools.Add("gpt-4.1-2025-04-14");
-        //AvailableMcpServerTools.Add("qwen3:32b-q4_K_M");
+    {       
+        // get available MCP Servers
+        var svailableMcpServers = await _configurationService.GetMcpServersAsync();
+        AvailableMcpServers.Clear();
+        foreach (var svailableMcpServer in svailableMcpServers)
+            AvailableMcpServers.Add(svailableMcpServer);
+
+        // get available MCP Server Tools if available
+        await LoadMcpServerTools();
     }
+
+    /// <summary>
+    /// Loads MCP server tools
+    /// </summary>
+    private async Task LoadMcpServerTools()
+    {
+        AvailableMcpServerTools.Clear();
+        
+       if (FormModel.McpServer == null)
+            return;
+
+       try
+       {
+           var availableMcpServerTools = await _configurationService.GetMcpServerTools(FormModel.McpServer.Id.Value);
+           foreach (var mcpServerTool in availableMcpServerTools)
+               AvailableMcpServerTools.Add(mcpServerTool.Name);
+       }
+       catch (Exception e)
+       {
+           // TODO
+       }
+    }
+
+    /// <summary>
+    /// Handles property changes in the form model to trigger related updates.
+    /// </summary>
+    /// <param name="sender">The source of the event.</param>
+    /// <param name="e">Event data containing the name of the property that changed.</param>
+    private void OnFormModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ToolFormDataModel.McpServer))
+        {
+            _ = LoadMcpServerTools();
+        }
+    }
+
 
     /// <summary>
     /// Executes the logic to save the changes made in the form.
@@ -256,6 +309,13 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     {
         RequestClose?.Invoke(this, closeResult);
     }
+    
+    protected override void OnDeactivated()
+    {
+        base.OnDeactivated();
+    
+        FormModel.PropertyChanged -= OnFormModelPropertyChanged;
+    }
 }
 
 /// <summary>
@@ -274,14 +334,24 @@ public partial class ToolFormDataModel : ObservableValidator
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Name is required")] private string? _name;
     
     /// <summary>
+    /// Represents the description of the tool, required for validation and user input.
+    /// </summary>
+    [ObservableProperty] string? _description;
+    
+    /// <summary>
     /// Represents the type of the tool
     /// </summary>
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Type is required")] private ToolType? _type;
     
     /// <summary>
-    /// Represents the description of the tool, required for validation and user input.
+    /// Represents the specific MCP server selected
     /// </summary>
-    [ObservableProperty] string? _description;
+    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Server is required")] private AesirMcpServerBase? _mcpServer;
+    
+    /// <summary>
+    /// Represents the specific MCP server tool selected
+    /// </summary>
+    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Server Tool is required")] private string? _mcpServerTool;
 
     /// <summary>
     /// Validates all properties of the current object and checks if any validation errors exist.

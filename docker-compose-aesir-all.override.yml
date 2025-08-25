@@ -25,8 +25,11 @@ services:
       - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge=true"
       - "--certificatesresolvers.letsencryptresolver.acme.httpchallenge.entrypoint=web"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      # Uncomment docker socket if using Docker MCP Toolkit MCP Servers run in stdio mode
+      #- /var/run/docker.sock:/var/run/docker.sock
       - letsencryptdata:/letsencrypt
+    # Uncomment user if using Docker MCP Toolkit MCP Servers run in stdio mode
+    #user: "0:0"
 
   qdrant:
     labels:
