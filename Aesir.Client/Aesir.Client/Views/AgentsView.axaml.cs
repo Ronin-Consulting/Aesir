@@ -13,7 +13,7 @@ using Ursa.Controls.Options;
 
 namespace Aesir.Client.Views;
 
-public partial class AgentsView : UserControl, IRecipient<ShowAgentDetailMessage>
+public partial class AgentsView : UserControl, IRecipient<ShowAgentDetailMessage>, IDisposable
 {   
     public AgentsView()
     {
@@ -61,5 +61,16 @@ public partial class AgentsView : UserControl, IRecipient<ShowAgentDetailMessage
                 // TODO handle exception
             }
         });
+    }
+
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        Dispose();
+    }
+
+    public void Dispose()
+    {
+        WeakReferenceMessenger.Default.Unregister<ShowAgentDetailMessage>(this);
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using Aesir.Client.Messages;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.DependencyInjection;
@@ -59,6 +60,12 @@ public partial class MainWindowViewModel : ObservableRecipient, IRecipient<Navig
     {
         // Deactivate current view model
         CurrentViewModel.IsActive = false;
+        
+        // cleanup old view
+        if (CurrentViewModel is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
 
         // Navigate to the requested view
         CurrentViewModel = viewName switch

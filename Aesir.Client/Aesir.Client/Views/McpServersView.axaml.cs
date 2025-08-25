@@ -15,7 +15,7 @@ using Ursa.Controls.Options;
 
 namespace Aesir.Client.Views;
 
-public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetailMessage>
+public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetailMessage>, IDisposable
 {
     public McpServersView()
     {
@@ -97,5 +97,16 @@ public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetai
                 await mcpServersViewModel.RefreshMcpServersAsync();
             }
         }
+    }
+
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        Dispose();
+    }
+
+    public void Dispose()
+    {
+        WeakReferenceMessenger.Default.Unregister<ShowMcpServerDetailMessage>(this);
     }
 }
