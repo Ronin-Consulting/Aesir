@@ -7,6 +7,7 @@
     xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
     xmlns:dvm="clr-namespace:Aesir.Client.ViewModels.Design"
     xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+    xmlns:models="clr-namespace:Aesir.Common.Models;assembly=Aesir.Common"
     mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
     x:Class="Aesir.Client.Views.ToolView"
     x:DataType="vm:ToolViewViewModel">
@@ -72,7 +73,8 @@
                 Grid.Row="3" 
                 Grid.Column="0"
                 Grid.ColumnSpan="3"
-                Label="Server Selection" >
+                Label="Server Selection" 
+                IsVisible="{Binding FormModel.Type, Converter={StaticResource EnumEqualityConverter}, ConverterParameter={x:Static models:ToolType.McpServer}}">
                 <ComboBox HorizontalAlignment="Stretch"
                           ItemsSource="{Binding AvailableMcpServers}"
                           SelectedItem="{Binding FormModel.McpServer}">
@@ -87,7 +89,8 @@
                 Grid.Row="4" 
                 Grid.Column="0"
                 Grid.ColumnSpan="3"
-                Label="Server Tool" >
+                Label="Server Tool"
+                IsVisible="{Binding FormModel.Type, Converter={StaticResource EnumEqualityConverter}, ConverterParameter={x:Static models:ToolType.McpServer}}">
                 <ComboBox HorizontalAlignment="Stretch"
                           ItemsSource="{Binding AvailableMcpServerTools}"
                           SelectedItem="{Binding FormModel.McpServerTool}">

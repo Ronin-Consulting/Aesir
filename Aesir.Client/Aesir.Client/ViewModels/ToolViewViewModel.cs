@@ -1,10 +1,12 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Services;
 using Aesir.Client.Shared;
+using Aesir.Client.Validators;
 using Aesir.Common.Models;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -47,6 +49,11 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     /// and tools, within the application.
     /// </summary>
     private readonly IConfigurationService _configurationService;
+    
+    /// <summary>
+    /// Represents the initially selected McpServerId
+    /// </summary>
+    private Guid? _initialMcpServerId;
 
     /// <summary>
     /// Represents the form data model for the tool view, used to handle data
@@ -103,13 +110,16 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
         _tool = tool;
         _notificationService = notificationService;
         _configurationService = configurationService;
+
+        _initialMcpServerId = tool.McpServerId;
         
         FormModel = new()
         {
             IsExisting = tool.Id.HasValue,
             Name = tool.Name,
             Type = tool.Type,
-            Description = tool.Description
+            Description = tool.Description,
+            McpServerTool = tool.McpServerTool
         };
         IsDirty = false;
         SaveCommand = new AsyncRelayCommand(ExecuteSaveCommand);
@@ -120,7 +130,6 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
         AvailableMcpServerTools = new ObservableCollection<string>();
     
         FormModel.PropertyChanged += OnFormModelPropertyChanged;
-
     }
 
     /// <summary>
@@ -149,6 +158,12 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
         foreach (var svailableMcpServer in svailableMcpServers)
             AvailableMcpServers.Add(svailableMcpServer);
 
+        // establish the selected MCP Server
+        if (_initialMcpServerId != null)
+        {
+            FormModel.McpServer = AvailableMcpServers.First(s => s.Id == _initialMcpServerId);
+        }
+
         // get available MCP Server Tools if available
         await LoadMcpServerTools();
     }
@@ -173,6 +188,18 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
        {
            // TODO
        }
+        
+       // The SelectedItem wasn't in the ComboBox's collection initially since we just loaded it. Ideally it
+       // would re-evaluate, but it doesn't want to. There is a very talked about issue with this timing.
+       // We have to force the ComboBox to re-bind the SelectedItem to get it to work.
+        
+       var currentMcpServerTool = FormModel.McpServerTool;
+        
+       FormModel.McpServerTool = null;
+
+       // Be a little wiser and only set the value if they exist in the collections (may have been removed from db)
+       if (!string.IsNullOrEmpty(currentMcpServerTool) && AvailableMcpServerTools.Contains(currentMcpServerTool))
+           FormModel.McpServerTool = currentMcpServerTool;
     }
 
     /// <summary>
@@ -204,8 +231,9 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
             {
                 Name = FormModel.Name,
                 Description = FormModel.Description,
-                Type = FormModel.Type
-                // TODO - if MCP tool
+                Type = FormModel.Type,
+                McpServerId = FormModel.McpServer?.Id,
+                McpServerTool = FormModel.McpServerTool
             };
 
             var closeResult = CloseResult.Errored;
@@ -346,12 +374,12 @@ public partial class ToolFormDataModel : ObservableValidator
     /// <summary>
     /// Represents the specific MCP server selected
     /// </summary>
-    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Server is required")] private AesirMcpServerBase? _mcpServer;
+    [ObservableProperty] [NotifyDataErrorInfo] [ConditionalRequired(nameof(Type), ToolType.McpServer, ErrorMessage = "Server is required")] private AesirMcpServerBase? _mcpServer;
     
     /// <summary>
     /// Represents the specific MCP server tool selected
     /// </summary>
-    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Server Tool is required")] private string? _mcpServerTool;
+    [ObservableProperty] [NotifyDataErrorInfo] [ConditionalRequired(nameof(Type), ToolType.McpServer, ErrorMessage = "Server Tool is required")] private string? _mcpServerTool;
 
     /// <summary>
     /// Validates all properties of the current object and checks if any validation errors exist.

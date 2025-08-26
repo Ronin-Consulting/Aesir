@@ -139,7 +139,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     public async Task<IEnumerable<AesirTool>> GetToolsAsync()
     {
         const string sql = @"
-            SELECT id, name, type, description
+            SELECT id, name, type, description, mcp_server_id AS McpServerId, mcp_server_tool_name AS McpServerTool
             FROM aesir.aesir_tool
         ";
 
@@ -155,7 +155,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     public async Task<IEnumerable<AesirTool>> GetToolsUsedByAgentAsync(Guid id)
     {
         const string sql = @"
-            SELECT t.id, t.name, t.type, t.description
+            SELECT t.id, t.name, t.type, t.description, mcp_server_id AS McpServerId, mcp_server_tool_name AS McpServerTool
             FROM aesir.aesir_tool t 
                 INNER JOIN aesir.aesir_agent_tool at ON t.id = at.tool_id
             WHERE at.agent_id = @AgentId::uuid
@@ -174,7 +174,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     public async Task<AesirTool> GetToolAsync(Guid id)
     {
         const string sql = @"
-            SELECT id, name, type, description
+            SELECT id, name, type, description, mcp_server_id AS McpServerId, mcp_server_tool_name AS McpServerTool
             FROM aesir.aesir_tool
             WHERE id = @Id::uuid
         ";
@@ -192,9 +192,9 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     {
         const string sql = @"
             INSERT INTO aesir.aesir_tool 
-            (name, description, type)
+            (name, description, type, mcp_server_id, mcp_server_tool_name)
             VALUES 
-            (@Name, @Description, @Type)
+            (@Name, @Description, @Type, @McpServerId, @McpServerTool)
         ";
 
         var rows = await dbContext.UnitOfWorkAsync(async connection =>
@@ -214,7 +214,9 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
             UPDATE aesir.aesir_tool
             SET name = @Name,
                 description = @Description,
-                type = @Type
+                type = @Type,
+                mcp_server_id = @McpServerId,
+                mcp_server_tool_name = @McpServerTool
             WHERE id = @Id
         ";
 

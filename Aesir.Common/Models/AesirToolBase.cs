@@ -28,6 +28,18 @@ public class AesirToolBase
     /// </summary>
     [JsonPropertyName("description")]
     public string? Description { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the id of the MCP Server if this is an MCP Server ToolType
+    /// </summary>
+    [JsonPropertyName("mcp_server_id")]
+    public Guid? McpServerId { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the name of the MCP Server tool from the MCP Server if this is an MCP Server ToolType
+    /// </summary>
+    [JsonPropertyName("mcp_server_tool_name")]
+    public string? McpServerTool { get; set; }
 }
 
 public enum ToolType
