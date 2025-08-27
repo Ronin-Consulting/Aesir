@@ -24,7 +24,7 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-
+        
         #region AI Backend Clients
         var useOpenAi = builder.Configuration.GetValue<bool>("Inference:UseOpenAICompatible");
 

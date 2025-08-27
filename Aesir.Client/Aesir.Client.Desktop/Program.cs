@@ -52,7 +52,7 @@ sealed class Program
                             loggingBuilder.AddNLog(configuration);
                         });
 
-                    services.AddTransient<IPdfViewerService, PdfViewerService>();
+                    services.AddTransient<ICitationViewerService, CitationViewerService>();
 
                     services.AddSingleton<IAudioPlaybackService, AudioPlaybackService>();
                     services.AddSingleton<IAudioRecordingService, AudioRecordingService>();

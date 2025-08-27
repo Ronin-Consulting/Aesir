@@ -37,7 +37,7 @@ internal sealed partial class Program
         App.AddService(services =>
             {
                 services.AddSingleton<ISpeechService, BrowserSpeechService>();
-                services.AddTransient<IPdfViewerService, PdfViewerService>();
+                services.AddTransient<ICitationViewerService, CitationViewerService>();
                 services.AddTransient<BrowserJsService, BrowserJsService>();
             }
         );
