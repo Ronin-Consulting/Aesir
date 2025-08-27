@@ -6,18 +6,18 @@
              xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:paz="using:Avalonia.Controls.PanAndZoom"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Aesir.Client.Desktop.Controls.PdfViewerControl"
-             x:DataType="vm:PdfViewerControlViewModel"
+             x:Class="Aesir.Client.Desktop.Controls.CitationViewerControl"
+             x:DataType="vm:CitationViewerControlViewModel"
              Padding="0"
              Margin="0">
-    <RelativePanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="800" Height="700">
+    <RelativePanel HorizontalAlignment="Center" VerticalAlignment="Stretch" Width="1024">
         <ScrollViewer Name="ScrollViewer" VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Auto"
                       RelativePanel.AlignLeftWithPanel="True"
                       RelativePanel.AlignRightWithPanel="True"
                       RelativePanel.AlignTopWithPanel="True"
                       RelativePanel.AlignBottomWithPanel="True">
-            <paz:ZoomBorder Name="PdfZoomBorder"
+            <paz:ZoomBorder Name="CitationZoomBorder"
                             Stretch="Uniform"
                             ZoomSpeed="1.5"
                             EnableConstrains="False"
@@ -28,7 +28,7 @@
                             HorizontalAlignment="Stretch"
                             PanButton="Left"
                             EnableZoom="False">
-                <Image Name="PdfImage" Source="{Binding PdfImageSource}" />
+                <Image Name="CitationImage" Source="{Binding CitationImageSource}" />
             </paz:ZoomBorder>
         </ScrollViewer>
         <StackPanel Orientation="Horizontal"
