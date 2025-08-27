@@ -104,12 +104,33 @@ public class CitationViewerService(
             
             if (FileTypeManager.IsImage(uri.LocalPath))
             {
-                using var image = Image.Load<Rgba32>(fileContentStream);
-                using var memoryStream = new MemoryStream();
-                await image.SaveAsPngAsync(memoryStream); // Convert to PNG for Avalonia
-                memoryStream.Position = 0;
+                var mimeType = uri.LocalPath.GetMimeType();
                 
-                return new Bitmap(memoryStream);
+                if (mimeType == FileTypeManager.MimeTypes.Tiff)
+                {
+                    // Handle multi-page TIFF files
+                    using var image = Image.Load<Rgba32>(fileContentStream);
+                    
+                    // Get the specific page (frame) from the TIFF
+                    var frameIndex = Math.Max(0, Math.Min(pageNumber - 1, image.Frames.Count - 1));
+                    
+                    using var singleFrameImage = image.Frames.CloneFrame(frameIndex);
+                    using var memoryStream = new MemoryStream();
+                    await singleFrameImage.SaveAsPngAsync(memoryStream);
+                    memoryStream.Position = 0;
+                    
+                    return new Bitmap(memoryStream);
+                }
+                else
+                {
+                    // Handle other image types
+                    using var image = Image.Load<Rgba32>(fileContentStream);
+                    using var memoryStream = new MemoryStream();
+                    await image.SaveAsPngAsync(memoryStream); // Convert to PNG for Avalonia
+                    memoryStream.Position = 0;
+                    
+                    return new Bitmap(memoryStream);
+                }
             }
 
             if (FileTypeManager.IsTextFile(uri.LocalPath))
