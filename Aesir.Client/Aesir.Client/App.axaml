@@ -28,5 +28,6 @@
     
     <Application.Resources>
         <conv:EnumDescriptionConverter x:Key="EnumDescConverter" />
+        <conv:EnumEqualityConverter x:Key="EnumEqualityConverter"/>
     </Application.Resources>
 </Application>

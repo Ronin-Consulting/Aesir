@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Data;
 using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Services;
+using Aesir.Api.Server.Services.Implementations;
 using Aesir.Api.Server.Services.Implementations.Onnx;
 using Aesir.Api.Server.Services.Implementations.Standard;
 using FluentMigrator.Runner;
@@ -167,6 +168,7 @@ public class Program
         );
 
         builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
+        builder.Services.AddSingleton<IMcpServerService, McpServerService>();
         builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
         builder.Services.AddSingleton<IFileStorageService, FileStorageService>();
 

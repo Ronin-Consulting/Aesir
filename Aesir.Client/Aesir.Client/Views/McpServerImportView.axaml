@@ -1,0 +1,66 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+    xmlns:dvm="clr-namespace:Aesir.Client.ViewModels.Design"
+    xmlns:u="https://irihi.tech/ursa"
+    xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+    mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+    MinWidth="600" MaxWidth="600" MinHeight="500" MaxHeight="500"
+    x:Class="Aesir.Client.Views.McpServerImportView"
+    x:DataType="vm:McpServerImportViewViewModel">
+    
+    <Design.DataContext>    
+        <dvm:DesignMcpServerImportViewViewModel />
+    </Design.DataContext>
+    
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Bottom" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right" 
+                    Spacing="8">
+            <u:IconButton 
+                HorizontalAlignment="Right"
+                Classes="Tertiary"
+                Content="Cancel"
+                IconPlacement="Left" 
+                Command="{Binding CancelCommand}">
+                <u:IconButton.Icon>
+                    <avalonia:MaterialIcon Kind="Cancel" Width="20" Height="20" />
+                </u:IconButton.Icon>
+            </u:IconButton>
+            <u:IconButton 
+                HorizontalAlignment="Right"
+                Content="OK"
+                IconPlacement="Left" 
+                Command="{Binding OkCommand}">
+                <u:IconButton.Icon>
+                    <avalonia:MaterialIcon Kind="CheckBold" Width="20" Height="20" />
+                </u:IconButton.Icon>
+            </u:IconButton>
+        </StackPanel>
+        
+        <!-- Error message docked to bottom, above buttons -->
+        <TextBlock 
+            DockPanel.Dock="Bottom"
+            Text="{Binding ValidationError}" 
+            Foreground="#FC725A" 
+            Margin="0 4 0 8"
+            IsVisible="{Binding ValidationError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        
+        <!-- TextBox fills remaining space -->
+        <TextBox 
+            Margin="0 8 0 8"
+            TextWrapping="Wrap" 
+            VerticalContentAlignment="Top" 
+            Text="{Binding ClientConfigJson}"
+            Watermark="Paste your MCP server configuration JSON here..."
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            AcceptsReturn="True" />
+
+    </DockPanel>
+    
+</UserControl>

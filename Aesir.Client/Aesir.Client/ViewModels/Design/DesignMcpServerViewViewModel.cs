@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Aesir.Client.Services.Implementations.NoOp;
 using Aesir.Common.Models;
 using CommunityToolkit.Mvvm.Input;
@@ -30,6 +31,15 @@ public class DesignMcpServerViewViewModel : McpServerViewViewModel
         Id = Guid.NewGuid(),
         Name = "My Test MCP Server",
         Description = "This is a test of a very long description. There could be a lot more words here to show. Just depends on how many lines of text you'd like to see pop-up in the description. At minimum I'd like to see maybe 5 lines or so.",
+        Location = ServerLocation.Local,
+        Command = "/Users/blangford/Documents/server.sh",
+        Arguments = [ "stdio" ],
+        EnvironmentVariables = new Dictionary<string, string?>()
+        {
+            { "Name1", "Value1" }
+        },
+        Url = null,
+        HttpHeaders = new Dictionary<string, string?>()
     }, new NoOpNotificationService(), new NoOpConfigurationService())
     {
         IsDirty = false;
@@ -40,5 +50,7 @@ public class DesignMcpServerViewViewModel : McpServerViewViewModel
         AddArgumentCommand = new RelayCommand(() => { });
         DeleteEnvironmentVariableCommand = new RelayCommand(() => { });
         AddEnvironmentVariableCommand = new RelayCommand(() => { });
+        DeleteHttpHeaderCommand = new RelayCommand(() => { });
+        AddHttpHeaderCommand = new RelayCommand(() => { });
     }
 }

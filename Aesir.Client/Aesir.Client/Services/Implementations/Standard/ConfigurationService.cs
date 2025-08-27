@@ -188,15 +188,15 @@ public class ConfigurationService(
     /// <summary>
     /// Retrieves a collection of tools associated with a specific agent using the agent's unique identifier.
     /// </summary>
-    /// <param name="agentId">The unique identifier of the agent whose tools are to be retrieved.</param>
+    /// <param name="id">The unique identifier of the agent whose tools are to be retrieved.</param>
     /// <returns>A task that represents the asynchronous operation.
     /// The task result contains a collection of <see cref="AesirToolBase"/> objects representing the tools linked to the specified agent.</returns>
-    public async Task<IEnumerable<AesirToolBase>> GetToolsForAgentAsync(Guid agentId)
+    public async Task<IEnumerable<AesirToolBase>> GetToolsForAgentAsync(Guid id)
     {
         try
         {
             return (await _flurlClient.Request()
-                .AppendPathSegment($"agents/{agentId}/tools")
+                .AppendPathSegment($"agents/{id}/tools")
                 .GetJsonAsync<IEnumerable<AesirToolBase>>());
         }
         catch (FlurlHttpException ex)
@@ -360,6 +360,52 @@ public class ConfigurationService(
             await logger.LogFlurlExceptionAsync(ex);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Creates an unsaved instance of an MCP server based on the provided JSON configuration.
+    /// </summary>
+    /// <param name="clientConfigurationJson">The JSON string containing the client configuration to create the MCP server.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task
+    /// is an instance of <see cref="AesirMcpServerBase"/> representing the created MCP server.
+    /// </returns>
+    public async Task<AesirMcpServerBase> CreateMcpServerFromConfigAsync(string clientConfigurationJson)
+    {
+        try
+        {
+            var result = await _flurlClient.Request()
+                .AppendPathSegment("mcpservers/from-config")
+                .PostJsonAsync(clientConfigurationJson);
+            
+            return await result.GetJsonAsync<AesirMcpServerBase>();
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Retrieves a collection of tools associated with a specific MCP Server using the server's unique identifier.
+    /// </summary>
+    /// <param name="id">The unique identifier of the MCP Server whose tools are to be retrieved.</param>
+    /// <returns>A task that represents the asynchronous operation.
+    /// The task result contains a collection of <see cref="AesirMcpServerToolBase"/> objects representing the tools linked to the specified MCP server.</returns>
+    public async Task<IEnumerable<AesirMcpServerToolBase>> GetMcpServerTools(Guid id)
+    {
+        try
+        {
+            return (await _flurlClient.Request()
+                .AppendPathSegment($"mcpservers/{id}/tools")
+                .GetJsonAsync<IEnumerable<AesirMcpServerToolBase>>());
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }   
     }
 
     /// <summary>

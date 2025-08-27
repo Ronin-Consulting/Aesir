@@ -1,8 +1,10 @@
 using System;
+using System.Threading.Tasks;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;
 using Aesir.Client.Shared;
 using Aesir.Client.ViewModels;
+using Aesir.Common.Models;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.DependencyInjection;
@@ -13,7 +15,7 @@ using Ursa.Controls.Options;
 
 namespace Aesir.Client.Views;
 
-public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetailMessage>
+public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetailMessage>, IDisposable
 {
     public McpServersView()
     {
@@ -30,30 +32,35 @@ public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetai
             {
                 var notificationService = Ioc.Default.GetService<INotificationService>()!;
                 var configurationService = Ioc.Default.GetService<IConfigurationService>()!;
-                var mcpServerViewModel = new McpServerViewViewModel(detailMessage.McpServer, notificationService, configurationService);
-
-                mcpServerViewModel.IsActive = true;
-
-                var options = new DrawerOptions()
+                
+                if (detailMessage.Import)
                 {
-                    Position = Position.Right,
-                    Buttons = DialogButton.None,
-                    CanLightDismiss = false,
-                    IsCloseButtonVisible = false,
-                    CanResize = false
-                };
-
-                var result = await Drawer.ShowCustomModal<McpServerView, McpServerViewViewModel, object?>(
-                    mcpServerViewModel, options: options);
-
-                mcpServerViewModel.IsActive = false;
-
-                if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
-                {
-                    if (DataContext is McpServersViewViewModel mcpServersViewModel)
+                    var mcpServerImportViewModel = new McpServerImportViewViewModel(notificationService, configurationService);
+                    
+                    var options = new OverlayDialogOptions()
                     {
-                        await mcpServersViewModel.RefreshMcpServersAsync();
+                        FullScreen = false,
+                        HorizontalAnchor = HorizontalPosition.Center,
+                        VerticalAnchor = VerticalPosition.Center,
+                        Mode = DialogMode.None,
+                        Buttons = DialogButton.None,
+                        Title = "Import MCP Server",
+                        CanLightDismiss = false,
+                        CanDragMove = true,
+                        IsCloseButtonVisible = true,
+                        CanResize = false
+                    };
+                    
+                    var dialogResult = await OverlayDialog.ShowModal<McpServerImportView, McpServerImportViewViewModel>(mcpServerImportViewModel, options: options);
+                    
+                    if (dialogResult == DialogResult.OK)
+                    {
+                        await ShowMcpServerView(mcpServerImportViewModel.GeneratedMcpServer, notificationService, configurationService);
                     }
+                }
+                else
+                {
+                    await ShowMcpServerView(detailMessage.McpServer, notificationService, configurationService);   
                 }
             }
             catch (Exception e)
@@ -61,5 +68,45 @@ public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetai
                 // TODO handle exception
             }
         });
+    }
+
+    private async Task ShowMcpServerView(AesirMcpServerBase mcpServer, INotificationService notificationService, IConfigurationService configurationService)
+    {
+        var mcpServerViewModel = new McpServerViewViewModel(mcpServer, notificationService, configurationService);
+
+        mcpServerViewModel.IsActive = true;
+
+        var options = new DrawerOptions()
+        {
+            Position = Position.Right,
+            Buttons = DialogButton.None,
+            CanLightDismiss = false,
+            IsCloseButtonVisible = false,
+            CanResize = false
+        };
+
+        var result = await Drawer.ShowCustomModal<McpServerView, McpServerViewViewModel, object?>(
+            mcpServerViewModel, options: options);
+
+        mcpServerViewModel.IsActive = false;
+
+        if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
+        {
+            if (DataContext is McpServersViewViewModel mcpServersViewModel)
+            {
+                await mcpServersViewModel.RefreshMcpServersAsync();
+            }
+        }
+    }
+
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        Dispose();
+    }
+
+    public void Dispose()
+    {
+        WeakReferenceMessenger.Default.Unregister<ShowMcpServerDetailMessage>(this);
     }
 }

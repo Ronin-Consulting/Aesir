@@ -122,6 +122,22 @@ public interface IConfigurationService
     /// </summary>
     /// <param name="id">The unique identifier of the AesirMcpServer to delete.</param>
     Task DeleteMcpServerAsync(Guid id);
+    
+    /// <summary>
+    /// Creates an unsaved instance of an MCP server based on the provided JSON configuration.
+    /// </summary>
+    /// <param name="clientConfigurationJson">The JSON string containing the client configuration to create the MCP server.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task
+    /// is an instance of <see cref="AesirMcpServerBase"/> representing the created MCP server.
+    /// </returns>
+    Task<AesirMcpServerBase> CreateMcpServerFromConfigAsync(string clientConfigurationJson);
+
+    /// <summary>
+    /// Retrieves a list of Aesir MCP Server tools from the specified MCP Server.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirMcpServerTool for which to retrieve tools.</param>
+    Task<IEnumerable<AesirMcpServerToolBase>> GetMcpServerTools(Guid id);
 
     /// <summary>
     /// Asynchronously retrieves the default persona for generating prompts within the system.

@@ -33,6 +33,12 @@ public class McpServersViewViewModel : ObservableRecipient, IDisposable
     /// Represents a command that triggers the display of an interface for adding a new MCP Server.
     /// </summary>
     public ICommand ShowAddMcpServer { get; protected set; }
+    
+
+    /// <summary>
+    /// Represents a command that triggers the display of an interface for importing a new MCP Server.
+    /// </summary>
+    public ICommand ShowImportMcpServer { get; protected set; }
 
     /// <summary>
     /// Represents a collection of MCP Servers displayed in the MCP Servers view.
@@ -96,6 +102,7 @@ public class McpServersViewViewModel : ObservableRecipient, IDisposable
 
         ShowChat = new RelayCommand(ExecuteShowChat);
         ShowAddMcpServer = new RelayCommand(ExecuteShowAddMcpServer);
+        ShowImportMcpServer = new RelayCommand(ExecuteShowImportMcpServer);
 
         McpServers = new ObservableCollection<AesirMcpServerBase>();
     }
@@ -150,7 +157,16 @@ public class McpServersViewViewModel : ObservableRecipient, IDisposable
     /// when the corresponding user action is performed in the UI.
     private void ExecuteShowAddMcpServer()
     {
-        WeakReferenceMessenger.Default.Send(new ShowMcpServerDetailMessage(null));
+        WeakReferenceMessenger.Default.Send(new ShowMcpServerDetailMessage(false, null));
+    }
+
+    /// Executes the command to show the interface for importing a new MCP Server.
+    /// Sends a message indicating that the interface for MCP Server details should be displayed.
+    /// This method is bound to the `ShowImportMcpServer` command in the view model and is triggered
+    /// when the corresponding user action is performed in the UI.
+    private void ExecuteShowImportMcpServer()
+    {
+        WeakReferenceMessenger.Default.Send(new ShowMcpServerDetailMessage(true, null));   
     }
 
     /// Handles logic when a MCP Server is selected in the McpServersViewViewModel.
@@ -160,7 +176,7 @@ public class McpServersViewViewModel : ObservableRecipient, IDisposable
     {
         if (selectedMcpServer != null)
         {
-            WeakReferenceMessenger.Default.Send(new ShowMcpServerDetailMessage(selectedMcpServer));
+            WeakReferenceMessenger.Default.Send(new ShowMcpServerDetailMessage(false, selectedMcpServer));
         }
     }
 

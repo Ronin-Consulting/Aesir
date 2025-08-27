@@ -13,7 +13,7 @@ using Ursa.Controls.Options;
 
 namespace Aesir.Client.Views;
 
-public partial class ToolsView : UserControl, IRecipient<ShowToolDetailMessage>
+public partial class ToolsView : UserControl, IRecipient<ShowToolDetailMessage>, IDisposable
 {
     public ToolsView()
     {
@@ -61,5 +61,16 @@ public partial class ToolsView : UserControl, IRecipient<ShowToolDetailMessage>
                 // TODO handle exception
             }
         });
+    }
+
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        Dispose();
+    }
+
+    public void Dispose()
+    {
+        WeakReferenceMessenger.Default.Unregister<ShowToolDetailMessage>(this);
     }
 }
