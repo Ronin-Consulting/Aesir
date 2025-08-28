@@ -28,8 +28,9 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection SetupSemanticKernel(this IServiceCollection services, IConfiguration configuration)
     {
         // set default prompt persona
-        var defaultPromptPersona = configuration.GetValue<string>("Inference:PromptContext") ?? "default";
-        DefaultPromptProvider.Instance.DefaultPromptPersona = defaultPromptPersona.PromptPersonaFromDescription();
+        var defaultPromptPersona = configuration.GetValue<string>("Inference:PromptContext") ?? "Business";
+        DefaultPromptProvider.Instance.DefaultPromptPersona = 
+            defaultPromptPersona.PromptPersonaFromDescription();
         
         var useOpenAi = configuration.GetValue<bool>("Inference:UseOpenAICompatible");
         var embeddingModelId = useOpenAi
