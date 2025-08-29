@@ -24,14 +24,14 @@
         <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.8" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.8" />
         <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="9.0.8" />
-        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.63.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.62.0-alpha" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.63.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.PgVector" Version="1.62.0-preview" />
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Qdrant" Version="1.62.0-preview" />
-        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.63.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.PromptTemplates.Handlebars" Version="1.63.0" />
-        <PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.62.0-alpha" />
+        <PackageReference Include="Microsoft.SemanticKernel.Agents.Core" Version="1.64.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.64.0-alpha" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.64.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.PgVector" Version="1.64.0-preview" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Qdrant" Version="1.64.0-preview" />
+        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.64.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.PromptTemplates.Handlebars" Version="1.64.0" />
+        <PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.64.0-alpha" />
         <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0"/>
         <PackageReference Include="ModelContextProtocol-SemanticKernel" Version="0.3.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>

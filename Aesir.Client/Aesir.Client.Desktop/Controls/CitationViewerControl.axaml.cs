@@ -19,6 +19,15 @@ public partial class CitationViewerControl : UserControl
         
         base.OnAttachedToVisualTree(e);
     }
+
+
+    private void CitationZoomBorder_OnZoomChanged(object sender, ZoomChangedEventArgs e)
+    {
+        var zX = e.ZoomX;
+        
+        var viewModel = DataContext as CitationViewerControlViewModel;
+        viewModel!.ZoomPercentage = $"{(int)(zX * 100)}%";
+    }
 }
 
 public class ZoomApiImpl(ZoomBorder zoomBorder) : IZoomApi
