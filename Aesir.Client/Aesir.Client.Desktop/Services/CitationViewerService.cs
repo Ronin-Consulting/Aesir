@@ -64,7 +64,7 @@ public class CitationViewerService(
                 // if the image is null, then show dialog indicating bad file uri
                 if (image == null)
                 {
-                    await dialogService.ShowErrorDialogAsync("Invalid", "The file path is invalid.");
+                    await dialogService.ShowErrorDialogAsync("Bad Citation", "The citation requires regeneration. Retry AI query.");
                     return;
                 }
                 var viewModel = new CitationViewerControlViewModel();
