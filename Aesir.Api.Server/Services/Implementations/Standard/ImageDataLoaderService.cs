@@ -177,7 +177,8 @@ public class ImageDataLoaderService<TKey, TRecord>(
         }
         
         var processedRecords =
-            await ProcessRecordsInBatchesAsync(records, request.ImageFileName!, records.Length, cancellationToken);
+            await ProcessRecordsInBatchesAsync(records, request.ImageFileName!, request.BatchSize, cancellationToken);
+        
         await UpsertRecordsAsync(processedRecords, cancellationToken);
 
         await UnloadModelsAsync();
