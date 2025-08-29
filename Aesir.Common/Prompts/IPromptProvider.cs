@@ -52,7 +52,9 @@ public enum PromptPersona
     /// <summary>
     /// Represents a context for prompts related to Optical Character Recognition (OCR) operations or scenarios.
     /// </summary>
-    [Description("Ocr")] Ocr
+    [Description("Ocr")] Ocr,
+    
+    [Description("Custom")] Custom,
 }
 
 /// <summary>
