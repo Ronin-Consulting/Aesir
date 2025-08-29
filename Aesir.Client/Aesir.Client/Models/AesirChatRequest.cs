@@ -23,7 +23,7 @@ public class AesirChatRequest : AesirChatRequestBase
     public AesirChatRequest()
     {
         Temperature = 0.1;
-        MaxTokens = 8192;
+        MaxTokens = 32768;
     }
 
     /// <summary>
@@ -40,7 +40,7 @@ public class AesirChatRequest : AesirChatRequestBase
                 Id = Guid.NewGuid().ToString()
             },
             Temperature = 0.1,
-            MaxTokens = 8192,
+            MaxTokens = 32768,
             User = "Unknown"
         };
     }
