@@ -23,7 +23,7 @@ If the document is a single-page image (e.g., .png, .jpg), always create a citat
 - [OPORD_Alpha.docx](file:///e756ae55-460f-4cc2-bf53-04b6e4212bee/OPORD_Alpha.docx)  
 - [diagram.png](file:///e756ae55-460f-4cc2-bf53-04b6e4212bee/diagram.png)  
 
-NEVER use placeholder text like 'actual_filename', 'guid', or 'page_number'. Always use the actual document name, guid, and page number from the source material provided by the tool. Do not add explanatory text around citations. If citation data is malformed, omit it and note: 'Citation unavailable due to data issue.'  
+NEVER use placeholder text like 'actual_filename', 'guid', or 'page_number'. Always use the **actual document name**, **guid**, and **page number** from the source material provided by the tool. Do not add explanatory text around citations. If citation data is malformed, omit it and note: 'Citation unavailable due to data issue.'  
 
 For general knowledge queries or responses not relying on these document search tools, citations are not required unless explicitly referencing a specific document.  
 {{/if}}  
