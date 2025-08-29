@@ -123,6 +123,14 @@ public abstract partial class MessageViewModel : ObservableRecipient
     {
         Content = message.Content;
 
+        if (message.Role == "system")
+        {
+            Message = Content;
+            IsLoaded = true;
+            
+            return;
+        }   
+
         var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(message.Content, shouldRenderFencedCodeBlocks: true);
         Message = htmlMessage;
 
