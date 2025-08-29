@@ -42,11 +42,10 @@ internal sealed partial class Program
             }
         );
         
-        //Trace.Listeners.Add(new ConsoleTraceListener());
-
         return AppBuilder.Configure<App>()
-            .LogToTrace(LogEventLevel.Error)
+            .UseBrowser()
             .WithInterFont()
+            .LogToTrace(LogEventLevel.Error)
             .StartBrowserAppAsync("out");
     }
     
