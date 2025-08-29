@@ -227,7 +227,7 @@ public class ChatService : BaseChatService
         var settings = new OllamaPromptExecutionSettings
         {
             ModelId = request.Model,
-            NumPredict = request.MaxTokens ?? 8192,
+            NumPredict = request.MaxTokens ?? 32768,
             ExtensionData = new Dictionary<string, object>()
         };
 
