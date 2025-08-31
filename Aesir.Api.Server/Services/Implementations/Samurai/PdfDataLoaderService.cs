@@ -132,8 +132,8 @@ public class PdfDataLoaderService<TKey, TRecord>(
                     ? request.PdfFileName.Substring(7)
                     : request.PdfFileName;
                 var fileUri = request.PdfFileName!.StartsWith("file://")
-                    ? request.PdfFileName
-                    : $"file://{request.PdfFileName}";
+                    ? System.Web.HttpUtility.UrlEncode(request.PdfFileName) 
+                    : $"file://{System.Web.HttpUtility.UrlEncode(request.PdfFileName)}";
                 record.ReferenceDescription ??= $"{cleanFileName}#page={content.PageNumber}";
                 record.ReferenceLink ??= $"{fileUri}#page={content.PageNumber}";
                 return record;

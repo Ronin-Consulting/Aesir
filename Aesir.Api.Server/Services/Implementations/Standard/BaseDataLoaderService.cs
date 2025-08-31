@@ -141,7 +141,7 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
         
         record.Key = UniqueKeyGenerator.GenerateKey();
         record.ReferenceDescription ??= fileName.StartsWith("file://") ? fileName.Substring(7) : fileName;
-        record.ReferenceLink ??= fileName.StartsWith("file://") ? fileName : $"file://{fileName}";
+        record.ReferenceLink ??= fileName.StartsWith("file://") ? System.Web.HttpUtility.UrlEncode(fileName) : $"file://{System.Web.HttpUtility.UrlEncode(fileName)}";
         record.TokenCount ??= TokenCounter.CountTokens(textChunk);
         
         await Task.CompletedTask;
