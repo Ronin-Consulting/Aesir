@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;
+using Aesir.Common;
 using Aesir.Common.FileTypes;
 using Aesir.Common.Models;
 using CommunityToolkit.Mvvm.Input;
@@ -76,7 +77,7 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
             }
         }
 
-        Content = message.GetContentWithoutFileName() ?? throw new InvalidOperationException();
+        Content = message.GetContentWithoutFileName()?.TrimStart().NormalizeLineEndings() ?? throw new InvalidOperationException();
 
         var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(Content);
         Message = htmlMessage;

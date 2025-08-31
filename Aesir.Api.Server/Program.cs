@@ -106,7 +106,7 @@ public class Program
                     var endpoint = builder.Configuration["Inference:Ollama:Endpoint"] ??
                                    throw new InvalidOperationException();
                     client.BaseAddress = new Uri($"{endpoint}/api");
-                }).SetHandlerLifetime(TimeSpan.FromMinutes(2))
+                }).SetHandlerLifetime(TimeSpan.FromMinutes(5))
                 .AddPolicyHandler(HttpPolicyExtensions
                     .HandleTransientHttpError()
                     .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.NotFound)
