@@ -27,7 +27,7 @@
         <PackageReference Include="Irihi.Ursa" Version="1.12.0" />
         <PackageReference Include="Irihi.Ursa.Themes.Semi" Version="1.12.0" />
         <PackageReference Include="Markdig" Version="0.41.3" />
-        <PackageReference Include="Markdown.ColorCode" Version="3.0.0" />
+        <PackageReference Include="Markdown.ColorCode" Version="3.0.1" />
         <PackageReference Include="Material.Avalonia" Version="3.13.0" />
         <PackageReference Include="Material.Avalonia.DataGrid" Version="3.13.0" />
         <PackageReference Include="Material.Avalonia.Dialogs" Version="3.13.0" />
