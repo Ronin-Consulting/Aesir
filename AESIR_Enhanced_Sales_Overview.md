@@ -17,7 +17,7 @@
 - **Cross-Platform Access**: Native desktop applications and browser-based access for maximum user adoption
 - **Advanced Document Intelligence**: Transform static documents and telemetry data into searchable, actionable, and conversational knowledge bases
 - **Voice-Enabled Operations**: Hands-free interaction with speech-to-text and text-to-speech capabilities
-- **Source-Available Licensing**: Free tier up to $2M revenue, competitive 3% royalty model above
+- **Open-source Licensing**: Apache 2.0 License
 
 ---
 
@@ -200,32 +200,6 @@ AESIR™ is built on **Microsoft Semantic Kernel**, providing a sophisticated, p
 - **Plugin Compatibility**: Leverage existing Semantic Kernel plugins and tools
 - **Enterprise Standards**: Follows Microsoft's AI development best practices
 - **Future-Proof**: Automatic compatibility with Semantic Kernel updates and enhancements
-
----
-
-## Licensing & Business Model
-
-### **Source-Available Licensing**
-AESIR™ uses a dual-tier licensing model inspired by successful platforms like Unreal Engine:
-
-#### **Free Tier (No Royalties)**
-- **Eligibility**: Products with lifetime gross revenue ≤ $2,000,000 USD
-- **Rights**: Full source code access, modification, building, and internal use
-- **Use Cases**: Personal projects, education, small-scale commercial applications
-- **Support**: Community-driven support through GitHub
-
-#### **Royalty Tier (Commercial Use)**
-- **Trigger**: Products with lifetime gross revenue > $2,000,000 USD
-- **Royalty**: Flat 3% on gross revenue above the $2M threshold
-- **Benefits**: All free tier rights plus priority support and custom integrations
-- **Reporting**: Quarterly self-reporting via online portal
-
-### **Key Licensing Benefits**
-- **Transparent Pricing**: Clear, predictable cost structure
-- **Revenue-Based**: Only pay when your product is successful
-- **Source Access**: Full visibility into platform capabilities
-- **Community Contributions**: Encourage ecosystem development
-- **Enterprise Support**: Priority assistance for high-revenue users
 
 ---
 
