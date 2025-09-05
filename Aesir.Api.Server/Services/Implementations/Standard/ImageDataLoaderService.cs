@@ -107,7 +107,7 @@ public class ImageDataLoaderService<TKey, TRecord>(
                 var pageBytes = pageStream.ToArray();
                 
                 // Convert this page to text using vision service
-                var extractedText = await ConvertImageToTextWithRetryAsync(
+                var extractedText = await ConvertImageToTextAsync(
                     new ReadOnlyMemory<byte>(pageBytes),
                     FileTypeManager.MimeTypes.Png, // Convert to PNG for processing
                     cancellationToken).ConfigureAwait(false);
@@ -145,7 +145,7 @@ public class ImageDataLoaderService<TKey, TRecord>(
         else
         {
             // Convert image to text using vision service
-            var extractedText = await ConvertImageToTextWithRetryAsync(
+            var extractedText = await ConvertImageToTextAsync(
                 new ReadOnlyMemory<byte>(imageBytes),
                 actualContentType,
                 cancellationToken).ConfigureAwait(false);
@@ -196,7 +196,7 @@ public class ImageDataLoaderService<TKey, TRecord>(
     /// <exception cref="HttpOperationException">
     /// Thrown if an HTTP error occurs during the operation, excluding "Too Many Requests", or if the retry limit is exceeded.
     /// </exception>
-    private async Task<string> ConvertImageToTextWithRetryAsync(
+    private async Task<string> ConvertImageToTextAsync(
         ReadOnlyMemory<byte> imageBytes,
         string contentType,
         CancellationToken cancellationToken)
