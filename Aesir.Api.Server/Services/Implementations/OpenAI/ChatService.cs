@@ -187,31 +187,31 @@ public class ChatService : BaseChatService
             ModelId = request.Model,
             MaxTokens = request.MaxTokens
         };
-
-        var kernelPluginArgs = ConversationDocumentCollectionArgs.Default;
-
-        // TODO: For now always enable web search.  One day this will be setable from UI.
-        // if (request.EnabledWebSearch)
-        // {
-        kernelPluginArgs.SetEnableWebSearch(true);
-        _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs));
-        systemPromptVariables["webSearchtoolsEnabled"] = true;
-        //}
         
-        if (request.Conversation.Messages.Any(m => m.HasFile()))
+        var kernelPluginArgs = ConversationDocumentCollectionArgs.Default;
+        var enableWebSearch = true; //request.EnabledWebSearch <-- One day
+        var enableDocumentSearch = request.Conversation.Messages.Any(m => m.HasFile());
+        
+        systemPromptVariables["webSearchtoolsEnabled"] = enableWebSearch;
+        kernelPluginArgs.SetEnableWebSearch(true);
+        
+        if (enableDocumentSearch)
+        {
+            systemPromptVariables["docSearchToolsEnabled"] = true;
+            kernelPluginArgs.SetEnableDocumentSearch(true);
+        }
+        
+        if (enableWebSearch || enableDocumentSearch)
         {
             settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
 
             var conversationId = request.Conversation.Id;
-
-            kernelPluginArgs = ConversationDocumentCollectionArgs.Default;
-            kernelPluginArgs.SetConversationId(conversationId);
-
-            _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs));
             
-            systemPromptVariables["docSearchToolsEnabled"] = true;
+            kernelPluginArgs.SetConversationId(conversationId);
+            
+            _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs));    
         }
-
+        
         if (request.Temperature.HasValue)
             settings.Temperature = (float?)request.Temperature;
         else if (request.TopP.HasValue)
