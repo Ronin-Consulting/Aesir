@@ -5,6 +5,7 @@ using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
+using Aesir.Common;
 using Aesir.Common.Models;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -157,7 +158,7 @@ public partial class AssistantMessageViewModel(
     /// </returns>
     public override async Task SetMessage(AesirChatMessage message)
     {
-        _thoughtsContent = message.ThoughtsContent ?? string.Empty;
+        _thoughtsContent = message.ThoughtsContent?.TrimStart().NormalizeLineEndings() ?? string.Empty;
 
         if (!string.IsNullOrWhiteSpace(_thoughtsContent))
         {
@@ -211,7 +212,7 @@ public partial class AssistantMessageViewModel(
                 {
                     _thoughtsContent += result.Delta.ThoughtsContent;
 
-                    _thoughtsContent = _thoughtsContent.TrimStart();
+                    _thoughtsContent = _thoughtsContent.TrimStart().NormalizeLineEndings();
 
                     var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(_thoughtsContent);
 
@@ -228,7 +229,7 @@ public partial class AssistantMessageViewModel(
                 {
                     Content += result.Delta.Content;
 
-                    Content = Content.TrimStart();
+                    Content = Content.TrimStart().NormalizeLineEndings();
 
                     var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(Content);
 
@@ -242,7 +243,7 @@ public partial class AssistantMessageViewModel(
                 }
 
                 // let ui catch up drawing
-                await Task.Delay(TimeSpan.FromMilliseconds(35));
+                await Task.Delay(TimeSpan.FromMilliseconds(30));
             }
 
             if(!string.IsNullOrWhiteSpace(Content))

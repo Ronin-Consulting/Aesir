@@ -89,7 +89,7 @@ public class Program
                             var endpoint = inferenceEngine.Configuration["Endpoint"] ??
                                            throw new InvalidOperationException("Ollama Endpoint not configured");
                             client.BaseAddress = new Uri($"{endpoint}/api");
-                        }).SetHandlerLifetime(TimeSpan.FromMinutes(2))
+                        }).SetHandlerLifetime(TimeSpan.FromMinutes(5))
                         .AddPolicyHandler(HttpPolicyExtensions
                             .HandleTransientHttpError()
                             .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.NotFound)

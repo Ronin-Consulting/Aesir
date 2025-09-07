@@ -50,7 +50,7 @@ public class VisionService(
     {
         if (string.IsNullOrWhiteSpace(_visionModel))
             throw new InvalidOperationException("No vision model provided");
-
+        
         // Resize the image to a resolution that works well with the vision model
         using var image = Image.Load(imageBytes.Span);
         image.Mutate(x =>

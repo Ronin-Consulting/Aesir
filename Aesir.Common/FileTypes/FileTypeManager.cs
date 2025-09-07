@@ -186,6 +186,7 @@ public static class FileTypeManager
         public const string Png = "public.png";
         public const string Jpeg = "public.jpeg";
         public const string Gif = "com.compuserve.gif";
+        public const string Tiff = "public.tiff";
         
         // Text
         public const string PlainText = "public.plain-text";
@@ -193,6 +194,7 @@ public static class FileTypeManager
         public const string Markdown = "net.daringfireball.markdown";
         public const string Xml = "public.xml";
         public const string Json = "public.json";
+        public const string Csv = "public.comma-separated-values-text";
         
         // Spreadsheets
         public const string Xlsx = "org.openxmlformats.spreadsheetml.sheet";

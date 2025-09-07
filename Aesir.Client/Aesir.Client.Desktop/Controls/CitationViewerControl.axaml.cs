@@ -5,19 +5,28 @@ using Avalonia.Controls.PanAndZoom;
 
 namespace Aesir.Client.Desktop.Controls;
 
-public partial class PdfViewerControl : UserControl
+public partial class CitationViewerControl : UserControl
 {
-    public PdfViewerControl()
+    public CitationViewerControl()
     {
         InitializeComponent();
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        var viewModel = DataContext as PdfViewerControlViewModel;
-        viewModel!.SetZoomApi(new ZoomApiImpl(PdfZoomBorder));
+        var viewModel = DataContext as CitationViewerControlViewModel;
+        viewModel!.SetZoomApi(new ZoomApiImpl(CitationZoomBorder));
         
         base.OnAttachedToVisualTree(e);
+    }
+
+
+    private void CitationZoomBorder_OnZoomChanged(object sender, ZoomChangedEventArgs e)
+    {
+        var zX = e.ZoomX;
+        
+        var viewModel = DataContext as CitationViewerControlViewModel;
+        viewModel!.ZoomPercentage = $"{(int)(zX * 100)}%";
     }
 }
 

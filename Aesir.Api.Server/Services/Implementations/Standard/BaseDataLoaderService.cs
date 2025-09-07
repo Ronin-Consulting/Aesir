@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
 using Microsoft.Extensions.AI;
@@ -103,14 +104,25 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
 
         for (var i = 0; i < recordsArray.Length; i += batchSize)
         {
-            var batch = recordsArray.Skip(i).Take(batchSize);
-            var recordTasks = batch.Select(async record =>
+            var batch = recordsArray.Skip(i).Take(batchSize).ToList();
+            var enrichRecordTasks = batch.Select(async record =>
             {
                 await EnrichRecordAsync(record, fileName, cancellationToken).ConfigureAwait(false);
                 return record;
             }).ToArray();
+            
+            var embeddingTasks = GenerateEmbeddingsAsync(
+                batch.Select(r => r.Text ?? string.Empty).ToArray(), 
+            cancellationToken);
+            
+            var enrichedRecords = await Task.WhenAll(enrichRecordTasks).ConfigureAwait(false);
+            var embeddings = await embeddingTasks.ConfigureAwait(false);
+            for (var j = 0; j < enrichedRecords.Length; j++)
+            {
+                enrichedRecords[j].TextEmbedding = embeddings[j];
+            }
 
-            processedRecords.AddRange(await Task.WhenAll(recordTasks).ConfigureAwait(false));
+            processedRecords.AddRange(enrichedRecords);
         }
 
         return processedRecords.ToArray();
@@ -126,22 +138,16 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
     protected async Task EnrichRecordAsync(TRecord record, string fileName, CancellationToken cancellationToken)
     {
         var textChunk = record.Text ?? throw new InvalidOperationException("Text is null");
-
+        
         record.Key = UniqueKeyGenerator.GenerateKey();
         record.ReferenceDescription ??= fileName.StartsWith("file://") ? fileName.Substring(7) : fileName;
-        record.ReferenceLink ??= fileName.StartsWith("file://") ? fileName : $"file://{fileName}";
-        record.TextEmbedding ??= await GenerateEmbeddings(textChunk, cancellationToken).ConfigureAwait(false);
+        record.ReferenceLink ??= fileName.StartsWith("file://") ? System.Web.HttpUtility.UrlEncode(fileName) : $"file://{System.Web.HttpUtility.UrlEncode(fileName)}";
         record.TokenCount ??= TokenCounter.CountTokens(textChunk);
+        
+        await Task.CompletedTask;
     }
-
-    /// <summary>
-    /// Generates embeddings for the given text using defined embedding generation logic.
-    /// </summary>
-    /// <param name="text">The text input for which the embedding vectors are to be generated.</param>
-    /// <param name="cancellationToken">A token used to monitor for cancellation requests.</param>
-    /// <returns>An embedding instance containing the generated vector representation of the text.</returns>
-    /// <exception cref="ClientResultException">Thrown when the embedding generation operation encounters an error.</exception>
-    protected async Task<Embedding<float>> GenerateEmbeddings(string text, CancellationToken cancellationToken)
+    
+    protected async Task<Embedding<float>[]> GenerateEmbeddingsAsync(string[] textChunks, CancellationToken cancellationToken)
     {
         try
         {
@@ -150,14 +156,18 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
                 Dimensions =
                     1024 // this should either be configuration or a requirement that the embedding model supports
             };
-            var vector = (await EmbeddingGenerator
-                .GenerateAsync(text, options, cancellationToken: cancellationToken).ConfigureAwait(false)).Vector;
+            
+            var sw = Stopwatch.StartNew();
+            var results = await EmbeddingGenerator
+                .GenerateAsync(textChunks, options, cancellationToken: cancellationToken).ConfigureAwait(false);
+            sw.Stop();
+            Logger.LogDebug("Generated {TextChunksSize} embeddings in {ElapsedMilliseconds}ms", textChunks.Length, sw.ElapsedMilliseconds);
 
-            return new Embedding<float>(vector);
+            return results.ToArray();
         }
         catch (ClientResultException ex)
         {
-            Logger.LogError("Failed to generate embedding. Error: {HttpOperationException}",
+            Logger.LogError("Failed to generate embeddings. Error: {HttpOperationException}",
                 ex.GetRawResponse()?.Content.ToString() ?? ex.ToString());
             throw;
         }
@@ -200,10 +210,19 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
     /// Unloads AI models to free system resources.
     /// </summary>
     /// <returns>A task that represents the asynchronous operation of unloading models.</returns>
-    protected async Task UnloadModelsAsync()
+    protected Task UnloadModelsAsync()
     {
-        await ModelsService.UnloadVisionModelAsync().ConfigureAwait(false);
-        await ModelsService.UnloadEmbeddingModelAsync().ConfigureAwait(false);
+        // Fire-and-forget: start the tasks but don't await them
+        // They will run to completion in the background
+        _ = ModelsService.UnloadVisionModelAsync().ContinueWith(
+            t => { /* Ignore any exceptions */ }, 
+            TaskContinuationOptions.OnlyOnFaulted);
+        
+        _ = ModelsService.UnloadEmbeddingModelAsync().ContinueWith(
+            t => { /* Ignore any exceptions */ }, 
+            TaskContinuationOptions.OnlyOnFaulted);
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -214,7 +233,12 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
     /// <returns>A task that represents the asynchronous upsert operation.</returns>
     protected async Task UpsertRecordsAsync(TRecord[] records, CancellationToken cancellationToken)
     {
+        var sw = Stopwatch.StartNew();
+        
         await VectorStoreRecordCollection
             .UpsertAsync(records, cancellationToken: cancellationToken).ConfigureAwait(false);
+        
+        sw.Stop();
+        Logger.LogDebug("Upserted {RecordsSize} records in {ElapsedMilliseconds}ms", records.Length, sw.ElapsedMilliseconds);
     }
 }

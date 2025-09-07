@@ -2,22 +2,26 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="clr-namespace:Aesir.Client.Desktop.ViewModels"
              xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:vm="clr-namespace:Aesir.Client.Desktop.ViewModels"
              xmlns:paz="using:Avalonia.Controls.PanAndZoom"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Aesir.Client.Desktop.Controls.PdfViewerControl"
-             x:DataType="vm:PdfViewerControlViewModel"
+             x:Class="Aesir.Client.Desktop.Controls.CitationViewerControl"
+             x:DataType="vm:CitationViewerControlViewModel"
              Padding="0"
              Margin="0">
-    <RelativePanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="800" Height="700">
-        <ScrollViewer Name="ScrollViewer" VerticalScrollBarVisibility="Auto"
+    <Design.DataContext>    
+        <vm:CitationViewerControlViewModel />
+    </Design.DataContext>
+    <RelativePanel HorizontalAlignment="Center" VerticalAlignment="Stretch" Width="1024">
+        <ScrollViewer Name="ScrollViewer" 
+                      VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Auto"
                       RelativePanel.AlignLeftWithPanel="True"
                       RelativePanel.AlignRightWithPanel="True"
                       RelativePanel.AlignTopWithPanel="True"
                       RelativePanel.AlignBottomWithPanel="True">
-            <paz:ZoomBorder Name="PdfZoomBorder"
+            <paz:ZoomBorder Name="CitationZoomBorder"
                             Stretch="Uniform"
                             ZoomSpeed="1.5"
                             EnableConstrains="False"
@@ -27,8 +31,18 @@
                             VerticalAlignment="Stretch"
                             HorizontalAlignment="Stretch"
                             PanButton="Left"
-                            EnableZoom="False">
-                <Image Name="PdfImage" Source="{Binding PdfImageSource}" />
+                            EnableZoom="False"
+                            ZoomChanged="CitationZoomBorder_OnZoomChanged"
+                >
+                <Panel>
+                    <Image Name="CitationImage" Source="{Binding CitationImageSource}" IsVisible="{Binding IsImage}" />
+                    <SelectableTextBlock Name="CitationTextBox" 
+                                         IsVisible="{Binding !IsImage}" 
+                                         Text="{Binding CitationTextSource}"
+                                         VerticalAlignment="Stretch"
+                                         HorizontalAlignment="Stretch"
+                    />
+                </Panel>
             </paz:ZoomBorder>
         </ScrollViewer>
         <StackPanel Orientation="Horizontal"

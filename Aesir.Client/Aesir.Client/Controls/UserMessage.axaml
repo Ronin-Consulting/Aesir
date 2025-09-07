@@ -76,8 +76,9 @@
                     Name="HtmlLabel"
                     Text="{Binding Message}" 
                     AutoSize="True"
+                    MaxWidth="746"
                     Background="Transparent"
-                    BaseStylesheet="* { color: #F9F9F9; } p { padding: 0; margin: 0; }"
+                    BaseStylesheet="* { color: #F9F9F9; line-height: 1.0; margin: 0; padding: 0; } p { margin: 0 0 0 0; line-height: 1.0; padding-left: 10px; white-space: pre-line; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow-x: hidden; hyphens: auto; }"
                     Margin="10"
                     Padding="0"
                 />

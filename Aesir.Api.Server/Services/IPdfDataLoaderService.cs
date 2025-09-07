@@ -42,12 +42,12 @@ public sealed class LoadPdfRequest
     /// Gets or sets the size of the batch for processing PDF content.
     /// Determines the number of content items to process in a single batch operation.
     /// </summary>
-    public int BatchSize { get; set; } = Math.Min(Environment.ProcessorCount / 2 + 1, 10);
+    public int BatchSize { get; set; } = Math.Max(Environment.ProcessorCount / 2 + 1, 10);
 
     /// <summary>
     /// Gets or sets the delay, in milliseconds, between processing batches of PDF data during loading.
     /// </summary>
-    public int BetweenBatchDelayInMs { get; set; } = 100;
+    public int BetweenBatchDelayInMs { get; set; } = 50;
 
     /// <summary>
     /// Gets or sets a collection of key-value pairs representing metadata associated with the PDF file.

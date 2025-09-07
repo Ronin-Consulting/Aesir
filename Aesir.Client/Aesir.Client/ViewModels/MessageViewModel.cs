@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
+using Aesir.Common;
 using Aesir.Common.Models;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -121,9 +122,17 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// <returns>A <c>Task</c> that represents the asynchronous operation of setting and processing the message content.</returns>
     public virtual async Task SetMessage(AesirChatMessage message)
     {
-        Content = message.Content;
+        Content = message.Content.TrimStart().NormalizeLineEndings();
 
-        var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(message.Content, shouldRenderFencedCodeBlocks: true);
+        if (message.Role == "system")
+        {
+            Message = Content;
+            IsLoaded = true;
+            
+            return;
+        }   
+
+        var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(Content, shouldRenderFencedCodeBlocks: true);
         Message = htmlMessage;
 
         IsLoaded = true;
@@ -166,7 +175,7 @@ public abstract partial class MessageViewModel : ObservableRecipient
                 
                 Content += result.Delta.Content;
                 
-                Content = Content.TrimStart();
+                Content = Content.TrimStart().NormalizeLineEndings();
                 
                 var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(Content);
                 

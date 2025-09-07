@@ -124,7 +124,8 @@ public class PdfDataLoaderService<TKey, TRecord>(
             }).ToArray();
 
             var processedRecords =
-                await ProcessRecordsInBatchesAsync(records, request.PdfFileName!, records.Length, cancellationToken);
+                await ProcessRecordsInBatchesAsync(records, request.PdfFileName!, request.BatchSize, cancellationToken);
+            
             await UpsertRecordsAsync(processedRecords, cancellationToken);
 
             await Task.Delay(request.BetweenBatchDelayInMs, cancellationToken).ConfigureAwait(false);

@@ -9,12 +9,12 @@ namespace Aesir.Client.Browser.Services;
 /// <summary>
 /// Provides a service for displaying PDF documents in a browser environment.
 /// </summary>
-public class PdfViewerService(
-    ILogger<PdfViewerService> logger,
+public class CitationViewerService(
+    ILogger<CitationViewerService> logger,
     BrowserJsService browserJsService,
     INotificationService notificationService,
     IConfiguration configuration
-) : IPdfViewerService
+) : ICitationViewerService
 {
     /// <summary>
     /// Displays a PDF file in a new browser window, allowing the user to view its contents starting from a specified page number.
@@ -28,7 +28,7 @@ public class PdfViewerService(
     /// A task that represents the asynchronous operation of displaying the PDF file.
     /// If the operation fails due to a browser blocking pop-ups, an error notification is shown.
     /// </returns>
-    public async Task ShowPdfAsync(string fileUri)
+    public async Task ShowCitationAsync(string fileUri)
     {
         // fileUri should be like file://guid/Aesir.pdf#page=1
         try

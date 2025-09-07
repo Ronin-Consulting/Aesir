@@ -9,15 +9,15 @@ namespace Aesir.Client.Services.Implementations.Standard;
 /// such as extracting and removing specific tagged sections and handling link interactions.
 /// </summary>
 public class ContentProcessingService(
-    IPdfViewerService pdfViewerService,
+    ICitationViewerService citationViewerService,
     ILogger<ContentProcessingService> logger)
     : IContentProcessingService
 {
     /// <summary>
     /// Represents the service responsible for displaying PDF files.
     /// </summary>
-    private readonly IPdfViewerService _pdfViewerService =
-        pdfViewerService ?? throw new ArgumentNullException(nameof(pdfViewerService));
+    private readonly ICitationViewerService _citationViewerService =
+        citationViewerService ?? throw new ArgumentNullException(nameof(citationViewerService));
 
     /// <summary>
     /// Provides logging capabilities for the <see cref="ContentProcessingService"/> class.
@@ -40,7 +40,7 @@ public class ContentProcessingService(
             // only process aesir rewritten uris
             if (attributes.ContainsKey("data-href"))
             {
-                _pdfViewerService.ShowPdfAsync(attributes["data-href"]);
+                _citationViewerService.ShowCitationAsync(attributes["data-href"]);
             }
         }
         catch (Exception ex)

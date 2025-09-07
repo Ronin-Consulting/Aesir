@@ -73,8 +73,32 @@ public class MarkdigMarkdownService(ILogger<MarkdigMarkdownService> logger) : IM
     private MarkdownPipeline GetMarkdownPipeline(bool useColorCode = false)
     {
         var builder = new MarkdownPipelineBuilder()
-            .UseAdvancedExtensions()
-            .UseEmojiAndSmiley();
+            .UseEmojiAndSmiley()
+            .UseSoftlineBreakAsHardlineBreak()
+            .UseDiagrams()
+            .EnableTrackTrivia()
+            //.UseJiraLinks()
+            // The next lines are just UseAdvancedExtensions() so we dont dup them
+            //.UseAdvancedExtensions()
+            .UseAlertBlocks()
+            .UseAbbreviations()
+            .UseAutoIdentifiers()
+            .UseCitations()
+            .UseCustomContainers()
+            .UseDefinitionLists()
+            .UseEmphasisExtras()
+            .UseFigures()
+            .UseFooters()
+            .UseFootnotes()
+            .UseGridTables()
+            .UseMathematics()
+            .UseMediaLinks()
+            .UsePipeTables()
+            .UseListExtras()
+            .UseTaskLists()
+            .UseDiagrams()
+            .UseAutoLinks()
+            .UseGenericAttributes();
 
         if (useColorCode)
             builder.UseColorCode(styleDictionary: StyleDictionary.DefaultDark);

@@ -180,13 +180,15 @@ public class ChatService : BaseChatService
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = await CreateChatHistoryAsync(request);
-
+        
         var results = _chatCompletionService.GetStreamingChatMessageContentsAsync(
             chatHistory,
             settings,
             _kernel
         );
 
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        
         await foreach (var completion in results)
         {
             //_logger.LogDebug("Received Chat Completion Response from Ollama backend: {Json}", JsonConvert.SerializeObject(completion));
@@ -204,6 +206,9 @@ public class ChatService : BaseChatService
 
             yield return (content ?? string.Empty, isThinking, isComplete);
         }
+        
+        stopwatch.Stop();
+        _logger.LogDebug($"Chat completion streaming took {stopwatch.ElapsedMilliseconds}ms");
     }
 
     /// <summary>
@@ -227,7 +232,7 @@ public class ChatService : BaseChatService
         var settings = new OllamaPromptExecutionSettings
         {
             ModelId = request.Model,
-            NumPredict = request.MaxTokens ?? 8192,
+            NumPredict = request.MaxTokens ?? 32768,
             ExtensionData = new Dictionary<string, object>()
         };
 

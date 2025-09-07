@@ -202,5 +202,4 @@ public partial class App : Application
         var audioRecordingService = Ioc.Default.GetService<IAudioRecordingService>();
         audioRecordingService?.Dispose();
     }
-
 }

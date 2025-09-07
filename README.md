@@ -63,12 +63,11 @@
   - [ ] Login
   - [ ] Register
   - [ ] Logout
-- [ ] Works in web browser
+- [X] Works in web browser (ish)
 - [ ] Optimize Backend
   - [ ] Custom tuned llama.cpp 
     - X86,Apple Silicon and ARM64
     - CUDA, Metal and Onnx
-    - 
 ## Supported AI Backends
 
 ### Ollama (Default)
@@ -97,10 +96,10 @@ Note:
 
 ### KNOW BUGS
 - [ ] When using OpenAI Compatible Models (specfically ChatGPT 4.1) the model will not auto run function tools if a document is attached to the conversation it was pre-trained on.
-- [ ] True up web and desktop fonts
+- [ ] True up web and desktop fonts (Found out that there is bug in current Avalonia that prevents nicer variable fonts from loading)
 - [ ] When rendering the response of an assistant message, if a code block is present we need to foce it to "scroll" horizontally.  Need CSS tweaks. Noticed when testing JSON files.
-- [ ] When click a citation from a non-pdf or image based document you get error. Its because the citation viewer expects image.
-- [ ] The use of mime-types in the API is requiring major refactoring and centralization. It has been started.
+- [X] FIXED - When click a citation from a non-pdf or image based document you get error. Its because the citation viewer expects image.
+- [X] FIXED - The use of mime-types in the API is requiring major refactoring and centralization. It has been started.
 
 ### Random Notes
 - Test Vision Models with this repo... https://github.com/JensWalter/my-receipts

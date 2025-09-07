@@ -56,4 +56,10 @@ public sealed class LoadImageRequest
     /// attributes related to the image loading process.
     /// </summary>
     public IDictionary<string, object>? Metadata { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the size of the batch for processing PDF content.
+    /// Determines the number of content items to process in a single batch operation.
+    /// </summary>
+    public int BatchSize { get; set; } = Math.Max(Environment.ProcessorCount / 2 + 1, 10);
 }

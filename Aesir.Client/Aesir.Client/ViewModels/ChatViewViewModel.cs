@@ -823,12 +823,14 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         // Generate Apple UTIs for common document processing types
         var appleUtis = new List<string>
         {
-            FileTypeManager.AppleUTIs.Pdf,
-            FileTypeManager.AppleUTIs.Png,
+            FileTypeManager.AppleUTIs.Csv,
             FileTypeManager.AppleUTIs.Jpeg,
-            FileTypeManager.AppleUTIs.PlainText,
+            FileTypeManager.AppleUTIs.Pdf,
             FileTypeManager.AppleUTIs.Html,
             FileTypeManager.AppleUTIs.Markdown,
+            FileTypeManager.AppleUTIs.Png,
+            FileTypeManager.AppleUTIs.PlainText,
+            FileTypeManager.AppleUTIs.Tiff,
             FileTypeManager.AppleUTIs.Xml,
             FileTypeManager.AppleUTIs.Json
         };

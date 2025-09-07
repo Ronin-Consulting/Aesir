@@ -37,16 +37,15 @@ internal sealed partial class Program
         App.AddService(services =>
             {
                 services.AddSingleton<ISpeechService, BrowserSpeechService>();
-                services.AddTransient<IPdfViewerService, PdfViewerService>();
+                services.AddTransient<ICitationViewerService, CitationViewerService>();
                 services.AddTransient<BrowserJsService, BrowserJsService>();
             }
         );
         
-        //Trace.Listeners.Add(new ConsoleTraceListener());
-
         return AppBuilder.Configure<App>()
-            .LogToTrace(LogEventLevel.Error)
+            .UseBrowser()
             .WithInterFont()
+            .LogToTrace(LogEventLevel.Error)
             .StartBrowserAppAsync("out");
     }
     
