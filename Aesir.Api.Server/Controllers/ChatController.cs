@@ -35,6 +35,11 @@ namespace Aesir.Api.Server.Controllers
             return chatService.ChatCompletionsStreamedAsync(request);
         }
         
+        /// <summary>
+        /// Handles an agent chat completion request and returns the result asynchronously.
+        /// </summary>
+        /// <param name="request">The agent hat completion request containing conversation details and agent parameters.</param>
+        /// <returns>A task representing the asynchronous operation that returns the agent chat completion result.</returns>
         [HttpPost("agent")]
         public async Task<AesirChatResult> AgentChatCompletionsAsync([FromBody] AesirAgentChatRequestBase request)
         {
@@ -47,7 +52,7 @@ namespace Aesir.Api.Server.Controllers
                 ClientDateTime = request.ClientDateTime,
                 Conversation = request.Conversation,
                 EnableThinking = true, // TODO should eventually be configuration on agent (it's an override of inference engine value)
-                MaxTokens = 8192, // TODO should eventually be configuration on agent
+                MaxTokens = 32768, // TODO should eventually be configuration on agent
                 Model = agent.ChatModel,
                 Temperature = 0.1, // TODO should eventually be configuration on agent
                 Title = request.Title,
@@ -62,6 +67,11 @@ namespace Aesir.Api.Server.Controllers
             return await chatService.ChatCompletionsAsync(chatRequest);
         }
 
+        /// <summary>
+        /// Processes an agent chat completion request and returns a streamed response with chunks of data.
+        /// </summary>
+        /// <param name="request">The agent chat completion request containing conversation data and agent parameters.</param>
+        /// <returns>An async enumerable of <see cref="AesirChatStreamedResult"/> representing streamed agent chat completion results.</returns>
         [HttpPost("agent/streamed")]
         public async Task<IAsyncEnumerable<AesirChatStreamedResult>> AgentChatCompletionsStreamedAsync([FromBody] AesirAgentChatRequestBase request)
         {
@@ -74,7 +84,7 @@ namespace Aesir.Api.Server.Controllers
                 ClientDateTime = request.ClientDateTime,
                 Conversation = request.Conversation,
                 EnableThinking = true,
-                MaxTokens = 8192, // TODO should be configuration on agent
+                MaxTokens = 32768, // TODO should be configuration on agent
                 Model = agent.ChatModel,
                 Temperature = 0.1, // TODO should be configuration on agent
                 Title = request.Title,
@@ -84,6 +94,7 @@ namespace Aesir.Api.Server.Controllers
             
             // TODO we will need to look up the right inference engine and tell the
             // TODO chat completion service which one to use (or maybe lookup the right chat completion service?)
+            // TODO this should match what we register in Program.cs > Main
             
             return chatService.ChatCompletionsStreamedAsync(chatRequest);
         }
