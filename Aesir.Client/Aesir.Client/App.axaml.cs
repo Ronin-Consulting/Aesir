@@ -93,7 +93,8 @@ public partial class App : Application
         {
             var appState = new ApplicationState(
                 p.GetRequiredService<IModelService>(),
-                p.GetRequiredService<IChatHistoryService>()
+                p.GetRequiredService<IChatHistoryService>(),
+                p.GetRequiredService<IConfigurationService>()
             )
             {
                 IsActive = true
@@ -126,6 +127,7 @@ public partial class App : Application
         AppServices.AddTransient<McpServersViewViewModel>();
         AppServices.AddTransient<ToolsViewViewModel>();
         AppServices.AddTransient<AgentsViewViewModel>();
+        AppServices.AddTransient<InferenceEnginesViewViewModel>();
         AppServices.AddTransient<HandsFreeControlViewModel>();
         
         var delay = Backoff.DecorrelatedJitterBackoffV2(
@@ -168,7 +170,8 @@ public partial class App : Application
             {
                 var appState = new ApplicationState(
                     new NoOpModelService(),
-                    new NoOpChatHistoryService()
+                    new NoOpChatHistoryService(),
+                    new NoOpConfigurationService()
                 )
                 {
                     IsActive = true

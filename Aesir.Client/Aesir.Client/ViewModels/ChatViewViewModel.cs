@@ -35,11 +35,11 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     IRecipient<FileUploadStatusMessage>, IRecipient<RegenerateMessageMessage>, IDisposable
 {
     /// <summary>
-    /// Represents the default value used for model selection in the user interface.
-    /// This value is utilized when no specific model has been chosen by the user.
-    /// Serves as an indicator for uninitialized or default states related to model selection.
+    /// Represents the default value used for agent selection in the user interface.
+    /// This value is utilized when no specific agent has been chosen by the user.
+    /// Serves as an indicator for uninitialized or default states related to agent selection.
     /// </summary>
-    private const string DefaultModelIdValue = "Select a model";
+    private const string DefaultAgentNameValue = "Select an agent";
     
     /// <summary>
     /// Represents the state of the panel within the main view.
@@ -71,18 +71,21 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     [ObservableProperty] private bool _conversationStarted;
 
     /// <summary>
-    /// Stores the name of the model currently selected by the user in the application.
-    /// This property is initialized with a default value of "Select a model" and
-    /// updated whenever a user selects a specific model from the available options.
+    /// Collection of available agents that can be selected or used within the application.
     /// </summary>
-    [ObservableProperty] private string? _selectedModelName = DefaultModelIdValue;
+    public ObservableCollection<AesirAgentBase> AvailableAgents { get; set; }
 
     /// <summary>
-    /// Stores the identifier of the currently selected model in the application.
-    /// The value is updated based on user selection or default settings.
-    /// Used for referencing the selected model in operations such as processing chat requests.
+    /// Stores agent currently selected by the user in the application.
     /// </summary>
-    private string? _selectedModelId = DefaultModelIdValue;
+    [ObservableProperty] private AesirAgentBase? _selectedAgent;
+
+    /// <summary>
+    /// Stores the name of the agent currently selected by the user in the application.
+    /// This property is initialized with a default value of "Select an agent" and
+    /// updated whenever a user selects a specific agent from the available options.
+    /// </summary>
+    [ObservableProperty] private string? _selectedAgentName = DefaultAgentNameValue;
 
     /// <summary>
     /// Represents the currently selected file in the ChatViewViewModel.
@@ -96,12 +99,6 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// Used to control the state of user interactions related to file selection.
     /// </summary>
     [ObservableProperty] private bool _selectedFileEnabled = true;
-
-    /// <summary>
-    /// Represents the error message encountered within the application.
-    /// Used for displaying errors to the user or logging for diagnostic purposes.
-    /// </summary>
-    [ObservableProperty] private string? _errorMessage;
 
     /// <summary>
     /// Represents the current text content of the chat message in the application's ViewModel.
@@ -143,6 +140,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// Typically bound to user interface elements to trigger the creation or reset of a chat thread.
     /// </summary>
     public ICommand ToggleNewChat { get; }
+    
+    public ICommand SelectAgent { get; }
     
     public ICommand ShowHandsFree { get; }
 
@@ -210,6 +209,11 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// </summary>
     private readonly INavigationService _navigationService;
 
+    /// <summary>
+    /// Represents a service to show notifications
+    /// </summary>
+    private readonly INotificationService _notificationService;
+
     /// Represents the view model for the main view in the application.
     /// Handles core application state and provides commands for toggling chat history, starting a new chat, and controlling the microphone.
     /// Integrates services for speech recognition, chat session management, and file upload interactions.
@@ -219,20 +223,25 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         IChatSessionManager chatSessionManager,
         ILogger<ChatViewViewModel> logger,
         FileToUploadViewModel fileToUploadViewModel,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        INotificationService notificationService)
     {
         _appState = appState ?? throw new ArgumentNullException(nameof(appState));
         _speechService = speechService;
         _chatSessionManager = chatSessionManager ?? throw new ArgumentNullException(nameof(chatSessionManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _navigationService = navigationService;
+        _notificationService = notificationService;
 
         ToggleLeftPane = new RelayCommand(() => PanelOpen = !PanelOpen);
         ToggleNewChat = new RelayCommand(ExecuteNewChat);
+        SelectAgent = new RelayCommand<AesirAgentBase>(ExecuteSelectAgent);
         ShowHandsFree = new RelayCommand(ExecuteShowHandsFree);
 
         SelectedFile = fileToUploadViewModel ?? throw new ArgumentNullException(nameof(fileToUploadViewModel));
         SelectedFile.IsActive = true;
+
+        AvailableAgents = new ObservableCollection<AesirAgentBase>();
     }
 
     /// Resets the current chat session, clearing the selected chat session ID and removing any error messages.
@@ -243,12 +252,21 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         try
         {
             _appState.SelectedChatSessionId = null;
-            ErrorMessage = null;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to start new chat");
-            ErrorMessage = "Failed to start new chat. Please try again.";
+            _notificationService.ShowErrorNotification("Error", "Failed to start new chat. Please try again.");
+        }
+    }
+
+    private void ExecuteSelectAgent(AesirAgentBase? agent)
+    {
+        if (agent != null)
+        {
+            SelectedAgent = agent;
+            SelectedAgentName = agent.Name;
+            _appState.SelectedAgent = agent;
         }
     }
 
@@ -324,34 +342,36 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// </returns>
     private async Task LoadApplicationStateAsync()
     {
-        await LoadSelectedModelAsync();
+        await LoadSelectedAgentAsync();
         await LoadChatSessionAsync();
     }
 
     /// Asynchronously loads the selected model's data, updating the application state with the model's details.
     /// Manages error handling by setting appropriate error messages or updating the selected model name in case of success.
     /// <returns>A task representing the completion of the asynchronous model loading operation.</returns>
-    private async Task LoadSelectedModelAsync()
+    private async Task LoadSelectedAgentAsync()
     {
         try
         {
-            if (_appState.SelectedModel == null)
+            await _appState.LoadAvailableAgentsAsync();
+            
+            AvailableAgents.Clear();
+            foreach (var agent in _appState.AvailableAgents)
+                AvailableAgents.Add(agent);
+            
+            if (AvailableAgents.Count == 0)
+                SelectedAgentName = "No agent available";
+            else if (AvailableAgents.Count == 1)
             {
-                await _appState.LoadAvailableModelsAsync();
-                _appState.SelectedModel = _appState.AvailableModels.FirstOrDefault(m => m.IsChatModel);
+                SelectedAgent = AvailableAgents.First();
+                SelectedAgentName = SelectedAgent.Name;
             }
-
-            _selectedModelId = _appState.SelectedModel?.Id ?? "No model available";
-            SelectedModelName = _selectedModelId.Split(':')[0];
-            ErrorMessage = null;
-
-            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load models");
-            ErrorMessage = "Failed to load available models. Please check your connection.";
-            SelectedModelName = "Error loading models";
+            _logger.LogError(ex, "Failed to load agents");
+            _notificationService.ShowErrorNotification("Error", "Failed to load available agents. Please check your connection.");
+            SelectedAgentName = "Error loading agents";
         }
     }
 
@@ -369,12 +389,11 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             await _chatSessionManager.LoadChatSessionAsync();
             ConversationStarted = _appState.SelectedChatSessionId != null;
             await RefreshConversationMessagesAsync();
-            ErrorMessage = null;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load chat session");
-            ErrorMessage = "Failed to load chat session. Please try again.";
+            _notificationService.ShowErrorNotification("Error", "Failed to load chat session. Please try again.");
         }
     }
 
@@ -420,10 +439,10 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to refresh conversation messages");
-            ErrorMessage = "Failed to load conversation messages.";
+            _notificationService.ShowErrorNotification("Error", "Failed to load conversation messages.");
         }
     }
-
+ 
     /// Asynchronously adds a chat message to the conversation and associates it with the corresponding message view model.
     /// The association is determined by the message role (e.g., user, assistant, or system).
     /// <param name="message">The chat message object to be added to the conversation.</param>
@@ -473,15 +492,14 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_selectedModelId) || _selectedModelId == DefaultModelIdValue)
+        if (SelectedAgent == null)
         {
-            ErrorMessage = "Please select a model before sending a message.";
+            _notificationService.ShowInformationNotification("Info", "Please select an agent before sending a message.");
             return;
         }
 
         var currentMessage = ChatMessage;
         ChatMessage = null;
-        ErrorMessage = null;
 
         try
         {
@@ -509,22 +527,22 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             ConversationMessages.Add(assistantMessageViewModel);
 
             // Process the chat request
-            await _chatSessionManager.ProcessChatRequestAsync(_selectedModelId, ConversationMessages);
+            await _chatSessionManager.ProcessChatRequestAsync(SelectedAgent.Id.Value, ConversationMessages);
         }
         catch (ArgumentException ex)
         {
             _logger.LogWarning(ex, "Invalid argument when sending message");
-            ErrorMessage = "Invalid input. Please check your message and try again.";
+            _notificationService.ShowErrorNotification("Error", "Invalid input. Please check your message and try again.");
         }
         catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "Invalid operation when sending message");
-            ErrorMessage = "Unable to send message. Please try again.";
+            _notificationService.ShowErrorNotification("Error", "Unable to send message. Please try again.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error sending message");
-            ErrorMessage = "An unexpected error occurred. Please try again.";
+            _notificationService.ShowErrorNotification("Error", "An unexpected error occurred. Please try again.");
         }
         finally
         {
@@ -546,13 +564,12 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             {
                 SelectedFile!.SetConversationId(_appState.ChatSession!.Conversation.Id);
                 await RequestFileUpload(files[0]);
-                ErrorMessage = null;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to show file selection dialog");
-            ErrorMessage = "Failed to open file selection dialog. Please try again.";
+            _notificationService.ShowErrorNotification("Error", "Failed to open file selection dialog. Please try again.");
         }
     }
 
@@ -597,14 +614,14 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             catch (Exception e)
             {
                 _logger.LogWarning("Attempted to upload inaccessible file");
-                ErrorMessage = "Invalid file path.";
+                _notificationService.ShowErrorNotification("Error", "Invalid file path.");
                 return;
             }
 
             if (_appState.ChatSession == null)
             {
                 _logger.LogWarning("Attempted to upload file without an active chat session");
-                ErrorMessage = "Please start a chat session before uploading files.";
+                _notificationService.ShowInformationNotification("Info", "Please start a chat session before uploading files.");
                 return;
             }
 
@@ -617,7 +634,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to request file upload for: {FileName}", file.Name);
-            ErrorMessage = "Failed to upload file. Please try again.";
+            _notificationService.ShowErrorNotification("Error", "Failed to upload file. Please try again.");
         }
     }
 
@@ -698,9 +715,9 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// <returns>A task representing the asynchronous operation of resending the user message.</returns>
     private async Task ResendUserMessage(UserMessageViewModel userMessageViewModel)
     {
-        if (string.IsNullOrWhiteSpace(_selectedModelId) || _selectedModelId == DefaultModelIdValue)
+        if (SelectedAgent == null)
         {
-            ErrorMessage = "Please select a model before sending a message.";
+            _notificationService.ShowInformationNotification("Info", "Please select an agent before sending a message.");
             return;
         }
 
@@ -716,7 +733,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
 
         ConversationMessages.Add(assistantMessageViewModel);
 
-        await _chatSessionManager.ProcessChatRequestAsync(_selectedModelId, ConversationMessages);
+        await _chatSessionManager.ProcessChatRequestAsync(SelectedAgent.Id.Value, ConversationMessages);
 
         SendingChatOrProcessingFile = false;
     }

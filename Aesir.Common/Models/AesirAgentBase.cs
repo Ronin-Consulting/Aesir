@@ -25,16 +25,22 @@ public class AesirAgentBase
     public string? Description { get; set; }
     
     /// <summary>
+    /// Gets or sets the id of the chat (and embedding) model's inference engine
+    /// </summary>
+    [JsonPropertyName("chat_inference_engine_id")]
+    public Guid? ChatInferenceEngineId { get; set; }
+    
+    /// <summary>
     /// Gets or sets the name of the chat model
     /// </summary>
     [JsonPropertyName("chat_model")]
     public string? ChatModel { get; set; }
     
     /// <summary>
-    /// Gets or sets the name of the embedding model
+    /// Gets or sets the id of the vision model's inference engine
     /// </summary>
-    [JsonPropertyName("embedding_model")]
-    public string? EmbeddingModel { get; set; }
+    [JsonPropertyName("vision_inference_engine_id")]
+    public Guid? VisionInferenceEngineId { get; set; }
     
     /// <summary>
     /// Gets or sets the name of the vision model
@@ -43,22 +49,8 @@ public class AesirAgentBase
     public string? VisionModel { get; set; }
     
     /// <summary>
-    /// Gets or sets the souece of the model
-    /// </summary>
-    [JsonPropertyName("source")]
-    public ModelSource? Source { get; set; }
-    
-    /// <summary>
     /// Gets or sets the prompt used by the agent
     /// </summary>
     [JsonPropertyName("prompt")]
     public PromptPersona? Prompt { get; set; }
-}
-
-public enum ModelSource
-{
-    [Description("OpenAI")]
-    OpenAI,
-    [Description("Ollama")]
-    Ollama
 }

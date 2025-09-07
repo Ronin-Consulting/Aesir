@@ -94,7 +94,7 @@ public class ChatServiceTests
         var logger = new Mock<ILogger<ChatService>>();
         
         var chatService = new ChatService(logger.Object, _configuration, _flurlClientCache);
-        var request = new AesirChatRequest()
+        var request = new AesirChatRequestBase()
         {
             Model = "llama-3-8b",
             Conversation = new AesirConversation()
@@ -136,7 +136,7 @@ public class ChatServiceTests
         var logger = new Mock<ILogger<ChatService>>();
         
         var chatService = new ChatService(logger.Object, _configuration, _flurlClientCache);
-        var request = new AesirChatRequest()
+        var request = new AesirChatRequestBase()
         {
             Model = "llama-3-8b",
             Conversation = new AesirConversation()

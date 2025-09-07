@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
+using Aesir.Common.Models;
 using OpenAI;
 
 namespace Aesir.Api.Server.Services.Implementations.OpenAI;
@@ -24,48 +25,93 @@ public class ModelsService(
     private readonly ILogger<ModelsService> _logger = logger;
 
     /// <summary>
-    /// Retrieves a collection of available models from the OpenAI API, filtered to include only
-    /// the models explicitly configured for use, such as chat and embedding models.
+    /// Retrieves a collection of AI models based on the specified category.
     /// </summary>
+    /// <param name="category">
+    /// An optional category of models to filter the results. If null, all models are returned.
+    /// </param>
     /// <returns>
-    /// A task that represents the asynchronous operation. The task result is an enumerable
-    /// collection of <see cref="AesirModelInfo"/> objects representing the configured models.
+    /// A task representing the asynchronous operation, with a result of an enumerable collection of AI model information.
     /// </returns>
-    public async Task<IEnumerable<AesirModelInfo>> GetModelsAsync()
+    public async Task<IEnumerable<AesirModelInfo>> GetModelsAsync(ModelCategory? category)
     {
-        var result = new List<AesirModelInfo>();
+        var models = new List<AesirModelInfo>();
 
-        // Getting embedding model from configuration
-        var embeddingModel = configuration.GetValue<string>("Inference:OpenAI:EmbeddingModel") ??
-                             "text-embedding-3-small";
-
-        // Getting chat models from configuration
-        var configuredChatModels = configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>() ??
-                                   ["gpt-4o", "gpt-4-turbo"];
-
-        // Get available models from API
         try
         {
-            var response = await client.GetOpenAIModelClient().GetModelsAsync();
-
-            foreach (var model in response.Value)
+            // Get available models from API
+            var openAiModels = (await client.GetOpenAIModelClient().GetModelsAsync()).Value;
+            
+            // populate embedding models
+            if (category is null or ModelCategory.Embedding)
             {
-                // Check if this is one of our configured models
-                var isChatModel = configuredChatModels.Contains(model.Id);
-                var isEmbeddingModel = embeddingModel == model.Id;
+                var allowedModelNames =
+                    configuration.GetSection("Configuration:RestrictEmbeddingModelsTo").Get<string[]>() ?? [];
 
-                // Only include models that are configured for use
-                if (isChatModel || isEmbeddingModel)
+                // restrict the models if the configuration requested it
+                var allowedModels = openAiModels.ToList();
+                if (allowedModelNames.Length > 0)
+                    allowedModels = openAiModels.Where(m => allowedModelNames.Contains(m.Id)).ToList();
+
+                allowedModels.ForEach(m =>
                 {
-                    result.Add(new AesirModelInfo
+                    models.Add(new AesirModelInfo
                     {
-                        Id = model.Id,
-                        OwnedBy = model.OwnedBy,
-                        CreatedAt = model.CreatedAt.DateTime,
-                        IsChatModel = isChatModel,
-                        IsEmbeddingModel = isEmbeddingModel
+                        Id = m.Id,
+                        OwnedBy = m.OwnedBy,
+                        CreatedAt = m.CreatedAt.DateTime,
+                        IsChatModel = false,
+                        IsEmbeddingModel = true
                     });
-                }
+                });
+            }
+
+            // populate chat models
+            if (category is null or ModelCategory.Chat)
+            {
+                var allowedModelNames =
+                    configuration.GetSection("Configuration:RestrictChatModelsTo").Get<string[]>() ?? [];
+
+                // restrict the models if the configuration requested it
+                var allowedModels = openAiModels.ToList();
+                if (allowedModelNames.Length > 0)
+                    allowedModels = openAiModels.Where(m => allowedModelNames.Contains(m.Id)).ToList();
+
+                allowedModels.ForEach(m =>
+                {
+                    models.Add(new AesirModelInfo
+                    {
+                        Id = m.Id,
+                        OwnedBy = m.OwnedBy,
+                        CreatedAt = m.CreatedAt.DateTime,
+                        IsChatModel = true,
+                        IsEmbeddingModel = false
+                    });
+                });
+            }
+
+            // populate vision models
+            if (category is null or ModelCategory.Vision)
+            {
+                var allowedModelNames =
+                    configuration.GetSection("Configuration:RestrictVisionModelsTo").Get<string[]>() ?? [];
+
+                // restrict the models if the configuration requested it
+                var allowedModels = openAiModels.ToList();
+                if (allowedModelNames.Length > 0)
+                    allowedModels = openAiModels.Where(m => allowedModelNames.Contains(m.Id)).ToList();
+
+                allowedModels.ForEach(m =>
+                {
+                    models.Add(new AesirModelInfo
+                    {
+                        Id = m.Id,
+                        OwnedBy = m.OwnedBy,
+                        CreatedAt = m.CreatedAt.DateTime,
+                        IsChatModel = false,
+                        IsEmbeddingModel = false
+                    });
+                });
             }
         }
         catch (Exception ex)
@@ -75,7 +121,7 @@ public class ModelsService(
             throw;
         }
 
-        return result;
+        return models;
     }
 
     /// <summary>

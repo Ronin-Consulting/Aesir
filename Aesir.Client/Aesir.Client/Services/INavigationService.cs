@@ -39,6 +39,15 @@ public interface INavigationService
     /// The exact implementation depends on the specific class handling the navigation.
     /// </remarks>
     void NavigateToAgents();
+    
+    /// <summary>
+    /// Navigates the user to the Inference Engines section within the application.
+    /// </summary>
+    /// <remarks>
+    /// This method is typically utilized for navigating to the Inference Engines page or component.
+    /// The exact implementation depends on the specific class handling the navigation.
+    /// </remarks>
+    void NavigateToInferenceEngines();
 
     /// <summary>
     /// Navigates to the Hands-Free view.

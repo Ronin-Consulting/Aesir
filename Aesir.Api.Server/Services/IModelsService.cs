@@ -1,4 +1,5 @@
 using Aesir.Api.Server.Models;
+using Aesir.Common.Models;
 
 namespace Aesir.Api.Server.Services;
 
@@ -8,10 +9,15 @@ namespace Aesir.Api.Server.Services;
 public interface IModelsService
 {
     /// <summary>
-    /// Retrieves information about available AI models.
+    /// Retrieves a collection of AI models based on the specified category.
     /// </summary>
-    /// <returns>A task representing the asynchronous operation that returns a collection of model information.</returns>
-    Task<IEnumerable<AesirModelInfo>> GetModelsAsync();
+    /// <param name="category">
+    /// An optional category of models to filter the results. If null, all models are returned.
+    /// </param>
+    /// <returns>
+    /// A task representing the asynchronous operation, with a result of an enumerable collection of AI model information.
+    /// </returns>
+    Task<IEnumerable<AesirModelInfo>> GetModelsAsync(ModelCategory? category);
     
     /// <summary>
     /// Unloads the currently loaded chat model from memory.

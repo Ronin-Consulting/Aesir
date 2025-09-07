@@ -31,12 +31,13 @@ public class DesignAgentViewViewModel : AgentViewViewModel
     {
         Id = Guid.NewGuid(),
         Name = "My Test Agent",
-        Source = ModelSource.Ollama,
+        Description = "",
         Prompt = PromptPersona.Military,
+        ChatInferenceEngineId = Guid.NewGuid(),
         ChatModel = "qwen3:32b-q4_K_M",
-        EmbeddingModel = "mxbai-embed-large:latest",
+        VisionInferenceEngineId = Guid.NewGuid(),
         VisionModel = "gemma3:12b"
-    }, new NoOpNotificationService(), new NoOpConfigurationService())
+    }, new NoOpNotificationService(), new NoOpConfigurationService(), new NoOpModelService())
     {
         AvailableTools = new ObservableCollection<string>()
         {

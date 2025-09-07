@@ -69,6 +69,18 @@
         <DependentUpon>McpServerView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\InferenceEnginesView.axaml.cs">
+        <DependentUpon>InferenceEnginesView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\InferenceEngineView.axaml.cs">
+        <DependentUpon>InferenceEngineView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\GeneralSettingsView.axaml.cs">
+        <DependentUpon>GeneralSettingsView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     
     <ItemGroup>

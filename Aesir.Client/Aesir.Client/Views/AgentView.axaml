@@ -35,7 +35,7 @@
             LabelPosition="Top">
             <u:Form.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto,*" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem Label="Name" Grid.ColumnSpan="3">
@@ -46,30 +46,21 @@
                 Grid.Column="0"
                 Grid.ColumnSpan="3" 
                 Label="Description">
-                <TextBox TextWrapping="Wrap" MinHeight="100" VerticalContentAlignment="Top" Text="{Binding FormModel.Description}" />
+                <TextBox
+                    TextWrapping="Wrap" 
+                    MinHeight="100" 
+                    MaxWidth="380"
+                    HorizontalAlignment="Stretch"
+                    VerticalContentAlignment="Top" 
+                    Text="{Binding FormModel.Description}" />
             </u:FormItem>
             <u:FormItem
                 Grid.Row="2"
                 Grid.Column="0"
-                Label="Source">
-                <ComboBox Width="150"
-                          ItemsSource="{Binding AvailableSources}"
-                          SelectedValue="{Binding FormModel.Source}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-            </u:FormItem>
-            <u:FormItem
-                Grid.Row="2"
-                Grid.Column="2"
-                Label="Prompt"
-                Margin="32,8,0,8">
+                Label="Prompt">
                 <ComboBox Width="150"
                           ItemsSource="{Binding AvailablePrompts}"
-                          SelectedValue="{Binding FormModel.Prompt}">
+                          SelectedItem="{Binding FormModel.Prompt}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
@@ -80,13 +71,13 @@
             <u:FormItem 
                 Grid.Row="3" 
                 Grid.ColumnSpan="3"
-                Label="Chat Model" >
+                Label="Chat Inference Engine" >
                 <ComboBox HorizontalAlignment="Stretch"
-                          ItemsSource="{Binding AvailableChatModels}"
-                          SelectedItem="{Binding FormModel.ChatModel}">
+                          ItemsSource="{Binding AvailableChatInferenceEngines}"
+                          SelectedItem="{Binding FormModel.ChatInferenceEngine}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
+                            <TextBlock Text="{Binding Name}" />
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
@@ -94,13 +85,14 @@
             <u:FormItem 
                 Grid.Row="4" 
                 Grid.ColumnSpan="3"
-                Label="Embedding Model" >
+                Label="Chat Model" >
                 <ComboBox HorizontalAlignment="Stretch"
-                          ItemsSource="{Binding AvailableEmbeddingModels}"
-                          SelectedItem="{Binding FormModel.EmbeddingModel}">
+                          ItemsSource="{Binding AvailableChatModels}"
+                          SelectedItem="{Binding FormModel.ChatModel}"
+                          IsEnabled="{Binding FormModel.ChatInferenceEngine, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
+                            <TextBlock Text="{Binding}" />
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
@@ -108,19 +100,34 @@
             <u:FormItem 
                 Grid.Row="5" 
                 Grid.ColumnSpan="3"
-                Label="Vision Model" >
+                Label="Vision Inference Engine" >
                 <ComboBox HorizontalAlignment="Stretch"
-                          ItemsSource="{Binding AvailableVisionModels}"
-                          SelectedItem="{Binding FormModel.VisionModel}">
+                          ItemsSource="{Binding AvailableVisionInferenceEngines}"
+                          SelectedItem="{Binding FormModel.VisionInferenceEngine}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
+                            <TextBlock Text="{Binding Name}" />
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="6" 
+                Grid.ColumnSpan="3"
+                Label="Vision Model" >
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding AvailableVisionModels}"
+                          SelectedItem="{Binding FormModel.VisionModel}"
+                          IsEnabled="{Binding FormModel.VisionInferenceEngine, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="7" 
                 Grid.ColumnSpan="3"
                 Label="Tools" >
                 <u:MultiComboBox

@@ -21,11 +21,18 @@ public class NavigationMessage
 
         /// <summary>
         /// Represents the "Tools" view
+        /// </summary>
         Tools,
 
         /// <summary>
         /// Represents the "Agents" view
+        /// </summary>
         Agents,
+        
+        /// <summary>
+        /// Represents the "Inference Engines" view
+        /// </summary>
+        InferenceEngines,
 
         /// <summary>
         /// Represents a hands-free view type within the navigation system.

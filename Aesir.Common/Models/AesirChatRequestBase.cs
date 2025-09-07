@@ -6,7 +6,7 @@ namespace Aesir.Common.Models;
 /// <summary>
 /// Base class for chat completion requests containing common properties.
 /// </summary>
-public abstract class AesirChatRequestBase
+public class AesirChatRequestBase
 {
     /// <summary>
     /// Gets or sets the model to use for the chat completion.

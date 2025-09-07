@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Services;
@@ -50,15 +51,25 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     private readonly IConfigurationService _configurationService;
 
     /// <summary>
+    /// Service for accessing models.
+    /// </summary>
+    private readonly IModelService _modelService;
+    
+    /// <summary>
+    /// Represents the initially selected inference engine for chat models
+    /// </summary>
+    private Guid? _initialChatInferenceEngineId;
+    
+    /// <summary>
+    /// Represents the initially selected inference engine for vision models
+    /// </summary>
+    private Guid? _initialVisionInferenceEngineId;
+
+    /// <summary>
     /// Represents the form data model for the agent view, used to handle data
     /// binding and validation within the AgentViewViewModel.
     /// </summary>
     [ObservableProperty] private AgentFormDataModel _formModel;
-
-    /// <summary>
-    /// Collection of available model sources that can be selected or used within the application.
-    /// </summary>
-    public ObservableCollection<ModelSource> AvailableSources { get; } = new(Enum.GetValues<ModelSource>());
 
     /// <summary>
     /// Collection of available prompts that defines the context in which the agent operates.
@@ -66,14 +77,19 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     public ObservableCollection<PromptPersona> AvailablePrompts { get; } = new(Enum.GetValues<PromptPersona>());
 
     /// <summary>
+    /// Collection of available inference engines for chat models
+    /// </summary>
+    public ObservableCollection<AesirInferenceEngineBase> AvailableChatInferenceEngines { get; set; }
+    
+    /// <summary>
     /// Collection of available chat models that can be used.
     /// </summary>
-    public ObservableCollection<string> AvailableChatModels { get; set; }
+    public ObservableCollection<string> AvailableChatModels { get; }
 
     /// <summary>
-    /// Collection of available embedding models that can be used or selected in the application.
+    /// Collection of available inference engines for vision models
     /// </summary>
-    public ObservableCollection<string> AvailableEmbeddingModels { get; set; }
+    public ObservableCollection<AesirInferenceEngineBase> AvailableVisionInferenceEngines { get; set; }
 
     /// <summary>
     /// Collection of available vision models that can be selected or used within the application.
@@ -114,21 +130,24 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     /// and communication between the user interface and underlying services.
     public AgentViewViewModel(AesirAgentBase agent, 
             INotificationService notificationService,
-            IConfigurationService configurationService)
+            IConfigurationService configurationService,
+            IModelService modelService)
     {
         _agent = agent;
         _notificationService = notificationService;
         _configurationService = configurationService;
+        _modelService = modelService;
+
+        _initialChatInferenceEngineId = agent.ChatInferenceEngineId;
+        _initialVisionInferenceEngineId = agent.VisionInferenceEngineId;
         
         FormModel = new()
         {
             IsExisting = agent.Id.HasValue,
             Name = agent.Name,
             Description = agent.Description,
-            Source = agent.Source,
             Prompt = agent.Prompt,
             ChatModel = agent.ChatModel,
-            EmbeddingModel = agent.EmbeddingModel,
             VisionModel = agent.VisionModel,
             Tools = new ObservableCollection<string>()
         };
@@ -137,10 +156,13 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
         CancelCommand = new RelayCommand(ExecuteCancelCommand);
         DeleteCommand = new AsyncRelayCommand(ExecuteDeleteCommand);
 
+        AvailableChatInferenceEngines = new ObservableCollection<AesirInferenceEngineBase>();
         AvailableChatModels = new ObservableCollection<string>();
-        AvailableEmbeddingModels = new ObservableCollection<string>();
+        AvailableVisionInferenceEngines = new ObservableCollection<AesirInferenceEngineBase>();
         AvailableVisionModels = new ObservableCollection<string>();
         AvailableTools = new ObservableCollection<string>();
+    
+        FormModel.PropertyChanged += OnFormModelPropertyChanged;
     }
 
     /// <summary>
@@ -158,25 +180,39 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     /// Asynchronously loads and initializes available tools, model sources, and models for the agent.
     /// This method retrieves available tools through the configuration service, updates relevant observable collections
     /// with the data, and configures the tools associated with the current agent.
-    /// Clears and repopulates available collections for chat models, embedding models, and vision models.
+    /// Clears and repopulates available collections for chat models, and vision models.
     /// </summary>
     /// <returns>A task representing the asynchronous operation of loading data.</returns>
     private async Task LoadAvailableAsync()
     {
         try
         {
-            // TODO actually load - sources will determine the models
-            AvailableChatModels.Clear();
-            AvailableChatModels.Add("gpt-4.1-2025-04-14");
-            AvailableChatModels.Add("qwen3:32b-q4_K_M");
-            AvailableChatModels.Add("cogito:32b-v1-preview-qwen-q4_K_M");
-            AvailableEmbeddingModels.Clear();
-            AvailableEmbeddingModels.Add("text-embedding-3-large");
-            AvailableEmbeddingModels.Add("mxbai-embed-large:latest");
-            AvailableVisionModels.Clear();
-            AvailableVisionModels.Add("gpt-4.1-2025-04-14");
-            AvailableVisionModels.Add("gemma3:12b");
+            // first get available engines
+            var availableInferenceEngines = await _configurationService.GetInferenceEnginesAsync();
+            AvailableChatInferenceEngines.Clear();
+            AvailableVisionInferenceEngines.Clear();
+            foreach (var availableInferenceEngine in availableInferenceEngines)
+            {
+                AvailableChatInferenceEngines.Add(availableInferenceEngine);
+                AvailableVisionInferenceEngines.Add(availableInferenceEngine);
+            }
             
+            // disable property change as we are about to set some values that cause loading
+            FormModel.PropertyChanged -= OnFormModelPropertyChanged;
+            
+            // establish the selected inference engines
+            if (_initialChatInferenceEngineId != null)
+                FormModel.ChatInferenceEngine = AvailableChatInferenceEngines.First(s => s.Id == _initialChatInferenceEngineId);
+            if (_initialVisionInferenceEngineId != null)
+                FormModel.VisionInferenceEngine = AvailableVisionInferenceEngines.First(s => s.Id == _initialVisionInferenceEngineId);
+
+            // re-enable property change
+            FormModel.PropertyChanged += OnFormModelPropertyChanged;
+            
+            // get available models if available
+            await LoadChatModels();
+            await LoadVisionModels();
+
             // get available tools
             var availableTools = await _configurationService.GetToolsAsync();
             AvailableTools.Clear();
@@ -195,7 +231,30 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error loading agents: {ex.Message}");
+            Console.WriteLine($"Error loading agents: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Loads chat models
+    /// </summary>
+    private async Task LoadChatModels()
+    {
+        AvailableChatModels.Clear();
+        
+        if (FormModel.ChatInferenceEngine == null)
+            return;
+
+        try
+        {
+            var availableModels = await _modelService.GetModelsAsync(
+                FormModel.ChatInferenceEngine.Id.Value, ModelCategory.Chat);
+            foreach (var model in availableModels)
+                AvailableChatModels.Add(model.Id);
+        }
+        catch (Exception e)
+        {
+            // TODO
         }
         
         // The SelectedItem wasn't in the ComboBox's collection initially since we just loaded it. Ideally it
@@ -203,20 +262,64 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
         // We have to force the ComboBox to re-bind the SelectedItem to get it to work.
         
         var currentChatModel = FormModel.ChatModel;
-        var currentEmbeddingModel = FormModel.EmbeddingModel;
-        var currentVisionModel = FormModel.VisionModel;
         
         FormModel.ChatModel = null;
-        FormModel.EmbeddingModel = null;
-        FormModel.VisionModel = null;
 
         // Be a little wiser and only set the value if they exist in the collections (may have been removed from db)
         if (!string.IsNullOrEmpty(currentChatModel) && AvailableChatModels.Contains(currentChatModel))
             FormModel.ChatModel = currentChatModel;
-        if (!string.IsNullOrEmpty(currentEmbeddingModel) && AvailableEmbeddingModels.Contains(currentEmbeddingModel))
-            FormModel.EmbeddingModel = currentEmbeddingModel;
+    }
+
+    /// <summary>
+    /// Loads vision models
+    /// </summary>
+    private async Task LoadVisionModels()
+    {
+        AvailableVisionModels.Clear();
+        
+        if (FormModel.VisionInferenceEngine == null)
+            return;
+
+        try
+        {
+            var availableModels = await _modelService.GetModelsAsync(
+                FormModel.VisionInferenceEngine.Id.Value, ModelCategory.Vision);
+            foreach (var model in availableModels)
+                AvailableVisionModels.Add(model.Id);
+        }
+        catch (Exception e)
+        {
+            // TODO
+        }
+        
+        // The SelectedItem wasn't in the ComboBox's collection initially since we just loaded it. Ideally it
+        // would re-evaluate, but it doesn't want to. There is a very talked about issue with this timing.
+        // We have to force the ComboBox to re-bind the SelectedItem to get it to work.
+        
+        var currentVisionModel = FormModel.VisionModel;
+        
+        FormModel.VisionModel = null;
+
+        // Be a little wiser and only set the value if they exist in the collections (may have been removed from db)
         if (!string.IsNullOrEmpty(currentVisionModel) && AvailableVisionModels.Contains(currentVisionModel))
             FormModel.VisionModel = currentVisionModel;
+    }
+
+    /// <summary>
+    /// Handles property changes in the form model to trigger related updates.
+    /// </summary>
+    /// <param name="sender">The source of the event.</param>
+    /// <param name="e">Event data containing the name of the property that changed.</param>
+    private void OnFormModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {       
+        if (e.PropertyName == nameof(AgentFormDataModel.ChatInferenceEngine))
+        {
+            _ = LoadChatModels();
+        }
+        if (e.PropertyName == nameof(AgentFormDataModel.VisionInferenceEngine))
+        {
+            _ = LoadVisionModels();
+        }
     }
 
     /// <summary>
@@ -234,10 +337,10 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
             {
                 Name = FormModel.Name,
                 Description = FormModel.Description,
+                ChatInferenceEngineId = FormModel.ChatInferenceEngine.Id,
                 ChatModel = FormModel.ChatModel,
-                EmbeddingModel = FormModel.EmbeddingModel,
+                VisionInferenceEngineId = FormModel.VisionInferenceEngine.Id,
                 VisionModel = FormModel.VisionModel,
-                Source = FormModel.Source,
                 Prompt = FormModel.Prompt
             };
 
@@ -342,6 +445,13 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     {
         RequestClose?.Invoke(this, closeResult);
     }
+    
+    protected override void OnDeactivated()
+    {
+        base.OnDeactivated();
+    
+        FormModel.PropertyChanged -= OnFormModelPropertyChanged;
+    }
 }
 
 /// <summary>
@@ -360,24 +470,24 @@ public partial class AgentFormDataModel : ObservableValidator
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Name is required")] private string? _name;
 
     /// <summary>
-    /// Represents the source of the model, specifying its origin or provider.
-    /// </summary>
-    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Source is required")] private ModelSource? _source;
-
-    /// <summary>
     /// Represents the current prompt context for the agent, which is required for processing.
     /// </summary>
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Prompt is required")] private PromptPersona? _prompt;
+    
+    /// <summary>
+    /// Represents the specific Inference Engine selected for chat
+    /// </summary>
+    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Chat Inference Engine is required")] private AesirInferenceEngineBase? _chatInferenceEngine;
 
     /// <summary>
     /// Represents the selected chat model for the agent, which is a required field and is validated for compliance.
     /// </summary>
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Chat Model is required")] private string? _chatModel;
-
+    
     /// <summary>
-    /// The embedding model represented as a string, required for setting or validating the embedding configuration.
+    /// Represents the specific Inference Engine selected for vision
     /// </summary>
-    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Embedding Model is required")] private string? _embeddingModel;
+    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Vision Inference Engine is required")] private AesirInferenceEngineBase? _visionInferenceEngine;
     
     /// <summary>
     /// Represents the vision model input, required for agent form data validation.
@@ -405,5 +515,15 @@ public partial class AgentFormDataModel : ObservableValidator
     {
         ValidateAllProperties();
         return !HasErrors;
+    }
+
+    /// Clears the validation errors for a specific property or all properties if no property name is provided.
+    /// <param name="propertyName">
+    /// The name of the property whose validation errors should be cleared.
+    /// If null, validation errors for all properties will be cleared.
+    /// </param>
+    public void ClearValidation(string? propertyName = null)
+    {
+        ClearErrors(propertyName);
     }
 }

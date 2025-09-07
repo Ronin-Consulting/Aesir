@@ -51,7 +51,13 @@
                 Grid.Column="0"
                 Grid.ColumnSpan="3" 
                 Label="Description">
-                <TextBox TextWrapping="Wrap" MinHeight="100" VerticalContentAlignment="Top" Text="{Binding FormModel.Description}" />
+                <TextBox
+                    TextWrapping="Wrap" 
+                    MinHeight="100" 
+                    MaxWidth="380"
+                    HorizontalAlignment="Stretch"
+                    VerticalContentAlignment="Top"
+                    Text="{Binding FormModel.Description}" />
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="2" 

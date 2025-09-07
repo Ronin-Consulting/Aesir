@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Aesir.Client.Services.Implementations.NoOp;
@@ -28,32 +29,35 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
         {
             new()
             {
+                Id = Guid.NewGuid(),
                 Name = "Agent 1",
                 Description = "Random agent 1",
                 ChatModel = "gpt-4.1-2025-04-14",
-                EmbeddingModel = "text-embedding-3-large",
+                ChatInferenceEngineId = Guid.NewGuid(),
+                VisionInferenceEngineId = Guid.NewGuid(),
                 VisionModel = "gpt-4.1-2025-04-14",
-                Source = ModelSource.OpenAI,
                 Prompt = PromptPersona.Military
             },
             new()
             {
+                Id = Guid.NewGuid(),
                 Name = "Agent 2",
                 Description = "Random agent 2",
+                ChatInferenceEngineId = Guid.NewGuid(),
                 ChatModel = "qwen3:32b-q4_K_M",
-                EmbeddingModel = "mxbai-embed-large:latest",
+                VisionInferenceEngineId = Guid.NewGuid(),
                 VisionModel = "gemma3:12b",
-                Source = ModelSource.Ollama,
                 Prompt = PromptPersona.Military
             },
             new()
             {
+                Id = Guid.NewGuid(),
                 Name = "Computer Use",
                 Description = "Agent that is allowed to take control of the computer",
+                ChatInferenceEngineId = Guid.NewGuid(),
                 ChatModel = "cogito:32b-v1-preview-qwen-q4_K_M",
-                EmbeddingModel = "mxbai-embed-large:latest",
+                VisionInferenceEngineId = Guid.NewGuid(),
                 VisionModel = "gemma3:12b",
-                Source = ModelSource.Ollama,
                 Prompt = PromptPersona.Business
             }
         };

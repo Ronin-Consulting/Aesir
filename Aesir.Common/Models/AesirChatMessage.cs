@@ -177,8 +177,11 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     /// <returns>A new instance of <see cref="AesirChatMessage"/> configured as a system message.</returns>
     public static AesirChatMessage NewSystemMessage(string? content = null)
     {
+// TODO this will come from the agent
+var tmp = PromptPersona.Military;
+
         var promptProvider = DefaultPromptProvider.Instance;
-        var defaultSystemContent = promptProvider.GetSystemPrompt().Content;
+        var defaultSystemContent = promptProvider.GetSystemPrompt(tmp).Content;
         
         return new AesirChatMessage()
         {

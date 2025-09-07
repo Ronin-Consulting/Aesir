@@ -91,20 +91,14 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
         
         try
         {
-            Status = "Determining models available...";
+            Status = "Determining agents available...";
             for (var i = 0; i < 5; i++)
             {
                 try
                 {
                     Progress += 1;
 
-                    await _appState.LoadAvailableModelsAsync();
-                    _appState.SelectedModel = _appState.AvailableModels.FirstOrDefault(m => m.IsChatModel);
-                    
-                    // for now load the default persona here
-                    var defaultPersona = await _configurationService.GetDefaultPersonaAsync();
-                    
-                    DefaultPromptProvider.Instance.DefaultPromptPersona = defaultPersona;
+                    await _appState.LoadAvailableAgentsAsync();
                     
                     break;
                 }
@@ -117,9 +111,9 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load models");
+            _logger.LogError(ex, "Failed to load agents");
 
-            Status = "Error connecting to model host";
+            Status = "Error connecting to host";
             IsError = true;
 
             DispatcherTimer.RunOnce(ShutdownForError, TimeSpan.FromSeconds(10), DispatcherPriority.Default);

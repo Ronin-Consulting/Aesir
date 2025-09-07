@@ -68,11 +68,9 @@
                           SelectedItem="{Binding SelectedAgent}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
-                        <DataGridTextColumn Header="Source" Binding="{Binding Source}" />
                         <DataGridTextColumn Header="Prompt" Binding="{Binding Prompt}" />
-                        <DataGridTextColumn Header="Chat" Binding="{Binding ChatModel}" />
-                        <DataGridTextColumn Header="Embedding" Binding="{Binding EmbeddingModel}" />
-                        <DataGridTextColumn Header="Vision" Binding="{Binding VisionModel}" />
+                        <DataGridTextColumn Header="Chat Model" Binding="{Binding ChatModel}" />
+                        <DataGridTextColumn Header="Vision Model" Binding="{Binding VisionModel}" />
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>

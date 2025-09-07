@@ -2,10 +2,11 @@ using System.ClientModel;
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Data;
 using Aesir.Api.Server.Extensions;
+using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services;
-using Aesir.Api.Server.Services.Implementations;
 using Aesir.Api.Server.Services.Implementations.Onnx;
 using Aesir.Api.Server.Services.Implementations.Standard;
+using Aesir.Common.Models;
 using FluentMigrator.Runner;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -26,115 +27,139 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        // Register basic services needed for database configuration loading
+        builder.Services.AddSingleton<IDbContext, PgDbContext>(p =>
+            new PgDbContext(builder.Configuration.GetConnectionString("DefaultConnection")!)
+        );
+        builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
+        
+        // Load configuration from database, replacing any file configuration (if turned on)
+        LoadDatabaseConfiguration(builder);
+
         #region AI Backend Clients
-        var useOpenAi = builder.Configuration.GetValue<bool>("Inference:UseOpenAICompatible");
-
-        if (useOpenAi)
+        
+        // load inference engines (from file or db)
+        var inferenceEngines = builder.Configuration.GetSection("InferenceEngines")
+            .Get<AesirInferenceEngine[]>() ?? [];
+        foreach (var inferenceEngine in inferenceEngines)
         {
-            // should be transient to always get fresh kernel
-            builder.Services.AddTransient<IModelsService, AesirOpenAI.ModelsService>();
-            builder.Services.AddTransient<IChatService, AesirOpenAI.ChatService>();
-
-            builder.Services.AddTransient<AesirOpenAI.VisionModelConfig>(serviceProvider =>
+            switch (inferenceEngine.Type)
             {
-                var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-                return new AesirOpenAI.VisionModelConfig
+                case InferenceEngineType.Ollama:
                 {
-                    ModelId = configuration.GetValue<string>("Inference:OpenAI:VisionModel") ?? "NoVisionModel",
-                };
-            });
-            // should be transient so during dispose we unload model
-            builder.Services.AddTransient<IVisionService, AesirOpenAI.VisionService>();
+                    // should be transient to always get fresh kernel
+                    builder.Services.AddTransient<IModelsService, AesirOllama.ModelsService>();
+                    builder.Services.AddTransient<IChatService>(serviceProvider =>
+                    {
+                        var logger = serviceProvider.GetRequiredService<ILogger<AesirOllama.ChatService>>();
+                        var ollamApiClient = serviceProvider.GetRequiredService<OllamaApiClient>();
+                        var kernel = serviceProvider.GetRequiredService<Kernel>();
+                        var chatCompletionService = serviceProvider.GetRequiredService<IChatCompletionService>();
+                        var chatHistoryService = serviceProvider.GetRequiredService<IChatHistoryService>();
+                        var conversationDocumentCollectionService =
+                            serviceProvider.GetRequiredService<IConversationDocumentCollectionService>();
 
-            var apiKey = builder.Configuration["Inference:OpenAI:ApiKey"] ??
-                         throw new InvalidOperationException("OpenAI API key not configured");
+                        var enableThinking = Boolean.Parse(inferenceEngine.Configuration["EnableChatModelThinking"] ?? "false");
 
-            var apiCreds = new ApiKeyCredential(apiKey);
-            var endPoint = builder.Configuration["Inference:OpenAI:Endpoint"];
+                        return new AesirOllama.ChatService(
+                            logger,
+                            ollamApiClient,
+                            kernel,
+                            chatCompletionService,
+                            chatHistoryService,
+                            conversationDocumentCollectionService,
+                            enableThinking
+                        );
+                    });
 
-            if (string.IsNullOrEmpty(endPoint))
-                builder.Services.AddSingleton(new OpenAIClient(apiCreds));
-            else
-            {
-                builder.Services.AddSingleton(new OpenAIClient(apiCreds, new OpenAIClientOptions()
+                    builder.Services.AddTransient<AesirOllama.VisionModelConfig>(serviceProvider =>
+                    {
+                        // TODO do we need this config anymore?
+                        return new AesirOllama.VisionModelConfig
+                        {
+                            ModelId = "set-by-agent",
+                        };
+                    });
+                    // should be transient so during dispose we unload model
+                    builder.Services.AddTransient<IVisionService, AesirOllama.VisionService>();
+
+                    const string ollamaClientName = "OllamaApiClient";
+                    builder.Services.AddHttpClient(ollamaClientName, client =>
+                        {
+                            var endpoint = inferenceEngine.Configuration["Endpoint"] ??
+                                           throw new InvalidOperationException("Ollama Endpoint not configured");
+                            client.BaseAddress = new Uri($"{endpoint}/api");
+                        }).SetHandlerLifetime(TimeSpan.FromMinutes(2))
+                        .AddPolicyHandler(HttpPolicyExtensions
+                            .HandleTransientHttpError()
+                            .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.NotFound)
+                            .WaitAndRetryAsync(
+                                Backoff.DecorrelatedJitterBackoffV2(medianFirstRetryDelay: TimeSpan.FromMilliseconds(500),
+                                    retryCount: 5))
+                        ).AddHttpMessageHandler<LoggingHttpMessageHandler>();
+
+                    builder.Services.AddTransient<LoggingHttpMessageHandler>();
+
+                    builder.Services.AddTransient<OllamaApiClient>(p =>
+                    {
+                        var httpClientFactory = p.GetRequiredService<IHttpClientFactory>();
+
+                        var httpClient = httpClientFactory.CreateClient(ollamaClientName);
+
+                        return new OllamaApiClient(httpClient);
+                    });
+                    break;
+                }
+                case InferenceEngineType.OpenAICompatible:
                 {
-                    Endpoint = new Uri(endPoint)
-                }));
+                    // should be transient to always get fresh kernel
+                    builder.Services.AddTransient<IModelsService, AesirOpenAI.ModelsService>();
+                    builder.Services.AddTransient<IChatService, AesirOpenAI.ChatService>();
+
+                    builder.Services.AddTransient<AesirOpenAI.VisionModelConfig>(serviceProvider =>
+                    {
+                        // TODO do we need this config anymore?
+                        return new AesirOpenAI.VisionModelConfig
+                        {
+                            ModelId = "set-by-agent",
+                        };
+                    });
+                    // should be transient so during dispose we unload model
+                    builder.Services.AddTransient<IVisionService, AesirOpenAI.VisionService>();
+
+                    var apiKey = inferenceEngine.Configuration["ApiKey"] ??
+                                 throw new InvalidOperationException("OpenAI API key not configured");
+
+                    var apiCreds = new ApiKeyCredential(apiKey);
+                    var endPoint = inferenceEngine.Configuration["Endpoint"] ??
+                                   throw new InvalidOperationException("OpenAI Endpoint not configured");
+
+                    if (string.IsNullOrEmpty(endPoint))
+                        builder.Services.AddSingleton(new OpenAIClient(apiCreds));
+                    else
+                    {
+                        builder.Services.AddSingleton(new OpenAIClient(apiCreds, new OpenAIClientOptions()
+                        {
+                            Endpoint = new Uri(endPoint)
+                        }));
+                    }
+                    break;
+                }
             }
         }
-        else
-        {
-            // should be transient to always get fresh kernel
-            builder.Services.AddTransient<IModelsService, AesirOllama.ModelsService>();
-            builder.Services.AddTransient<IChatService>(serviceProvider =>
-            {
-                var logger = serviceProvider.GetRequiredService<ILogger<AesirOllama.ChatService>>();
-                var ollamApiClient = serviceProvider.GetRequiredService<OllamaApiClient>();
-                var kernel = serviceProvider.GetRequiredService<Kernel>();
-                var chatCompletionService = serviceProvider.GetRequiredService<IChatCompletionService>();
-                var chatHistoryService = serviceProvider.GetRequiredService<IChatHistoryService>();
-                var conversationDocumentCollectionService =
-                    serviceProvider.GetRequiredService<IConversationDocumentCollectionService>();
-
-                var enableThinking = builder.Configuration.GetValue<bool?>("Inference:Ollama:EnableChatModelThinking");
-
-                return new AesirOllama.ChatService(
-                    logger,
-                    ollamApiClient,
-                    kernel,
-                    chatCompletionService,
-                    chatHistoryService,
-                    conversationDocumentCollectionService,
-                    enableThinking ?? false
-                );
-            });
-
-            builder.Services.AddTransient<AesirOllama.VisionModelConfig>(serviceProvider =>
-            {
-                var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-                return new AesirOllama.VisionModelConfig
-                {
-                    ModelId = configuration.GetValue<string>("Inference:Ollama:VisionModel") ?? "NoVisionModel",
-                };
-            });
-            // should be transient so during dispose we unload model
-            builder.Services.AddTransient<IVisionService, AesirOllama.VisionService>();
-
-            const string ollamaClientName = "OllamaApiClient";
-            builder.Services.AddHttpClient(ollamaClientName, client =>
-                {
-                    var endpoint = builder.Configuration["Inference:Ollama:Endpoint"] ??
-                                   throw new InvalidOperationException();
-                    client.BaseAddress = new Uri($"{endpoint}/api");
-                }).SetHandlerLifetime(TimeSpan.FromMinutes(2))
-                .AddPolicyHandler(HttpPolicyExtensions
-                    .HandleTransientHttpError()
-                    .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.NotFound)
-                    .WaitAndRetryAsync(
-                        Backoff.DecorrelatedJitterBackoffV2(medianFirstRetryDelay: TimeSpan.FromMilliseconds(500),
-                            retryCount: 5))
-                ).AddHttpMessageHandler<LoggingHttpMessageHandler>();
-
-            builder.Services.AddTransient<LoggingHttpMessageHandler>();
-
-            builder.Services.AddTransient<OllamaApiClient>(p =>
-            {
-                var httpClientFactory = p.GetRequiredService<IHttpClientFactory>();
-
-                var httpClient = httpClientFactory.CreateClient(ollamaClientName);
-
-                // I don't like this... but need default model to do chat history summarization later..
-                // because Semantic Kernel is inflexible in this area
-                var modelNames =
-                    builder.Configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>();
-
-                return new OllamaApiClient(httpClient, modelNames?.FirstOrDefault() ?? string.Empty);
-            });
-        }
+        
+        // load general settings (from file or db)
+        var generalSettings = builder.Configuration.GetSection("GeneralSettings")
+            .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
+        var ttsModelPath = generalSettings["TtsModelPath"] ?? 
+                           throw new InvalidOperationException("TtsModelPath not configured");
+        var sttModelPath = generalSettings["SttModelPath"] ?? 
+                           throw new InvalidOperationException("SttModelPath not configured");
+        var vadModelPath = generalSettings["VadModelPath"] ?? 
+                           throw new InvalidOperationException("VadModelPath not configured");
 
         builder.Services.AddSingleton<ITtsService>(sp =>
         {
-            var ttsModelPath = builder.Configuration.GetValue<string>("Inference:Onnx:Tts");
             var useCudaValue = Environment.GetEnvironmentVariable("USE_CUDA");
             _ = bool.TryParse(useCudaValue, out var useCuda);
 
@@ -147,8 +172,6 @@ public class Program
         });
         builder.Services.AddSingleton<ISttService>(sp =>
         {
-            var sttModelPath = builder.Configuration.GetValue<string>("Inference:Onnx:Stt");
-            var vadModelPath = builder.Configuration.GetValue<string>("Inference:Onnx:Vad");
             var useCudaValue = Environment.GetEnvironmentVariable("USE_CUDA");
             _ = bool.TryParse(useCudaValue, out var useCuda);
 
@@ -162,32 +185,14 @@ public class Program
         });
 
         #endregion
-
-        builder.Services.AddSingleton<IDbContext, PgDbContext>(p =>
-            new PgDbContext(builder.Configuration.GetConnectionString("DefaultConnection")!)
-        );
-
-        builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
+        
         builder.Services.AddSingleton<IMcpServerService, McpServerService>();
         builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
         builder.Services.AddSingleton<IFileStorageService, FileStorageService>();
 
         builder.Services.SetupSemanticKernel(builder.Configuration);
 
-        builder.Services
-            .AddFluentMigratorCore()
-            .ConfigureRunner(rb => rb
-                .AddPostgres()
-                .WithGlobalConnectionString(
-                    builder.Configuration.GetConnectionString("DefaultConnection")
-                )
-                .ScanIn(typeof(Program).Assembly)
-                .For.Migrations())
-            .AddLogging(lb =>
-            {
-                lb.AddFluentMigratorConsole();
-                lb.AddConsole().SetMinimumLevel(LogLevel.Trace);
-            });
+        RegisterMigratorServices(builder, builder.Services);
 
         builder.Services.AddCors(options =>
         {
@@ -231,17 +236,165 @@ public class Program
 
         app.MigrateDatabase();
 
-        if (!useOpenAi)
-        {
-            app.EnsureOllamaBackend();
-        }
-
         var modelsService = app.Services.GetRequiredService<IModelsService>();
         var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 
         appLifetime.ApplicationStopping.Register(() => { modelsService.UnloadAllModelsAsync().Wait(); });
-
-
+        
         app.Run();
     }
+
+    private static IServiceCollection RegisterMigratorServices(WebApplicationBuilder builder, IServiceCollection services)
+    {
+        services
+            .AddFluentMigratorCore()
+            .ConfigureRunner(rb => rb
+                .AddPostgres()
+                .WithGlobalConnectionString(builder.Configuration.GetConnectionString("DefaultConnection"))
+                .ScanIn(typeof(Program).Assembly)
+                .For.Migrations())
+            .AddLogging(lb => lb.AddConsole().SetMinimumLevel(LogLevel.Information));
+
+        return services;
+    }
+
+    private static void LoadDatabaseConfiguration(WebApplicationBuilder builder)
+    {
+        // Read the configuration source setting from the default file-based configuration
+        var useDbConfig = builder.Configuration.GetValue<bool>("Configuration:LoadFromDatabase", false);
+
+        if (useDbConfig)
+        {   
+            // Ensure database and tables exist before trying to load config
+            EnsureDatabaseMigrations(builder);
+
+            // create an initial scope so we can use the database loading
+            var tempServiceProvider = builder.Services.BuildServiceProvider();
+            using var scope = tempServiceProvider.CreateScope();
+            var configurationService = scope.ServiceProvider.GetRequiredService<IConfigurationService>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+            try
+            {   
+                // Load our application-specific config sections from database
+                var dbConfig = LoadConfigFromDatabaseAsync(configurationService)
+                    .GetAwaiter().GetResult();
+                
+                // Clear sections we will populate from database so we don't end up with file values leaked in
+                var sectionToReplace = new string[]
+                {
+                    "GeneralSettings", 
+                    "InferenceEngines", 
+                    "Agents,", 
+                    "Tools", 
+                    "McpServers"
+                };
+                var keysToRemove = builder.Configuration.AsEnumerable()
+                    .Where(kvp => kvp.Key != null && sectionToReplace.Any(section => 
+                        kvp.Key.StartsWith($"{section}:", StringComparison.OrdinalIgnoreCase) || 
+                        kvp.Key.Equals(section, StringComparison.OrdinalIgnoreCase)))
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+                foreach (var key in keysToRemove)
+                    builder.Configuration[key] = null;
+                
+                // now populate sections from the database loaded values
+                foreach (var kvp in dbConfig)
+                    builder.Configuration[kvp.Key] = kvp.Value;
+        
+                logger.LogInformation("Successfully loaded application configuration from database");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to load configuration from database, using file configuration");
+            }
+        
+            tempServiceProvider.Dispose();
+        }
+    }
+    
+    private static void EnsureDatabaseMigrations(WebApplicationBuilder builder)
+    {
+        // Create a temporary service collection just for migrations
+        var migrationServices = new ServiceCollection();
+
+        RegisterMigratorServices(builder, migrationServices);
+
+        using var migrationServiceProvider = migrationServices.BuildServiceProvider(false);
+        using var scope = migrationServiceProvider.CreateScope();
+    
+        try
+        {
+            var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+            runner.MigrateUp();
+        
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogInformation("Database migrations completed successfully");
+        }
+        catch (Exception ex)
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "Failed to run database migrations");
+            throw; // Re-throw to prevent starting with potentially missing tables
+        }
+    }
+    
+    private static async Task<Dictionary<string, string?>> LoadConfigFromDatabaseAsync(IConfigurationService configurationService)
+    {
+        var config = new Dictionary<string, string?>();
+
+        var generalSettingsTask = configurationService.GetGeneralSettingsAsync();
+        var inferenceEnginesTask = configurationService.GetInferenceEnginesAsync();
+        var agentsTask = configurationService.GetAgentsAsync();
+        var toolsTask = configurationService.GetToolsAsync();
+        var mcpServersTask = configurationService.GetMcpServersAsync();
+        await Task.WhenAll(inferenceEnginesTask, agentsTask, toolsTask, mcpServersTask);
+
+        var generalSettings = await generalSettingsTask;
+        var inferenceEngines = await inferenceEnginesTask;
+        var agents = await agentsTask;
+        var tools = await toolsTask;
+        var mcpServers = await mcpServersTask;
+
+        // load general settings
+        var aesirInferenceEngines = inferenceEngines as AesirInferenceEngine[] ?? inferenceEngines.ToArray();
+        config["GeneralSettings:RagInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == generalSettings.RagInferenceEngineId)?.Name;
+        config["GeneralSettings:RagEmbeddingModel"] = generalSettings.RagEmbeddingModel;
+        config["GeneralSettings:TtsModelPath"] = generalSettings.TtsModelPath;
+        config["GeneralSettings:SttModelPath"] = generalSettings.SttModelPath;
+        config["GeneralSettings:VadModelPath"] = generalSettings.VadModelPath;
+            
+        // load inference engines
+        for (var idx = 0; idx < aesirInferenceEngines.Length; idx++)
+        {
+            var inferenceEngine = aesirInferenceEngines[idx];
+            config[$"InferenceEngines:{idx}:Name"] = inferenceEngine.Name;
+            config[$"InferenceEngines:{idx}:Type"] = inferenceEngine.Type!.ToString();
+
+            foreach (var entry in inferenceEngine.Configuration)
+                config[$"InferenceEngines:{idx}:Configuration:{entry.Key}"] = entry.Value;
+        }
+        
+        // load agents
+        var aesirAgents = agents as AesirAgent[] ?? agents.ToArray();
+        for (var idx = 0; idx < aesirAgents.Length; idx++)
+        {
+            var agent = aesirAgents[idx];
+            config[$"Agents:{idx}:Name"] = agent.Name;
+            config[$"Agents:{idx}:ChatInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == agent.ChatInferenceEngineId)?.Name;;
+            config[$"Agents:{idx}:ChatModel"] = agent.ChatModel;
+            config[$"Agents:{idx}:VisionInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == agent.VisionInferenceEngineId)?.Name;;
+            config[$"Agents:{idx}:VisionModel"] = agent.VisionModel;
+            config[$"Agents:{idx}:Prompt"] = agent.Prompt.ToString();
+        }
+        
+        // load tools
+        // TODO
+        
+        // load mcp servers
+        // TODO
+        
+        return config;
+    }
+
 }

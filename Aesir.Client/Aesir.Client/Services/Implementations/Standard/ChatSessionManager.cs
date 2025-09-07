@@ -89,19 +89,16 @@ public class ChatSessionManager(
     /// <summary>
     /// Asynchronously processes the chat request using the specified model and the provided conversation messages.
     /// </summary>
-    /// <param name="modelId">The unique identifier of the model to be utilized for processing the chat request. Must not be null or empty.</param>
+    /// <param name="agentId">The unique identifier of the agent to be utilized for processing the chat request. Must not be null or empty.</param>
     /// <param name="conversationMessages">The collection of conversation messages that provide context for the chat request. Must not be null.</param>
     /// <returns>A task that represents the asynchronous operation, containing the result of the chat request as a string.</returns>
     /// <exception cref="ArgumentException">Thrown if the <paramref name="modelId"/> is null, empty, or consists only of whitespace.</exception>
     /// <exception cref="ArgumentNullException">Thrown if the <paramref name="conversationMessages"/> is null.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the chat session is not loaded in the current application state.</exception>
     /// <exception cref="Exception">Thrown if an error occurs while processing the chat request.</exception>
-    public async Task<string> ProcessChatRequestAsync(string modelId,
+    public async Task<string> ProcessChatRequestAsync(Guid agentId,
         ObservableCollection<MessageViewModel?> conversationMessages)
     {
-        if (string.IsNullOrWhiteSpace(modelId))
-            throw new ArgumentException("Model Id cannot be null or empty", nameof(modelId));
-
         if (conversationMessages == null)
             throw new ArgumentNullException(nameof(conversationMessages));
 
@@ -117,14 +114,16 @@ public class ChatSessionManager(
             var message = AesirChatMessage.NewUserMessage(userMessage.Content);
             _appState.ChatSession.AddMessage(message);
 
-            var chatRequest = AesirChatRequest.NewWithDefaults();
-            chatRequest.Model = modelId;
-            chatRequest.Conversation = _appState.ChatSession.Conversation;
-            chatRequest.ChatSessionId = _appState.ChatSession.Id;
-            chatRequest.Title = _appState.ChatSession.Title;
-            chatRequest.ChatSessionUpdatedAt = DateTimeOffset.Now;
+            var agentChatRequest = new AesirAgentChatRequestBase();
+            agentChatRequest.AgentId = agentId;
+            agentChatRequest.Conversation = _appState.ChatSession.Conversation;
+            agentChatRequest.ChatSessionId = _appState.ChatSession.Id;
+            agentChatRequest.Title = _appState.ChatSession.Title;
+            agentChatRequest.ChatSessionUpdatedAt = DateTimeOffset.Now;
+            agentChatRequest.User = "Unknown"; // TODO
 
-            var result = _chatService.ChatCompletionsStreamedAsync(chatRequest);
+            var result = _chatService.AgentChatCompletionsStreamedAsync(agentChatRequest);
+            
             var assistantMessageViewModel =
                 conversationMessages.LastOrDefault(m => m is AssistantMessageViewModel) as AssistantMessageViewModel;
 
@@ -141,7 +140,7 @@ public class ChatSessionManager(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process chat request for model: {ModelId}", modelId);
+            _logger.LogError(ex, "Failed to process chat request for agent: {AgentId}", agentId);
             throw;
         }
     }

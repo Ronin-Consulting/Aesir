@@ -23,6 +23,153 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
         SqlMapper.AddTypeHandler(new JsonTypeHandler<IList<string?>>());
         SqlMapper.AddTypeHandler(new JsonTypeHandler<IDictionary<string, string?>>());
     }
+
+    /// <summary>
+    /// Asynchronously retrieves the Aesir general settings.
+    /// </summary>
+    /// <returns>
+    /// A task representing the operation. The task result contains the <see cref="AesirGeneralSettings"/>.
+    /// </returns>
+    public async Task<AesirGeneralSettings> GetGeneralSettingsAsync()
+    {
+        const string sql = @"
+            SELECT rag_inf_eng_id as RagInferenceEngineId, 
+                   rag_emb_model as RagEmbeddingModel, 
+                   tts_model_path as TtsModelPath, 
+                   stt_model_path as SttModelPath, 
+                   vad_model_path as VadModelPath
+            FROM aesir.aesir_general_settings
+        ";
+
+        return await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QueryFirstOrDefaultAsync<AesirGeneralSettings>(sql));
+    }
+
+    /// <summary>
+    /// Updates an existing AesirGeneralSetting in the database.
+    /// </summary>
+    /// <param name="generalSettings">The general setting with updated values.</param>
+    public async Task UpdateGeneralSettingsAsync(AesirGeneralSettings generalSettings)
+    {
+        const string sql = @"
+            UPDATE aesir.aesir_general_settings
+            SET rag_inf_eng_id = @RagInferenceEngineId, 
+                rag_emb_model = @RagEmbeddingModel, 
+                tts_model_path = @TtsModelPath, 
+                stt_model_path = @SttModelPath, 
+                vad_model_path = @VadModelPath
+        ";
+
+        var rows =  await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, generalSettings));
+        
+        if (rows == 0)
+            throw new Exception("No rows updated");
+        if (rows > 1)
+            throw new Exception("Multiple rows updated");
+    }
+
+    /// <summary>
+    /// Asynchronously retrieves a collection of Aesir inference engines.
+    /// </summary>
+    /// <returns>
+    /// A task representing the operation. The result contains an enumerable collection of <c>AesirInferenceEngine</c> objects.
+    /// </returns>
+    public async Task<IEnumerable<AesirInferenceEngine>> GetInferenceEnginesAsync()
+    {
+        const string sql = @"
+            SELECT id, name, description, type, configuration as Configuration
+            FROM aesir.aesir_inference_engine
+        ";
+
+        return await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QueryAsync<AesirInferenceEngine>(sql));
+    }
+
+    /// <summary>
+    /// Retrieves an AesirInferenceEngine by its unique identifier asynchronously.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirInferenceEngine to retrieve.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation.
+    /// The task result contains the <see cref="AesirInferenceEngine"/> corresponding to the given identifier.
+    /// If no agent is found, returns null.
+    /// </returns>
+    public async Task<AesirInferenceEngine> GetInferenceEngineAsync(Guid id)
+    {
+        const string sql = @"
+            SELECT id, name, description, type, configuration as Configuration
+            FROM aesir.aesir_inference_engine
+            WHERE id = @Id::uuid
+        ";
+        
+        return await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QueryFirstOrDefaultAsync<AesirInferenceEngine>(sql, new { Id = id }));
+    }
+
+    /// <summary>
+    /// Inserts a new AesirInferenceEngine into the database.
+    /// </summary>
+    /// <param name="InferenceEngine">The inference engine to insert.</param>
+    public async Task CreateInferenceEngineAsync(AesirInferenceEngine inferenceEngine)
+    {   
+        const string sql = @"
+            INSERT INTO aesir.aesir_inference_engine 
+            (name, description, type, configuration)
+            VALUES 
+            (@Name, @Description, @Type, @Configuration::jsonb)
+        ";
+
+        var rows = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, inferenceEngine));
+
+        if (rows == 0)
+            throw new Exception("No rows created");
+    }
+
+    /// <summary>
+    /// Updates an existing AesirInferenceEngine in the database.
+    /// </summary>
+    /// <param name="agent">The inference engine with updated values.</param>
+    public async Task UpdateInferenceEngineAsync(AesirInferenceEngine inferenceEngine)
+    {
+        const string sql = @"
+            UPDATE aesir.aesir_inference_engine
+            SET name = @Name,
+                description = @Description,
+                location = @Type,
+                configuration = @Configuration::jsonb
+            WHERE id = @Id
+        ";
+
+        var rows =  await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, inferenceEngine));
+        
+        if (rows == 0)
+            throw new Exception("No rows updated");
+        if (rows > 1)
+            throw new Exception("Multiple rows updated");
+    }
+
+    /// <summary>
+    /// Delete an existing AesirInferenceEngine from the database.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirInferenceEngine to delete.</param>
+    public async Task DeleteInferenceEngineAsync(Guid id)
+    {
+        const string sql = @"
+            DELETE FROM aesir.aesir_infernece_engine
+            WHERE id = @Id::uuid
+        ";
+
+        var rows = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, new { Id = id }));
+
+        if (rows == 0)
+            throw new Exception("No rows deleted");
+        if (rows > 1)
+            throw new Exception("Multiple rows deleted");
+    }
     
     /// <summary>
     /// Retrieves a list of Aesir agents stored in the database asynchronously.
@@ -33,7 +180,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     public async Task<IEnumerable<AesirAgent>> GetAgentsAsync()
     {
         const string sql = @"
-            SELECT id, name, description, chat_model as ChatModel, embedding_model as EmbeddingModel, vision_model as VisionModel, source, prompt
+            SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, vision_inference_engine_id as VisionInferenceEngineId, vision_model as VisionModel, prompt
             FROM aesir.aesir_agent
         ";
 
@@ -53,7 +200,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     public async Task<AesirAgent> GetAgentAsync(Guid id)
     {
         const string sql = @"
-            SELECT id, name, description, chat_model as ChatModel, embedding_model as EmbeddingModel, vision_model as VisionModel, source, prompt
+            SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, vision_inference_engine_id as VisionInferenceEngineId, vision_model as VisionModel, prompt
             FROM aesir.aesir_agent
             WHERE id = @Id::uuid
         ";
@@ -71,9 +218,9 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     {
         const string sql = @"
             INSERT INTO aesir.aesir_agent 
-            (name, description, chat_model, embedding_model, vision_model, source, prompt)
+            (name, description, chat_inference_engine_id, chat_model, vision_inference_engine_id, vision_model, prompt)
             VALUES 
-            (@Name, @Description, @ChatModel, @EmbeddingModel, @VisionModel, @Source, @Prompt)
+            (@Name, @Description, @ChatInferenceEngineId, @ChatModel, @VisionInferenceEngineId, @VisionModel, @Prompt)
         ";
 
         var rows = await dbContext.UnitOfWorkAsync(async connection =>
@@ -93,10 +240,10 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
             UPDATE aesir.aesir_agent
             SET name = @Name,
                 description = @Description,
+                chat_inference_engine_id = @ChatInferenceEngineId,
                 chat_model = @ChatModel,
-                embedding_model = @EmbeddingModel,
+                vision_inference_engine_id = @VisionInferenceEngineId
                 vision_model = @VisionModel,
-                source = @Source,
                 prompt = @Prompt
             WHERE id = @Id
         ";
