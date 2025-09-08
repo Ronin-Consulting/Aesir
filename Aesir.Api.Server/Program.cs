@@ -351,11 +351,25 @@ public class Program
                 throw new InvalidOperationException("Agents configuration is missing or empty");
             for (var i = 0; i < agents.Length; i++)
             {
-                var agent = inferenceEngines[i];
+                var agent = agents[i];
                 
                 // this logic assumes we are given the agents in order of their idx
                 agent.Id = Guid.NewGuid();
                 builder.Configuration[$"Agents:{i}:Id"] = agent.Id.ToString();
+                
+                // determine chat inference engine id
+                var chatInferenceEngineName = builder.Configuration[$"Agents:{i}:ChatInferenceEngineName"] ??
+                                             throw new InvalidOperationException("ChatInferenceEngineName not configured");
+                var chatInferenceEngineId = inferenceEngines.FirstOrDefault(ie => ie.Name == chatInferenceEngineName)?.Id ?? 
+                                            throw new InvalidOperationException("ChatInferenceEngineName does not match a configured Inference Engine");
+                builder.Configuration[$"Agents:{i}:ChatInferenceEngineId"] = chatInferenceEngineId.ToString();
+                
+                // determine vision inference engine id
+                var visionInferenceEngineName = builder.Configuration[$"Agents:{i}:VisionInferenceEngineName"] ??
+                                              throw new InvalidOperationException("VisionInferenceEngineName not configured");
+                var visionInferenceEngineId = inferenceEngines.FirstOrDefault(ie => ie.Name == visionInferenceEngineName)?.Id ?? 
+                                            throw new InvalidOperationException("VisionInferenceEngineName does not match a configured Inference Engine");
+                builder.Configuration[$"Agents:{i}:VisionInferenceEngineId"] = visionInferenceEngineId.ToString();
             }
         }
     }
@@ -405,6 +419,7 @@ public class Program
 
         // load general settings
         var aesirInferenceEngines = inferenceEngines as AesirInferenceEngine[] ?? inferenceEngines.ToArray();
+        config["GeneralSettings:RagInferenceEngineId"] = generalSettings.RagInferenceEngineId?.ToString();
         config["GeneralSettings:RagInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == generalSettings.RagInferenceEngineId)?.Name;
         config["GeneralSettings:RagEmbeddingModel"] = generalSettings.RagEmbeddingModel;
         config["GeneralSettings:TtsModelPath"] = generalSettings.TtsModelPath;
@@ -415,6 +430,7 @@ public class Program
         for (var idx = 0; idx < aesirInferenceEngines.Length; idx++)
         {
             var inferenceEngine = aesirInferenceEngines[idx];
+            config[$"InferenceEngines:{idx}:Id"] = inferenceEngine.Id.ToString();
             config[$"InferenceEngines:{idx}:Name"] = inferenceEngine.Name;
             config[$"InferenceEngines:{idx}:Type"] = inferenceEngine.Type!.ToString();
 
@@ -428,8 +444,10 @@ public class Program
         {
             var agent = aesirAgents[idx];
             config[$"Agents:{idx}:Name"] = agent.Name;
+            config[$"Agents:{idx}:ChatInferenceEngineId"] = agent.ChatInferenceEngineId.ToString();
             config[$"Agents:{idx}:ChatInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == agent.ChatInferenceEngineId)?.Name;;
             config[$"Agents:{idx}:ChatModel"] = agent.ChatModel;
+            config[$"Agents:{idx}:VisionInferenceEngineId"] = agent.VisionInferenceEngineId.ToString();
             config[$"Agents:{idx}:VisionInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == agent.VisionInferenceEngineId)?.Name;;
             config[$"Agents:{idx}:VisionModel"] = agent.VisionModel;
             config[$"Agents:{idx}:PromptPersona"] = agent.PromptPersona.ToString();
