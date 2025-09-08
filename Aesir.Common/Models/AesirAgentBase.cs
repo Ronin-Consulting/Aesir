@@ -49,8 +49,14 @@ public class AesirAgentBase
     public string? VisionModel { get; set; }
     
     /// <summary>
-    /// Gets or sets the prompt used by the agent
+    /// Gets or sets the prompt persona used by the agent
     /// </summary>
-    [JsonPropertyName("prompt")]
-    public PromptPersona? Prompt { get; set; }
+    [JsonPropertyName("prompt_persona")]
+    public PromptPersona? PromptPersona { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the custom prompt content used by the agent when the PromptPerson is Custom
+    /// </summary>
+    [JsonPropertyName("custom_prompt_content")]
+    public string? CustomPromptContent { get; set; }
 }

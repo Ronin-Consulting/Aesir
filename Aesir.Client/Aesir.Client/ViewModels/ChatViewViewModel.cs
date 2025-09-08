@@ -9,6 +9,7 @@ using Aesir.Client.Models;
 using Aesir.Client.Services;
 using Aesir.Common.FileTypes;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -267,6 +268,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             SelectedAgent = agent;
             SelectedAgentName = agent.Name;
             _appState.SelectedAgent = agent;
+            
+            // TODO this needs to reload the chat MessageViewModel with the appropriate system message
         }
     }
 
@@ -362,10 +365,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             if (AvailableAgents.Count == 0)
                 SelectedAgentName = "No agent available";
             else if (AvailableAgents.Count == 1)
-            {
-                SelectedAgent = AvailableAgents.First();
-                SelectedAgentName = SelectedAgent.Name;
-            }
+                ExecuteSelectAgent(AvailableAgents.First());
         }
         catch (Exception ex)
         {
@@ -468,8 +468,17 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             case "system":
                 messageViewModel = Ioc.Default.GetService<SystemMessageViewModel>();
                 if (messageViewModel != null)
+                {
+                    var promptPersona = _appState.SelectedAgent?.PromptPersona;
+                    string? customContent = null;
+
+                    if (promptPersona == PromptPersona.Custom)
+                        customContent = _appState.SelectedAgent?.CustomPromptContent;
+                    
                     // always reset the system message
-                    await messageViewModel.SetMessage(AesirChatMessage.NewSystemMessage());
+                    await messageViewModel.SetMessage(AesirChatMessage.NewSystemMessage(promptPersona, customContent));
+                }
+
                 break;
         }
 

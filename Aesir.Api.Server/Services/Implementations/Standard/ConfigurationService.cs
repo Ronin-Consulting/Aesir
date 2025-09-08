@@ -250,7 +250,7 @@ public class ConfigurationService(
         if (DatabaseMode)
         {
             const string sql = @"
-                SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, vision_inference_engine_id as VisionInferenceEngineId, vision_model as VisionModel, prompt
+                SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, vision_inference_engine_id as VisionInferenceEngineId, vision_model as VisionModel, prompt_persona as PromptPersona, custom_prompt_content as CustomPromptContent
                 FROM aesir.aesir_agent
             ";
 
@@ -280,7 +280,7 @@ public class ConfigurationService(
         if (DatabaseMode)
         {
             const string sql = @"
-                SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, vision_inference_engine_id as VisionInferenceEngineId, vision_model as VisionModel, prompt
+                SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, vision_inference_engine_id as VisionInferenceEngineId, vision_model as VisionModel, prompt_persona as PromptPersona, custom_prompt_content as CustomPromptContent
                 FROM aesir.aesir_agent
                 WHERE id = @Id::uuid
             ";
@@ -308,9 +308,9 @@ public class ConfigurationService(
         
         const string sql = @"
             INSERT INTO aesir.aesir_agent 
-            (name, description, chat_inference_engine_id, chat_model, vision_inference_engine_id, vision_model, prompt)
+            (name, description, chat_inference_engine_id, chat_model, vision_inference_engine_id, vision_model, prompt_persona, custom_prompt_content)
             VALUES 
-            (@Name, @Description, @ChatInferenceEngineId, @ChatModel, @VisionInferenceEngineId, @VisionModel, @Prompt)
+            (@Name, @Description, @ChatInferenceEngineId, @ChatModel, @VisionInferenceEngineId, @VisionModel, @PromptPersona, @CustomPromptContent)
         ";
 
         var rows = await dbContext.UnitOfWorkAsync(async connection =>
@@ -336,7 +336,8 @@ public class ConfigurationService(
                 chat_model = @ChatModel,
                 vision_inference_engine_id = @VisionInferenceEngineId
                 vision_model = @VisionModel,
-                prompt = @Prompt
+                prompt_persona = @PromptPersona,
+                custom_prompt_content = @CustomPromptContent,
             WHERE id = @Id
         ";
 

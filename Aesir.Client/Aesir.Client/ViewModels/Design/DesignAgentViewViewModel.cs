@@ -32,7 +32,8 @@ public class DesignAgentViewViewModel : AgentViewViewModel
         Id = Guid.NewGuid(),
         Name = "My Test Agent",
         Description = "",
-        Prompt = PromptPersona.Military,
+        PromptPersona = PromptPersona.Military,
+        CustomPromptContent = null,
         ChatInferenceEngineId = Guid.NewGuid(),
         ChatModel = "qwen3:32b-q4_K_M",
         VisionInferenceEngineId = Guid.NewGuid(),
@@ -45,6 +46,7 @@ public class DesignAgentViewViewModel : AgentViewViewModel
             "Web"
         };
         IsDirty = false;
+        EditCustomPromptCommand = new RelayCommand(() => { });
         SaveCommand = new RelayCommand(() => { });
         CancelCommand = new RelayCommand(() => { });
         DeleteCommand = new RelayCommand(() => { });

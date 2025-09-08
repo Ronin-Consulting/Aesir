@@ -432,7 +432,8 @@ public class Program
             config[$"Agents:{idx}:ChatModel"] = agent.ChatModel;
             config[$"Agents:{idx}:VisionInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == agent.VisionInferenceEngineId)?.Name;;
             config[$"Agents:{idx}:VisionModel"] = agent.VisionModel;
-            config[$"Agents:{idx}:Prompt"] = agent.Prompt.ToString();
+            config[$"Agents:{idx}:PromptPersona"] = agent.PromptPersona.ToString();
+            config[$"Agents:{idx}:CustomPromptContent"] = agent.CustomPromptContent;
         }
         
         // load tools

@@ -72,9 +72,9 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     [ObservableProperty] private AgentFormDataModel _formModel;
 
     /// <summary>
-    /// Collection of available prompts that defines the context in which the agent operates.
+    /// Collection of available prompt personas that defines the context in which the agent operates.
     /// </summary>
-    public ObservableCollection<PromptPersona> AvailablePrompts { get; } = new(Enum.GetValues<PromptPersona>());
+    public ObservableCollection<PromptPersona> AvailablePromptPersonas { get; } = new(Enum.GetValues<PromptPersona>());
 
     /// <summary>
     /// Collection of available inference engines for chat models
@@ -105,6 +105,11 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     /// Indicates whether the view model has unsaved changes.
     /// </summary>
     public bool IsDirty { get; set; }
+
+    /// <summary>
+    /// Command executed to edit a custom prompt content.
+    /// </summary>
+    public ICommand EditCustomPromptCommand { get; set; }
 
     /// <summary>
     /// Command executed to save the current state or data of the agent view.
@@ -146,12 +151,14 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
             IsExisting = agent.Id.HasValue,
             Name = agent.Name,
             Description = agent.Description,
-            Prompt = agent.Prompt,
+            PromptPersona = agent.PromptPersona,
+            CustomPromptContent = agent.CustomPromptContent,
             ChatModel = agent.ChatModel,
             VisionModel = agent.VisionModel,
             Tools = new ObservableCollection<string>()
         };
         IsDirty = false;
+        EditCustomPromptCommand = new RelayCommand(ExecuteEditCustomPrompt);
         SaveCommand = new AsyncRelayCommand(ExecuteSaveCommand);
         CancelCommand = new RelayCommand(ExecuteCancelCommand);
         DeleteCommand = new AsyncRelayCommand(ExecuteDeleteCommand);
@@ -323,6 +330,14 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     }
 
     /// <summary>
+    /// Executes the logic to edit custom prompt content.
+    /// </summary>
+    private void ExecuteEditCustomPrompt()
+    {
+        // TODO
+    }
+
+    /// <summary>
     /// Executes the logic to save the changes made in the form.
     /// This method validates the form model before saving the data.
     /// If validation is successful, the method applies the changes from the form model to the underlying agent object,
@@ -341,7 +356,8 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
                 ChatModel = FormModel.ChatModel,
                 VisionInferenceEngineId = FormModel.VisionInferenceEngine.Id,
                 VisionModel = FormModel.VisionModel,
-                Prompt = FormModel.Prompt
+                PromptPersona = FormModel.PromptPersona,
+                CustomPromptContent = FormModel.CustomPromptContent
             };
 
             var closeResult = CloseResult.Errored;
@@ -472,7 +488,12 @@ public partial class AgentFormDataModel : ObservableValidator
     /// <summary>
     /// Represents the current prompt context for the agent, which is required for processing.
     /// </summary>
-    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Prompt is required")] private PromptPersona? _prompt;
+    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Prompt is required")] private PromptPersona? _promptPersona;
+
+    /// <summary>
+    /// Represents the current prompt content for the agent when the prompt persona is custom
+    /// </summary>
+    [ObservableProperty] private string? _customPromptContent;
     
     /// <summary>
     /// Represents the specific Inference Engine selected for chat

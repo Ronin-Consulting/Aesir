@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Aesir.Client.Models;
 using Aesir.Client.ViewModels;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.Services.Implementations.Standard;
@@ -66,12 +67,19 @@ public class ChatSessionManager(
     /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task LoadChatSessionAsync()
     {
+        var promptPersona = _appState.SelectedAgent?.PromptPersona;
+        string? customContent = null;
+
+        if (promptPersona == PromptPersona.Custom)
+            customContent = _appState.SelectedAgent?.CustomPromptContent;
+        
         try
         {
             var currentId = _appState.SelectedChatSessionId;
             if (currentId == null)
             {
-                _appState.ChatSession = new AesirChatSession();
+                
+                _appState.ChatSession = new AesirChatSession(promptPersona, customContent);
                 return;
             }
 
@@ -81,7 +89,7 @@ public class ChatSessionManager(
         {
             _logger.LogError(ex, "Failed to load chat session with ID: {ChatSessionId}",
                 _appState.SelectedChatSessionId);
-            _appState.ChatSession = new AesirChatSession();
+            _appState.ChatSession = new AesirChatSession(promptPersona, customContent);
             throw;
         }
     }

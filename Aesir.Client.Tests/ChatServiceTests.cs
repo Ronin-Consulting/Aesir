@@ -1,6 +1,6 @@
-using Aesir.Client.Models;
 using Aesir.Client.Services.Implementations.Standard;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 using FluentAssertions;
 using Flurl.Http;
 using Flurl.Http.Configuration;
@@ -102,7 +102,7 @@ public class ChatServiceTests
                 Id = "TestingConversation",
                 Messages = new List<AesirChatMessage>()
                 {
-                    AesirChatMessage.NewSystemMessage("You are a helpful assistant."),
+                    AesirChatMessage.NewSystemMessage(PromptPersona.Custom, "You are a helpful assistant."),
                     AesirChatMessage.NewUserMessage("How far from the Sun is the earth?")
                 }
             },
@@ -144,7 +144,7 @@ public class ChatServiceTests
                 Id = "TestingConversation",
                 Messages = new List<AesirChatMessage>()
                 {
-                    AesirChatMessage.NewSystemMessage("You are a helpful assistant."),
+                    AesirChatMessage.NewSystemMessage(PromptPersona.Custom, "You are a helpful assistant."),
                     AesirChatMessage.NewUserMessage("How far from the Sun is the earth?")
                 }
             },

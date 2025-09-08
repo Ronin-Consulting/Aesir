@@ -172,21 +172,34 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     /// <summary>
     /// Creates a new system message with the specified content and context.
     /// </summary>
-    /// <param name="content">The optional content of the system message. If null, a default system message will be used based on the specified context.</param>
-    /// <param name="context">The context of the system message used to determine the default content when no content is provided.</param>
+    /// <param name="promptPersona">The PromptPerson to use. If null, uses Business</param>
+    /// <param name="customContent">The optional content of the system message if the PromptPerson is Custom.</param>
     /// <returns>A new instance of <see cref="AesirChatMessage"/> configured as a system message.</returns>
-    public static AesirChatMessage NewSystemMessage(string? content = null)
+    public static AesirChatMessage NewSystemMessage(PromptPersona? promptPersona, string? customContent = null)
     {
-// TODO this will come from the agent
-var tmp = PromptPersona.Business;
-
-        var promptProvider = DefaultPromptProvider.Instance;
-        var defaultSystemContent = promptProvider.GetSystemPrompt(tmp).Content;
+        var content = "";
         
+        if (promptPersona == PromptPersona.Custom)
+        {
+            if (string.IsNullOrEmpty(customContent))
+                throw new InvalidOperationException("Missing custom content");
+            
+            content = customContent;
+        }
+        else
+        {
+            var promptProvider = DefaultPromptProvider.Instance;
+
+            if (promptPersona == null)
+                content = promptProvider.GetSystemPrompt(PromptPersona.Business).Content;
+            else
+                content = promptProvider.GetSystemPrompt(promptPersona.Value).Content;
+        }
+
         return new AesirChatMessage()
         {
             Role = "system",
-            Content = content ?? defaultSystemContent
+            Content = content
         };
     }
 
