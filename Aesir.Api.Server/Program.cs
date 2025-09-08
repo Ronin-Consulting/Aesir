@@ -33,8 +33,8 @@ public class Program
         );
         builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
         
-        // Load configuration from database, replacing any file configuration (if turned on)
-        LoadDatabaseConfiguration(builder);
+        // Load configuration from database or fix up / check file configuration
+        NormalizeFileOrDatabaseConfiguration(builder);
 
         #region AI Backend Clients
         
@@ -258,7 +258,15 @@ public class Program
         return services;
     }
 
-    private static void LoadDatabaseConfiguration(WebApplicationBuilder builder)
+    /// <summary>
+    /// Configures the application's settings by normalizing the primary configuration
+    /// source to either a file-based or database-based configuration, as specified by the user.
+    /// </summary>
+    /// <param name="builder">
+    /// The <see cref="WebApplicationBuilder"/> instance used to configure the web application,
+    /// including services, logging, and configuration settings.
+    /// </param>
+    private static void NormalizeFileOrDatabaseConfiguration(WebApplicationBuilder builder)
     {
         // Read the configuration source setting from the default file-based configuration
         var useDbConfig = builder.Configuration.GetValue<bool>("Configuration:LoadFromDatabase", false);
@@ -310,6 +318,45 @@ public class Program
             }
         
             tempServiceProvider.Dispose();
+        }
+        else
+        {
+            // give each inference engine an Id
+            var inferenceEngines = builder.Configuration.GetSection("InferenceEngines")
+                .Get<AesirInferenceEngine[]>() ?? [];
+            if (inferenceEngines.Length == 0)
+                throw new InvalidOperationException("InferenceEngines configuration is missing or empty");
+            for (var i = 0; i < inferenceEngines.Length; i++)
+            {
+                var inferenceEngine = inferenceEngines[i];
+                
+                // this logic assumes we are given the inference engines in order of their idx
+                inferenceEngine.Id = Guid.NewGuid();
+                builder.Configuration[$"InferenceEngines:{i}:Id"] = inferenceEngine.Id.ToString();
+            }
+
+            // update the rag inference engine id
+            var generalSettings = builder.Configuration.GetSection("GeneralSettings")
+                .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
+            var ragInferenceEngineName = generalSettings["RagInferenceEngineName"] ??
+                                         throw new InvalidOperationException("RagInferenceEngineName not configured");
+            var ragInferenceEngine = inferenceEngines.FirstOrDefault(ie => ie.Name == ragInferenceEngineName) ?? 
+                                     throw new InvalidOperationException("RagInferenceEngineName does not match a configured Inference Engine");
+            builder.Configuration[$"GeneralSettings:RagInferenceEngineId"] = ragInferenceEngine?.Id?.ToString() ?? null;
+            
+            // give each agent an id
+            var agents = builder.Configuration.GetSection("Agents")
+                .Get<AesirAgent[]>() ?? [];
+            if (inferenceEngines.Length == 0)
+                throw new InvalidOperationException("Agents configuration is missing or empty");
+            for (var i = 0; i < agents.Length; i++)
+            {
+                var agent = inferenceEngines[i];
+                
+                // this logic assumes we are given the agents in order of their idx
+                agent.Id = Guid.NewGuid();
+                builder.Configuration[$"Agents:{i}:Id"] = agent.Id.ToString();
+            }
         }
     }
     

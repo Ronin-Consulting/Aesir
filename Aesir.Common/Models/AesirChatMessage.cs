@@ -178,7 +178,7 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     public static AesirChatMessage NewSystemMessage(string? content = null)
     {
 // TODO this will come from the agent
-var tmp = PromptPersona.Military;
+var tmp = PromptPersona.Business;
 
         var promptProvider = DefaultPromptProvider.Instance;
         var defaultSystemContent = promptProvider.GetSystemPrompt(tmp).Content;

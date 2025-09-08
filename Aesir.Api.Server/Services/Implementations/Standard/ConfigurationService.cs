@@ -7,7 +7,10 @@ namespace Aesir.Api.Server.Services.Implementations.Standard;
 /// <summary>
 /// Provides operations for accessing and managing configuration data related to agents and tools.
 /// </summary>
-public class ConfigurationService(ILogger<ConfigurationService> logger, IDbContext dbContext) : IConfigurationService
+public class ConfigurationService(
+    ILogger<ConfigurationService> logger, 
+    IDbContext dbContext,
+    IConfiguration configuration) : IConfigurationService
 {
     /// <summary>
     /// Handles the management of configuration by providing operations such as
@@ -25,6 +28,24 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     }
 
     /// <summary>
+    /// Indicates if the service is in database mode or file mode
+    /// </summary>
+    public bool DatabaseMode => configuration.GetValue("Configuration:LoadFromDatabase", false);
+    
+    /// <summary>
+    /// Validates that the application is running in database mode.
+    /// Throws an InvalidOperationException if not in database mode.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when the application is not configured to run in database mode.</exception>
+    private void VerifyIsDatabaseMode()
+    {
+        if (!DatabaseMode)
+        {
+            throw new InvalidOperationException("This operation requires the application to be running in database mode.");
+        }
+    }
+
+    /// <summary>
     /// Asynchronously retrieves the Aesir general settings.
     /// </summary>
     /// <returns>
@@ -32,17 +53,36 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// </returns>
     public async Task<AesirGeneralSettings> GetGeneralSettingsAsync()
     {
-        const string sql = @"
-            SELECT rag_inf_eng_id as RagInferenceEngineId, 
-                   rag_emb_model as RagEmbeddingModel, 
-                   tts_model_path as TtsModelPath, 
-                   stt_model_path as SttModelPath, 
-                   vad_model_path as VadModelPath
-            FROM aesir.aesir_general_settings
-        ";
+        if (DatabaseMode)
+        {
+            const string sql = @"
+                SELECT rag_inf_eng_id as RagInferenceEngineId, 
+                       rag_emb_model as RagEmbeddingModel, 
+                       tts_model_path as TtsModelPath, 
+                       stt_model_path as SttModelPath, 
+                       vad_model_path as VadModelPath
+                FROM aesir.aesir_general_settings
+            ";
 
-        return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryFirstOrDefaultAsync<AesirGeneralSettings>(sql));
+            return await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryFirstOrDefaultAsync<AesirGeneralSettings>(sql));
+        }
+        else
+        {
+            var generalSettingsDictionary = configuration.GetSection("GeneralSettings")
+                .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
+    
+            var generalSettings = new AesirGeneralSettings()
+            {
+                RagInferenceEngineId = Guid.TryParse(generalSettingsDictionary["RagInferenceEngineId"], out var guid) ? guid : null,
+                RagEmbeddingModel = generalSettingsDictionary["RagEmbeddingModel"],
+                TtsModelPath = generalSettingsDictionary["TtsModelPath"],
+                SttModelPath = generalSettingsDictionary["SttModelPath"],
+                VadModelPath = generalSettingsDictionary["VadModelPath"]
+            };
+
+            return await Task.FromResult(generalSettings);
+        }
     }
 
     /// <summary>
@@ -51,6 +91,8 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <param name="generalSettings">The general setting with updated values.</param>
     public async Task UpdateGeneralSettingsAsync(AesirGeneralSettings generalSettings)
     {
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
             UPDATE aesir.aesir_general_settings
             SET rag_inf_eng_id = @RagInferenceEngineId, 
@@ -77,13 +119,23 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// </returns>
     public async Task<IEnumerable<AesirInferenceEngine>> GetInferenceEnginesAsync()
     {
-        const string sql = @"
-            SELECT id, name, description, type, configuration as Configuration
-            FROM aesir.aesir_inference_engine
-        ";
+        if (DatabaseMode)
+        {
+            const string sql = @"
+                SELECT id, name, description, type, configuration as Configuration
+                FROM aesir.aesir_inference_engine
+            ";
 
-        return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<AesirInferenceEngine>(sql));
+            return await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryAsync<AesirInferenceEngine>(sql));
+        }
+        else
+        {
+            var inferenceEngines = configuration.GetSection("InferenceEngines")
+                .Get<AesirInferenceEngine[]>() ?? [];
+
+            return await Task.FromResult(inferenceEngines);
+        }
     }
 
     /// <summary>
@@ -97,14 +149,24 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// </returns>
     public async Task<AesirInferenceEngine> GetInferenceEngineAsync(Guid id)
     {
-        const string sql = @"
-            SELECT id, name, description, type, configuration as Configuration
-            FROM aesir.aesir_inference_engine
-            WHERE id = @Id::uuid
-        ";
-        
-        return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryFirstOrDefaultAsync<AesirInferenceEngine>(sql, new { Id = id }));
+        if (DatabaseMode)
+        {
+            const string sql = @"
+                SELECT id, name, description, type, configuration as Configuration
+                FROM aesir.aesir_inference_engine
+                WHERE id = @Id::uuid
+            ";
+
+            return await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryFirstOrDefaultAsync<AesirInferenceEngine>(sql, new { Id = id }));
+        }
+        else
+        {
+            var inferenceEngines = configuration.GetSection("InferenceEngines")
+                .Get<AesirInferenceEngine[]>() ?? [];
+
+            return await Task.FromResult(inferenceEngines.FirstOrDefault(ie => ie.Id == id));
+        }
     }
 
     /// <summary>
@@ -113,6 +175,8 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <param name="InferenceEngine">The inference engine to insert.</param>
     public async Task CreateInferenceEngineAsync(AesirInferenceEngine inferenceEngine)
     {   
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
             INSERT INTO aesir.aesir_inference_engine 
             (name, description, type, configuration)
@@ -133,6 +197,8 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <param name="agent">The inference engine with updated values.</param>
     public async Task UpdateInferenceEngineAsync(AesirInferenceEngine inferenceEngine)
     {
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
             UPDATE aesir.aesir_inference_engine
             SET name = @Name,
@@ -157,6 +223,8 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <param name="id">The unique identifier of the AesirInferenceEngine to delete.</param>
     public async Task DeleteInferenceEngineAsync(Guid id)
     {
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
             DELETE FROM aesir.aesir_infernece_engine
             WHERE id = @Id::uuid
@@ -179,13 +247,23 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// </returns>
     public async Task<IEnumerable<AesirAgent>> GetAgentsAsync()
     {
-        const string sql = @"
-            SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, vision_inference_engine_id as VisionInferenceEngineId, vision_model as VisionModel, prompt
-            FROM aesir.aesir_agent
-        ";
+        if (DatabaseMode)
+        {
+            const string sql = @"
+                SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, vision_inference_engine_id as VisionInferenceEngineId, vision_model as VisionModel, prompt
+                FROM aesir.aesir_agent
+            ";
 
-        return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<AesirAgent>(sql));
+            return await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryAsync<AesirAgent>(sql));
+        }
+        else
+        {
+            var agents = configuration.GetSection("Agents")
+                .Get<AesirAgent[]>() ?? [];
+
+            return await Task.FromResult(agents);
+        }
     }
 
     /// <summary>
@@ -199,14 +277,24 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// </returns>
     public async Task<AesirAgent> GetAgentAsync(Guid id)
     {
-        const string sql = @"
-            SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, vision_inference_engine_id as VisionInferenceEngineId, vision_model as VisionModel, prompt
-            FROM aesir.aesir_agent
-            WHERE id = @Id::uuid
-        ";
+        if (DatabaseMode)
+        {
+            const string sql = @"
+                SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, vision_inference_engine_id as VisionInferenceEngineId, vision_model as VisionModel, prompt
+                FROM aesir.aesir_agent
+                WHERE id = @Id::uuid
+            ";
 
-        return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryFirstOrDefaultAsync<AesirAgent>(sql, new { Id = id }));
+            return await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryFirstOrDefaultAsync<AesirAgent>(sql, new { Id = id }));
+        }
+        else
+        {
+            var agents = configuration.GetSection("Agents")
+                .Get<AesirAgent[]>() ?? [];
+
+            return await Task.FromResult(agents.FirstOrDefault(a => a.Id == id));
+        }
     }
     
     /// <summary>
@@ -216,6 +304,8 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <returns>The number of rows affected.</returns>
     public async Task CreateAgentAsync(AesirAgent agent)
     {
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
             INSERT INTO aesir.aesir_agent 
             (name, description, chat_inference_engine_id, chat_model, vision_inference_engine_id, vision_model, prompt)
@@ -236,6 +326,8 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <param name="agent">The agent with updated values.</param>
     public async Task UpdateAgentAsync(AesirAgent agent)
     {
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
             UPDATE aesir.aesir_agent
             SET name = @Name,
@@ -263,6 +355,8 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <param name="id">The unique identifier of the AesirAgent to delete.</param>
     public async Task DeleteAgentAsync(Guid id)
     {
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
             DELETE FROM aesir.aesir_agent
             WHERE id = @Id::uuid
@@ -285,13 +379,23 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// </returns>
     public async Task<IEnumerable<AesirTool>> GetToolsAsync()
     {
-        const string sql = @"
+        if (DatabaseMode)
+        {
+            const string sql = @"
             SELECT id, name, type, description, mcp_server_id AS McpServerId, mcp_server_tool_name AS McpServerTool
             FROM aesir.aesir_tool
         ";
 
-        return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<AesirTool>(sql));
+            return await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryAsync<AesirTool>(sql));
+        }
+        else
+        {   
+            var tools = configuration.GetSection("Tools")
+                .Get<AesirTool[]>() ?? [];
+
+            return await Task.FromResult(tools);
+        }
     }
 
     /// <summary>
@@ -301,15 +405,28 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <returns>A task that represents the asynchronous operation. The task result contains a collection of tools used by the specified agent.</returns>
     public async Task<IEnumerable<AesirTool>> GetToolsUsedByAgentAsync(Guid id)
     {
-        const string sql = @"
-            SELECT t.id, t.name, t.type, t.description, mcp_server_id AS McpServerId, mcp_server_tool_name AS McpServerTool
-            FROM aesir.aesir_tool t 
-                INNER JOIN aesir.aesir_agent_tool at ON t.id = at.tool_id
-            WHERE at.agent_id = @AgentId::uuid
-        ";
+        if (DatabaseMode)
+        {
+            const string sql = @"
+                SELECT t.id, t.name, t.type, t.description, mcp_server_id AS McpServerId, mcp_server_tool_name AS McpServerTool
+                FROM aesir.aesir_tool t 
+                    INNER JOIN aesir.aesir_agent_tool at ON t.id = at.tool_id
+                WHERE at.agent_id = @AgentId::uuid
+            ";
 
-        return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<AesirTool>(sql, new { AgentId = id }));
+            return await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryAsync<AesirTool>(sql, new { AgentId = id }));
+        }
+        else
+        {   
+            var agents = configuration.GetSection("Agents")
+                .Get<AesirAgent[]>() ?? [];
+
+            var agent = agents.FirstOrDefault(a => a.Id == id);
+            
+            // TODO look at tools listed in agent configuration???
+            throw new NotSupportedException();
+        }
     }
 
     /// <summary>
@@ -320,14 +437,24 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// The task result contains the <see cref="AesirTool"/> object if found; otherwise, null.</returns>
     public async Task<AesirTool> GetToolAsync(Guid id)
     {
-        const string sql = @"
-            SELECT id, name, type, description, mcp_server_id AS McpServerId, mcp_server_tool_name AS McpServerTool
-            FROM aesir.aesir_tool
-            WHERE id = @Id::uuid
-        ";
+        if (DatabaseMode)
+        {
+            const string sql = @"
+                SELECT id, name, type, description, mcp_server_id AS McpServerId, mcp_server_tool_name AS McpServerTool
+                FROM aesir.aesir_tool
+                WHERE id = @Id::uuid
+            ";
 
-        return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryFirstOrDefaultAsync<AesirTool>(sql, new { Id = id }));
+            return await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryFirstOrDefaultAsync<AesirTool>(sql, new { Id = id }));
+        }
+        else
+        {
+            var tools = configuration.GetSection("Tools")
+                .Get<AesirTool[]>() ?? [];
+
+            return await Task.FromResult(tools.FirstOrDefault(t => t.Id == id));
+        }
     }
     
     /// <summary>
@@ -337,6 +464,8 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <returns>The number of rows affected.</returns>
     public async Task CreateToolAsync(AesirTool tool)
     {
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
             INSERT INTO aesir.aesir_tool 
             (name, description, type, mcp_server_id, mcp_server_tool_name)
@@ -357,6 +486,8 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <param name="tool">The agent with updated values.</param>
     public async Task UpdateToolAsync(AesirTool tool)
     {
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
             UPDATE aesir.aesir_tool
             SET name = @Name,
@@ -382,6 +513,8 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <param name="id">The unique identifier of the AesirTool to delete.</param>
     public async Task DeleteToolAsync(Guid id)
     {
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
             DELETE FROM aesir.aesir_tool
             WHERE id = @Id::uuid
@@ -404,13 +537,23 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// </returns>
     public async Task<IEnumerable<AesirMcpServer>> GetMcpServersAsync()
     {
-        const string sql = @"
-            SELECT id, name, description, location, command, arguments, environment_variables as EnvironmentVariables, url, http_headers as HttpHeaders
-            FROM aesir.aesir_mcp_server
-        ";
+        if (DatabaseMode)
+        {
+            const string sql = @"
+                SELECT id, name, description, location, command, arguments, environment_variables as EnvironmentVariables, url, http_headers as HttpHeaders
+                FROM aesir.aesir_mcp_server
+            ";
 
-        return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<AesirMcpServer>(sql));
+            return await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryAsync<AesirMcpServer>(sql));
+        }
+        else
+        {
+            var mcpServers = configuration.GetSection("McpServers")
+                .Get<AesirMcpServer[]>() ?? [];
+
+            return await Task.FromResult(mcpServers);
+        }
     }
 
     /// <summary>
@@ -424,14 +567,24 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// </returns>
     public async Task<AesirMcpServer> GetMcpServerAsync(Guid id)
     {
-        const string sql = @"
-            SELECT id, name, description, location, command, arguments, environment_variables as EnvironmentVariables, url, http_headers as HttpHeaders
-            FROM aesir.aesir_mcp_server
-            WHERE id = @Id::uuid
-        ";
-        
-        return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryFirstOrDefaultAsync<AesirMcpServer>(sql, new { Id = id }));
+        if (DatabaseMode)
+        {
+            const string sql = @"
+                SELECT id, name, description, location, command, arguments, environment_variables as EnvironmentVariables, url, http_headers as HttpHeaders
+                FROM aesir.aesir_mcp_server
+                WHERE id = @Id::uuid
+            ";
+
+            return await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryFirstOrDefaultAsync<AesirMcpServer>(sql, new { Id = id }));
+        }
+        else
+        {
+            var mcpServers = configuration.GetSection("McpServers")
+                .Get<AesirMcpServer[]>() ?? [];
+
+            return await Task.FromResult(mcpServers.FirstOrDefault(m => m.Id == id));
+        }
     }
     
     /// <summary>
@@ -441,6 +594,8 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <returns>The number of rows affected.</returns>
     public async Task CreateMcpServerAsync(AesirMcpServer mcpServer)
     {
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
             INSERT INTO aesir.aesir_mcp_server 
             (name, description, location, command, arguments, environment_variables, url, http_headers)
@@ -461,6 +616,8 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <param name="mcpServer">The MCP server with updated values.</param>
     public async Task UpdateMcpServerAsync(AesirMcpServer mcpServer)
     {
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
             UPDATE aesir.aesir_mcp_server 
             SET name = @Name,
@@ -489,10 +646,11 @@ public class ConfigurationService(ILogger<ConfigurationService> logger, IDbConte
     /// <param name="id">The unique identifier of the AesirMcpServer to delete.</param>
     public async Task DeleteMcpServerAsync(Guid id)
     {
+        VerifyIsDatabaseMode();
+        
         const string sql = @"
         DELETE FROM aesir.aesir_mcp_server
-        WHERE id = @Id::uuid
-    ";
+        WHERE id = @Id::uuid";
 
         var rows = await dbContext.UnitOfWorkAsync(async connection =>
             await connection.ExecuteAsync(sql, new { Id = id }));

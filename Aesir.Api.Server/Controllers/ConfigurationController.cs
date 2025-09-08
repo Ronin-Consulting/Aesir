@@ -25,9 +25,27 @@ namespace Aesir.Api.Server.Controllers;
 [Produces("application/json")]
 public class ConfigurationController(
     ILogger<ChatHistoryController> logger,
+    IConfiguration configuration,
     IConfigurationService configurationService,
     IMcpServerService mcpServerService) : ControllerBase
 {
+    /// <summary>
+    /// Determines whether the application is running in database mode by checking the configuration settings.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a boolean value indicating the database mode status.
+    /// </returns>
+    [HttpGet("databaseMode")]
+    public IActionResult IsInDatabaseMode()
+    {
+        var databaseMode = configurationService.DatabaseMode;
+        
+        logger.LogDebug("Database Mode = {DatabaseMode}", databaseMode);
+
+        return Ok(databaseMode);
+    }
+
+    
     [HttpGet("generalsettings")]
     public async Task<IActionResult> GetGeneralSettingsAsync()
     {

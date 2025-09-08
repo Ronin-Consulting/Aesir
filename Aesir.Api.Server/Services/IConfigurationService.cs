@@ -8,6 +8,11 @@ namespace Aesir.Api.Server.Services;
 public interface IConfigurationService
 {
     /// <summary>
+    /// Indicates if the service is in database mode or file mode
+    /// </summary>
+    public bool DatabaseMode { get; }
+    
+    /// <summary>
     /// Asynchronously retrieves the Aesir general settings.
     /// </summary>
     /// <returns>
