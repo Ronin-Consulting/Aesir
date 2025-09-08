@@ -334,10 +334,10 @@ public class ConfigurationService(
                 description = @Description,
                 chat_inference_engine_id = @ChatInferenceEngineId,
                 chat_model = @ChatModel,
-                vision_inference_engine_id = @VisionInferenceEngineId
+                vision_inference_engine_id = @VisionInferenceEngineId,
                 vision_model = @VisionModel,
                 prompt_persona = @PromptPersona,
-                custom_prompt_content = @CustomPromptContent,
+                custom_prompt_content = @CustomPromptContent
             WHERE id = @Id
         ";
 

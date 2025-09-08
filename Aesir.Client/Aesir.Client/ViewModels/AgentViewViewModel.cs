@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Services;
 using Aesir.Client.Shared;
+using Aesir.Client.Validators;
 using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using Avalonia.Threading;
@@ -357,7 +358,7 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
                 VisionInferenceEngineId = FormModel.VisionInferenceEngine.Id,
                 VisionModel = FormModel.VisionModel,
                 PromptPersona = FormModel.PromptPersona,
-                CustomPromptContent = FormModel.CustomPromptContent
+                CustomPromptContent = FormModel.PromptPersona == PromptPersona.Custom ? FormModel.CustomPromptContent : null
             };
 
             var closeResult = CloseResult.Errored;
@@ -493,7 +494,10 @@ public partial class AgentFormDataModel : ObservableValidator
     /// <summary>
     /// Represents the current prompt content for the agent when the prompt persona is custom
     /// </summary>
-    [ObservableProperty] private string? _customPromptContent;
+    [ObservableProperty] 
+    [NotifyDataErrorInfo] 
+    [ConditionalRequired(nameof(PromptPersona), Aesir.Common.Prompts.PromptPersona.Custom, ErrorMessage = "Prompt content is required")] 
+    private string? _customPromptContent;
     
     /// <summary>
     /// Represents the specific Inference Engine selected for chat

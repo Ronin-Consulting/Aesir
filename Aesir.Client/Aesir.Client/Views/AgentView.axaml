@@ -36,7 +36,7 @@
             LabelPosition="Top">
             <u:Form.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto,*" HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto,*" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem Label="Name" Grid.ColumnSpan="3">
@@ -77,18 +77,32 @@
                 HorizontalAlignment="Left">
                 <u:IconButton 
                     Classes="Tertiary"
-                    Content="Edit Custom Prompt"
-                    IconPlacement="Left" 
+                    Content="Open Editor"
+                    IconPlacement="Right" 
                     MinHeight="34"
                     IsEnabled="{Binding FormModel.PromptPersona, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static prompts:PromptPersona.Custom}}"
                     Command="{Binding EditCustomPromptCommand}">
                     <u:IconButton.Icon>
-                        <avalonia:MaterialIcon Kind="Pencil" Width="20" Height="20" />
+                        <avalonia:MaterialIcon Kind="OpenInNew" Width="20" Height="20"/>
                     </u:IconButton.Icon>
                 </u:IconButton>
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="3" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3" 
+                Label="Custom Prompt">
+                <TextBox
+                    TextWrapping="Wrap" 
+                    MinHeight="100" 
+                    MaxWidth="380"
+                    HorizontalAlignment="Stretch"
+                    VerticalContentAlignment="Top" 
+                    IsVisible="{Binding FormModel.PromptPersona, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static prompts:PromptPersona.Custom}}"
+                    Text="{Binding FormModel.CustomPromptContent}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="4" 
                 Grid.ColumnSpan="3"
                 Label="Chat Inference Engine" >
                 <ComboBox HorizontalAlignment="Stretch"
@@ -102,7 +116,7 @@
                 </ComboBox>
             </u:FormItem>
             <u:FormItem 
-                Grid.Row="4" 
+                Grid.Row="5" 
                 Grid.ColumnSpan="3"
                 Label="Chat Model" >
                 <ComboBox HorizontalAlignment="Stretch"
@@ -117,7 +131,7 @@
                 </ComboBox>
             </u:FormItem>
             <u:FormItem 
-                Grid.Row="5" 
+                Grid.Row="6" 
                 Grid.ColumnSpan="3"
                 Label="Vision Inference Engine" >
                 <ComboBox HorizontalAlignment="Stretch"
@@ -131,7 +145,7 @@
                 </ComboBox>
             </u:FormItem>
             <u:FormItem 
-                Grid.Row="6" 
+                Grid.Row="7" 
                 Grid.ColumnSpan="3"
                 Label="Vision Model" >
                 <ComboBox HorizontalAlignment="Stretch"
@@ -146,7 +160,7 @@
                 </ComboBox>
             </u:FormItem>
             <u:FormItem 
-                Grid.Row="7" 
+                Grid.Row="8" 
                 Grid.ColumnSpan="3"
                 Label="Tools" >
                 <u:MultiComboBox
