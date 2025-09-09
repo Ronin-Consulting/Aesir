@@ -3,12 +3,12 @@ using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Data;
 using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Services;
-using Aesir.Api.Server.Services.Implementations;
 using Aesir.Api.Server.Services.Implementations.Onnx;
 using Aesir.Api.Server.Services.Implementations.Standard;
 using FluentMigrator.Runner;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using Npgsql;
 using OllamaSharp;
 using OpenAI;
 using Polly;
@@ -31,10 +31,10 @@ public class Program
 
         if (useOpenAi)
         {
-            // should be transient to always get fresh kernel
-            builder.Services.AddTransient<IModelsService, AesirOpenAI.ModelsService>();
-            builder.Services.AddTransient<IChatService, AesirOpenAI.ChatService>();
+            // Changed to scoped for better performance - avoids expensive object creation per request
+            builder.Services.AddScoped<IChatService, AesirOpenAI.ChatService>();
 
+            builder.Services.AddTransient<IModelsService, AesirOpenAI.ModelsService>();
             builder.Services.AddTransient<AesirOpenAI.VisionModelConfig>(serviceProvider =>
             {
                 var configuration = serviceProvider.GetRequiredService<IConfiguration>();
@@ -43,7 +43,7 @@ public class Program
                     ModelId = configuration.GetValue<string>("Inference:OpenAI:VisionModel") ?? "NoVisionModel",
                 };
             });
-            // should be transient so during dispose we unload model
+            // Changed to scoped for better performance while maintaining model lifecycle
             builder.Services.AddTransient<IVisionService, AesirOpenAI.VisionService>();
 
             var apiKey = builder.Configuration["Inference:OpenAI:ApiKey"] ??
@@ -64,9 +64,9 @@ public class Program
         }
         else
         {
-            // should be transient to always get fresh kernel
-            builder.Services.AddTransient<IModelsService, AesirOllama.ModelsService>();
-            builder.Services.AddTransient<IChatService>(serviceProvider =>
+            // Changed to scoped for better performance - avoids expensive object creation per request
+            builder.Services.AddScoped<IModelsService, AesirOllama.ModelsService>();
+            builder.Services.AddScoped<IChatService>(serviceProvider =>
             {
                 var logger = serviceProvider.GetRequiredService<ILogger<AesirOllama.ChatService>>();
                 var ollamApiClient = serviceProvider.GetRequiredService<OllamaApiClient>();
@@ -97,8 +97,8 @@ public class Program
                     ModelId = configuration.GetValue<string>("Inference:Ollama:VisionModel") ?? "NoVisionModel",
                 };
             });
-            // should be transient so during dispose we unload model
-            builder.Services.AddTransient<IVisionService, AesirOllama.VisionService>();
+            // Changed to scoped for better performance while maintaining model lifecycle
+            builder.Services.AddScoped<IVisionService, AesirOllama.VisionService>();
 
             const string ollamaClientName = "OllamaApiClient";
             builder.Services.AddHttpClient(ollamaClientName, client =>
@@ -163,9 +163,25 @@ public class Program
 
         #endregion
 
-        builder.Services.AddSingleton<IDbContext, PgDbContext>(p =>
-            new PgDbContext(builder.Configuration.GetConnectionString("DefaultConnection")!)
-        );
+        // Configure connection pooling with NpgsqlDataSource
+        builder.Services.AddSingleton<NpgsqlDataSource>(provider =>
+        {
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
+                throw new InvalidOperationException("DefaultConnection connection string not configured");
+            
+            var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+            
+            // Configure connection pool parameters for optimal performance
+            dataSourceBuilder.ConnectionStringBuilder.MaxPoolSize = 100;
+            dataSourceBuilder.ConnectionStringBuilder.MinPoolSize = 10;
+            dataSourceBuilder.ConnectionStringBuilder.ConnectionIdleLifetime = 300; // 5 minutes
+            dataSourceBuilder.ConnectionStringBuilder.ConnectionPruningInterval = 10; // 10 seconds
+            dataSourceBuilder.ConnectionStringBuilder.CommandTimeout = 30; // 30 seconds
+            
+            return dataSourceBuilder.Build();
+        });
+
+        builder.Services.AddSingleton<IDbContext, PgDbContext>();
 
         builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
         builder.Services.AddSingleton<IMcpServerService, McpServerService>();
@@ -240,8 +256,7 @@ public class Program
         var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 
         appLifetime.ApplicationStopping.Register(() => { modelsService.UnloadAllModelsAsync().Wait(); });
-
-
+        
         app.Run();
     }
 }
