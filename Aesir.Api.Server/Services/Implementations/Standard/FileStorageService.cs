@@ -174,11 +174,11 @@ public class FileStorageService(ILogger<FileStorageService> logger, IDbContext d
     }
 
     /// <summary>
-    /// Retrieves the content of a file identified by its filename and returns the file path where the content is stored, along with metadata about the file.
+    /// Retrieves the content of a file identified by its filename and returns a temporary file handle that manages cleanup.
     /// </summary>
     /// <param name="filename">The name of the file to retrieve content for.</param>
-    /// <returns>A tuple containing the temporary file path where the file content is stored and an object with file metadata, or null if the file does not exist.</returns>
-    public async Task<(string FilePath, AesirFileInfo FileInfo)?> GetFileContentAsync(string filename)
+    /// <returns>A tuple containing the temporary file handle and file metadata, or null if the file does not exist.</returns>
+    public async Task<(TempFileHandle TempFile, AesirFileInfo FileInfo)?> GetFileContentAsync(string filename)
     {
         var fileInfo = await GetFileInfoAsync(filename);
         
@@ -195,11 +195,9 @@ public class FileStorageService(ILogger<FileStorageService> logger, IDbContext d
             await connection.QueryFirstOrDefaultAsync<FileContent>(sql, new { FileName = filename }));
         
         var extension = Path.GetExtension(fileInfo.FileName);
-        var tempFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
-
-        await File.WriteAllBytesAsync(tempFilePath, result!.Content);
+        var tempFile = await TempFileHandle.CreateAsync(extension, result!.Content);
         
-        return (tempFilePath,fileInfo);
+        return (tempFile, fileInfo);
     }
 
     /// <summary>
@@ -207,10 +205,10 @@ public class FileStorageService(ILogger<FileStorageService> logger, IDbContext d
     /// </summary>
     /// <param name="id">The unique identifier of the file to retrieve.</param>
     /// <returns>
-    /// A tuple containing the temporary file path and file information if the file exists;
+    /// A tuple containing the temporary file handle and file information if the file exists;
     /// otherwise, returns <c>null</c>.
     /// </returns>
-    public async Task<(string FilePath, AesirFileInfo FileInfo)?> GetFileContentAsync(Guid id)
+    public async Task<(TempFileHandle TempFile, AesirFileInfo FileInfo)?> GetFileContentAsync(Guid id)
     {
         var fileInfo = await GetFileInfoAsync(id);
         
@@ -227,11 +225,9 @@ public class FileStorageService(ILogger<FileStorageService> logger, IDbContext d
             await connection.QueryFirstOrDefaultAsync<FileContent>(sql, new { Id = id }));
         
         var extension = Path.GetExtension(fileInfo.FileName);
-        var tempFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
+        var tempFile = await TempFileHandle.CreateAsync(extension, result!.Content);
 
-        await File.WriteAllBytesAsync(tempFilePath, result!.Content);
-
-        return (tempFilePath, fileInfo);
+        return (tempFile, fileInfo);
     }
 
     /// <summary>
