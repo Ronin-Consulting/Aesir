@@ -162,10 +162,14 @@ public partial class AssistantMessageViewModel(
 
         if (!string.IsNullOrWhiteSpace(_thoughtsContent))
         {
-            var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(_thoughtsContent);
-            ThoughtsMessage = htmlMessage;
-
-            IsThinking = true;
+            // Move markdown rendering to background thread to avoid UI blocking
+            var htmlMessage = await Task.Run(() => markdownService.RenderMarkdownAsHtmlAsync(_thoughtsContent));
+            
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ThoughtsMessage = htmlMessage;
+                IsThinking = true;
+            });
         }
 
         await base.SetMessage(message);
@@ -214,7 +218,8 @@ public partial class AssistantMessageViewModel(
 
                     _thoughtsContent = _thoughtsContent.TrimStart().NormalizeLineEndings();
 
-                    var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(_thoughtsContent);
+                    // Render markdown on background thread to avoid UI blocking
+                    var htmlMessage = await Task.Run(() => markdownService.RenderMarkdownAsHtmlAsync(_thoughtsContent));
 
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
@@ -231,7 +236,8 @@ public partial class AssistantMessageViewModel(
 
                     Content = Content.TrimStart().NormalizeLineEndings();
 
-                    var htmlMessage = await markdownService.RenderMarkdownAsHtmlAsync(Content);
+                    // Render markdown on background thread to avoid UI blocking
+                    var htmlMessage = await Task.Run(() => markdownService.RenderMarkdownAsHtmlAsync(Content));
 
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
@@ -242,12 +248,16 @@ public partial class AssistantMessageViewModel(
                     });
                 }
 
-                // let ui catch up drawing
-                await Task.Delay(TimeSpan.FromMilliseconds(30));
+                // Brief yield to allow UI updates without fixed delays
+                await Task.Yield();
             }
 
+            // Final render with syntax highlighting on background thread
             if(!string.IsNullOrWhiteSpace(Content))
-                Message = await markdownService.RenderMarkdownAsHtmlAsync(Content, shouldRenderFencedCodeBlocks: true);
+            {
+                var finalMessage = await Task.Run(() => markdownService.RenderMarkdownAsHtmlAsync(Content, shouldRenderFencedCodeBlocks: true));
+                await Dispatcher.UIThread.InvokeAsync(() => Message = finalMessage);
+            }
             
             return title;
         });

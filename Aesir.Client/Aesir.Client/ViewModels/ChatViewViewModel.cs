@@ -379,9 +379,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     }
 
     /// Asynchronously refreshes and updates the list of conversation messages.
-    /// Clears the existing conversation messages, processes new messages in batches to optimize performance,
-    /// and ensures the UI remains responsive during the operation.
-    /// Logs errors and displays an appropriate error message to the user if the operation fails.
+    /// Optimized to create ViewModels off the UI thread and batch UI updates for better performance.
     /// <returns>
     /// A task that represents the ongoing asynchronous operation for refreshing conversation messages.
     /// </returns>
@@ -393,28 +391,30 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
 
             if (_appState.ChatSession != null)
             {
-                const int batchSize = 10;
                 var messages = _appState.ChatSession.GetMessages().ToList();
-
-                // Process messages in batches to avoid UI blocking
-                for (var i = 0; i < messages.Count; i += batchSize)
+                
+                // Create all ViewModels off the UI thread for better performance
+                var messageViewModels = await Task.Run(async () =>
                 {
-                    var batch = messages.Skip(i).Take(batchSize).ToList();
-
-                    await Dispatcher.UIThread.InvokeAsync(async () =>
+                    var viewModels = new List<MessageViewModel?>();
+                    
+                    foreach (var message in messages)
                     {
-                        foreach (var message in batch)
-                        {
-                            await AddMessageToConversationAsync(message);
-                        }
-                    });
-
-                    // Allow UI thread to breathe between batches
-                    if (i + batchSize < messages.Count)
-                    {
-                        await Task.Delay(10); // Slightly longer delay to prevent UI freezing
+                        var viewModel = await CreateMessageViewModelOffThreadAsync(message);
+                        viewModels.Add(viewModel);
                     }
-                }
+                    
+                    return viewModels;
+                });
+
+                // Single UI thread update with all ViewModels
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    foreach (var viewModel in messageViewModels.Where(vm => vm != null))
+                    {
+                        ConversationMessages.Add(viewModel);
+                    }
+                });
             }
         }
         catch (Exception ex)
@@ -422,6 +422,47 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             _logger.LogError(ex, "Failed to refresh conversation messages");
             ErrorMessage = "Failed to load conversation messages.";
         }
+    }
+
+    /// <summary>
+    /// Creates a message ViewModel off the UI thread to improve performance during conversation loading.
+    /// </summary>
+    /// <param name="message">The chat message to create a ViewModel for.</param>
+    /// <returns>A task that resolves to the created MessageViewModel or null if creation fails.</returns>
+    private async Task<MessageViewModel?> CreateMessageViewModelOffThreadAsync(AesirChatMessage message)
+    {
+        MessageViewModel? messageViewModel = null;
+
+        // Create ViewModel instance on background thread
+        switch (message.Role)
+        {
+            case "user":
+                messageViewModel = Ioc.Default.GetService<UserMessageViewModel>();
+                break;
+
+            case "assistant":
+                messageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
+                break;
+
+            case "system":
+                messageViewModel = Ioc.Default.GetService<SystemMessageViewModel>();
+                break;
+        }
+
+        // Set message content (this includes markdown rendering which is now optimized to run off UI thread)
+        if (messageViewModel != null)
+        {
+            if (message.Role == "system")
+            {
+                await messageViewModel.SetMessage(AesirChatMessage.NewSystemMessage());
+            }
+            else
+            {
+                await messageViewModel.SetMessage(message);
+            }
+        }
+
+        return messageViewModel;
     }
 
     /// Asynchronously adds a chat message to the conversation and associates it with the corresponding message view model.
