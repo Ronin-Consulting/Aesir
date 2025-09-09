@@ -39,13 +39,13 @@ public class AesirMcpServerBase
     /// Gets or sets the arguments of the local server
     /// </summary>
     [JsonPropertyName("arguments")]
-    public IList<string> Arguments { get; set; }
+    public IList<string> Arguments { get; set; } = new List<string>();
 
     /// <summary>
     /// Gets or sets the environment variables of the local server
     /// </summary>
     [JsonPropertyName("environment_variables")]
-    public IDictionary<string, string?> EnvironmentVariables { get; set; }
+    public IDictionary<string, string?> EnvironmentVariables { get; set; } = new Dictionary<string, string?>();
 
     /// <summary>
     /// Gets or sets the URL of the remote server
@@ -57,7 +57,7 @@ public class AesirMcpServerBase
     /// Gets or sets the HTTP headers of the remote server
     /// </summary>
     [JsonPropertyName("http_headers")]
-    public IDictionary<string, string?> HttpHeaders { get; set; }
+    public IDictionary<string, string?> HttpHeaders { get; set; } = new Dictionary<string, string?>();
 }
 
 public enum ServerLocation

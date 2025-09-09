@@ -371,6 +371,41 @@ public class Program
                                             throw new InvalidOperationException("VisionInferenceEngineName does not match a configured Inference Engine");
                 builder.Configuration[$"Agents:{i}:VisionInferenceEngineId"] = visionInferenceEngineId.ToString();
             }
+            
+            // give each mcp server an id
+            var mcpServers = builder.Configuration.GetSection("McpServers")
+                .Get<AesirMcpServer[]>() ?? [];
+            for (var i = 0; i < mcpServers.Length; i++)
+            {
+                var mcpServer = mcpServers[i];
+                
+                // this logic assumes we are given the agents in order of their idx
+                mcpServer.Id = Guid.NewGuid();
+                builder.Configuration[$"McpServers:{i}:Id"] = mcpServer.Id.ToString();
+            }
+            
+            // give each tool an id
+            var tools = builder.Configuration.GetSection("Tools")
+                .Get<AesirTool[]>() ?? [];
+            for (var i = 0; i < tools.Length; i++)
+            {
+                var tool = tools[i];
+                
+                // this logic assumes we are given the agents in order of their idx
+                tool.Id = Guid.NewGuid();
+                builder.Configuration[$"Tools:{i}:Id"] = tool.Id.ToString();
+                
+                // determine mcp server id
+                if (tool.Type == ToolType.McpServer)
+                {
+                    var mcpServerName = builder.Configuration[$"Tools:{i}:McpServerName"] ??
+                                        throw new InvalidOperationException("McpServerName not configured");
+                    var mcpServerId = mcpServers.FirstOrDefault(ie => ie.Name == mcpServerName)?.Id ??
+                                      throw new InvalidOperationException(
+                                          "McpServerName does not match a configured MCP Server");
+                    builder.Configuration[$"Tools:{i}:McpServerId"] = mcpServerId.ToString();
+                }
+            }
         }
     }
     
@@ -418,7 +453,7 @@ public class Program
         var mcpServers = await mcpServersTask;
 
         // load general settings
-        var aesirInferenceEngines = inferenceEngines as AesirInferenceEngine[] ?? inferenceEngines.ToArray();
+        var aesirInferenceEngines = inferenceEngines.ToArray();
         config["GeneralSettings:RagInferenceEngineId"] = generalSettings.RagInferenceEngineId?.ToString();
         config["GeneralSettings:RagInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == generalSettings.RagInferenceEngineId)?.Name;
         config["GeneralSettings:RagEmbeddingModel"] = generalSettings.RagEmbeddingModel;
@@ -432,6 +467,7 @@ public class Program
             var inferenceEngine = aesirInferenceEngines[idx];
             config[$"InferenceEngines:{idx}:Id"] = inferenceEngine.Id.ToString();
             config[$"InferenceEngines:{idx}:Name"] = inferenceEngine.Name;
+            config[$"InferenceEngines:{idx}:Description"] = inferenceEngine.Description ?? "";
             config[$"InferenceEngines:{idx}:Type"] = inferenceEngine.Type!.ToString();
 
             foreach (var entry in inferenceEngine.Configuration)
@@ -439,11 +475,13 @@ public class Program
         }
         
         // load agents
-        var aesirAgents = agents as AesirAgent[] ?? agents.ToArray();
+        var aesirAgents = agents.ToArray();
         for (var idx = 0; idx < aesirAgents.Length; idx++)
         {
             var agent = aesirAgents[idx];
+            config[$"Agents:{idx}:Id"] = agent.Id.ToString();
             config[$"Agents:{idx}:Name"] = agent.Name;
+            config[$"Agents:{idx}:Description"] = agent.Description ?? "";
             config[$"Agents:{idx}:ChatInferenceEngineId"] = agent.ChatInferenceEngineId.ToString();
             config[$"Agents:{idx}:ChatInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == agent.ChatInferenceEngineId)?.Name;;
             config[$"Agents:{idx}:ChatModel"] = agent.ChatModel;
@@ -454,11 +492,35 @@ public class Program
             config[$"Agents:{idx}:CustomPromptContent"] = agent.CustomPromptContent;
         }
         
-        // load tools
-        // TODO
-        
         // load mcp servers
-        // TODO
+        var aesirMcpServers = mcpServers.ToArray();
+        for (var idx = 0; idx < aesirMcpServers.Length; idx++)
+        {
+            var mcpServer = aesirMcpServers[idx];
+            config[$"McpServers:{idx}:Id"] = mcpServer.Id.ToString();
+            config[$"McpServers:{idx}:Name"] = mcpServer.Name;
+            config[$"McpServers:{idx}:Description"] = mcpServer.Description ?? "";
+            config[$"McpServers:{idx}:Command"] = mcpServer.Command;
+            //config[$"McpServers:{idx}:Arguments"] = mcpServer.Arguments;
+            config[$"McpServers:{idx}:Location"] = mcpServer.Location.ToString();
+            config[$"McpServers:{idx}:Url"] = mcpServer.Url;
+            //config[$"McpServers:{idx}:HttpHeaders"] = mcpServer.HttpHeaders;
+            //config[$"McpServers:{idx}:HttpHeaders"] = mcpServer.EnvVars;
+        }
+        
+        // load tools
+        var aesirTools = tools.ToArray();
+        for (var idx = 0; idx < aesirTools.Length; idx++)
+        {
+            var tool = aesirTools[idx];
+            config[$"Tools:{idx}:Id"] = tool.Id.ToString();
+            config[$"Tools:{idx}:Name"] = tool.Name;
+            config[$"Tools:{idx}:Description"] = tool.Description ?? "";
+            config[$"Tools:{idx}:Type"] = tool.Type.ToString();
+            config[$"Tools:{idx}:McpServerId"] = tool.McpServerId.ToString();
+            config[$"Tools:{idx}:McpServerName"] = aesirMcpServers.FirstOrDefault(ms => ms.Id == tool.McpServerId)?.Name;;
+            config[$"Tools:{idx}:McpServerTool"] = tool.McpServerTool;
+        }
         
         return config;
     }
