@@ -97,8 +97,10 @@ public class ChatService : BaseChatService
             _logger.LogError(ex, "Error generating title using Semantic Kernel IChatCompletionService");
         }
 
-        return request.Conversation.Messages.Last()
-            .Content[..Math.Min(50, request.Conversation.Messages.Last().Content.Length)] + "...";
+        var result = request.Conversation.Messages.Last()
+            .Content.Trim('"');
+        
+        return result.Length > 50 ? $"{result[..47]}..." : result;
     }
 
     /// <summary>
@@ -209,7 +211,13 @@ public class ChatService : BaseChatService
             
             kernelPluginArgs.SetConversationId(conversationId);
             
-            _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs));    
+            var plugin = _conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs);
+            
+            // Remove the existing plugin if it exists to avoid conflicts with conversations
+            if(_kernel.Plugins.TryGetPlugin(plugin.Name, out var existingPlugin))
+                _kernel.Plugins.Remove(existingPlugin); 
+            
+            _kernel.Plugins.Add(plugin);    
         }
         
         if (request.Temperature.HasValue)
