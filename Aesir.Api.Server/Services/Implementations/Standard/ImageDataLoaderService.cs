@@ -134,6 +134,17 @@ public class ImageDataLoaderService<TKey, TRecord>(
                     
                     var record = _recordFactory(chunkContent, request);
                     record.Text ??= chunk;
+                    
+                    var cleanFileName = request.ImageFileName!.StartsWith("file://")
+                        ? request.ImageFileName!.Substring(7)
+                        : request.ImageFileName;
+                    var fileUri = request.ImageFileName!.StartsWith("file://")
+                        ? System.Web.HttpUtility.UrlEncode(request.ImageFileName) 
+                        : $"file://{System.Web.HttpUtility.UrlEncode(request.ImageFileName)}";
+                    
+                    record.ReferenceDescription ??= $"{cleanFileName}#page={chunkContent.PageNumber}";
+                    record.ReferenceLink ??= $"{fileUri}#page={chunkContent.PageNumber}";
+                    
                     return record;
                 }).ToArray();
                 
