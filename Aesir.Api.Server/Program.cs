@@ -474,6 +474,13 @@ public class Program
                 config[$"InferenceEngines:{idx}:Configuration:{entry.Key}"] = entry.Value;
         }
         
+        // It may not be necessary to load these in to configuration settings, we only need to load
+        // items used by Program, ServiceCollectionExtensions, and anything else that is done prior to full
+        // boot up. Once fully booted, ConfigurationService will load from database when in database mode.
+        // An alternative approach is we could simply boot up a limited IoC having the ConfigurationService when
+        // needed in Program and ServiceCollectionExtensions, which is probably a better longer term solution. At
+        // that point this entire method is no longer needed and everyone would only ever use ConfigurationService.
+        
         // load agents
         var aesirAgents = agents.ToArray();
         for (var idx = 0; idx < aesirAgents.Length; idx++)
@@ -501,11 +508,20 @@ public class Program
             config[$"McpServers:{idx}:Name"] = mcpServer.Name;
             config[$"McpServers:{idx}:Description"] = mcpServer.Description ?? "";
             config[$"McpServers:{idx}:Command"] = mcpServer.Command;
-            //config[$"McpServers:{idx}:Arguments"] = mcpServer.Arguments;
             config[$"McpServers:{idx}:Location"] = mcpServer.Location.ToString();
             config[$"McpServers:{idx}:Url"] = mcpServer.Url;
-            //config[$"McpServers:{idx}:HttpHeaders"] = mcpServer.HttpHeaders;
-            //config[$"McpServers:{idx}:HttpHeaders"] = mcpServer.EnvVars;
+
+            for (var idx2 = 0; idx2 < mcpServer.Arguments.Count; idx2++)
+            {
+                var arg = mcpServer.Arguments[idx2];
+                config[$"McpServers:{idx}:Arguments:{idx2}"] = arg;
+            }
+
+            foreach (var entry in mcpServer.HttpHeaders)
+                config[$"McpServers:{idx}:HttpHeaders:{entry.Key}"] = entry.Value;
+
+            foreach (var entry in mcpServer.EnvironmentVariables)
+                config[$"McpServers:{idx}:EnvironmentVariables:{entry.Key}"] = entry.Value;
         }
         
         // load tools
