@@ -29,15 +29,15 @@
             LabelPosition="Top">
             <u:Form.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Grid ColumnDefinitions="*" RowDefinitions="Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="*" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem 
                 Grid.Row="0" 
-                Label="RAG Inference Engine" >
+                Label="RAG Embedding Inference Engine" >
                 <ComboBox HorizontalAlignment="Stretch"
                           ItemsSource="{Binding AvailableInferenceEngines}"
-                          SelectedItem="{Binding FormModel.RagInferenceEngine}">
+                          SelectedItem="{Binding FormModel.RagEmbeddingInferenceEngine}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Name}" />
@@ -47,11 +47,11 @@
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="1" 
-                Label="RAG Model" >
+                Label="RAG Embedding Model" >
                 <ComboBox HorizontalAlignment="Stretch"
                           ItemsSource="{Binding AvailableRagEmbeddingModels}"
                           SelectedItem="{Binding FormModel.RagEmbeddingModel}"
-                          IsEnabled="{Binding FormModel.RagInferenceEngine, Converter={x:Static ObjectConverters.IsNotNull}}">
+                          IsEnabled="{Binding FormModel.RagEmbeddingInferenceEngine, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding}" />
@@ -59,13 +59,40 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
             </u:FormItem>
-            <u:FormItem Label="Text-to-Speech Model" Grid.Row="2">
+            <u:FormItem 
+                Grid.Row="2" 
+                Label="RAG Vision Inference Engine" >
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding AvailableInferenceEngines}"
+                          SelectedItem="{Binding FormModel.RagVisionInferenceEngine}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="3" 
+                Label="RAG Vision Model" >
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding AvailableRagVisionModels}"
+                          SelectedItem="{Binding FormModel.RagVisionModel}"
+                          IsEnabled="{Binding FormModel.RagVisionInferenceEngine, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem Label="Text-to-Speech Model" Grid.Row="4">
                 <TextBox Text="{Binding FormModel.TtsModelPath}" IsEnabled="False" />
             </u:FormItem>
-            <u:FormItem Label="Speech-to-Text Model" Grid.Row="3">
+            <u:FormItem Label="Speech-to-Text Model" Grid.Row="5">
                 <TextBox Text="{Binding FormModel.SttModelPath}" IsEnabled="False" />
             </u:FormItem>
-            <u:FormItem Label="Voice Activity Detection Model" Grid.Row="4">
+            <u:FormItem Label="Voice Activity Detection Model" Grid.Row="6">
                 <TextBox Text="{Binding FormModel.VadModelPath}" IsEnabled="False" />
             </u:FormItem>
         </u:Form>

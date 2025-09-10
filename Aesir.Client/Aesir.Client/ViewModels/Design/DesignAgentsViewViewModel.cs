@@ -32,10 +32,8 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 Id = Guid.NewGuid(),
                 Name = "Agent 1",
                 Description = "Random agent 1",
-                ChatModel = "gpt-4.1-2025-04-14",
                 ChatInferenceEngineId = Guid.NewGuid(),
-                VisionInferenceEngineId = Guid.NewGuid(),
-                VisionModel = "gpt-4.1-2025-04-14",
+                ChatModel = "gpt-4.1-2025-04-14",
                 PromptPersona = PromptPersona.Military
             },
             new()
@@ -45,8 +43,6 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 Description = "Random agent 2",
                 ChatInferenceEngineId = Guid.NewGuid(),
                 ChatModel = "qwen3:32b-q4_K_M",
-                VisionInferenceEngineId = Guid.NewGuid(),
-                VisionModel = "gemma3:12b",
                 PromptPersona = PromptPersona.Military
             },
             new()
@@ -56,8 +52,6 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 Description = "Agent that is allowed to take control of the computer",
                 ChatInferenceEngineId = Guid.NewGuid(),
                 ChatModel = "cogito:32b-v1-preview-qwen-q4_K_M",
-                VisionInferenceEngineId = Guid.NewGuid(),
-                VisionModel = "gemma3:12b",
                 PromptPersona = PromptPersona.Business
             },
             new()
@@ -67,8 +61,6 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 Description = "Agent which a custom prompt",
                 ChatInferenceEngineId = Guid.NewGuid(),
                 ChatModel = "cogito:32b-v1-preview-qwen-q4_K_M",
-                VisionInferenceEngineId = Guid.NewGuid(),
-                VisionModel = "gemma3:12b",
                 PromptPersona = PromptPersona.Custom,
                 CustomPromptContent = "You are a helpful agent"
             }

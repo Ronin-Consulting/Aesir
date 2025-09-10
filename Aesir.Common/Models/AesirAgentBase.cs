@@ -37,18 +37,6 @@ public class AesirAgentBase
     public string? ChatModel { get; set; }
     
     /// <summary>
-    /// Gets or sets the id of the vision model's inference engine
-    /// </summary>
-    [JsonPropertyName("vision_inference_engine_id")]
-    public Guid? VisionInferenceEngineId { get; set; }
-    
-    /// <summary>
-    /// Gets or sets the name of the vision model
-    /// </summary>
-    [JsonPropertyName("vision_model")]
-    public string? VisionModel { get; set; }
-    
-    /// <summary>
     /// Gets or sets the prompt persona used by the agent
     /// </summary>
     [JsonPropertyName("prompt_persona")]

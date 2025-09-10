@@ -35,9 +35,7 @@ public class DesignAgentViewViewModel : AgentViewViewModel
         PromptPersona = PromptPersona.Military,
         CustomPromptContent = null,
         ChatInferenceEngineId = Guid.NewGuid(),
-        ChatModel = "qwen3:32b-q4_K_M",
-        VisionInferenceEngineId = Guid.NewGuid(),
-        VisionModel = "gemma3:12b"
+        ChatModel = "qwen3:32b-q4_K_M"
     }, new NoOpNotificationService(), new NoOpConfigurationService(), new NoOpModelService())
     {
         AvailableTools = new ObservableCollection<string>()

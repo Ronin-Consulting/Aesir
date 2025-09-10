@@ -70,7 +70,7 @@
                         <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
                         <DataGridTextColumn Header="Prompt" Binding="{Binding PromptPersona}" />
                         <DataGridTextColumn Header="Chat Model" Binding="{Binding ChatModel}" />
-                        <DataGridTextColumn Header="Vision Model" Binding="{Binding VisionModel}" />
+                        <DataGridTextColumn Header="Description" Binding="{Binding Description}" />
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>

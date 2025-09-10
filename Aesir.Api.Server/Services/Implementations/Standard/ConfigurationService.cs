@@ -56,8 +56,10 @@ public class ConfigurationService(
         if (DatabaseMode)
         {
             const string sql = @"
-                SELECT rag_inf_eng_id as RagInferenceEngineId, 
+                SELECT rag_emb_inf_eng_id as RagEmbeddingInferenceEngineId, 
                        rag_emb_model as RagEmbeddingModel, 
+                       rag_vis_inf_eng_id as RagVisionInferenceEngineId,
+                       rag_vis_model as RagVisionModel,
                        tts_model_path as TtsModelPath, 
                        stt_model_path as SttModelPath, 
                        vad_model_path as VadModelPath
@@ -74,8 +76,10 @@ public class ConfigurationService(
     
             var generalSettings = new AesirGeneralSettings()
             {
-                RagInferenceEngineId = Guid.TryParse(generalSettingsDictionary["RagInferenceEngineId"], out var guid) ? guid : null,
+                RagEmbeddingInferenceEngineId = Guid.TryParse(generalSettingsDictionary["RagEmbeddingInferenceEngineId"], out var embGuid) ? embGuid : null,
                 RagEmbeddingModel = generalSettingsDictionary["RagEmbeddingModel"],
+                RagVisionInferenceEngineId = Guid.TryParse(generalSettingsDictionary["RagVisionInferenceEngineId"], out var visGuid) ? visGuid : null,
+                RagVisionModel = generalSettingsDictionary["RagVisionModel"],
                 TtsModelPath = generalSettingsDictionary["TtsModelPath"],
                 SttModelPath = generalSettingsDictionary["SttModelPath"],
                 VadModelPath = generalSettingsDictionary["VadModelPath"]
@@ -95,8 +99,10 @@ public class ConfigurationService(
         
         const string sql = @"
             UPDATE aesir.aesir_general_settings
-            SET rag_inf_eng_id = @RagInferenceEngineId, 
+            SET rag_emb_inf_eng_id = @RagEmbeddingInferenceEngineId, 
                 rag_emb_model = @RagEmbeddingModel, 
+                rag_vis_inf_eng_id = @RagVisionInferenceEngineId,
+                rag_vis_model = @RagVisionModel, 
                 tts_model_path = @TtsModelPath, 
                 stt_model_path = @SttModelPath, 
                 vad_model_path = @VadModelPath
@@ -423,10 +429,25 @@ public class ConfigurationService(
             var agents = configuration.GetSection("Agents")
                 .Get<AesirAgent[]>() ?? [];
 
-            var agent = agents.FirstOrDefault(a => a.Id == id);
-            
-            // TODO look at tools listed in agent configuration???
-            throw new NotSupportedException();
+            for (var idx = 0; idx < agents.Length; idx++)
+            {
+                var agent = agents[idx];
+                if (agent.Id == id)
+                {
+                    // found our agent, see if any tools configured
+                    var agentToolNames = configuration.GetSection($"Agents:{idx}:Tools")
+                        .Get<string[]>() ?? [];
+
+                    var allTools = await GetToolsAsync();
+                    
+                    // Filter tools by names specified in agent configuration
+                    var agentTools = allTools.Where(t => agentToolNames.Contains(t.Name));
+
+                    return agentTools;
+                }
+            }
+
+            return new List<AesirTool>();
         }
     }
 

@@ -36,7 +36,7 @@
             LabelPosition="Top">
             <u:Form.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto,*" HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto,*" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem Label="Name" Grid.ColumnSpan="3">
@@ -91,14 +91,14 @@
                 Grid.Row="3" 
                 Grid.Column="0"
                 Grid.ColumnSpan="3" 
-                Label="Custom Prompt">
+                Label="Custom Prompt"
+                IsVisible="{Binding FormModel.PromptPersona, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static prompts:PromptPersona.Custom}}">
                 <TextBox
                     TextWrapping="Wrap" 
                     MinHeight="100" 
                     MaxWidth="380"
                     HorizontalAlignment="Stretch"
                     VerticalContentAlignment="Top" 
-                    IsVisible="{Binding FormModel.PromptPersona, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static prompts:PromptPersona.Custom}}"
                     Text="{Binding FormModel.CustomPromptContent}" />
             </u:FormItem>
             <u:FormItem 
@@ -132,35 +132,6 @@
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="6" 
-                Grid.ColumnSpan="3"
-                Label="Vision Inference Engine" >
-                <ComboBox HorizontalAlignment="Stretch"
-                          ItemsSource="{Binding AvailableVisionInferenceEngines}"
-                          SelectedItem="{Binding FormModel.VisionInferenceEngine}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Name}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-            </u:FormItem>
-            <u:FormItem 
-                Grid.Row="7" 
-                Grid.ColumnSpan="3"
-                Label="Vision Model" >
-                <ComboBox HorizontalAlignment="Stretch"
-                          ItemsSource="{Binding AvailableVisionModels}"
-                          SelectedItem="{Binding FormModel.VisionModel}"
-                          IsEnabled="{Binding FormModel.VisionInferenceEngine, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-            </u:FormItem>
-            <u:FormItem 
-                Grid.Row="8" 
                 Grid.ColumnSpan="3"
                 Label="Tools" >
                 <u:MultiComboBox

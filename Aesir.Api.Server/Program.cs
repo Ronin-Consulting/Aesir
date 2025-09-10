@@ -38,9 +38,18 @@ public class Program
 
         #region AI Backend Clients
         
+        // load general settings (from file or db)
+        var generalSettings = builder.Configuration.GetSection("GeneralSettings")
+            .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
+        var ragVisionInferenceEngineId = generalSettings["RagVisionInferenceEngineId"] ?? 
+                                         throw new InvalidOperationException("RagVisionInferenceEngineId not configured");
+        var ragVisionModel = generalSettings["RagVisionModel"] ?? 
+                             throw new InvalidOperationException("RagVisionModel not configured");
+            
         // load inference engines (from file or db)
         var inferenceEngines = builder.Configuration.GetSection("InferenceEngines")
             .Get<AesirInferenceEngine[]>() ?? [];
+        
         foreach (var inferenceEngine in inferenceEngines)
         {
             switch (inferenceEngine.Type)
@@ -71,13 +80,12 @@ public class Program
                             enableThinking
                         );
                     });
-
+                    
                     builder.Services.AddTransient<AesirOllama.VisionModelConfig>(serviceProvider =>
                     {
-                        // TODO do we need this config anymore?
                         return new AesirOllama.VisionModelConfig
                         {
-                            ModelId = "set-by-agent",
+                            ModelId = ragVisionModel
                         };
                     });
                     // should be transient so during dispose we unload model
@@ -118,10 +126,9 @@ public class Program
 
                     builder.Services.AddTransient<AesirOpenAI.VisionModelConfig>(serviceProvider =>
                     {
-                        // TODO do we need this config anymore?
                         return new AesirOpenAI.VisionModelConfig
                         {
-                            ModelId = "set-by-agent",
+                            ModelId = ragVisionModel
                         };
                     });
                     // should be transient so during dispose we unload model
@@ -148,9 +155,7 @@ public class Program
             }
         }
         
-        // load general settings (from file or db)
-        var generalSettings = builder.Configuration.GetSection("GeneralSettings")
-            .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
+        // load speech settings
         var ttsModelPath = generalSettings["TtsModelPath"] ?? 
                            throw new InvalidOperationException("TtsModelPath not configured");
         var sttModelPath = generalSettings["SttModelPath"] ?? 
@@ -335,14 +340,21 @@ public class Program
                 builder.Configuration[$"InferenceEngines:{i}:Id"] = inferenceEngine.Id.ToString();
             }
 
-            // update the rag inference engine id
+            // update the rag embedding inference engine id
             var generalSettings = builder.Configuration.GetSection("GeneralSettings")
                 .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
-            var ragInferenceEngineName = generalSettings["RagInferenceEngineName"] ??
-                                         throw new InvalidOperationException("RagInferenceEngineName not configured");
-            var ragInferenceEngine = inferenceEngines.FirstOrDefault(ie => ie.Name == ragInferenceEngineName) ?? 
-                                     throw new InvalidOperationException("RagInferenceEngineName does not match a configured Inference Engine");
-            builder.Configuration[$"GeneralSettings:RagInferenceEngineId"] = ragInferenceEngine?.Id?.ToString() ?? null;
+            var ragEmbeddingInferenceEngineName = generalSettings["RagEmbeddingInferenceEngineName"] ??
+                                         throw new InvalidOperationException("RagEmbeddingInferenceEngineName not configured");
+            var ragEmbeddingInferenceEngine = inferenceEngines.FirstOrDefault(ie => ie.Name == ragEmbeddingInferenceEngineName) ?? 
+                                                  throw new InvalidOperationException("RagEmbeddingInferenceEngineName does not match a configured Inference Engine");
+            builder.Configuration[$"GeneralSettings:RagEmbeddingInferenceEngineId"] = ragEmbeddingInferenceEngine?.Id?.ToString() ?? null;
+            
+            // update the rag vision inference engine id
+            var ragVisionInferenceEngineName = generalSettings["RagVisionInferenceEngineName"] ??
+                                         throw new InvalidOperationException("RagVisionInferenceEngineName not configured");
+            var ragVisionInferenceEngine = inferenceEngines.FirstOrDefault(ie => ie.Name == ragVisionInferenceEngineName) ?? 
+                                     throw new InvalidOperationException("RagVisionInferenceEngineName does not match a configured Inference Engine");
+            builder.Configuration[$"GeneralSettings:RagVisionInferenceEngineId"] = ragVisionInferenceEngine?.Id?.ToString() ?? null;
             
             // give each agent an id
             var agents = builder.Configuration.GetSection("Agents")
@@ -363,13 +375,6 @@ public class Program
                 var chatInferenceEngineId = inferenceEngines.FirstOrDefault(ie => ie.Name == chatInferenceEngineName)?.Id ?? 
                                             throw new InvalidOperationException("ChatInferenceEngineName does not match a configured Inference Engine");
                 builder.Configuration[$"Agents:{i}:ChatInferenceEngineId"] = chatInferenceEngineId.ToString();
-                
-                // determine vision inference engine id
-                var visionInferenceEngineName = builder.Configuration[$"Agents:{i}:VisionInferenceEngineName"] ??
-                                              throw new InvalidOperationException("VisionInferenceEngineName not configured");
-                var visionInferenceEngineId = inferenceEngines.FirstOrDefault(ie => ie.Name == visionInferenceEngineName)?.Id ?? 
-                                            throw new InvalidOperationException("VisionInferenceEngineName does not match a configured Inference Engine");
-                builder.Configuration[$"Agents:{i}:VisionInferenceEngineId"] = visionInferenceEngineId.ToString();
             }
             
             // give each mcp server an id
@@ -454,9 +459,12 @@ public class Program
 
         // load general settings
         var aesirInferenceEngines = inferenceEngines.ToArray();
-        config["GeneralSettings:RagInferenceEngineId"] = generalSettings.RagInferenceEngineId?.ToString();
-        config["GeneralSettings:RagInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == generalSettings.RagInferenceEngineId)?.Name;
+        config["GeneralSettings:RagEmbeddingInferenceEngineId"] = generalSettings.RagEmbeddingInferenceEngineId?.ToString();
+        config["GeneralSettings:RagEmbeddingInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == generalSettings.RagEmbeddingInferenceEngineId)?.Name;
         config["GeneralSettings:RagEmbeddingModel"] = generalSettings.RagEmbeddingModel;
+        config["GeneralSettings:RagVisionInferenceEngineId"] = generalSettings.RagVisionInferenceEngineId?.ToString();
+        config["GeneralSettings:RagVisionInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == generalSettings.RagVisionInferenceEngineId)?.Name;
+        config["GeneralSettings:RagVisionModel"] = generalSettings.RagVisionModel;
         config["GeneralSettings:TtsModelPath"] = generalSettings.TtsModelPath;
         config["GeneralSettings:SttModelPath"] = generalSettings.SttModelPath;
         config["GeneralSettings:VadModelPath"] = generalSettings.VadModelPath;
@@ -492,9 +500,6 @@ public class Program
             config[$"Agents:{idx}:ChatInferenceEngineId"] = agent.ChatInferenceEngineId.ToString();
             config[$"Agents:{idx}:ChatInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == agent.ChatInferenceEngineId)?.Name;;
             config[$"Agents:{idx}:ChatModel"] = agent.ChatModel;
-            config[$"Agents:{idx}:VisionInferenceEngineId"] = agent.VisionInferenceEngineId.ToString();
-            config[$"Agents:{idx}:VisionInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == agent.VisionInferenceEngineId)?.Name;;
-            config[$"Agents:{idx}:VisionModel"] = agent.VisionModel;
             config[$"Agents:{idx}:PromptPersona"] = agent.PromptPersona.ToString();
             config[$"Agents:{idx}:CustomPromptContent"] = agent.CustomPromptContent;
         }

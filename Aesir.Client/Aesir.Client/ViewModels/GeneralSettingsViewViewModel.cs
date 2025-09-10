@@ -65,8 +65,16 @@ public partial class GeneralSettingsViewViewModel : ObservableRecipient, IDialog
     /// Collection of available engine type that defines how the general settings is accessed
     /// </summary>
     public ObservableCollection<AesirInferenceEngineBase> AvailableInferenceEngines { get; set; }
-    
+
+    /// <summary>
+    /// Collection of available rad embedding models
+    /// </summary>
     public ObservableCollection<string> AvailableRagEmbeddingModels { get; set; }
+    
+    /// <summary>
+    /// Collection of available rad vision models
+    /// </summary>
+    public ObservableCollection<string> AvailableRagVisionModels { get; set; }
 
     /// <summary>
     /// Indicates whether the view model has unsaved changes.
@@ -106,6 +114,7 @@ public partial class GeneralSettingsViewViewModel : ObservableRecipient, IDialog
         
         AvailableInferenceEngines = new ObservableCollection<AesirInferenceEngineBase>();
         AvailableRagEmbeddingModels = new ObservableCollection<string>();
+        AvailableRagVisionModels = new ObservableCollection<string>();
     
         FormModel.PropertyChanged += OnFormModelPropertyChanged;
     }
@@ -146,10 +155,14 @@ public partial class GeneralSettingsViewViewModel : ObservableRecipient, IDialog
             // disable property change as we are about to set some values that cause loading
             FormModel.PropertyChanged -= OnFormModelPropertyChanged;
             
-            if (generalSettings.RagInferenceEngineId != null)
-                FormModel.RagInferenceEngine = AvailableInferenceEngines
-                    .First(s => s.Id == generalSettings.RagInferenceEngineId);
+            if (generalSettings.RagEmbeddingInferenceEngineId != null)
+                FormModel.RagEmbeddingInferenceEngine = AvailableInferenceEngines
+                    .First(s => s.Id == generalSettings.RagEmbeddingInferenceEngineId);
             FormModel.RagEmbeddingModel = generalSettings.RagEmbeddingModel ?? "";
+            if (generalSettings.RagVisionInferenceEngineId != null)
+                FormModel.RagVisionInferenceEngine = AvailableInferenceEngines
+                    .First(s => s.Id == generalSettings.RagVisionInferenceEngineId);
+            FormModel.RagVisionModel = generalSettings.RagVisionModel ?? "";
             FormModel.TtsModelPath = generalSettings.TtsModelPath ?? "";
             FormModel.SttModelPath = generalSettings.SttModelPath ?? "";
             FormModel.VadModelPath = generalSettings.VadModelPath ?? "";
@@ -158,7 +171,8 @@ public partial class GeneralSettingsViewViewModel : ObservableRecipient, IDialog
             FormModel.PropertyChanged += OnFormModelPropertyChanged;
             
             // get available models if available
-            await LoadRagModels();
+            await LoadRagEmbeddingModels();
+            await LoadRagVisionModels();
 
             FormModel.ClearValidation();
         }
@@ -169,19 +183,19 @@ public partial class GeneralSettingsViewViewModel : ObservableRecipient, IDialog
     }
 
     /// <summary>
-    /// Loads RAG models
+    /// Loads RAG embedding models
     /// </summary>
-    private async Task LoadRagModels()
+    private async Task LoadRagEmbeddingModels()
     {
         AvailableRagEmbeddingModels.Clear();
         
-        if (FormModel.RagInferenceEngine == null)
+        if (FormModel.RagEmbeddingInferenceEngine == null)
             return;
 
         try
         {
             var availableModels = await _modelService.GetModelsAsync(
-                FormModel.RagInferenceEngine.Id.Value, ModelCategory.Embedding);
+                FormModel.RagEmbeddingInferenceEngine.Id.Value, ModelCategory.Embedding);
             foreach (var model in availableModels)
                 AvailableRagEmbeddingModels.Add(model.Id);
         }
@@ -206,15 +220,56 @@ public partial class GeneralSettingsViewViewModel : ObservableRecipient, IDialog
     }
 
     /// <summary>
+    /// Loads RAG vision models
+    /// </summary>
+    private async Task LoadRagVisionModels()
+    {
+        AvailableRagVisionModels.Clear();
+        
+        if (FormModel.RagVisionInferenceEngine == null)
+            return;
+
+        try
+        {
+            var availableModels = await _modelService.GetModelsAsync(
+                FormModel.RagVisionInferenceEngine.Id.Value, ModelCategory.Vision);
+            foreach (var model in availableModels)
+                AvailableRagVisionModels.Add(model.Id);
+        }
+        catch (Exception e)
+        {
+            // TODO
+        }
+        
+        // The SelectedItem wasn't in the ComboBox's collection initially since we just loaded it. Ideally it
+        // would re-evaluate, but it doesn't want to. There is a very talked about issue with this timing.
+        // We have to force the ComboBox to re-bind the SelectedItem to get it to work.
+        
+        var currentChatModel = FormModel.RagVisionModel;
+        
+        FormModel.RagVisionModel = null;
+
+        // Be a little wiser and only set the value if they exist in the collections (may have been removed from db)
+        if (!string.IsNullOrEmpty(currentChatModel) && AvailableRagVisionModels.Contains(currentChatModel))
+            FormModel.RagVisionModel = currentChatModel;
+        
+        FormModel.ClearValidation(nameof(FormModel.RagVisionModel));
+    }
+
+    /// <summary>
     /// Handles property changes in the form model to trigger related updates.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">Event data containing the name of the property that changed.</param>
     private void OnFormModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(GeneralSettingsFormDataModel.RagInferenceEngine))
+        if (e.PropertyName == nameof(GeneralSettingsFormDataModel.RagEmbeddingInferenceEngine))
         {
-            _ = LoadRagModels();
+            _ = LoadRagEmbeddingModels();
+        }
+        if (e.PropertyName == nameof(GeneralSettingsFormDataModel.RagVisionInferenceEngine))
+        {
+            _ = LoadRagVisionModels();
         }
     }
 
@@ -231,8 +286,10 @@ public partial class GeneralSettingsViewViewModel : ObservableRecipient, IDialog
         {
             var generalSettings = new AesirGeneralSettingsBase()
             {
-                RagInferenceEngineId = FormModel.RagInferenceEngine.Id,
+                RagEmbeddingInferenceEngineId = FormModel.RagEmbeddingInferenceEngine.Id,
                 RagEmbeddingModel = FormModel.RagEmbeddingModel,
+                RagVisionInferenceEngineId = FormModel.RagVisionInferenceEngine.Id,
+                RagVisionModel = FormModel.RagVisionModel,
                 TtsModelPath = FormModel.TtsModelPath,
                 SttModelPath = FormModel.SttModelPath,
                 VadModelPath = FormModel.VadModelPath
@@ -315,16 +372,32 @@ public partial class GeneralSettingsFormDataModel : ObservableValidator
     /// </summary>
     [ObservableProperty] 
     [NotifyDataErrorInfo] 
-    [Required (ErrorMessage = "RAG Inference Engine is required")] 
-    private AesirInferenceEngineBase? _ragInferenceEngine;
+    [Required (ErrorMessage = "RAG Embedding Inference Engine is required")] 
+    private AesirInferenceEngineBase? _ragEmbeddingInferenceEngine;
     
     /// <summary>
-    /// Represents the name of the model for RAG, required for validation and user input.
+    /// Represents the name of the embedding model for RAG, required for validation and user input.
     /// </summary>
     [ObservableProperty] 
     [NotifyDataErrorInfo] 
-    [Required (ErrorMessage = "RAG Model is required")] 
+    [Required (ErrorMessage = "RAG Embedding Model is required")] 
     private string? _ragEmbeddingModel;
+    
+    /// <summary>
+    /// Represents the inference engine for RAG, required for validation and user input.
+    /// </summary>
+    [ObservableProperty] 
+    [NotifyDataErrorInfo] 
+    [Required (ErrorMessage = "RAG Vision Inference Engine is required")] 
+    private AesirInferenceEngineBase? _ragVisionInferenceEngine;
+    
+    /// <summary>
+    /// Represents the name of the vision model for RAG, required for validation and user input.
+    /// </summary>
+    [ObservableProperty] 
+    [NotifyDataErrorInfo] 
+    [Required (ErrorMessage = "RAG Vision Model is required")] 
+    private string? _ragVisionModel;
     
     /// <summary>
     /// Represents the TTS model path, required for validation and user input.
