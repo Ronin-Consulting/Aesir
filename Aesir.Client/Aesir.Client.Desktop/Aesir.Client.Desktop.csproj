@@ -20,7 +20,7 @@
         <PackageReference Include="Material.Icons.Avalonia" Version="2.4.1" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.9" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.9" />
-        <PackageReference Include="NLog.Extensions.Logging" Version="6.0.3" />
+        <PackageReference Include="NLog.Extensions.Logging" Version="6.0.4" />
         <PackageReference Include="PDFtoImage" Version="4.1.1" />
         <PackageReference Include="Semi.Avalonia" Version="11.2.1.9" />
         <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.2.1.9" />

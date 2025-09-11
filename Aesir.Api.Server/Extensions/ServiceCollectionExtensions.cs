@@ -54,7 +54,24 @@ public static class ServiceCollectionExtensions
             kernelBuilder
                 .AddOllamaChatCompletion();
 
-            kernelBuilder.Services.AddOllamaEmbeddingGenerator(embeddingModelId!);
+            const string? serviceId = null;
+            services.AddKeyedSingleton<IEmbeddingGenerator<string, Embedding<float>>>(serviceId, (serviceProvider, _) =>
+            {
+                var ollamaClient = serviceProvider.GetRequiredService<OllamaApiClient>();
+                ollamaClient.SelectedModel = embeddingModelId!;
+                
+                var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+
+                var builder = ((IEmbeddingGenerator<string, Embedding<float>>)ollamaClient)
+                    .AsBuilder();
+
+                if (loggerFactory is not null)
+                {
+                    builder.UseLogging(loggerFactory);
+                }
+
+                return builder.Build(serviceProvider);
+            });
         }
         
         

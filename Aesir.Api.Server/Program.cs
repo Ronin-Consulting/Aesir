@@ -65,7 +65,7 @@ public class Program
         else
         {
             // Changed to scoped for better performance - avoids expensive object creation per request
-            builder.Services.AddScoped<IModelsService, AesirOllama.ModelsService>();
+            builder.Services.AddTransient<IModelsService, AesirOllama.ModelsService>();
             builder.Services.AddScoped<IChatService>(serviceProvider =>
             {
                 var logger = serviceProvider.GetRequiredService<ILogger<AesirOllama.ChatService>>();
@@ -98,7 +98,7 @@ public class Program
                 };
             });
             // Changed to scoped for better performance while maintaining model lifecycle
-            builder.Services.AddScoped<IVisionService, AesirOllama.VisionService>();
+            builder.Services.AddTransient<IVisionService, AesirOllama.VisionService>();
 
             const string ollamaClientName = "OllamaApiClient";
             builder.Services.AddHttpClient(ollamaClientName, client =>
