@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 
 namespace Aesir.Client.Models;
 
@@ -13,7 +14,7 @@ public class AesirChatSession : AesirChatSessionBase
     /// <summary>
     /// Represents a chat session with client-specific defaults, containing metadata, messages, and conversation context.
     /// </summary>
-    public AesirChatSession()
+    public AesirChatSession(PromptPersona? promptPersona, string? customContent)
     {
         Id = Guid.NewGuid();
         Title = "Chat Session (Client)";
@@ -22,7 +23,7 @@ public class AesirChatSession : AesirChatSessionBase
             Id = Guid.NewGuid().ToString(),
             Messages = new List<AesirChatMessage>()
             {
-                AesirChatMessage.NewSystemMessage()
+                AesirChatMessage.NewSystemMessage(promptPersona, customContent)
             }
         };
     }

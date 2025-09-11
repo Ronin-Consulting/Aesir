@@ -14,10 +14,9 @@ public interface IPromptProvider
     /// Retrieves a system-level prompt template based on the specified prompt context.
     /// </summary>
     /// <param name="context">The context used to determine the type of system prompt.
-    /// Examples include predefined contexts such as Business, Military, Ocr, or Custom.
-    /// If no context is provided, a default context is used.</param>
+    /// Examples include predefined contexts such as Business, Military, Ocr, or Custom.</param>
     /// <returns>An instance of <see cref="PromptTemplate"/> corresponding to the specified context.</returns>
-    PromptTemplate GetSystemPrompt(PromptPersona? context = null);
+    PromptTemplate GetSystemPrompt(PromptPersona context);
 
     /// <summary>
     /// Retrieves the system-defined prompt template used for generating titles.

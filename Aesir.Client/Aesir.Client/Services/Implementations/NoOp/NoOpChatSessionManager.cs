@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Aesir.Client.ViewModels;
@@ -11,7 +12,7 @@ public class NoOpChatSessionManager : IChatSessionManager
         await Task.CompletedTask;
     }
 
-    public async Task<string> ProcessChatRequestAsync(string modelName, ObservableCollection<MessageViewModel?> conversationMessages)
+    public async Task<string> ProcessChatRequestAsync(Guid agentId, ObservableCollection<MessageViewModel?> conversationMessages)
     {
         return await Task.FromResult("");
     }

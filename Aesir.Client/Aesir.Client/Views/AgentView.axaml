@@ -7,6 +7,7 @@
     xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
     xmlns:dvm="clr-namespace:Aesir.Client.ViewModels.Design"
     xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+    xmlns:prompts="clr-namespace:Aesir.Common.Prompts;assembly=Aesir.Common"
     mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="800"
     x:Class="Aesir.Client.Views.AgentView"
     x:DataType="vm:AgentViewViewModel">
@@ -35,7 +36,7 @@
             LabelPosition="Top">
             <u:Form.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto,*" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem Label="Name" Grid.ColumnSpan="3">
@@ -46,15 +47,21 @@
                 Grid.Column="0"
                 Grid.ColumnSpan="3" 
                 Label="Description">
-                <TextBox TextWrapping="Wrap" MinHeight="100" VerticalContentAlignment="Top" Text="{Binding FormModel.Description}" />
+                <TextBox
+                    TextWrapping="Wrap" 
+                    MinHeight="100" 
+                    MaxWidth="380"
+                    HorizontalAlignment="Stretch"
+                    VerticalContentAlignment="Top" 
+                    Text="{Binding FormModel.Description}" />
             </u:FormItem>
             <u:FormItem
                 Grid.Row="2"
                 Grid.Column="0"
-                Label="Source">
+                Label="Prompt">
                 <ComboBox Width="150"
-                          ItemsSource="{Binding AvailableSources}"
-                          SelectedValue="{Binding FormModel.Source}">
+                          ItemsSource="{Binding AvailablePromptPersonas}"
+                          SelectedItem="{Binding FormModel.PromptPersona}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
@@ -65,42 +72,45 @@
             <u:FormItem
                 Grid.Row="2"
                 Grid.Column="2"
-                Label="Prompt"
-                Margin="32,8,0,8">
-                <ComboBox Width="150"
-                          ItemsSource="{Binding AvailablePrompts}"
-                          SelectedValue="{Binding FormModel.Prompt}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+                Grid.ColumnSpan="1"
+                Label=""
+                HorizontalAlignment="Left">
+                <u:IconButton 
+                    Classes="Tertiary"
+                    Content="Open Editor"
+                    IconPlacement="Right" 
+                    MinHeight="34"
+                    IsEnabled="{Binding FormModel.PromptPersona, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static prompts:PromptPersona.Custom}}"
+                    Command="{Binding EditCustomPromptCommand}">
+                    <u:IconButton.Icon>
+                        <avalonia:MaterialIcon Kind="OpenInNew" Width="20" Height="20"/>
+                    </u:IconButton.Icon>
+                </u:IconButton>
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="3" 
-                Grid.ColumnSpan="3"
-                Label="Chat Model" >
-                <ComboBox HorizontalAlignment="Stretch"
-                          ItemsSource="{Binding AvailableChatModels}"
-                          SelectedItem="{Binding FormModel.ChatModel}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+                Grid.Column="0"
+                Grid.ColumnSpan="3" 
+                Label="Custom Prompt"
+                IsVisible="{Binding FormModel.PromptPersona, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static prompts:PromptPersona.Custom}}">
+                <TextBox
+                    TextWrapping="Wrap" 
+                    MinHeight="100" 
+                    MaxWidth="380"
+                    HorizontalAlignment="Stretch"
+                    VerticalContentAlignment="Top" 
+                    Text="{Binding FormModel.CustomPromptContent}" />
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="4" 
                 Grid.ColumnSpan="3"
-                Label="Embedding Model" >
+                Label="Chat Inference Engine" >
                 <ComboBox HorizontalAlignment="Stretch"
-                          ItemsSource="{Binding AvailableEmbeddingModels}"
-                          SelectedItem="{Binding FormModel.EmbeddingModel}">
+                          ItemsSource="{Binding AvailableChatInferenceEngines}"
+                          SelectedItem="{Binding FormModel.ChatInferenceEngine}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
+                            <TextBlock Text="{Binding Name}" />
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
@@ -108,13 +118,14 @@
             <u:FormItem 
                 Grid.Row="5" 
                 Grid.ColumnSpan="3"
-                Label="Vision Model" >
+                Label="Chat Model" >
                 <ComboBox HorizontalAlignment="Stretch"
-                          ItemsSource="{Binding AvailableVisionModels}"
-                          SelectedItem="{Binding FormModel.VisionModel}">
+                          ItemsSource="{Binding AvailableChatModels}"
+                          SelectedItem="{Binding FormModel.ChatModel}"
+                          IsEnabled="{Binding FormModel.ChatInferenceEngine, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
+                            <TextBlock Text="{Binding}" />
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>

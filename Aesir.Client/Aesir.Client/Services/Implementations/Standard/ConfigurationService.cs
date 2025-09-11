@@ -42,6 +42,149 @@ public class ConfigurationService(
             configuration.GetValue<string>("Inference:Configuration"));
 
     /// <summary>
+    /// Retrieves the general settings
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation.
+    /// The task result contains the general settings as an instance of <see cref="Aesir.Common.Models.AesirGeneralSettingsBase"/>.
+    /// </returns>
+    public async Task<AesirGeneralSettingsBase> GetGeneralSettingsAsync()
+    {
+        try
+        {
+            return (await _flurlClient.Request()
+                .AppendPathSegment($"generalsettings")
+                .GetJsonAsync<AesirGeneralSettingsBase>());
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }   
+    }
+    
+    /// <summary>
+    /// Updates the general settings
+    /// </summary>
+    /// <param name="generalSettings">The <see cref="AesirGeneralSettingsBase"/> object to update</param>
+    public async Task UpdateGeneralSettingsAsync(AesirGeneralSettingsBase generalSettings)
+    {
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment($"generalsettings")
+                .PutJsonAsync(generalSettings);
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Retrieves a collection of Aesir inference engines asynchronously.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains
+    /// a collection of <see cref="AesirInferenceEngineBase"/> objects.
+    /// </returns>
+    public async Task<IEnumerable<AesirInferenceEngineBase>> GetInferenceEnginesAsync()
+    {
+        try
+        {
+            return (await _flurlClient.Request()
+                .AppendPathSegment("inferenceengines")
+                .GetJsonAsync<IEnumerable<AesirInferenceEngineBase>>());
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Retrieves an inference engine's details using the specified unique identifier.
+    /// </summary>
+    /// <param name="id">The unique identifier of the inference engine to be retrieved.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation.
+    /// The task result contains the agent details as an instance of <see cref="Aesir.Common.Models.AesirInferenceEngineBase"/>.
+    /// </returns>
+    public async Task<AesirInferenceEngineBase> GetInferenceEngineAsync(Guid id)
+    {
+        try
+        {
+            return (await _flurlClient.Request()
+                .AppendPathSegment($"inferenceengines/{id}")
+                .GetJsonAsync<AesirInferenceEngineBase>());
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }   
+    }
+
+    /// <summary>
+    /// Creates an inference engine
+    /// </summary>
+    /// <param name="inferenceEngine">The <see cref="AesirInferenceEngineBase"/> object to create</param>
+    public async Task CreateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine)
+    {
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment("inferenceengines")
+                .PostJsonAsync(inferenceEngine);
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Updates an inference engine
+    /// </summary>
+    /// <param name="inferenceEngine">The <see cref="AesirInferenceEngineBase"/> object to update</param>
+    public async Task UpdateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine)
+    {
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment($"inferenceengines/{inferenceEngine.Id}")
+                .PutJsonAsync(inferenceEngine);
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Deletes an inference engine by its unique identifier asynchronously.
+    /// </summary>
+    /// <param name="id">The unique identifier of the inference engine to delete.</param>
+    public async Task DeleteInferenceEngineAsync(Guid id)
+    {
+        try
+        {
+            await _flurlClient.Request()
+                .AppendPathSegment($"inferenceengines/{id}")
+                .DeleteAsync();
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Retrieves a collection of Aesir agents asynchronously.
     /// </summary>
     /// <returns>
@@ -123,8 +266,7 @@ public class ConfigurationService(
             throw;
         }
     }
-
-
+    
     /// <summary>
     /// Deletes an agent by its unique identifier asynchronously.
     /// </summary>
@@ -400,29 +542,6 @@ public class ConfigurationService(
             return (await _flurlClient.Request()
                 .AppendPathSegment($"mcpservers/{id}/tools")
                 .GetJsonAsync<IEnumerable<AesirMcpServerToolBase>>());
-        }
-        catch (FlurlHttpException ex)
-        {
-            await logger.LogFlurlExceptionAsync(ex);
-            throw;
-        }   
-    }
-
-    /// <summary>
-    /// Retrieves the default prompt persona asynchronously.
-    /// </summary>
-    /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains
-    /// a <see cref="PromptPersona"/> value representing the default prompt persona.
-    /// </returns>
-    public async Task<PromptPersona> GetDefaultPersonaAsync()
-    {
-        try
-        {
-            return (await _flurlClient.Request()
-                .AppendPathSegment($"personas")
-                .AppendPathSegment("default")
-                .GetJsonAsync<PromptPersona>());
         }
         catch (FlurlHttpException ex)
         {

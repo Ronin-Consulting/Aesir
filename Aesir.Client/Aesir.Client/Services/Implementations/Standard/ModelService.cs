@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Aesir.Common.Models;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -30,8 +32,8 @@ public class ModelService(
     private readonly IFlurlClient _flurlClient = flurlClientCache
         .GetOrAdd("ModelClient",
             configuration.GetValue<string>("Inference:Models"));
-
-    /// Asynchronously retrieves a collection of available Aesir models.
+    
+    /// Asynchronously retrieves a collection of available Aesir models from a specified inference engine.
     /// This method makes an HTTP request to fetch model information and returns
     /// a collection of AesirModelInfo objects representing the models. If an
     /// error occurs during the request, it logs the exception and rethrows it.
@@ -39,16 +41,23 @@ public class ModelService(
     /// A task representing the asynchronous operation that contains a collection
     /// of AesirModelInfo objects when completed.
     /// </returns>
-    public async Task<IEnumerable<AesirModelInfo>> GetModelsAsync()
+    public async Task<IEnumerable<AesirModelInfo>> GetModelsAsync(Guid inferenceEngineId, ModelCategory? category)
     {
         try
         {
-            return await _flurlClient.Request().GetJsonAsync<IEnumerable<AesirModelInfo>>();
+            var request = _flurlClient.Request()
+                .AppendPathSegment($"{inferenceEngineId}");
+
+            if (category.HasValue)
+                request = request.AppendPathSegment(category.Value.ToString());
+
+            return (await request.GetJsonAsync<IEnumerable<AesirModelInfo>>());
+
         }
         catch (FlurlHttpException ex)
         {
             await logger.LogFlurlExceptionAsync(ex);
             throw;
-        }
+        }  
     }
 }

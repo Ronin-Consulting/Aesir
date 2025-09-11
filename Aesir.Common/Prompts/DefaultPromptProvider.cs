@@ -16,11 +16,6 @@ public class DefaultPromptProvider : IPromptProvider
     public static readonly DefaultPromptProvider Instance = new();
 
     /// <summary>
-    /// Gets or sets the default prompt persona used when no specific context is provided.
-    /// </summary>
-    public PromptPersona? DefaultPromptPersona { get; set; }
-
-    /// <summary>
     /// Provides default implementations for generating system prompts, title generation prompts,
     /// and condensed prompts based on the specified context.
     /// Implements the <see cref="IPromptProvider"/> interface.
@@ -34,9 +29,8 @@ public class DefaultPromptProvider : IPromptProvider
     /// </summary>
     /// <param name="context">The prompt context used to select the appropriate system prompt template. If null, a default context is used.</param>
     /// <returns>An instance of <see cref="PromptTemplate"/> that represents the system prompt template for the given context.</returns>
-    public PromptTemplate GetSystemPrompt(PromptPersona? context = null)
+    public PromptTemplate GetSystemPrompt(PromptPersona context)
     {
-        context ??= DefaultPromptPersona;
         return context switch
         {
             PromptPersona.Business => BusinessPrompts.SystemPrompt,

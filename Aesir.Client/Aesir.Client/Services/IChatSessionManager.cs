@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Aesir.Client.ViewModels;
@@ -18,8 +19,8 @@ public interface IChatSessionManager
     /// <summary>
     /// Processes a chat request asynchronously using the specified model and a collection of conversation messages.
     /// </summary>
-    /// <param name="modelId">
-    /// The name of the model to be used for processing the chat request.
+    /// <param name="agentId">
+    /// The id of the agent to be used for processing the chat request.
     /// </param>
     /// <param name="conversationMessages">
     /// A collection of <see cref="MessageViewModel"/> objects representing the conversation's messages.
@@ -27,5 +28,5 @@ public interface IChatSessionManager
     /// <returns>
     /// A <see cref="Task{TResult}"/> representing the asynchronous operation, containing the model's response as a string.
     /// </returns>
-    Task<string> ProcessChatRequestAsync(string modelId, ObservableCollection<MessageViewModel?> conversationMessages);
+    Task<string> ProcessChatRequestAsync(Guid agentId, ObservableCollection<MessageViewModel?> conversationMessages);
 }

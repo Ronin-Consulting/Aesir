@@ -13,6 +13,58 @@ namespace Aesir.Client.Services;
 public interface IConfigurationService
 {
     /// <summary>
+    /// Asynchronously the Aesir general settings.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task
+    /// a <see cref="AesirGeneralSettingsBase"/>, which represent the general settings.
+    /// </returns>
+    Task<AesirGeneralSettingsBase> GetGeneralSettingsAsync();
+
+    /// <summary>
+    /// Updates the AesirGeneralSettingsBase in the database.
+    /// </summary>
+    /// <param name="generalSettings">The general settings with updated values.</param>
+    Task UpdateGeneralSettingsAsync(AesirGeneralSettingsBase generalSettings);
+    
+    /// <summary>
+    /// Asynchronously retrieves a collection of Aesir inference engines.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task
+    /// is an enumerable collection of <see cref="AesirInferenceEngineBase"/> objects, which represent the inference engines.
+    /// </returns>
+    Task<IEnumerable<AesirInferenceEngineBase>> GetInferenceEnginesAsync();
+
+    /// <summary>
+    /// Retrieves an inference engine's details using the specified unique identifier.
+    /// </summary>
+    /// <param name="id">The unique identifier of the inference engine to be retrieved.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains
+    /// the inference engine details as an instance of <see cref="Aesir.Common.Models.AesirInferenceEngineBase"/>.
+    /// </returns>
+    Task<AesirInferenceEngineBase> GetInferenceEngineAsync(Guid id);
+
+    /// <summary>
+    /// Inserts a new AesirInferenceEngineBase into the database.
+    /// </summary>
+    /// <param name="inferenceEngine">The inference engine to insert.</param>
+    Task CreateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine);
+
+    /// <summary>
+    /// Updates an existing AesirInferenceEngineBase in the database.
+    /// </summary>
+    /// <param name="inferenceEngine">The inference engine with updated values.</param>
+    Task UpdateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine);
+
+    /// <summary>
+    /// Delete an existing AesirInferenceEngineBase from the database.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirInferenceEngineBase to delete.</param>
+    Task DeleteInferenceEngineAsync(Guid id);
+    
+    /// <summary>
     /// Asynchronously retrieves a collection of Aesir agents.
     /// </summary>
     /// <returns>
@@ -138,13 +190,4 @@ public interface IConfigurationService
     /// </summary>
     /// <param name="id">The unique identifier of the AesirMcpServerTool for which to retrieve tools.</param>
     Task<IEnumerable<AesirMcpServerToolBase>> GetMcpServerTools(Guid id);
-
-    /// <summary>
-    /// Asynchronously retrieves the default persona for generating prompts within the system.
-    /// </summary>
-    /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains a <see cref="PromptPersona"/> value
-    /// indicating the default persona.
-    /// </returns>
-    Task<PromptPersona> GetDefaultPersonaAsync();
 }

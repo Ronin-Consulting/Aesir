@@ -31,16 +31,17 @@ public class ChatService(
             configuration.GetValue<string>("Inference:Chat"));
 
     /// <summary>
-    /// Sends a chat completion request to the API and retrieves the results asynchronously.
+    /// Sends an agent chat completion request asynchronously and retrieves the result from the API.
     /// </summary>
-    /// <param name="request">The <see cref="AesirChatRequest"/> containing the parameters for the chat completion.</param>
-    /// <returns>A task that represents the asynchronous operation.
-    /// The task result contains an <see cref="AesirChatResult"/> with the chat completion response.</returns>
-    public async Task<AesirChatResult> ChatCompletionsAsync(AesirChatRequest request)
+    /// <param name="request">The request object of type <see cref="AesirAgentChatRequestBase"/> containing the parameters for the chat completion.</param>
+    /// <returns>A task representing the asynchronous operation, with a result of type <see cref="AesirChatResult"/> containing the response from the API.</returns>
+    public async Task<AesirChatResult> AgentChatCompletionsAsync(AesirAgentChatRequestBase request)
     {
         try
         {
-            var response = await _flurlClient.Request().PostJsonAsync(request);
+            var response = await _flurlClient.Request()
+                .AppendPathSegment("agent")
+                .PostJsonAsync(request);
 
             return await response.GetJsonAsync<AesirChatResult>();
         }
@@ -51,16 +52,78 @@ public class ChatService(
         }
     }
 
-    /// Asynchronously streams chat completion results based on the given request.
-    /// <param name="request">
-    /// An instance of <see cref="AesirChatRequest"/> containing the details for the chat query,
-    /// such as the conversation context, model, and user preferences.
-    /// </param>
+    /// Streams agent chat completions asynchronously based on the provided request.
+    /// The method returns an asynchronous enumerable that yields partial results as they are received.
+    /// <param name="request">The chat request containing parameters such as model, conversation details, and configuration options for the chat session.</param>
     /// <returns>
-    /// An asynchronous enumerable of <see cref="AesirChatStreamedResult"/> objects representing
-    /// the streamed responses from the chat service.
+    /// An asynchronous enumerable of <see cref="AesirChatStreamedResult"/> objects,
+    /// where each object contains incremental results of the chat completion stream.
+    /// Results include message deltas and metadata, and may yield null entries if no incremental data is provided.
     /// </returns>
-    public async IAsyncEnumerable<AesirChatStreamedResult?> ChatCompletionsStreamedAsync(AesirChatRequest request)
+    public async IAsyncEnumerable<AesirChatStreamedResult?> AgentChatCompletionsStreamedAsync(AesirAgentChatRequestBase request)
+    {
+        // 1. Build the request as usual.
+        var flurlRequest = _flurlClient.Request()
+            .AppendPathSegment("agent")
+            .AppendPathSegment("streamed");
+
+        // 2. Use SendAsync to get the response as a stream.
+        // This is the key change. We manually create the JSON content and tell
+        // Flurl to return as soon as the response headers are read.
+        var response = await flurlRequest.SendAsync(
+            HttpMethod.Post,
+            new Flurl.Http.Content.CapturedJsonContent(JsonSerializer.Serialize(request)),
+            completionOption: HttpCompletionOption.ResponseHeadersRead
+        );
+        
+        await using var responseStream = await response.GetStreamAsync();
+        
+        var asyncEnumerable = 
+            JsonSerializer.DeserializeAsyncEnumerable<AesirChatStreamedResult?>(
+                responseStream,
+                new JsonSerializerOptions()
+                {
+                    PropertyNameCaseInsensitive = true,
+                    DefaultBufferSize = 128
+                }
+            );
+        
+        await foreach (var item in asyncEnumerable)
+        {
+            yield return item;
+        }
+    }
+    
+    /// <summary>
+    /// Sends a model chat completion request asynchronously and retrieves the result from the API.
+    /// </summary>
+    /// <param name="request">The request object of type <see cref="AesirChatRequestBase"/> containing the parameters for the chat completion.</param>
+    /// <returns>A task representing the asynchronous operation, with a result of type <see cref="AesirChatResult"/> containing the response from the API.</returns>
+    public async Task<AesirChatResult> ChatCompletionsAsync(AesirChatRequestBase request)
+    {
+        try
+        {
+            var response = await _flurlClient.Request()
+                .PostJsonAsync(request);
+
+            return await response.GetJsonAsync<AesirChatResult>();
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+
+    /// Streams chat completions asynchronously based on the provided request.
+    /// The method returns an asynchronous enumerable that yields partial results as they are received.
+    /// <param name="request">The chat request containing parameters such as model, conversation details, and configuration options for the chat session.</param>
+    /// <returns>
+    /// An asynchronous enumerable of <see cref="AesirChatStreamedResult"/> objects,
+    /// where each object contains incremental results of the chat completion stream.
+    /// Results include message deltas and metadata, and may yield null entries if no incremental data is provided.
+    /// </returns>
+    public async IAsyncEnumerable<AesirChatStreamedResult?> ChatCompletionsStreamedAsync(AesirChatRequestBase request)
     {
         // 1. Build the request as usual.
         var flurlRequest = _flurlClient.Request().AppendPathSegment("streamed");

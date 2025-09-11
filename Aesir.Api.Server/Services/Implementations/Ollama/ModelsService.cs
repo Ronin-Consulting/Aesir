@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
+using Aesir.Common.Models;
 using OllamaSharp;
 
 namespace Aesir.Api.Server.Services.Implementations.Ollama;
@@ -18,57 +19,101 @@ public class ModelsService(
     : IModelsService
 {
     /// <summary>
-    /// Retrieves a collection of models available for use in the application.
-    /// This includes both embedding models and chat models based on the provided configuration and loaded models.
+    /// Retrieves a collection of AI models based on the specified category.
     /// </summary>
+    /// <param name="category">
+    /// An optional category of models to filter the results. If null, all models are returned.
+    /// </param>
     /// <returns>
-    /// A task representing the asynchronous operation, containing a list of <c>AesirModelInfo</c> objects.
+    /// A task representing the asynchronous operation, with a result of an enumerable collection of AI model information.
     /// </returns>
-    public async Task<IEnumerable<AesirModelInfo>> GetModelsAsync()
+    public async Task<IEnumerable<AesirModelInfo>> GetModelsAsync(ModelCategory? category)
     {
-        // only ever one embedding model
-        var embeddingModelName = configuration.GetValue<string>("Inference:Ollama:EmbeddingModel")
-                                 ?? throw new InvalidOperationException("No embedding model configured");
-
-        var allowedModelNames = (configuration.GetSection("Inference:Ollama:ChatModels").Get<string[]>()
-                      ?? throw new InvalidOperationException("No chat models configured")).ToList();
-
-        // get ollama models loaded
-        var ollamaModels = (await api.ListLocalModelsAsync()).ToList();
-
-        if (ollamaModels.Count == 0)
-            throw new InvalidOperationException("No models found");
-
-        if (!ollamaModels.Any(m => m.Name.Equals(embeddingModelName, StringComparison.InvariantCultureIgnoreCase)))
-            throw new InvalidOperationException("Embedding model not found");
-
         var models = new List<AesirModelInfo>();
 
-        // add embedding model
-        var embeddingModel = ollamaModels.First(m => m.Name.Equals(embeddingModelName, StringComparison.InvariantCultureIgnoreCase));
-        models.Add(new AesirModelInfo
+        try
         {
-            Id = embeddingModel.Name,
-            OwnedBy = "Aesir",
-            CreatedAt = embeddingModel.ModifiedAt,
-            IsChatModel = false,
-            IsEmbeddingModel = true
-        });
+            // get ollama models loaded
+            var ollamaModels = (await api.ListLocalModelsAsync()).ToList();
 
-        var allowedModels =
-            ollamaModels.Where(m => allowedModelNames.Contains(m.Name)).ToList();
+            // populate embedding models
+            if (category is null or ModelCategory.Embedding)
+            {
+                var allowedModelNames =
+                    configuration.GetSection("Configuration:RestrictEmbeddingModelsTo").Get<string[]>() ?? [];
 
-        if (allowedModels.Count == 0)
-            throw new InvalidOperationException("No chat models founds");
+                // restrict the models if the configuration requested it
+                var allowedModels = ollamaModels.ToList();
+                if (allowedModelNames.Length > 0)
+                    allowedModels = ollamaModels.Where(m => allowedModelNames.Contains(m.Name)).ToList();
 
-        models.AddRange(allowedModels.Select(m => new AesirModelInfo
+                allowedModels.ForEach(m =>
+                {
+                    models.Add(new AesirModelInfo
+                    {
+                        Id = m.Name,
+                        OwnedBy = "Aesir",
+                        CreatedAt = m.ModifiedAt,
+                        IsChatModel = false,
+                        IsEmbeddingModel = true
+                    });
+                });
+            }
+
+            // populate chat models
+            if (category is null or ModelCategory.Chat)
+            {
+                var allowedModelNames =
+                    configuration.GetSection("Configuration:RestrictChatModelsTo").Get<string[]>() ?? [];
+
+                // restrict the models if the configuration requested it
+                var allowedModels = ollamaModels.ToList();
+                if (allowedModelNames.Length > 0)
+                    allowedModels = ollamaModels.Where(m => allowedModelNames.Contains(m.Name)).ToList();
+
+                allowedModels.ForEach(m =>
+                {
+                    models.Add(new AesirModelInfo
+                    {
+                        Id = m.Name,
+                        OwnedBy = "Aesir",
+                        CreatedAt = m.ModifiedAt,
+                        IsChatModel = true,
+                        IsEmbeddingModel = false
+                    });
+                });
+            }
+
+            // populate vision models
+            if (category is null or ModelCategory.Vision)
+            {
+                var allowedModelNames =
+                    configuration.GetSection("Configuration:RestrictVisionModelsTo").Get<string[]>() ?? [];
+
+                // restrict the models if the configuration requested it
+                var allowedModels = ollamaModels.ToList();
+                if (allowedModelNames.Length > 0)
+                    allowedModels = ollamaModels.Where(m => allowedModelNames.Contains(m.Name)).ToList();
+
+                allowedModels.ForEach(m =>
+                {
+                    models.Add(new AesirModelInfo
+                    {
+                        Id = m.Name,
+                        OwnedBy = "Aesir",
+                        CreatedAt = m.ModifiedAt,
+                        IsChatModel = false,
+                        IsEmbeddingModel = false
+                    });
+                });
+            }
+        }
+        catch (Exception ex)
         {
-            Id = m.Name,
-            OwnedBy = "Aesir",
-            CreatedAt = m.ModifiedAt,
-            IsChatModel = true,
-            IsEmbeddingModel = false
-        }));
+            logger.LogError(ex, "Error getting models from Ollama");
+
+            throw;
+        }
 
         return models;
     }

@@ -87,7 +87,9 @@
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
                         <DataGridTextColumn Header="Description" Binding="{Binding Description}" />
+                        <DataGridTextColumn Header="Type" Binding="{Binding Path=Location, Converter={StaticResource EnumDescConverter}}" />
                         <DataGridTextColumn Header="Command" Binding="{Binding Command}" />
+                        <DataGridTextColumn Header="URL" Binding="{Binding Url}" />
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>

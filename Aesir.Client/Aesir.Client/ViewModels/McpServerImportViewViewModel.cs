@@ -30,8 +30,6 @@ public partial class McpServerImportViewViewModel : ObservableValidator, IDialog
     [ObservableProperty]
     private string? _validationError;
     
-//    public string ClientConfigJson { get; set; }
-    
     public ICommand OkCommand { get; set; }
     
     public ICommand CancelCommand { get; set; }

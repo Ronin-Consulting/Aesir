@@ -43,6 +43,16 @@ public partial class ChatHistoryViewModel
     public ObservableGroupedCollection<string, ChatHistoryButtonViewModel> ChatHistoryByDate { get; } = [];
 
     /// <summary>
+    /// Represents a command that shows a general settings view
+    /// </summary>
+    public ICommand ShowGeneralSettings { get; set; }
+    
+    /// <summary>
+    /// Represents a command that shows a inference engines view
+    /// </summary>
+    public ICommand ShowInferenceEngines { get; }
+
+    /// <summary>
     /// Represents a command that shows a agents view
     /// </summary>
     public ICommand ShowAgents { get; }
@@ -106,7 +116,9 @@ public partial class ChatHistoryViewModel
         _appState = appState;
         _chatHistoryService = chatHistoryService;
         _navigationService = navigationService;
-        
+
+        ShowGeneralSettings = new RelayCommand(ExecuteShowGeneralSettings);
+        ShowInferenceEngines = new RelayCommand(ExecuteShowInferenceEngines);
         ShowAgents = new RelayCommand(ExecuteShowAgents);
         ShowTools = new RelayCommand(ExecuteShowTools);
         ShowMcpServers = new RelayCommand(ExecuteShowMcpServers);
@@ -263,6 +275,16 @@ public partial class ChatHistoryViewModel
     public void Receive(ChatHistoryChangedMessage message)
     {
         Dispatcher.UIThread.InvokeAsync(LoadChatHistoryAsync);
+    }
+
+    private void ExecuteShowGeneralSettings()
+    {
+        WeakReferenceMessenger.Default.Send(new ShowGeneralSettingsMessage());
+    }
+
+    private void ExecuteShowInferenceEngines()
+    {
+        _navigationService.NavigateToInferenceEngines();   
     }
 
     private void ExecuteShowAgents()

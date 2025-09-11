@@ -3,6 +3,7 @@ using Aesir.Api.Server.Models;
 using Aesir.Common.FileTypes;
 using Aesir.Api.Server.Services;
 using Aesir.Api.Server.Services.Implementations.Standard;
+using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
@@ -27,53 +28,57 @@ public static class ServiceCollectionExtensions
     [Experimental("SKEXP0070")]
     public static IServiceCollection SetupSemanticKernel(this IServiceCollection services, IConfiguration configuration)
     {
-        // set default prompt persona
-        var defaultPromptPersona = configuration.GetValue<string>("Inference:PromptContext") ?? "Business";
-        DefaultPromptProvider.Instance.DefaultPromptPersona = 
-            defaultPromptPersona.PromptPersonaFromDescription();
-        
-        var useOpenAi = configuration.GetValue<bool>("Inference:UseOpenAICompatible");
-        var embeddingModelId = useOpenAi
-            ? configuration.GetSection("Inference:OpenAI:EmbeddingModel").Value
-            : configuration.GetSection("Inference:Ollama:EmbeddingModel").Value;
+        // TODO if some part of configuration is missing AND we are in db config mode, boot up app anyway
+        // so user can complete setup
+
+        // load general settings (from file or db)
+        var generalSettings = configuration.GetSection("GeneralSettings")
+            .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
+        var embeddingModel = generalSettings["RagEmbeddingModel"] ?? 
+                             throw new InvalidOperationException("RagEmbeddingMode not configured");
         
         var kernelBuilder = services.AddKernel();
-
-        if (useOpenAi)
-        {
-            kernelBuilder
-                .AddOpenAIChatCompletion(
-                    modelId: configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>()
-                        ?.FirstOrDefault() ?? "gpt-4o"
-                );
-
-            kernelBuilder.AddOpenAIEmbeddingGenerator(embeddingModelId ?? "text-embedding-3-large", dimensions: 1024);
-        }
-        else
-        {
-            kernelBuilder
-                .AddOllamaChatCompletion();
-
-            const string? serviceId = null;
-            services.AddKeyedSingleton<IEmbeddingGenerator<string, Embedding<float>>>(serviceId, (serviceProvider, _) =>
-            {
-                var ollamaClient = serviceProvider.GetRequiredService<OllamaApiClient>();
-                ollamaClient.SelectedModel = embeddingModelId!;
-                
-                var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
-
-                var builder = ((IEmbeddingGenerator<string, Embedding<float>>)ollamaClient)
-                    .AsBuilder();
-
-                if (loggerFactory is not null)
-                {
-                    builder.UseLogging(loggerFactory);
-                }
-
-                return builder.Build(serviceProvider);
-            });
-        }
         
+        // load inference engines (from file or db)
+        var inferenceEngines = configuration.GetSection("InferenceEngines")
+            .Get<AesirInferenceEngine[]>() ?? [];
+        foreach (var inferenceEngine in inferenceEngines)
+        {
+            switch (inferenceEngine.Type)
+            {
+                case InferenceEngineType.Ollama:
+                {
+                    kernelBuilder.AddOllamaChatCompletion();
+                    
+                    const string? serviceId = null;
+                    services.AddKeyedSingleton<IEmbeddingGenerator<string, Embedding<float>>>(serviceId, (serviceProvider, _) =>
+                    {
+                        var ollamaClient = serviceProvider.GetRequiredService<OllamaApiClient>();
+                        ollamaClient.SelectedModel = embeddingModel;
+                
+                        var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+
+                        var builder = ((IEmbeddingGenerator<string, Embedding<float>>)ollamaClient)
+                            .AsBuilder();
+
+                        if (loggerFactory is not null)
+                        {
+                            builder.UseLogging(loggerFactory);
+                        }
+
+                        return builder.Build(serviceProvider);
+                    });
+                    
+                    break;
+                }
+                case InferenceEngineType.OpenAICompatible:
+                {
+                    kernelBuilder.AddOpenAIChatCompletion("set-by-agent");
+                    kernelBuilder.AddOpenAIEmbeddingGenerator(embeddingModel, dimensions: 1024);
+                    break;
+                }
+            }
+        }
         
         Func<IServiceProvider, QdrantClient>? clientProvider = provider =>
         {
@@ -235,8 +240,7 @@ public static class ServiceCollectionExtensions
                 serviceProvider
                     .GetRequiredService<ILogger<TextFileLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
-        });
-            
+        }); 
             
         kernelBuilder.AddVectorStoreTextSearch<AesirConversationDocumentTextData<Guid>>();
         kernelBuilder.AddVectorStoreTextSearch<AesirGlobalDocumentTextData<Guid>>();

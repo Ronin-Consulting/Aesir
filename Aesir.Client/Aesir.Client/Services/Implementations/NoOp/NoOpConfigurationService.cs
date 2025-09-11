@@ -8,6 +8,41 @@ namespace Aesir.Client.Services.Implementations.NoOp;
 
 public class NoOpConfigurationService : IConfigurationService
 {
+    public async Task<AesirGeneralSettingsBase> GetGeneralSettingsAsync()
+    {
+        return await Task.FromResult(new AesirGeneralSettingsBase());   
+    }
+
+    public async Task UpdateGeneralSettingsAsync(AesirGeneralSettingsBase generalSettings)
+    {
+        await Task.CompletedTask;
+    }
+    
+    public async Task<IEnumerable<AesirInferenceEngineBase>> GetInferenceEnginesAsync()
+    {
+        return await Task.FromResult(new List<AesirInferenceEngineBase>());
+    }
+
+    public async Task<AesirInferenceEngineBase> GetInferenceEngineAsync(Guid id)
+    {
+        return await Task.FromResult(new AesirInferenceEngineBase());
+    }
+
+    public async Task CreateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine)
+    {
+        await Task.CompletedTask;
+    }
+
+    public async Task UpdateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine)
+    {
+        await Task.CompletedTask;
+    }
+
+    public async Task DeleteInferenceEngineAsync(Guid id)
+    {
+        await Task.CompletedTask;
+    }
+
     public async Task<IEnumerable<AesirAgentBase>> GetAgentsAsync()
     {
         return await Task.FromResult(new List<AesirAgentBase>());
@@ -96,10 +131,5 @@ public class NoOpConfigurationService : IConfigurationService
     public async Task<IEnumerable<AesirMcpServerToolBase>> GetMcpServerTools(Guid id)
     {
         return await Task.FromResult(new List<AesirMcpServerToolBase>());   
-    }
-
-    public Task<PromptPersona> GetDefaultPersonaAsync()
-    {
-        return Task.FromResult(PromptPersona.Business);
     }
 }
