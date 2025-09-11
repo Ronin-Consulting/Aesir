@@ -32,10 +32,13 @@ public class DesignAgentViewViewModel : AgentViewViewModel
         Id = Guid.NewGuid(),
         Name = "My Test Agent",
         Description = "",
-        PromptPersona = PromptPersona.Military,
-        CustomPromptContent = null,
+        ChatPromptPersona = PromptPersona.Military,
+        ChatCustomPromptContent = null,
         ChatInferenceEngineId = Guid.NewGuid(),
-        ChatModel = "qwen3:32b-q4_K_M"
+        ChatModel = "qwen3:32b-q4_K_M",
+        ChatTemperature = 1.0,
+        ChatTopP = 1.0,
+        ChatMaxTokens = 10000
     }, new NoOpNotificationService(), new NoOpConfigurationService(), new NoOpModelService())
     {
         AvailableTools = new ObservableCollection<string>()

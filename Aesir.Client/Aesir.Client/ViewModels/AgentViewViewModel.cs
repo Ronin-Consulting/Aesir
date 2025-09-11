@@ -70,7 +70,7 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     /// <summary>
     /// Collection of available prompt personas that defines the context in which the agent operates.
     /// </summary>
-    public ObservableCollection<PromptPersona> AvailablePromptPersonas { get; } = new(Enum.GetValues<PromptPersona>());
+    public ObservableCollection<PromptPersona> AvailableChatPromptPersonas { get; } = new(Enum.GetValues<PromptPersona>());
 
     /// <summary>
     /// Collection of available inference engines for chat models
@@ -136,9 +136,12 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
             IsExisting = agent.Id.HasValue,
             Name = agent.Name,
             Description = agent.Description,
-            PromptPersona = agent.PromptPersona,
-            CustomPromptContent = agent.CustomPromptContent,
+            ChatPromptPersona = agent.ChatPromptPersona,
+            ChatCustomPromptContent = agent.ChatCustomPromptContent,
             ChatModel = agent.ChatModel,
+            ChatMaxTokens = agent.ChatMaxTokens,
+            ChatTemperature = agent.ChatTemperature,
+            ChatTopP = agent.ChatTopP,
             Tools = new ObservableCollection<string>()
         };
         IsDirty = false;
@@ -290,8 +293,11 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
                 Description = FormModel.Description,
                 ChatInferenceEngineId = FormModel.ChatInferenceEngine.Id,
                 ChatModel = FormModel.ChatModel,
-                PromptPersona = FormModel.PromptPersona,
-                CustomPromptContent = FormModel.PromptPersona == PromptPersona.Custom ? FormModel.CustomPromptContent : null
+                ChatPromptPersona = FormModel.ChatPromptPersona,
+                ChatCustomPromptContent = FormModel.ChatPromptPersona == PromptPersona.Custom ? FormModel.ChatCustomPromptContent : null,
+                ChatMaxTokens = FormModel.ChatMaxTokens,
+                ChatTemperature = FormModel.ChatTemperature,
+                ChatTopP = FormModel.ChatTopP
             };
 
             var closeResult = CloseResult.Errored;
@@ -422,7 +428,7 @@ public partial class AgentFormDataModel : ObservableValidator
     /// <summary>
     /// Represents the current prompt context for the agent, which is required for processing.
     /// </summary>
-    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Prompt is required")] private PromptPersona? _promptPersona;
+    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Prompt is required")] private PromptPersona? _chatPromptPersona;
 
     /// <summary>
     /// Represents the current prompt content for the agent when the prompt persona is custom
@@ -430,7 +436,7 @@ public partial class AgentFormDataModel : ObservableValidator
     [ObservableProperty] 
     [NotifyDataErrorInfo] 
     [ConditionalRequired(nameof(PromptPersona), Aesir.Common.Prompts.PromptPersona.Custom, ErrorMessage = "Prompt content is required")] 
-    private string? _customPromptContent;
+    private string? _chatCustomPromptContent;
     
     /// <summary>
     /// Represents the specific Inference Engine selected for chat
@@ -441,6 +447,21 @@ public partial class AgentFormDataModel : ObservableValidator
     /// Represents the selected chat model for the agent, which is a required field and is validated for compliance.
     /// </summary>
     [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Chat Model is required")] private string? _chatModel;
+
+    /// <summary>
+    /// Represents the max tokens allowed for the chat session.
+    /// </summary>
+    [ObservableProperty] private int? _chatMaxTokens;
+
+    /// <summary>
+    /// Represents the temperature model hyperparameter for the chat session.
+    /// </summary>
+    [ObservableProperty] private double? _chatTemperature;
+
+    /// <summary>
+    /// Represents the top p model hyperparameter for the chat session.
+    /// </summary>
+    [ObservableProperty] private double? _chatTopP;
 
     /// <summary>
     /// Collection of tools used within the AgentFormDataModel

@@ -34,7 +34,7 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 Description = "Random agent 1",
                 ChatInferenceEngineId = Guid.NewGuid(),
                 ChatModel = "gpt-4.1-2025-04-14",
-                PromptPersona = PromptPersona.Military
+                ChatPromptPersona = PromptPersona.Military
             },
             new()
             {
@@ -43,7 +43,7 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 Description = "Random agent 2",
                 ChatInferenceEngineId = Guid.NewGuid(),
                 ChatModel = "qwen3:32b-q4_K_M",
-                PromptPersona = PromptPersona.Military
+                ChatPromptPersona = PromptPersona.Military
             },
             new()
             {
@@ -52,7 +52,7 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 Description = "Agent that is allowed to take control of the computer",
                 ChatInferenceEngineId = Guid.NewGuid(),
                 ChatModel = "cogito:32b-v1-preview-qwen-q4_K_M",
-                PromptPersona = PromptPersona.Business
+                ChatPromptPersona = PromptPersona.Business
             },
             new()
             {
@@ -61,8 +61,8 @@ public class DesignAgentsViewViewModel : AgentsViewViewModel
                 Description = "Agent which a custom prompt",
                 ChatInferenceEngineId = Guid.NewGuid(),
                 ChatModel = "cogito:32b-v1-preview-qwen-q4_K_M",
-                PromptPersona = PromptPersona.Custom,
-                CustomPromptContent = "You are a helpful agent"
+                ChatPromptPersona = PromptPersona.Custom,
+                ChatCustomPromptContent = "You are a helpful agent"
             }
         };
         Agents = new ObservableCollection<AesirAgentBase>(agents);

@@ -37,14 +37,32 @@ public class AesirAgentBase
     public string? ChatModel { get; set; }
     
     /// <summary>
+    /// Gets or sets the temperature chat model parameter for controlling randomness.
+    /// </summary>
+    [JsonPropertyName("chat_temperature")]
+    public double? ChatTemperature { get; set; }
+
+    /// <summary>
+    /// Gets or sets the top-p chat model parameter for nucleus sampling.
+    /// </summary>
+    [JsonPropertyName("chat_top_p")]
+    public double? ChatTopP { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum number of tokens to generate.
+    /// </summary>
+    [JsonPropertyName("chat_max_tokens")]
+    public int? ChatMaxTokens { get; set; }
+    
+    /// <summary>
     /// Gets or sets the prompt persona used by the agent
     /// </summary>
-    [JsonPropertyName("prompt_persona")]
-    public PromptPersona? PromptPersona { get; set; }
+    [JsonPropertyName("chat_prompt_persona")]
+    public PromptPersona? ChatPromptPersona { get; set; }
     
     /// <summary>
     /// Gets or sets the custom prompt content used by the agent when the PromptPerson is Custom
     /// </summary>
-    [JsonPropertyName("custom_prompt_content")]
-    public string? CustomPromptContent { get; set; }
+    [JsonPropertyName("chat_custom_prompt_content")]
+    public string? ChatCustomPromptContent { get; set; }
 }

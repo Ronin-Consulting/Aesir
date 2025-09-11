@@ -36,7 +36,7 @@
             LabelPosition="Top">
             <u:Form.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto,*" HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto,*" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem Label="Name" Grid.ColumnSpan="3">
@@ -60,8 +60,8 @@
                 Grid.Column="0"
                 Label="Prompt">
                 <ComboBox Width="150"
-                          ItemsSource="{Binding AvailablePromptPersonas}"
-                          SelectedItem="{Binding FormModel.PromptPersona}">
+                          ItemsSource="{Binding AvailableChatPromptPersonas}"
+                          SelectedItem="{Binding FormModel.ChatPromptPersona}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
@@ -72,7 +72,6 @@
             <u:FormItem
                 Grid.Row="2"
                 Grid.Column="2"
-                Grid.ColumnSpan="1"
                 Label=""
                 HorizontalAlignment="Left">
                 <u:IconButton 
@@ -80,7 +79,7 @@
                     Content="Open Editor"
                     IconPlacement="Right" 
                     MinHeight="34"
-                    IsEnabled="{Binding FormModel.PromptPersona, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static prompts:PromptPersona.Custom}}"
+                    IsEnabled="{Binding FormModel.ChatPromptPersona, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static prompts:PromptPersona.Custom}}"
                     Command="{Binding EditCustomPromptCommand}">
                     <u:IconButton.Icon>
                         <avalonia:MaterialIcon Kind="OpenInNew" Width="20" Height="20"/>
@@ -92,14 +91,14 @@
                 Grid.Column="0"
                 Grid.ColumnSpan="3" 
                 Label="Custom Prompt"
-                IsVisible="{Binding FormModel.PromptPersona, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static prompts:PromptPersona.Custom}}">
+                IsVisible="{Binding FormModel.ChatPromptPersona, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static prompts:PromptPersona.Custom}}">
                 <TextBox
                     TextWrapping="Wrap" 
                     MinHeight="100" 
                     MaxWidth="380"
                     HorizontalAlignment="Stretch"
                     VerticalContentAlignment="Top" 
-                    Text="{Binding FormModel.CustomPromptContent}" />
+                    Text="{Binding FormModel.ChatCustomPromptContent}" />
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="4" 
@@ -140,6 +139,49 @@
                     HorizontalAlignment="Stretch"
                     SelectedItems="{Binding FormModel.Tools}"
                     ItemsSource="{Binding AvailableTools}" />
+            </u:FormItem>
+            <u:FormItem
+                Grid.Row="7"
+                Grid.Column="0"
+                Label="Max Tokens">
+                <NumericUpDown 
+                    Value="{Binding FormModel.ChatMaxTokens}"
+                    Minimum="1"
+                    Maximum="1000000"
+                    Increment="1"
+                    FormatString="F0"
+                    Width="100"
+                    HorizontalAlignment="Left"
+                    Watermark="Override" />
+            </u:FormItem>
+            <u:FormItem
+                Grid.Row="7"
+                Grid.Column="1"
+                Label="Temperature">
+                <NumericUpDown 
+                    Value="{Binding FormModel.ChatTemperature}"
+                    Minimum="0"
+                    Maximum="1"
+                    Increment=".05"
+                    FormatString="F2"
+                    Width="100"
+                    HorizontalAlignment="Left"
+                    Watermark="Override" />
+            </u:FormItem>
+            <u:FormItem
+                Grid.Row="7"
+                Grid.Column="2"
+                Label="Top P"
+                HorizontalAlignment="Right">
+                <NumericUpDown 
+                    Value="{Binding FormModel.ChatTopP}"
+                    Minimum="0.1"
+                    Maximum="1"
+                    Increment=".05"
+                    FormatString="F2"
+                    Width="100"
+                    HorizontalAlignment="Left"
+                    Watermark="Override" />
             </u:FormItem>
         </u:Form>
         

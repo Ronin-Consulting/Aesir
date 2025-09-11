@@ -52,11 +52,11 @@ namespace Aesir.Api.Server.Controllers
                 ClientDateTime = request.ClientDateTime,
                 Conversation = request.Conversation,
                 EnableThinking = true, // TODO should eventually be configuration on agent (it's an override of inference engine value)
-                MaxTokens = 32768, // TODO should eventually be configuration on agent
+                MaxTokens = agent.ChatMaxTokens ?? 32768,
                 Model = agent.ChatModel,
-                Temperature = 0.1, // TODO should eventually be configuration on agent
+                Temperature = agent.ChatTemperature ?? 0.1,
                 Title = request.Title,
-                TopP = 1.0, // TODO should eventually be configuration on agent
+                TopP = agent.ChatTopP ?? 0.1,
                 User = request.User
             };
             
@@ -84,11 +84,11 @@ namespace Aesir.Api.Server.Controllers
                 ClientDateTime = request.ClientDateTime,
                 Conversation = request.Conversation,
                 EnableThinking = true,
-                MaxTokens = 32768, // TODO should be configuration on agent
+                MaxTokens = agent.ChatMaxTokens ?? 32768,
                 Model = agent.ChatModel,
-                Temperature = 0.1, // TODO should be configuration on agent
+                Temperature = agent.ChatTemperature ?? 0.1,
                 Title = request.Title,
-                TopP = 1.0, // TODO should be configuration on agent
+                TopP = agent.ChatTopP ?? 0.1,
                 User = request.User
             };
             

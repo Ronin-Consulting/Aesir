@@ -469,11 +469,11 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
                 messageViewModel = Ioc.Default.GetService<SystemMessageViewModel>();
                 if (messageViewModel != null)
                 {
-                    var promptPersona = _appState.SelectedAgent?.PromptPersona;
+                    var promptPersona = _appState.SelectedAgent?.ChatPromptPersona;
                     string? customContent = null;
 
                     if (promptPersona == PromptPersona.Custom)
-                        customContent = _appState.SelectedAgent?.CustomPromptContent;
+                        customContent = _appState.SelectedAgent?.ChatCustomPromptContent;
                     
                     // always reset the system message
                     await messageViewModel.SetMessage(AesirChatMessage.NewSystemMessage(promptPersona, customContent));

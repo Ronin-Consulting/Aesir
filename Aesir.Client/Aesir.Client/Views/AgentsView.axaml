@@ -68,7 +68,7 @@
                           SelectedItem="{Binding SelectedAgent}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
-                        <DataGridTextColumn Header="Prompt" Binding="{Binding PromptPersona}" />
+                        <DataGridTextColumn Header="Chat Prompt" Binding="{Binding ChatPromptPersona}" />
                         <DataGridTextColumn Header="Chat Model" Binding="{Binding ChatModel}" />
                         <DataGridTextColumn Header="Description" Binding="{Binding Description}" />
                     </DataGrid.Columns>

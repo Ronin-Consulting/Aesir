@@ -178,8 +178,8 @@ public class ChatService : BaseChatService
         var systemPromptVariables = new Dictionary<string, object>
         {
             ["currentDateTime"] = request.ClientDateTime,
-            ["webSearchtoolsEnabled"] = false,
-            ["docSearchToolsEnabled"] = false
+            ["webSearchtoolsEnabled"] = false, // TODO should come from agent's tools
+            ["docSearchToolsEnabled"] = false, // TODO should come from agent's tools
         };
         
         var settings = new OpenAIPromptExecutionSettings
