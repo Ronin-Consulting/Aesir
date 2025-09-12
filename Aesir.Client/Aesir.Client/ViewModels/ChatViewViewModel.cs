@@ -25,93 +25,97 @@ using Microsoft.Extensions.Logging;
 namespace Aesir.Client.ViewModels;
 
 /// <summary>
-/// ViewModel for managing the main application's functionality, interactions, and state transitions.
+/// ViewModel responsible for managing chat functionality, user interactions, and application state specific to chat operations.
 /// </summary>
 /// <remarks>
-/// This class implements MVVM design patterns and utilizes CommunityToolkit.Mvvm for state tracking, messaging,
-/// and command execution. It facilitates operations such as chat management, speech processing, file uploads,
-/// and lifecycle management while integrating with other services and view models.
+/// This class adheres to the MVVM pattern and integrates with the CommunityToolkit.Mvvm framework for observable properties and messaging.
+/// It provides commands for sending messages, toggling panels, and managing files while coordinating with services such as navigation,
+/// speech processing, and chat session management. It also handles lifecycle and resource management.
 /// </remarks>
 public partial class ChatViewViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>,
     IRecipient<FileUploadStatusMessage>, IRecipient<RegenerateMessageMessage>, IDisposable
 {
     /// <summary>
-    /// Represents the default value used for agent selection in the user interface.
-    /// This value is utilized when no specific agent has been chosen by the user.
-    /// Serves as an indicator for uninitialized or default states related to agent selection.
+    /// The predefined constant value representing the default display name for an agent in the selection process.
+    /// Used to indicate that no agent has been explicitly chosen, often serving as a placeholder or default state.
     /// </summary>
     private const string DefaultAgentNameValue = "Select an agent";
-    
+
     /// <summary>
-    /// Represents the state of the panel within the main view.
-    /// When true, the panel is open; when false, it is closed.
-    /// Used to control the visibility or expanded state of the panel in the ChatViewViewModel.
+    /// Indicates whether the panel is currently open in the ChatViewViewModel.
+    /// A value of true signifies that the panel is open, while false means it is closed.
+    /// This variable is used to manage the open or closed state of the panel in the user interface.
     /// </summary>
     [ObservableProperty] private bool _panelOpen;
 
     /// <summary>
-    /// Indicates whether the application is currently engaged in sending a chat message
-    /// or processing a file operation. This boolean value can be used to control user interface
-    /// behavior and manage application logic during these activities.
+    /// Represents the state indicating whether the application is either in the process of sending a chat message
+    /// or handling a file operation. This property is intended to facilitate synchronization between application logic
+    /// and user interface behaviors during these operations.
     /// </summary>
     [ObservableProperty] [NotifyPropertyChangedRecipients]
     private bool _sendingChatOrProcessingFile;
 
     /// <summary>
-    /// Represents whether a chat message is currently available or present.
-    /// This property is utilized for managing the state of chat messages
-    /// within the application's ViewModel.
+    /// Indicates whether there is an existing chat message.
+    /// This variable serves as a flag to determine the presence
+    /// of a chat message in the current context or session.
     /// </summary>
     [ObservableProperty] private bool _hasChatMessage;
 
     /// <summary>
-    /// Represents the state indicating if a conversation has been initiated in the chat session.
-    /// Used to control application logic, such as enabling or disabling features
-    /// or UI elements tied to the active conversation state.
+    /// Indicates whether a conversation has been initiated in the current chat session.
+    /// This property is used to manage chat-related logic, such as enabling certain controls
+    /// or user interactions that depend on the active state of a conversation.
     /// </summary>
     [ObservableProperty] private bool _conversationStarted;
 
     /// <summary>
-    /// Collection of available agents that can be selected or used within the application.
+    /// Provides a collection of agents currently available for assignment or interaction.
+    /// This property is utilized to determine the active agents that can be selected
+    /// or utilized for various operations within the system.
     /// </summary>
     public ObservableCollection<AesirAgentBase> AvailableAgents { get; set; }
 
     /// <summary>
-    /// Stores agent currently selected by the user in the application.
+    /// Stores the currently selected agent within the application context.
+    /// This variable is used to track and manage the agent chosen by the user or system process.
+    /// It acts as a key element in operations that require agent-specific data or functionality.
     /// </summary>
     [ObservableProperty] private AesirAgentBase? _selectedAgent;
 
     /// <summary>
-    /// Stores the name of the agent currently selected by the user in the application.
-    /// This property is initialized with a default value of "Select an agent" and
-    /// updated whenever a user selects a specific agent from the available options.
+    /// Represents the name of the agent currently selected by the user within the chat interface.
+    /// This field is initialized with a default placeholder value and is updated to reflect
+    /// the name of the specified agent whenever a selection is made.
     /// </summary>
     [ObservableProperty] private string? _selectedAgentName = DefaultAgentNameValue;
 
     /// <summary>
-    /// Represents the currently selected file in the ChatViewViewModel.
-    /// This property is used to handle and track the file selection state
-    /// within the application's user interface and functionality.
+    /// Holds a reference to the currently selected file within the application.
+    /// Used to keep track of the file chosen by the user for operations such as viewing, editing, or processing.
+    /// Serves as an indicator of the active file in context.
     /// </summary>
     [ObservableProperty] private FileToUploadViewModel? _selectedFile;
 
     /// <summary>
-    /// Determines whether the file selection functionality is enabled or disabled in the application.
-    /// Used to control the state of user interactions related to file selection.
+    /// Indicates whether the file selection functionality is activated within the application.
+    /// This variable controls the enabling or disabling of file selection options,
+    /// ensuring proper interaction flow based on application state or user actions.
     /// </summary>
     [ObservableProperty] private bool _selectedFileEnabled = true;
 
     /// <summary>
-    /// Represents the current text content of the chat message in the application's ViewModel.
-    /// Serves as the backing field for the <see cref="ChatMessage"/> property.
-    /// Used to store user input for sending messages in the chat interface.
+    /// Stores the raw text input representing the content of a chat message before it is sent.
+    /// Managed internally within the ViewModel as the backing field for the <see cref="ChatMessage"/> property.
+    /// Tracks user-typed message text and supports application logic related to chat message preparation.
     /// </summary>
     private string? _chatMessage;
 
     /// <summary>
-    /// Represents the text content of the chat message being composed or edited by the user.
-    /// This property supports data binding to the user interface and is updated in real-time
-    /// as the user types. It also checks if the input is non-empty to toggle related functionality.
+    /// Represents the text content of the user's input message in the chat interface.
+    /// This property is bound to the message input box in the user interface and is updated as the user types.
+    /// Modifying this property also triggers logic to determine whether the message input is empty or contains text.
     /// </summary>
     public string? ChatMessage
     {
@@ -124,100 +128,118 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     }
 
     /// <summary>
-    /// Represents a collection of messages exchanged during a conversation.
-    /// This property is an observable collection containing instances of <see cref="MessageViewModel"/> that serve as the ViewModels for individual chat messages.
-    /// It is utilized to populate the UI with the conversation messages and is updated as new messages are added or removed during the session.
+    /// Holds the collection of messages exchanged during a conversation.
+    /// This property tracks the dialogue between participants, providing
+    /// a detailed record of the interaction.
     /// </summary>
     public ObservableCollection<MessageViewModel?> ConversationMessages { get; } = [];
 
     /// <summary>
-    /// Command that toggles the visibility of the left panel in the application.
-    /// When executed, it switches the panel's state between open and closed, improving user control over the interface layout.
+    /// Represents a command to toggle the visibility of the left panel in the user interface.
+    /// This is typically used to show or hide a sidebar or navigation panel based on the user's interaction.
+    /// Primarily bound to UI elements like buttons for controlling the display state of the left pane.
     /// </summary>
     public ICommand ToggleLeftPane { get; }
 
     /// <summary>
-    /// Represents a command to initiate or toggle a new chat session in the application.
-    /// Typically bound to user interface elements to trigger the creation or reset of a chat thread.
+    /// Represents a command to initiate a new chat session within the user interface.
+    /// This command is bound to actions, such as a button click, to allow users to start a new conversation.
+    /// Typically toggles the necessary state or functionality to prepare the system for a new chat context.
     /// </summary>
     public ICommand ToggleNewChat { get; }
-    
+
+    /// <summary>
+    /// Defines the currently selected agent within the application.
+    /// This property is used to identify and manage interactions with the chosen agent.
+    /// It determines the agent that will respond or perform actions as required by the system.
+    /// </summary>
     public ICommand SelectAgent { get; }
-    
+
+    /// <summary>
+    /// Represents a command used to enable or toggle the "Hands Free" mode within the application.
+    /// Typically associated with functionalities like voice commands or other hands-free interactions.
+    /// When executed, this command activates the corresponding logic to facilitate a hands-free user experience.
+    /// </summary>
     public ICommand ShowHandsFree { get; }
 
     /// <summary>
-    /// Command that triggers the action to send a chat message asynchronously.
-    /// Used by the ViewModel to handle the process of validating, preparing, and dispatching the message to the appropriate service or layer.
-    /// This command supports asynchronous operations and integrates with the UI to enable or disable based on the execution status.
+    /// Command responsible for handling the action of sending a message.
+    /// Encapsulates the logic required to process and dispatch user messages
+    /// within the application, ensuring proper execution and state management
+    /// during the operation.
     /// </summary>
     public IAsyncRelayCommand SendMessageCommand => _sendMessageCommand ??= new AsyncRelayCommand(SendMessageAsync);
 
     /// <summary>
-    /// A command used to initiate the file selection process within the file upload functionality of the application.
-    /// Triggers an asynchronous operation to display a file picker or dialog, allowing users to select a file for upload.
+    /// Encapsulates the command functionality to display a file selection dialog to the user.
+    /// This property is typically bound to the user interface elements that trigger file selection operations.
+    /// Facilitates interaction to select and retrieve file paths for further processing.
     /// </summary>
     public IAsyncRelayCommand ShowFileSelectionCommand =>
         _showFileSelectionCommand ??= new AsyncRelayCommand(ShowFileSelectionAsync);
 
     /// <summary>
-    /// Stores the asynchronous command instance used to send chat messages within the application.
-    /// Associated with the <c>SendMessageAsync</c> method to handle the user's input and transmit messages.
-    /// Ensures actions tied to sending messages are executed asynchronously to maintain UI responsiveness.
+    /// Encapsulates the command logic for sending messages within the application.
+    /// Facilitates the execution of actions associated with message dispatching,
+    /// including validations and integration with underlying message handling mechanisms.
     /// </summary>
     private IAsyncRelayCommand? _sendMessageCommand;
 
     /// <summary>
-    /// A private, nullable instance of an asynchronous command tied to the file selection functionality
-    /// of the application. This command is initialized lazily to execute the <c>ShowFileSelectionAsync</c>
-    /// method, ensuring efficient memory management and delayed resource allocation.
+    /// Represents a command that triggers the file selection process in the application.
+    /// This command is utilized to allow users to browse and select files from their system.
+    /// It is typically bound to user interface actions such as button clicks.
     /// </summary>
     private IAsyncRelayCommand? _showFileSelectionCommand;
 
     // Services
     /// <summary>
-    /// A readonly field representing an instance of the application's shared state framework,
-    /// utilized to manage and maintain cohesive state across various components of the application.
+    /// A readonly field leveraging the application's centralized state management framework,
+    /// designed to ensure synchronized and consistent state updates across multiple
+    /// components and services within the application.
     /// </summary>
     private readonly ApplicationState _appState;
 
     /// <summary>
-    /// Handles speech-related functionalities, such as converting text to speech, within the application.
-    /// This variable holds a reference to an implementation of the <see cref="ISpeechService"/> interface,
-    /// enabling the ViewModel to interact with speech-related operations, including speaking aloud and managing speech interactions.
+    /// Provides access to speech-related functionalities within the application.
+    /// Represents an implementation of the <see cref="ISpeechService"/> interface,
+    /// supporting operations such as text-to-speech conversion and handling of speech interactions.
+    /// It enables the ViewModel to manage auditory features and integrate speech capabilities
+    /// into the application's user experience.
     /// </summary>
     private readonly ISpeechService? _speechService;
 
     /// <summary>
-    /// Handles chat session management operations such as loading chat sessions,
-    /// processing chat requests, and ensuring the continuity of conversation flow.
-    /// Acts as a key component for coordinating interactions and maintaining
-    /// the state of chat-related data within the application.
+    /// Manages the lifecycle and state of chat sessions within the application.
+    /// Provides functionality to create, track, and control active chat sessions,
+    /// ensuring proper handling of session-related operations.
     /// </summary>
     private readonly IChatSessionManager _chatSessionManager;
 
     /// <summary>
-    /// Represents the logger instance used for capturing and recording log messages
-    /// within the context of the ChatViewViewModel class. This includes logging
-    /// errors, warnings, and informational messages during the execution of
-    /// various operations such as handling chat functionality, toggling features,
-    /// or reporting application states.
+    /// An instance of the ILogger interface specifically configured for the ChatViewViewModel class.
+    /// Utilized to log errors, warnings, and informational messages relevant to processes
+    /// such as chat operations, agent management, and error handling within the view model.
+    /// Helps in diagnosing issues and tracking application behavior during runtime.
     /// </summary>
     private readonly ILogger<ChatViewViewModel> _logger;
 
     /// <summary>
-    /// Represents a service to aid in navigation
+    /// Provides a navigation service used to facilitate the navigation between different views or components
+    /// within the application. Enables seamless transitions and control over view management.
     /// </summary>
     private readonly INavigationService _navigationService;
 
     /// <summary>
-    /// Represents a service to show notifications
+    /// Encapsulates functionality for displaying notification messages to the user.
+    /// This service is used across the view model to inform users about errors, updates,
+    /// or statuses regarding various operations, such as chat initialization or data loading.
     /// </summary>
     private readonly INotificationService _notificationService;
 
-    /// Represents the view model for the main view in the application.
-    /// Handles core application state and provides commands for toggling chat history, starting a new chat, and controlling the microphone.
-    /// Integrates services for speech recognition, chat session management, and file upload interactions.
+    /// Encapsulates the logic and state management for the chat view in the application.
+    /// Coordinates user interactions such as managing chat history, initiating new conversations, and handling speech input.
+    /// Collaborates with underlying services to facilitate real-time chat operations and file handling functionality.
     public ChatViewViewModel(
         ApplicationState appState,
         ISpeechService speechService,
@@ -245,9 +267,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         AvailableAgents = new ObservableCollection<AesirAgentBase>();
     }
 
-    /// Resets the current chat session, clearing the selected chat session ID and removing any error messages.
-    /// This method is used to initiate a new chat session, allowing the user to start fresh.
-    /// Logs and displays an error message if an exception occurs during execution.
+    /// Executes the command to start a new chat session.
+    /// Resets the current chat state and initializes a fresh session for user interaction.
     private void ExecuteNewChat()
     {
         try
@@ -261,6 +282,9 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
+    /// Executes the logic for selecting an agent from the available agents list.
+    /// Updates the application state with the selected agent and modifies properties tied to the selection.
+    /// <param name="agent">The agent to be selected. If null, no action is performed.</param>
     private void ExecuteSelectAgent(AesirAgentBase? agent)
     {
         if (agent != null)
@@ -273,21 +297,15 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
-    /// Toggles the microphone's active state asynchronously.
-    /// Controls enabling or disabling the microphone functionality and interacts with other components like the speech service
-    /// to provide necessary user feedback. Handles any errors gracefully by logging and displaying an appropriate error message.
-    /// Exceptions:
-    /// Throws an exception if there is an unexpected error during the process, which will be logged accordingly.
+    /// Executes the command to toggle the hands-free mode functionality.
+    /// Alters the application state to enable or disable hands-free operations, which can include voice activation or other hands-free capabilities.
     private async void ExecuteShowHandsFree()
     {
         _navigationService.NavigateToHandsFree();
     }
 
-    /// <summary>
-    /// Triggered when the ViewModel is activated.
-    /// Handles any setup or initialization required at the point of activation,
-    /// including asynchronous tasks such as loading application state or configuring resources.
-    /// </summary>
+    /// Triggered when the application or component is activated.
+    /// Typically used to handle initialization logic, resource allocation, or state updates necessary when focusing or resuming activity.
     protected override async void OnActivated()
     {
         base.OnActivated();
@@ -295,10 +313,10 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         await LoadApplicationStateAsync();
     }
 
-    /// Handles the receipt of a property change message.
-    /// Updates the application state based on the current and newly selected chat session IDs.
-    /// Triggers a process to asynchronously load the appropriate chat session if the IDs do not match.
-    /// <param name="message">The property change message containing the property name and its new value.</param>
+    /// Handles the receipt of a property change message related to the application state.
+    /// Updates the internal chat session state when the selected chat session ID changes.
+    /// Initiates asynchronous loading of the corresponding chat session if the current and new session IDs mismatch.
+    /// <param name="message">The property change message containing the property name and the new selected chat session ID.</param>
     public void Receive(PropertyChangedMessage<Guid?> message)
     {
         if (message.PropertyName == nameof(ApplicationState.SelectedChatSessionId))
@@ -308,8 +326,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
-    /// Handles the received <see cref="FileUploadStatusMessage"/> instance to update the file upload processing state.
-    /// <param name="message">The <see cref="FileUploadStatusMessage"/> containing the current status and processing state of the file upload.</param>
+    /// Processes the received <see cref="FileUploadStatusMessage"/> to update the state of the file upload and related UI operations.
+    /// <param name="message">The <see cref="FileUploadStatusMessage"/> instance representing the current processing state of the file upload.</param>
     public void Receive(FileUploadStatusMessage message)
     {
         SelectedFileEnabled = !message.IsProcessing;
@@ -338,30 +356,30 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
-    /// Asynchronously loads the application state, including configurations and session data,
-    /// essential for initializing and preparing the application for interaction.
+    /// Asynchronously loads the application state, ensuring necessary configurations,
+    /// session data, and related resources are prepared for application functionality.
     /// <returns>
-    /// A task that represents the asynchronous operation of loading the application state.
-    /// </returns>
+    /// A task representing the asynchronous operation of application state loading.
+    /// </returns
     private async Task LoadApplicationStateAsync()
     {
         await LoadSelectedAgentAsync();
         await LoadChatSessionAsync();
     }
 
-    /// Asynchronously loads the selected model's data, updating the application state with the model's details.
-    /// Manages error handling by setting appropriate error messages or updating the selected model name in case of success.
-    /// <returns>A task representing the completion of the asynchronous model loading operation.</returns>
+    /// Loads the agent details for the currently selected agent asynchronously.
+    /// Retrieves and processes agent data from the associated data source or service.
+    /// Ensures the details are updated and ready for further operations related to the selected agent.
     private async Task LoadSelectedAgentAsync()
     {
         try
         {
             await _appState.LoadAvailableAgentsAsync();
-            
+
             AvailableAgents.Clear();
             foreach (var agent in _appState.AvailableAgents)
                 AvailableAgents.Add(agent);
-            
+
             if (AvailableAgents.Count == 0)
                 SelectedAgentName = "No agent available";
             else if (AvailableAgents.Count == 1)
@@ -376,11 +394,11 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     }
 
     /// Loads the current chat session asynchronously.
-    /// Retrieves the chat session data using the chat session manager, updates the conversation messages,
-    /// and manages the state of the application accordingly. Handles exceptions by logging errors and
-    /// updating the error message if the operation fails.
+    /// Uses the chat session manager to load session data, updates the conversation message collection,
+    /// and sets the relevant application state. In the event of a failure, logs errors and notifies the user
+    /// of the issue through the notification service.
     /// <returns>
-    /// A Task that represents the asynchronous operation of loading the chat session.
+    /// A Task representing the asynchronous operation of loading the chat session.
     /// </returns>
     private async Task LoadChatSessionAsync()
     {
@@ -397,11 +415,12 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
-    /// Asynchronously refreshes and updates the list of conversation messages.
-    /// Optimized to create ViewModels off the UI thread and batch UI updates for better performance.
-    /// <returns>
-    /// A task that represents the ongoing asynchronous operation for refreshing conversation messages.
-    /// </returns>
+    /// Asynchronously refreshes and updates the list of conversation messages in the chat session.
+    /// This method ensures efficient management by creating ViewModels off the UI thread and performing
+    /// batch updates to the UI, improving performance and responsiveness.
+    /// <return>
+    /// A task that represents the asynchronous operation for refreshing the conversation messages.
+    /// </return>
     private async Task RefreshConversationMessagesAsync()
     {
         try
@@ -411,7 +430,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             if (_appState.ChatSession != null)
             {
                 var messages = _appState.ChatSession.GetMessages().ToList();
-                
+
                 // Create all ViewModels off the UI thread for better performance
                 var messageViewModels = await Task.Run(async () =>
                 {
@@ -419,7 +438,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
                     
                     foreach (var message in messages)
                     {
-                        var viewModel = await CreateMessageViewModelOffThreadAsync(message);
+                        var viewModel = await CreateMessageViewModelAsync(message);
                         viewModels.Add(viewModel);
                     }
                     
@@ -443,15 +462,16 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
-    /// <summary>
-    /// Creates a message ViewModel off the UI thread to improve performance during conversation loading.
-    /// </summary>
-    /// <param name="message">The chat message to create a ViewModel for.</param>
-    /// <returns>A task that resolves to the created MessageViewModel or null if creation fails.</returns>
-    private async Task<MessageViewModel?> CreateMessageViewModelOffThreadAsync(AesirChatMessage message)
+    /// Asynchronously creates a new message view model instance.
+    /// This method is responsible for initializing and preparing the message view model
+    /// for use in the application's messaging workflow, incorporating necessary data and dependencies.
+    /// <param name="messageId">The unique identifier of the message to create a view model for.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests, allowing the operation to be terminated prematurely.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the initialized message view model.</returns>
+    private async Task<MessageViewModel?> CreateMessageViewModelAsync(AesirChatMessage message)
     {
         MessageViewModel? messageViewModel = null;
-
+        
         // Create ViewModel instance on background thread
         switch (message.Role)
         {
@@ -473,7 +493,14 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         {
             if (message.Role == "system")
             {
-                await messageViewModel.SetMessage(AesirChatMessage.NewSystemMessage());
+                var promptPersona = _appState.SelectedAgent?.PromptPersona;
+                string? customContent = null;
+
+                if (promptPersona == PromptPersona.Custom)
+                    customContent = _appState.SelectedAgent?.CustomPromptContent;
+                    
+                // always reset the system message
+                await messageViewModel.SetMessage(AesirChatMessage.NewSystemMessage(promptPersona, customContent));
             }
             else
             {
@@ -483,45 +510,16 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
 
         return messageViewModel;
     }
-    
-    /// Asynchronously adds a chat message to the conversation and associates it with the corresponding message view model.
-    /// The association is determined by the message role (e.g., user, assistant, or system).
-    /// <param name="message">The chat message object to be added to the conversation.</param>
-    /// <returns>A task that represents the asynchronous operation.</returns>
+
+    /// Adds a new message to the conversation asynchronously.
+    /// Handles integration with the conversation service to update the current session with the provided message content.
+    /// Ensures the message is formatted and processed according to application rules.
+    /// <param name="messageContent">The content of the message to be added to the conversation.</param>
+    /// <param name="conversationId">The unique identifier of the conversation where the message is being added.</param>
+    /// <return>Task representing the asynchronous operation of adding the message to the conversation.</return>
     private async Task AddMessageToConversationAsync(AesirChatMessage message)
     {
-        MessageViewModel? messageViewModel = null;
-
-        switch (message.Role)
-        {
-            case "user":
-                messageViewModel = Ioc.Default.GetService<UserMessageViewModel>();
-                if (messageViewModel != null)
-                    await messageViewModel.SetMessage(message);
-                break;
-
-            case "assistant":
-                messageViewModel = Ioc.Default.GetService<AssistantMessageViewModel>();
-                if (messageViewModel != null)
-                    await messageViewModel.SetMessage(message);
-                break;
-
-            case "system":
-                messageViewModel = Ioc.Default.GetService<SystemMessageViewModel>();
-                if (messageViewModel != null)
-                {
-                    var promptPersona = _appState.SelectedAgent?.PromptPersona;
-                    string? customContent = null;
-
-                    if (promptPersona == PromptPersona.Custom)
-                        customContent = _appState.SelectedAgent?.CustomPromptContent;
-                    
-                    // always reset the system message
-                    await messageViewModel.SetMessage(AesirChatMessage.NewSystemMessage(promptPersona, customContent));
-                }
-
-                break;
-        }
+        var messageViewModel = await CreateMessageViewModelAsync(message);
 
         if (messageViewModel != null)
         {
@@ -529,12 +527,12 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
-    /// Sends a chat message asynchronously.
-    /// Validates the input message, ensures a model is selected, and handles the entire
-    /// process of adding the user message to the conversation, providing a placeholder
-    /// for the assistant response, and processing the chat request. Handles errors and
-    /// updates relevant state properties during execution.
-    /// <returns>A Task representing the asynchronous operation.</returns>
+    /// Sends a message asynchronously to the specified recipient or service.
+    /// Handles the message delivery process, including validation and response processing.
+    /// Utilized for interactions that require asynchronous communication workflows.
+    /// Ensures appropriate handling of network or service-related exceptions.
+    /// Returns a task representing the completion of the message-sending operation.
+    /// <return> A task representing the asynchronous operation of sending the message.</return>
     private async Task SendMessageAsync()
     {
         if (string.IsNullOrWhiteSpace(ChatMessage))
@@ -544,7 +542,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
 
         if (SelectedAgent == null)
         {
-            _notificationService.ShowInformationNotification("Info", "Please select an agent before sending a message.");
+            _notificationService.ShowInformationNotification("Info",
+                "Please select an agent before sending a message.");
             return;
         }
 
@@ -600,10 +599,9 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
-    /// Asynchronously opens a file selection dialog that allows the user to select a PDF file.
-    /// If a file is selected, it associates the file with the current conversation, initiates the upload process,
-    /// and handles any errors that occur during the process, including logging and updating the error state.
-    /// <return>Returns a Task that represents the asynchronous operation of displaying the file selection dialog and handling the selected file.</return>
+    /// Displays a file selection dialog to the user asynchronously.
+    /// Allows users to browse and select files from the local file system.
+    /// Handles user interaction and returns the result of the file selection.
     private async Task ShowFileSelectionAsync()
     {
         try
@@ -623,6 +621,9 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
+    /// Opens the file picker dialog and allows the user to select one or more files.
+    /// Returns a read-only list of files selected by the user. If the storage provider is unavailable or an error occurs,
+    /// the method will return an empty list.
     private async Task<IReadOnlyList<IStorageFile>> OpenFilePickerAsync()
     {
         try
@@ -650,9 +651,10 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
 
     /// <summary>
     /// Initiates a request to upload a file to the server.
-    /// Sends a message containing the file path and associated conversation ID for processing.
+    /// Sends a message containing the file and associated conversation ID for further processing.
     /// </summary>
     /// <param name="file">The file to be uploaded.</param>
+    /// <returns>A task that represents the asynchronous operation.</>
     private async Task RequestFileUpload(IStorageFile file)
     {
         try
@@ -688,11 +690,11 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
-    /// Asynchronously regenerates the conversation by resending a specified user message and removing all subsequent messages.
-    /// This method identifies the given user message in the conversation, removes all messages that follow it (including the assistant's response),
-    /// and resends the user message to restart the conversation flow.
-    /// <param name="userMessageViewModel">An instance of <see cref="UserMessageViewModel"/> representing the user message to be regenerated.</param>
-    /// <returns>A task that represents the asynchronous operation of regenerating the message.</returns>
+    /// Asynchronously regenerates the conversation by resending a specific user message and clearing all subsequent messages.
+    /// This method locates the target user message within the conversation, removes all messages following it,
+    /// and restarts the conversation by reprocessing the user message.
+    /// <param name="userMessageViewModel">The user message to be regenerated, represented as an instance of <see cref="UserMessageViewModel"/>.</param>
+    /// <returns>A task that represents the asynchronous operation of message regeneration.</returns>
     private async Task RegenerateMessageAsync(UserMessageViewModel userMessageViewModel)
     {
         // Find the index of the user message in the conversation
@@ -717,10 +719,10 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     }
 
     /// <summary>
-    /// Regenerates a specified assistant message in the conversation history by removing related messages and
+    /// Regenerates the specified assistant message in the conversation history by removing related messages and
     /// re-sending the preceding user message to generate a new response.
     /// </summary>
-    /// <param name="assistantMessageViewModel">The instance of the assistant message that needs to be regenerated.</param>
+    /// <param name="assistantMessageViewModel">The assistant message view model instance that needs to be regenerated.</param>
     /// <returns>A task that represents the asynchronous operation of regenerating the assistant message.</returns>
     private async Task RegenerateFromAssistantMessageAsync(AssistantMessageViewModel assistantMessageViewModel)
     {
@@ -760,14 +762,15 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
 
     // ReSharper disable once UnusedParameter.Local
     /// Resends a user message by simulating the message sending process.
-    /// This function performs necessary pre-checks, updates chat state, and handles message processing.
+    /// This method verifies prerequisites, updates the conversation state, and processes the message appropriately.
     /// <param name="userMessageViewModel">The user message view model representing the message to be resent.</param>
     /// <returns>A task representing the asynchronous operation of resending the user message.</returns>
     private async Task ResendUserMessage(UserMessageViewModel userMessageViewModel)
     {
         if (SelectedAgent == null)
         {
-            _notificationService.ShowInformationNotification("Info", "Please select an agent before sending a message.");
+            _notificationService.ShowInformationNotification("Info",
+                "Please select an agent before sending a message.");
             return;
         }
 
@@ -788,8 +791,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         SendingChatOrProcessingFile = false;
     }
 
-    /// Performs application-defined tasks associated with freeing, releasing, or resetting resources.
-    /// Implements the IDisposable interface to allow resources to be released when the instance is no longer needed.
+    /// Releases the resources used by the ChatViewViewModel and performs cleanup operations.
+    /// Implements the IDisposable interface to properly manage resource disposal.
     /// <param name="disposing">
     /// A flag indicating whether to release both managed and unmanaged resources.
     /// If true, both managed and unmanaged resources are released; if false, only unmanaged resources are released.
@@ -820,23 +823,21 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
-    /// Releases all resources used by the instance of ChatViewViewModel.
-    /// This method ensures proper cleanup of managed resources, explicitly
-    /// invoking the disposal process to free memory or other resources.
-    /// Invokes the Dispose(bool) method and suppresses finalization to
-    /// optimize garbage collection.
+    /// Releases all resources used by the current instance of the class.
+    /// Implements the IDisposable interface to allow for deterministic cleanup of unmanaged resources and proper disposal of managed resources.
+    /// Once disposed, the object cannot be used and should be released for garbage collection.
     public void Dispose()
     {
         Dispose(true);
         GC.SuppressFinalize(this);
     }
 
-    /// Retrieves the top-level control of the application based on the current application lifetime.
-    /// This method evaluates the application's lifetime type to identify whether it is running in a classic desktop environment
-    /// or a single-view application environment, and accordingly returns the top-level control.
-    /// Logs an error and returns null if an exception occurs during execution.
+    /// Retrieves the top-level control of the application based on the application's lifetime configuration.
+    /// Determines whether the application is running with a classic desktop style or in a single-view environment
+    /// and returns the respective top-level control if available.
+    /// Logs an error and returns null in case of any exceptions during retrieval.
     /// <returns>
-    /// The ContentControl representing the top-level control if successfully retrieved, or null if it cannot be determined.
+    /// The ContentControl representing the top-level application control, or null if it cannot be determined.
     /// </returns>
     private ContentControl? GetTopLevelControl()
     {
@@ -856,10 +857,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
-    /// <summary>
-    /// Creates a file type filter for document processing using centralized file type definitions.
-    /// </summary>
-    /// <returns>A list of FilePickerFileType for document processing files.</returns>
+    /// Provides functionality to create and manage a filter for document file types.
+    /// Enables the specification of supported file extensions to streamline document management workflows and ensure compatibility checks.
     private static List<FilePickerFileType> CreateDocumentFileTypeFilter()
     {
         // Generate patterns (*.ext format)

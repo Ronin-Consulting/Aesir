@@ -27,11 +27,7 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-
-        // Register basic services needed for database configuration loading
-        builder.Services.AddSingleton<IDbContext, PgDbContext>(p =>
-            new PgDbContext(builder.Configuration.GetConnectionString("DefaultConnection")!)
-        );
+        
         builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
         
         // Load configuration from database or fix up / check file configuration
