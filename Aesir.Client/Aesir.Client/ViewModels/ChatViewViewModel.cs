@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -32,7 +33,7 @@ namespace Aesir.Client.ViewModels;
 /// and lifecycle management while integrating with other services and view models.
 /// </remarks>
 public partial class ChatViewViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>,
-    IRecipient<FileUploadStatusMessage>, IRecipient<RegenerateMessageMessage>, IDisposable
+    IRecipient<FileUploadStatusMessage>, IRecipient<RegenerateMessageMessage>, IRecipient<FileDownloadMessage>, IDisposable
 {
     /// <summary>
     /// Represents the default value used for model selection in the user interface.
@@ -173,7 +174,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// method, ensuring efficient memory management and delayed resource allocation.
     /// </summary>
     private IAsyncRelayCommand? _showFileSelectionCommand;
-
+    
     // Services
     /// <summary>
     /// A readonly field representing an instance of the application's shared state framework,
@@ -209,6 +210,12 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// Represents a service to aid in navigation
     /// </summary>
     private readonly INavigationService _navigationService;
+    
+    /// <summary>
+    /// Represents the view model for the file upload functionality in the application.
+    /// Handles the file upload process and provides commands for interacting with the file picker.
+    /// </summary>
+    private readonly IDocumentCollectionService _documentCollectionService;
 
     /// Represents the view model for the main view in the application.
     /// Handles core application state and provides commands for toggling chat history, starting a new chat, and controlling the microphone.
@@ -219,13 +226,15 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         IChatSessionManager chatSessionManager,
         ILogger<ChatViewViewModel> logger,
         FileToUploadViewModel fileToUploadViewModel,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        IDocumentCollectionService documentCollectionService)
     {
         _appState = appState ?? throw new ArgumentNullException(nameof(appState));
         _speechService = speechService;
         _chatSessionManager = chatSessionManager ?? throw new ArgumentNullException(nameof(chatSessionManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _navigationService = navigationService;
+        _documentCollectionService = documentCollectionService;
 
         ToggleLeftPane = new RelayCommand(() => PanelOpen = !PanelOpen);
         ToggleNewChat = new RelayCommand(ExecuteNewChat);
@@ -293,6 +302,11 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     {
         SelectedFileEnabled = !message.IsProcessing;
         SendingChatOrProcessingFile = message.IsProcessing;
+    }
+
+    public async void Receive(FileDownloadMessage message)
+    {   
+        await SaveFilePickerAsync(_appState.ChatSession!.Conversation.Id, message.FileName);
     }
 
     /// Processes a RegenerateMessageMessage by determining the type of the contained message
@@ -578,6 +592,66 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         {
             _logger.LogError(ex, "Failed to open file picker");
             return Array.Empty<IStorageFile>();
+        }
+    }
+    
+    private async Task SaveFilePickerAsync(string convId, string fileName)
+    {
+        // Get the top-level window or control to access the StorageProvider
+        var topLevel = TopLevel.GetTopLevel(GetTopLevelControl());
+        if (topLevel?.StorageProvider == null)
+        {
+            _logger.LogWarning("Storage provider not available");
+        }
+
+        if (topLevel != null)
+        {
+            // Open a Save File dialog
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Download File",
+                SuggestedFileName = fileName, 
+                ShowOverwritePrompt = true
+            });
+
+            if (file != null)
+            {
+                // database filename is the conversation id + filename
+                var fullFileName = $"/{convId}/{fileName}";
+                
+                string localFilePath = file.Path.LocalPath;
+                await DownloadFileAsync(fullFileName, localFilePath);
+                
+                // Optionally, show a success message to the user
+            }
+        }
+    } 
+    
+    /// <summary>
+    /// Downloads a file from the specified URL and saves it to the local file system.
+    /// </summary>
+    /// <param name="fileName">The file name of the file to download.</param>
+    /// <param name="localFilePath">The local path where the file should be saved.</param>
+    /// <returns>A task representing the asynchronous download operation.</returns>
+    private async Task DownloadFileAsync(string fileName, string localFilePath)
+    {
+        try
+        {
+            await using (Stream contentStream = await _documentCollectionService.GetFileContentStreamAsync(fileName))
+            {
+                // Create a FileStream to write the downloaded content to a local file
+                await using (var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    // Copy the content from the network stream to the file stream
+                    await contentStream.CopyToAsync(fileStream);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle other potential errors during file writing
+            _logger.LogError(ex, "Error saving file to {LocalPath}", localFilePath);
+            throw;
         }
     }
 

@@ -20,25 +20,35 @@
                 <RelativePanel Height="70" Width="210"
                                VerticalAlignment="Stretch" 
                                HorizontalAlignment="Stretch">
-                    <StackPanel
-                        Name="FileStackPanel"
-                        RelativePanel.AlignBottomWithPanel="True"
-                        RelativePanel.AlignTopWithPanel="True"
-                        Orientation="Horizontal"
-                        VerticalAlignment="Stretch">
-                        <avaloniaIcons:MaterialIcon
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Kind="{Binding FileIconKind}"
-                            Width="40" Height="40" />
-                        <TextBlock Text="{Binding FileName}"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   Margin="0 0 0 0" 
-                                   TextTrimming="PrefixCharacterEllipsis"
-                                   Width="165"
-                        />
-                    </StackPanel>
+                    <Button Click="DownloadFile_Clicked">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Foreground" Value="DarkBlue"/>
+                            </Style>
+                            <Style Selector="Button:pointerover /template/ TextBlock">
+                                <Setter Property="TextDecorations" Value="Underline" />
+                            </Style>
+                        </Button.Styles>
+                        <StackPanel
+                            Name="FileStackPanel"
+                            RelativePanel.AlignBottomWithPanel="True"
+                            RelativePanel.AlignTopWithPanel="True"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Stretch">
+                            <avaloniaIcons:MaterialIcon
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Kind="{Binding FileIconKind}"
+                                Width="40" Height="40" />
+                            <TextBlock Text="{Binding FileName}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Margin="0 0 0 0" 
+                                       TextTrimming="PrefixCharacterEllipsis"
+                                       Width="165"
+                            />
+                        </StackPanel>
+                    </Button>
                 </RelativePanel>
             </Border>
         </StackPanel>

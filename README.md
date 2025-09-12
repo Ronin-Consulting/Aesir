@@ -100,6 +100,7 @@ Note:
 - [ ] When rendering the response of an assistant message, if a code block is present we need to foce it to "scroll" horizontally.  Need CSS tweaks. Noticed when testing JSON files.
 - [X] FIXED - When click a citation from a non-pdf or image based document you get error. Its because the citation viewer expects image.
 - [X] FIXED - The use of mime-types in the API is requiring major refactoring and centralization. It has been started.
+- [ ] On Mac OS Intel. Citation viewer crashes on closing an image.
 
 ### Random Notes
 - Test Vision Models with this repo... https://github.com/JensWalter/my-receipts

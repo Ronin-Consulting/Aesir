@@ -1,7 +1,9 @@
+using Aesir.Client.Messages;
 using Aesir.Client.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Aesir.Client.Controls;
 
@@ -57,5 +59,15 @@ public partial class UserMessage : UserControl
         if (DataContext is not UserMessageViewModel viewModel) return;
         viewModel.SetMessageAfterEdit(viewModel.RawMessage);
         viewModel.IsEditing = false;
+    }
+    
+    public void DownloadFile_Clicked(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not UserMessageViewModel viewModel) return;
+        
+        WeakReferenceMessenger.Default.Send(new FileDownloadMessage()
+        {
+            FileName = viewModel.FileName
+        });
     }
 }
