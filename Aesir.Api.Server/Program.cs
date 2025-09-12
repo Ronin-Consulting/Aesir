@@ -518,8 +518,11 @@ public class Program
             config[$"Agents:{idx}:ChatInferenceEngineId"] = agent.ChatInferenceEngineId.ToString();
             config[$"Agents:{idx}:ChatInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == agent.ChatInferenceEngineId)?.Name;;
             config[$"Agents:{idx}:ChatModel"] = agent.ChatModel;
-            config[$"Agents:{idx}:PromptPersona"] = agent.PromptPersona.ToString();
-            config[$"Agents:{idx}:CustomPromptContent"] = agent.CustomPromptContent;
+            config[$"Agents:{idx}:ChatMaxTokens"] = agent.ChatMaxTokens?.ToString() ?? "";
+            config[$"Agents:{idx}:ChatTemperature"] = agent.ChatTemperature?.ToString() ?? "";
+            config[$"Agents:{idx}:ChatTopP"] = agent.ChatTopP?.ToString() ?? "";
+            config[$"Agents:{idx}:ChatPromptPersona"] = agent.ChatPromptPersona.ToString();
+            config[$"Agents:{idx}:ChatCustomPromptContent"] = agent.ChatCustomPromptContent;
         }
         
         // load mcp servers

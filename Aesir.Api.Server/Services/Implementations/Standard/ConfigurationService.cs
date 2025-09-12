@@ -256,7 +256,9 @@ public class ConfigurationService(
         if (DatabaseMode)
         {
             const string sql = @"
-                SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, vision_inference_engine_id as VisionInferenceEngineId, vision_model as VisionModel, prompt_persona as PromptPersona, custom_prompt_content as CustomPromptContent
+                SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, 
+                       chat_temperature as ChatTemperature, chat_top_p as ChatTopP, chat_max_tokens as ChatMaxTokens,
+                       chat_prompt_persona as ChatPromptPersona, chat_custom_prompt_content as ChatCustomPromptContent
                 FROM aesir.aesir_agent
             ";
 
@@ -286,7 +288,9 @@ public class ConfigurationService(
         if (DatabaseMode)
         {
             const string sql = @"
-                SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, vision_inference_engine_id as VisionInferenceEngineId, vision_model as VisionModel, prompt_persona as PromptPersona, custom_prompt_content as CustomPromptContent
+                SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, 
+                       chat_temperature as ChatTemperature, chat_top_p as ChatTopP, chat_max_tokens as ChatMaxTokens,
+                       chat_prompt_persona as ChatPromptPersona, chat_custom_prompt_content as ChatCustomPromptContent
                 FROM aesir.aesir_agent
                 WHERE id = @Id::uuid
             ";
@@ -314,9 +318,9 @@ public class ConfigurationService(
         
         const string sql = @"
             INSERT INTO aesir.aesir_agent 
-            (name, description, chat_inference_engine_id, chat_model, vision_inference_engine_id, vision_model, prompt_persona, custom_prompt_content)
+            (name, description, chat_inference_engine_id, chat_model, chat_temperature, chat_top_p, chat_max_tokens, chat_prompt_persona, chat_custom_prompt_content)
             VALUES 
-            (@Name, @Description, @ChatInferenceEngineId, @ChatModel, @VisionInferenceEngineId, @VisionModel, @PromptPersona, @CustomPromptContent)
+            (@Name, @Description, @ChatInferenceEngineId, @ChatModel, @ChatTemperature, @ChatTopP, @ChatMaxTokens, @ChatPromptPersona, @ChatCustomPromptContent)
         ";
 
         var rows = await dbContext.UnitOfWorkAsync(async connection =>
@@ -340,10 +344,11 @@ public class ConfigurationService(
                 description = @Description,
                 chat_inference_engine_id = @ChatInferenceEngineId,
                 chat_model = @ChatModel,
-                vision_inference_engine_id = @VisionInferenceEngineId,
-                vision_model = @VisionModel,
-                prompt_persona = @PromptPersona,
-                custom_prompt_content = @CustomPromptContent
+                chat_temperature = @ChatTemperature, 
+                chat_top_p = @ChatTopP, 
+                chat_max_tokens = @ChatMaxTokens,
+                chat_prompt_persona = @ChatPromptPersona,
+                chat_custom_prompt_content = @ChatCustomPromptContent
             WHERE id = @Id
         ";
 

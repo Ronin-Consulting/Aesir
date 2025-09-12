@@ -493,11 +493,11 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         {
             if (message.Role == "system")
             {
-                var promptPersona = _appState.SelectedAgent?.PromptPersona;
+                var promptPersona = _appState.SelectedAgent?.ChatPromptPersona;
                 string? customContent = null;
 
                 if (promptPersona == PromptPersona.Custom)
-                    customContent = _appState.SelectedAgent?.CustomPromptContent;
+                    customContent = _appState.SelectedAgent?.ChatCustomPromptContent;
                     
                 // always reset the system message
                 await messageViewModel.SetMessage(AesirChatMessage.NewSystemMessage(promptPersona, customContent));

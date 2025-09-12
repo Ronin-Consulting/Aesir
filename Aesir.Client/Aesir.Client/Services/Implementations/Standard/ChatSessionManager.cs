@@ -67,11 +67,11 @@ public class ChatSessionManager(
     /// <returns>A task that represents the asynchronous operation.</returns>
     public async Task LoadChatSessionAsync()
     {
-        var promptPersona = _appState.SelectedAgent?.PromptPersona;
+        var promptPersona = _appState.SelectedAgent?.ChatPromptPersona;
         string? customContent = null;
 
         if (promptPersona == PromptPersona.Custom)
-            customContent = _appState.SelectedAgent?.CustomPromptContent;
+            customContent = _appState.SelectedAgent?.ChatCustomPromptContent;
         
         try
         {
