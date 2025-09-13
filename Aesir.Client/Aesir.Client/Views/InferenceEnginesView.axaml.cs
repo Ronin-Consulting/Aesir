@@ -30,9 +30,10 @@ public partial class InferenceEnginesView : UserControl, IRecipient<ShowInferenc
             {
                 var notificationService = Ioc.Default.GetService<INotificationService>()!;
                 var configurationService = Ioc.Default.GetService<IConfigurationService>()!;
-                var viewModel = new InferenceEngineViewViewModel(detailMessage.InferenceEngine, notificationService, configurationService);
-
-                viewModel.IsActive = true;
+                var viewModel = new InferenceEngineViewViewModel(detailMessage.InferenceEngine, notificationService, configurationService)
+                    {
+                        IsActive = true
+                    };
 
                 var options = new DrawerOptions()
                 {

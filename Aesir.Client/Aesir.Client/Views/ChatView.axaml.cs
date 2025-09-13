@@ -71,10 +71,11 @@ public partial class ChatView : UserControl, IRecipient<ShowGeneralSettingsMessa
                 var modelService = Ioc.Default.GetService<IModelService>()!;
                 
                 var generalSettingsViewModel =
-                    new GeneralSettingsViewViewModel(notificationService, configurationService, modelService);
-                
-                generalSettingsViewModel.IsActive = true;
-                
+                    new GeneralSettingsViewViewModel(notificationService, configurationService, modelService)
+                        {
+                            IsActive = true
+                        };
+
                 var options = new OverlayDialogOptions()
                 {
                     FullScreen = false,
