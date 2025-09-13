@@ -84,6 +84,7 @@ public class ChatSessionManager(
             }
 
             _appState.ChatSession = await _chatHistoryService.GetChatSessionAsync(currentId.Value);
+            _appState.ChatSession!.ResetSystemMessage(promptPersona, customContent);
         }
         catch (Exception ex)
         {
@@ -122,13 +123,15 @@ public class ChatSessionManager(
             var message = AesirChatMessage.NewUserMessage(userMessage.Content);
             _appState.ChatSession.AddMessage(message);
 
-            var agentChatRequest = new AesirAgentChatRequestBase();
-            agentChatRequest.AgentId = agentId;
-            agentChatRequest.Conversation = _appState.ChatSession.Conversation;
-            agentChatRequest.ChatSessionId = _appState.ChatSession.Id;
-            agentChatRequest.Title = _appState.ChatSession.Title;
-            agentChatRequest.ChatSessionUpdatedAt = DateTimeOffset.Now;
-            agentChatRequest.User = "Unknown"; // TODO
+            var agentChatRequest = new AesirAgentChatRequestBase
+            {
+                AgentId = agentId,
+                Conversation = _appState.ChatSession.Conversation,
+                ChatSessionId = _appState.ChatSession.Id,
+                Title = _appState.ChatSession.Title,
+                ChatSessionUpdatedAt = DateTimeOffset.Now,
+                User = "Unknown" // TODO
+            };
 
             var result = _chatService.AgentChatCompletionsStreamedAsync(agentChatRequest);
             
