@@ -25,9 +25,6 @@
                             <Style Selector="Button:pointerover">
                                 <Setter Property="Foreground" Value="DarkBlue"/>
                             </Style>
-                            <Style Selector="Button:pointerover /template/ TextBlock">
-                                <Setter Property="TextDecorations" Value="Underline" />
-                            </Style>
                         </Button.Styles>
                         <StackPanel
                             Name="FileStackPanel"
