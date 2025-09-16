@@ -19,7 +19,10 @@ namespace Aesir.Client.Models;
 /// like <see cref="AvailableModels"/> and <see cref="ChatSessions"/> through asynchronous
 /// operations. Implements <see cref="IDisposable"/> for resource management.
 /// </remarks>
-public partial class ApplicationState(IModelService modelService, IChatHistoryService chatHistoryService)
+public partial class ApplicationState(
+    IModelService modelService, 
+    IChatHistoryService chatHistoryService,
+    IConfigurationService configurationService)
     : ObservableRecipient, IDisposable
 {
     /// <summary>
@@ -30,12 +33,12 @@ public partial class ApplicationState(IModelService modelService, IChatHistorySe
     private bool _readyForNewAiMessage = true;
 
     /// <summary>
-    /// Stores information about the currently selected model within the application.
+    /// Stores information about the currently selected agent within the application.
     /// This variable is used to manage and reflect the user's selection, ensuring proper handling
     /// of associated data and actions for the chosen model throughout the application.
     /// </summary>
     [ObservableProperty] [NotifyPropertyChangedRecipients]
-    private AesirModelInfo? _selectedModel;
+    private AesirAgentBase? _selectedAgent;
 
     /// <summary>
     /// Represents the unique identifier of the currently selected chat session.
@@ -61,29 +64,23 @@ public partial class ApplicationState(IModelService modelService, IChatHistorySe
     public ObservableCollection<AesirChatSessionItem> ChatSessions { get; set; } = [];
 
     /// <summary>
-    /// Represents the collection of models available for use within the application.
-    /// This property is dynamically populated by loading model information from the associated model service,
-    /// enabling users to select and interact with specific models.
+    /// Represents the collection of agents available for use within the application.
     /// </summary>
-    public ObservableCollection<AesirModelInfo> AvailableModels { get; set; } = [];
+    public ObservableCollection<AesirAgentBase> AvailableAgents { get; set; } = [];
 
     /// <summary>
     /// Asynchronously loads the list of available models and updates the shared application state.
     /// </summary>
     /// <returns>
-    /// A collection of available models represented as <see cref="AesirModelInfo"/>.
+    /// A collection of available agents represented as <see cref="AesirAgentBase"/>.
     /// </returns>
-    public async Task<IEnumerable<AesirModelInfo>> LoadAvailableModelsAsync()
+    public async Task LoadAvailableAgentsAsync()
     {
-        AvailableModels.Clear();
+        AvailableAgents.Clear();
 
-        var models = await modelService.GetModelsAsync();
-        foreach (var model in models)
-        {
-            AvailableModels.Add(model);
-        }
-        
-        return AvailableModels;
+        var agents = await configurationService.GetAgentsAsync();
+        foreach (var agent in agents)
+            AvailableAgents.Add(agent);
     }
 
     /// <summary>

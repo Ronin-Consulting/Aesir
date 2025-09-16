@@ -98,12 +98,12 @@ public class HandsFreeService : IHandsFreeService
     private readonly ObservableCollection<MessageViewModel?> _conversationMessages = [];
 
     /// <summary>
-    /// Holds the identifier of the currently selected model used during hands-free operations
+    /// Holds the unique identifier of the currently selected agent used during hands-free operations
     /// and chat processing within the <see cref="HandsFreeService"/> class.
     /// This variable is updated based on the application state and is required to be
-    /// valid (non-null and non-whitespace) for operations dependent on the selected model.
+    /// valid (non-null and non-whitespace) for operations dependent on the selected agent.
     /// </summary>
-    private string? _selectedModelId;
+    private Guid? _selectedAgentId;
 
     /// <summary>
     /// Indicates whether the hands-free mode is currently active in the <see cref="HandsFreeService"/> class.
@@ -194,12 +194,12 @@ public class HandsFreeService : IHandsFreeService
     }
 
     /// <summary>
-    /// Initiates the hands-free mode by activating necessary components, setting the selected model,
+    /// Initiates the hands-free mode by activating necessary components, setting the selected agent,
     /// and starting the hands-free processing loop.
     /// </summary>
     /// <remarks>
     /// This method first verifies the current state to prevent duplicate activation of hands-free mode.
-    /// It initializes the required cancellation token, retrieves the selected model from the application's state,
+    /// It initializes the required cancellation token, retrieves the selected agent from the application's state,
     /// and transitions to the initial idle state. Upon successful setup, the processing loop for hands-free mode is started.
     /// If an error occurs during initialization, the state is updated to reflect the error and the exception is logged or propagated.
     /// </remarks>
@@ -216,11 +216,11 @@ public class HandsFreeService : IHandsFreeService
         {
             _handsFreeToken = new CancellationTokenSource();
             
-            // Get the selected model from current app state
-            _selectedModelId = _appState.SelectedModel!.Id;
-            if (string.IsNullOrWhiteSpace(_selectedModelId))
+            // Get the selected agent from current app state
+            _selectedAgentId = _appState.SelectedAgent?.Id;
+            if (_selectedAgentId == null)
             {
-                throw new InvalidOperationException("No model selected. Please select a model before starting hands-free mode.");
+                throw new InvalidOperationException("No agent selected. Please select an agent before starting hands-free mode.");
             }
 
             _isHandsFreeActive = true;
@@ -411,9 +411,9 @@ public class HandsFreeService : IHandsFreeService
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(_selectedModelId))
+            if (_selectedAgentId == null)
             {
-                throw new InvalidOperationException("No model selected");
+                throw new InvalidOperationException("No agent selected");
             }
 
             // 1. Add user message to conversation
@@ -430,7 +430,7 @@ public class HandsFreeService : IHandsFreeService
             _conversationMessages.Add(assistantMessageViewModel);
 
             // 3. Process the chat request
-            await _chatSessionManager.ProcessChatRequestAsync(_selectedModelId, _conversationMessages);
+            await _chatSessionManager.ProcessChatRequestAsync(_selectedAgentId.Value, _conversationMessages);
 
             // 4. Extract the response text from the assistant message
             var responseText = assistantMessageViewModel.Content ?? "I apologize, but I couldn't generate a response.";

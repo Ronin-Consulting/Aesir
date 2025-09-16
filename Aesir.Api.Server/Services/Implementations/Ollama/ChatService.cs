@@ -259,8 +259,14 @@ public class ChatService : BaseChatService
             var conversationId = request.Conversation.Id;
             
             kernelPluginArgs.SetConversationId(conversationId);
+
+            var plugin = _conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs);
             
-            _kernel.Plugins.Add(_conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs));    
+            // Remove the existing plugin if it exists to avoid conflicts with conversations
+            if(_kernel.Plugins.TryGetPlugin(plugin.Name, out var existingPlugin))
+                _kernel.Plugins.Remove(existingPlugin);    
+                
+            _kernel.Plugins.Add(plugin);
         }
         
         if (request.Temperature.HasValue)

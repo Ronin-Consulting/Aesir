@@ -8,6 +8,62 @@ namespace Aesir.Api.Server.Services;
 public interface IConfigurationService
 {
     /// <summary>
+    /// Indicates if the service is in database mode or file mode
+    /// </summary>
+    public bool DatabaseMode { get; }
+    
+    /// <summary>
+    /// Asynchronously retrieves the Aesir general settings.
+    /// </summary>
+    /// <returns>
+    /// A task representing the operation. The task result contains the <see cref="AesirGeneralSettings"/>.
+    /// </returns>
+    Task<AesirGeneralSettings> GetGeneralSettingsAsync();
+
+    /// <summary>
+    /// Updates the AesirGeneralSettings in the database.
+    /// </summary>
+    /// <param name="generalSettings">The general setting with updated values.</param>
+    Task UpdateGeneralSettingsAsync(AesirGeneralSettings generalSettings);
+    
+    /// <summary>
+    /// Asynchronously retrieves a collection of Aesir inference engines.
+    /// </summary>
+    /// <returns>
+    /// A task representing the operation. The result contains an enumerable collection of <c>AesirInferenceEngine</c> objects.
+    /// </returns>
+    Task<IEnumerable<AesirInferenceEngine>> GetInferenceEnginesAsync();
+
+    /// <summary>
+    /// Retrieves an AesirInferenceEngine by its unique identifier asynchronously.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirInferenceEngine to retrieve.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation.
+    /// The task result contains the <see cref="AesirInferenceEngine"/> corresponding to the given identifier.
+    /// If no inference engine is found, returns null.
+    /// </returns>
+    Task<AesirInferenceEngine> GetInferenceEngineAsync(Guid id);
+
+    /// <summary>
+    /// Inserts a new AesirInferenceEngine into the database.
+    /// </summary>
+    /// <param name="InferenceEngine">The inference engine to insert.</param>
+    Task CreateInferenceEngineAsync(AesirInferenceEngine inferenceEngine);
+
+    /// <summary>
+    /// Updates an existing AesirInferenceEngine in the database.
+    /// </summary>
+    /// <param name="inferenceEngine">The inference engine with updated values.</param>
+    Task UpdateInferenceEngineAsync(AesirInferenceEngine inferenceEngine);
+
+    /// <summary>
+    /// Delete an existing AesirInferenceEngine from the database.
+    /// </summary>
+    /// <param name="id">The unique identifier of the AesirInferenceEngine to delete.</param>
+    Task DeleteInferenceEngineAsync(Guid id);
+    
+    /// <summary>
     /// Asynchronously retrieves a collection of Aesir agents.
     /// </summary>
     /// <returns>

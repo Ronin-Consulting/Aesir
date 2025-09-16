@@ -18,6 +18,10 @@ public class NoOpNavigationService : INavigationService
     {
     }
 
+    public void NavigateToInferenceEngines()
+    {
+    }
+
     public void NavigateToHandsFree()
     {
     }

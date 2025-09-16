@@ -1,0 +1,129 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+    xmlns:dvm="clr-namespace:Aesir.Client.ViewModels.Design"
+    xmlns:u="https://irihi.tech/ursa"
+    xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+    mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="500"
+    Width="400" Height="500"
+    x:Class="Aesir.Client.Views.GeneralSettingsView"
+    x:DataType="vm:GeneralSettingsViewViewModel">
+    
+    <Design.DataContext>    
+        <dvm:DesignGeneralSettingsViewViewModel />
+    </Design.DataContext>
+    
+<Grid
+        MinWidth="400"
+        Margin="8"
+        RowDefinitions="*, Auto">
+        
+        <!-- Form Body -->
+        <u:Form
+            Grid.Row="0"
+            Margin="8"
+            HorizontalAlignment="Stretch"
+            LabelPosition="Top">
+            <u:Form.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <Grid ColumnDefinitions="*" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
+                </ItemsPanelTemplate>
+            </u:Form.ItemsPanel>
+            <u:FormItem 
+                Grid.Row="0" 
+                Label="RAG Embedding Inference Engine" >
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding AvailableInferenceEngines}"
+                          SelectedItem="{Binding FormModel.RagEmbeddingInferenceEngine}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="1" 
+                Label="RAG Embedding Model" >
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding AvailableRagEmbeddingModels}"
+                          SelectedItem="{Binding FormModel.RagEmbeddingModel}"
+                          IsEnabled="{Binding FormModel.RagEmbeddingInferenceEngine, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="2" 
+                Label="RAG Vision Inference Engine" >
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding AvailableInferenceEngines}"
+                          SelectedItem="{Binding FormModel.RagVisionInferenceEngine}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="3" 
+                Label="RAG Vision Model" >
+                <ComboBox HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding AvailableRagVisionModels}"
+                          SelectedItem="{Binding FormModel.RagVisionModel}"
+                          IsEnabled="{Binding FormModel.RagVisionInferenceEngine, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </u:FormItem>
+            <u:FormItem Label="Text-to-Speech Model" Grid.Row="4">
+                <TextBox Text="{Binding FormModel.TtsModelPath}" IsEnabled="False" />
+            </u:FormItem>
+            <u:FormItem Label="Speech-to-Text Model" Grid.Row="5">
+                <TextBox Text="{Binding FormModel.SttModelPath}" IsEnabled="False" />
+            </u:FormItem>
+            <u:FormItem Label="Voice Activity Detection Model" Grid.Row="6">
+                <TextBox Text="{Binding FormModel.VadModelPath}" IsEnabled="False" />
+            </u:FormItem>
+        </u:Form>
+        
+        <!-- Buttons -->
+        <DockPanel
+            Grid.Row="1"
+            Margin="8">
+            <StackPanel
+                Orientation="Horizontal"
+                Spacing="8"
+                HorizontalAlignment="Right">
+                <u:IconButton 
+                    Classes="Tertiary"
+                    Content="Cancel"
+                    IconPlacement="Left" 
+                    Command="{Binding CancelCommand}">
+                    <u:IconButton.Icon>
+                        <avalonia:MaterialIcon Kind="Cancel" Width="20" Height="20" />
+                    </u:IconButton.Icon>
+                </u:IconButton>
+                <u:IconButton 
+                    Content="Save"
+                    IconPlacement="Left" 
+                    Command="{Binding SaveCommand}">
+                    <u:IconButton.Icon>
+                        <avalonia:MaterialIcon Kind="CheckBold" Width="20" Height="20" />
+                    </u:IconButton.Icon>
+                </u:IconButton>
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+    
+</UserControl>

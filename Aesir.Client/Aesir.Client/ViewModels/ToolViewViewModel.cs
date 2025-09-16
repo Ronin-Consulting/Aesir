@@ -161,7 +161,13 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
         // establish the selected MCP Server
         if (_initialMcpServerId != null)
         {
+            // disable property change as we are about to set some values that cause loading
+            FormModel.PropertyChanged -= OnFormModelPropertyChanged;
+            
             FormModel.McpServer = AvailableMcpServers.First(s => s.Id == _initialMcpServerId);
+            
+            // re-enable property change
+            FormModel.PropertyChanged += OnFormModelPropertyChanged;
         }
 
         // get available MCP Server Tools if available
@@ -214,7 +220,6 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
             _ = LoadMcpServerTools();
         }
     }
-
 
     /// <summary>
     /// Executes the logic to save the changes made in the form.
@@ -392,5 +397,15 @@ public partial class ToolFormDataModel : ObservableValidator
     {
         ValidateAllProperties();
         return !HasErrors;
+    }
+
+    /// Clears the validation errors for a specific property or all properties if no property name is provided.
+    /// <param name="propertyName">
+    /// The name of the property whose validation errors should be cleared.
+    /// If null, validation errors for all properties will be cleared.
+    /// </param>
+    public void ClearValidation(string? propertyName = null)
+    {
+        ClearErrors(propertyName);
     }
 }

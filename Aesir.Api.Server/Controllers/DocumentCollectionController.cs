@@ -221,13 +221,14 @@ public class DocumentCollectionController(
     {
         var result = await fileStorageService.GetFileContentAsync(filename);
 
-        if (result == null || !System.IO.File.Exists(result.Value.FilePath))
+        if (result == null || !System.IO.File.Exists(result.Value.TempFile.FilePath))
             return NotFound();
 
-        var fileStream = new FileStream(result.Value.FilePath, FileMode.Open, FileAccess.Read);
+        var fileStream = new FileStream(result.Value.TempFile.FilePath, FileMode.Open, FileAccess.Read);
         var contentType = result.Value.FileInfo.MimeType;
 
-        return new FileStreamResult(fileStream, contentType)
+        // Create a custom FileStreamResult that disposes the temp file when the stream is disposed
+        return new TempFileStreamResult(fileStream, contentType, result.Value.TempFile)
         {
             FileDownloadName = filename,
             EnableRangeProcessing = true
@@ -245,14 +246,14 @@ public class DocumentCollectionController(
         var virtualFilename = $"{id}/{filename}";
         var result = await fileStorageService.GetFileContentAsync(virtualFilename);
 
-        if (result == null || !System.IO.File.Exists(result.Value.FilePath))
+        if (result == null || !System.IO.File.Exists(result.Value.TempFile.FilePath))
             return NotFound();
 
-        var fileStream = new FileStream(result.Value.FilePath, FileMode.Open, FileAccess.Read);
+        var fileStream = new FileStream(result.Value.TempFile.FilePath, FileMode.Open, FileAccess.Read);
         var contentType = result.Value.FileInfo.MimeType;
 
         Response.Headers["Content-Disposition"] = $"inline; filename=\"{filename}\"";
-        return new FileStreamResult(fileStream, contentType)
+        return new TempFileStreamResult(fileStream, contentType, result.Value.TempFile)
         {
             EnableRangeProcessing = true
         };
@@ -403,15 +404,40 @@ public class DocumentCollectionController(
             var fileName = Path.GetFileName(file.FileName);
             var virtualFilename = $"/{folderId}/{fileName}";
 
-            using (var memoryStream = new MemoryStream())
+            // Stream directly to temp file to reduce memory pressure
+            await using (var tempFileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 8192, useAsync: true))
             {
-                await file.CopyToAsync(memoryStream);
-                var fileContent = memoryStream.ToArray();
+                await file.CopyToAsync(tempFileStream);
+            }
 
+            // For database storage, read file content in optimized chunks
+            byte[] fileContent;
+            const int maxMemoryFileSize = 50 * 1024 * 1024; // 50MB threshold
+            
+            if (file.Length <= maxMemoryFileSize)
+            {
+                // Small files: read all at once
+                fileContent = await System.IO.File.ReadAllBytesAsync(tempFilePath);
+            }
+            else
+            {
+                // Large files: still need to load for database, but with better memory management
+                await using var fileStream = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 8192, useAsync: true);
+                using var memoryStream = new MemoryStream((int)file.Length);
+                await fileStream.CopyToAsync(memoryStream, 8192);
+                fileContent = memoryStream.ToArray();
+            }
+
+            try
+            {
                 await fileStorageService.UpsertFileAsync(virtualFilename, mimeType, fileContent);
-                await System.IO.File.WriteAllBytesAsync(tempFilePath, fileContent);
-
+            }
+            finally
+            {
+                // Explicitly clear large memory allocation
                 fileContent = null;
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
                 GC.Collect();
             }
 

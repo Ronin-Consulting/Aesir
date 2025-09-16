@@ -446,6 +446,16 @@ public partial class McpServerFormDataModel : ObservableValidator
         
         return !HasErrors;
     }
+
+    /// Clears the validation errors for a specific property or all properties if no property name is provided.
+    /// <param name="propertyName">
+    /// The name of the property whose validation errors should be cleared.
+    /// If null, validation errors for all properties will be cleared.
+    /// </param>
+    public void ClearValidation(string? propertyName = null)
+    {
+        ClearErrors(propertyName);
+    }
     
     /// <summary>
     /// Handles location changes to trigger re-validation of dependent properties.

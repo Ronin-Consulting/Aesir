@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Aesir.Api.Server.Models;
 using Aesir.Api.Server.Services;
-using Aesir.Common.Prompts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Aesir.Api.Server.Controllers;
@@ -26,9 +25,159 @@ namespace Aesir.Api.Server.Controllers;
 [Produces("application/json")]
 public class ConfigurationController(
     ILogger<ChatHistoryController> logger,
+    IConfiguration configuration,
     IConfigurationService configurationService,
     IMcpServerService mcpServerService) : ControllerBase
 {
+    /// <summary>
+    /// Determines whether the application is running in database mode by checking the configuration settings.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a boolean value indicating the database mode status.
+    /// </returns>
+    [HttpGet("databaseMode")]
+    public IActionResult IsInDatabaseMode()
+    {
+        var databaseMode = configurationService.DatabaseMode;
+        
+        logger.LogDebug("Database Mode = {DatabaseMode}", databaseMode);
+
+        return Ok(databaseMode);
+    }
+
+    
+    [HttpGet("generalsettings")]
+    public async Task<IActionResult> GetGeneralSettingsAsync()
+    {
+        try
+        {
+            var generalSettings = await configurationService.GetGeneralSettingsAsync();
+
+            logger.LogDebug("General Settings = {GeneralSettings}", JsonSerializer.Serialize(generalSettings));
+
+            return Ok(generalSettings);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving general settings");
+            return StatusCode(500, "An error occurred while retrieving general settings");
+        }
+    }
+
+    [HttpPut("generalsettings")]
+    public async Task<IActionResult> UpdateGeneralSettingsAsync([FromBody] AesirGeneralSettings generalSettings)
+    {
+        try
+        {
+            await configurationService.UpdateGeneralSettingsAsync(generalSettings);
+
+            logger.LogDebug("Updated general settings = {GeneralSettings}", JsonSerializer.Serialize(generalSettings));
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating general settings");
+            return StatusCode(500, "An error occurred while updating the general settings");
+        }
+    }
+    
+    [HttpGet("inferenceengines")]
+    public async Task<IActionResult> GetInferenceEnginesAsync()
+    {
+        try
+        {
+            var results = (await configurationService.GetInferenceEnginesAsync()).ToList();
+
+            logger.LogDebug("Found {Count} inference engines", results.Count);
+            logger.LogDebug("Results = {Results}", JsonSerializer.Serialize(results));
+
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving inference engines");
+            return StatusCode(500, "An error occurred while retrieving inference engines");
+        }
+    }
+    
+    [HttpGet("inferenceengines/{id:guid}")]
+    public async Task<IActionResult> GetInferenceEngineAsync([FromRoute] Guid id)
+    {
+        try
+        {
+            var inferenceEngine = await configurationService.GetInferenceEngineAsync(id);
+
+            logger.LogDebug("Inference Engine = {InferenceEngine}", JsonSerializer.Serialize(inferenceEngine));
+
+            return Ok(inferenceEngine);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving inference engine with ID = {Id}", id);
+            return StatusCode(500, "An error occurred while retrieving the inference engine");
+        }
+    }
+    
+    [HttpPost("inferenceengines")]
+    public async Task<IActionResult> CreateInferenceEngineAsync([FromBody] AesirInferenceEngine inferenceEngine)
+    {
+        try
+        {
+            await configurationService.CreateInferenceEngineAsync(inferenceEngine);
+
+            logger.LogDebug("Created inference engine = {InferenceEngine}", JsonSerializer.Serialize(inferenceEngine));
+
+            return Created("", new { id = inferenceEngine.Id });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating inference engine");
+            return StatusCode(500, "An error occurred while creating the inference engine");
+        }
+    }
+
+    [HttpPut("inferenceengines/{id:guid}")]
+    public async Task<IActionResult> UpdateInferenceEngineAsync([FromRoute] Guid id, [FromBody] AesirInferenceEngine inferenceEngine)
+    {
+        if (id != inferenceEngine.Id)
+        {
+            return BadRequest("The ID in the URL does not match the ID in the request body.");
+        }
+
+        try
+        {
+            await configurationService.UpdateInferenceEngineAsync(inferenceEngine);
+
+            logger.LogDebug("Updated inference engine = {InferenceEngine}", JsonSerializer.Serialize(inferenceEngine));
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating inference engine with ID = {Id}", id);
+            return StatusCode(500, "An error occurred while updating the inference engine");
+        }
+    }
+
+    [HttpDelete("inferenceengines/{id:guid}")]
+    public async Task<IActionResult> DeleteInferenceEngineAsync([FromRoute] Guid id)
+    {
+        try
+        {
+            await configurationService.DeleteInferenceEngineAsync(id);
+
+            logger.LogDebug("Deleted inference engine with ID = {Id}", id);
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting inference engine with ID = {Id}", id);
+            return StatusCode(500, "An error occurred while deleting the inference engine");
+        }
+    }
+    
     /// <summary>
     /// Retrieves a list of agents asynchronously using the configuration service.
     /// </summary>
@@ -138,7 +287,7 @@ public class ConfigurationController(
         {
             await configurationService.UpdateAgentAsync(agent);
 
-            logger.LogDebug("Updated agent = {McpServer}", JsonSerializer.Serialize(agent));
+            logger.LogDebug("Updated agent = {Agent}", JsonSerializer.Serialize(agent));
 
             return NoContent();
         }
@@ -492,15 +641,5 @@ public class ConfigurationController(
             logger.LogError(ex, "Error retrieving MCP Server tools in MCP Server with ID = {Id}", id);
             return StatusCode(500, "An error occurred while retrieving tools in the MCP Servers");
         }
-    }
-
-    /// Retrieves the default persona configured in the system.
-    /// <returns>
-    /// A task that represents the asynchronous operation, containing the default prompt persona if available; otherwise, null.
-    /// </returns>
-    [HttpGet("personas/default")]
-    public Task<PromptPersona?> GetDefaultPersonaAsync()
-    {
-        return Task.FromResult(DefaultPromptProvider.Instance.DefaultPromptPersona);
     }
 }

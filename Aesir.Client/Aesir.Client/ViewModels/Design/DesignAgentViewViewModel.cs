@@ -31,12 +31,15 @@ public class DesignAgentViewViewModel : AgentViewViewModel
     {
         Id = Guid.NewGuid(),
         Name = "My Test Agent",
-        Source = ModelSource.Ollama,
-        Prompt = PromptPersona.Military,
+        Description = "",
+        ChatPromptPersona = PromptPersona.Military,
+        ChatCustomPromptContent = null,
+        ChatInferenceEngineId = Guid.NewGuid(),
         ChatModel = "qwen3:32b-q4_K_M",
-        EmbeddingModel = "mxbai-embed-large:latest",
-        VisionModel = "gemma3:12b"
-    }, new NoOpNotificationService(), new NoOpConfigurationService())
+        ChatTemperature = 1.0,
+        ChatTopP = 1.0,
+        ChatMaxTokens = 10000
+    }, new NoOpNotificationService(), new NoOpConfigurationService(), new NoOpModelService())
     {
         AvailableTools = new ObservableCollection<string>()
         {
@@ -44,6 +47,7 @@ public class DesignAgentViewViewModel : AgentViewViewModel
             "Web"
         };
         IsDirty = false;
+        EditCustomPromptCommand = new RelayCommand(() => { });
         SaveCommand = new RelayCommand(() => { });
         CancelCommand = new RelayCommand(() => { });
         DeleteCommand = new RelayCommand(() => { });

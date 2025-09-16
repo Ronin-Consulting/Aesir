@@ -132,10 +132,14 @@ public abstract partial class MessageViewModel : ObservableRecipient
             return;
         }   
 
-        var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(Content, shouldRenderFencedCodeBlocks: true);
-        Message = htmlMessage;
-
-        IsLoaded = true;
+        // Move markdown rendering to background thread to avoid UI blocking
+        var htmlMessage = await Task.Run(() => _markdownService.RenderMarkdownAsHtmlAsync(Content, shouldRenderFencedCodeBlocks: true));
+        
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Message = htmlMessage;
+            IsLoaded = true;
+        });
     }
 
     /// Asynchronously processes streamed messages to dynamically update content and extract relevant metadata.
@@ -177,7 +181,8 @@ public abstract partial class MessageViewModel : ObservableRecipient
                 
                 Content = Content.TrimStart().NormalizeLineEndings();
                 
-                var htmlMessage = await _markdownService.RenderMarkdownAsHtmlAsync(Content);
+                // Render markdown on background thread to avoid UI blocking
+                var htmlMessage = await Task.Run(() => _markdownService.RenderMarkdownAsHtmlAsync(Content));
                 
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {

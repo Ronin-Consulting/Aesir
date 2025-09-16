@@ -55,6 +55,18 @@ public class NavigationService : INavigationService
     }
 
     /// <summary>
+    /// Navigates the user to the Inference Engines section within the application.
+    /// </summary>
+    /// <remarks>
+    /// This method sends a <see cref="NavigationMessage"/> with the view type set to <see cref="NavigationMessage.ViewType.InferenceEngines"/>.
+    /// It utilizes the messaging infrastructure to handle navigation to the Inference Engines view.
+    /// </remarks>
+    public void NavigateToInferenceEngines()
+    {
+        WeakReferenceMessenger.Default.Send(new NavigationMessage(NavigationMessage.ViewType.InferenceEngines));
+    }
+
+    /// <summary>
     /// Navigates the application to the Hands-Free view by sending a navigation message.
     /// </summary>
     public void NavigateToHandsFree()

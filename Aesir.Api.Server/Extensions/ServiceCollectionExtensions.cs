@@ -3,6 +3,7 @@ using Aesir.Api.Server.Models;
 using Aesir.Common.FileTypes;
 using Aesir.Api.Server.Services;
 using Aesir.Api.Server.Services.Implementations.Standard;
+using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
@@ -27,46 +28,57 @@ public static class ServiceCollectionExtensions
     [Experimental("SKEXP0070")]
     public static IServiceCollection SetupSemanticKernel(this IServiceCollection services, IConfiguration configuration)
     {
-        // set default prompt persona
-        var defaultPromptPersona = configuration.GetValue<string>("Inference:PromptContext") ?? "Business";
-        DefaultPromptProvider.Instance.DefaultPromptPersona = 
-            defaultPromptPersona.PromptPersonaFromDescription();
-        
-        var useOpenAi = configuration.GetValue<bool>("Inference:UseOpenAICompatible");
-        var embeddingModelId = useOpenAi
-            ? configuration.GetSection("Inference:OpenAI:EmbeddingModel").Value
-            : configuration.GetSection("Inference:Ollama:EmbeddingModel").Value;
+        // TODO if some part of configuration is missing AND we are in db config mode, boot up app anyway
+        // so user can complete setup
+
+        // load general settings (from file or db)
+        var generalSettings = configuration.GetSection("GeneralSettings")
+            .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
+        var embeddingModel = generalSettings["RagEmbeddingModel"] ?? 
+                             throw new InvalidOperationException("RagEmbeddingMode not configured");
         
         var kernelBuilder = services.AddKernel();
-
-        if (useOpenAi)
-        {
-            kernelBuilder
-                .AddOpenAIChatCompletion(
-                    modelId: configuration.GetSection("Inference:OpenAI:ChatModels").Get<string[]>()
-                        ?.FirstOrDefault() ?? "gpt-4o"
-                );
-
-            kernelBuilder.AddOpenAIEmbeddingGenerator(embeddingModelId ?? "text-embedding-3-large", dimensions: 1024);
-        }
-        else
-        {
-            var ollamaClient = services.BuildServiceProvider().GetRequiredService<OllamaApiClient>();
-            ollamaClient.SelectedModel = embeddingModelId!;
-
-            kernelBuilder
-                .AddOllamaChatCompletion();
-
-            kernelBuilder.AddOllamaEmbeddingGenerator(ollamaClient);
-        }
         
-        var embeddingGenerator = services.BuildServiceProvider()
-            .GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
-        
-        var collectionOptions = new QdrantCollectionOptions
+        // load inference engines (from file or db)
+        var inferenceEngines = configuration.GetSection("InferenceEngines")
+            .Get<AesirInferenceEngine[]>() ?? [];
+        foreach (var inferenceEngine in inferenceEngines)
         {
-            EmbeddingGenerator = embeddingGenerator
-        };
+            switch (inferenceEngine.Type)
+            {
+                case InferenceEngineType.Ollama:
+                {
+                    kernelBuilder.AddOllamaChatCompletion();
+                    
+                    const string? serviceId = null;
+                    services.AddKeyedSingleton<IEmbeddingGenerator<string, Embedding<float>>>(serviceId, (serviceProvider, _) =>
+                    {
+                        var ollamaClient = serviceProvider.GetRequiredService<OllamaApiClient>();
+                        ollamaClient.SelectedModel = embeddingModel;
+                
+                        var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+
+                        var builder = ((IEmbeddingGenerator<string, Embedding<float>>)ollamaClient)
+                            .AsBuilder();
+
+                        if (loggerFactory is not null)
+                        {
+                            builder.UseLogging(loggerFactory);
+                        }
+
+                        return builder.Build(serviceProvider);
+                    });
+                    
+                    break;
+                }
+                case InferenceEngineType.OpenAICompatible:
+                {
+                    kernelBuilder.AddOpenAIChatCompletion("set-by-agent");
+                    kernelBuilder.AddOpenAIEmbeddingGenerator(embeddingModel, dimensions: 1024);
+                    break;
+                }
+            }
+        }
         
         Func<IServiceProvider, QdrantClient>? clientProvider = provider =>
         {
@@ -78,7 +90,10 @@ public static class ServiceCollectionExtensions
                 loggerFactory: loggerFactory);
         };
 
-        Func<IServiceProvider, QdrantCollectionOptions>? optionsProvider = provider => collectionOptions;
+        Func<IServiceProvider, QdrantCollectionOptions>? optionsProvider = provider => new QdrantCollectionOptions
+        {
+            EmbeddingGenerator = provider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>()
+        };
         
         kernelBuilder.Services.AddKeyedQdrantCollection<Guid, AesirConversationDocumentTextData<Guid>>(
             serviceKey: null,
@@ -225,8 +240,7 @@ public static class ServiceCollectionExtensions
                 serviceProvider
                     .GetRequiredService<ILogger<TextFileLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
-        });
-            
+        }); 
             
         kernelBuilder.AddVectorStoreTextSearch<AesirConversationDocumentTextData<Guid>>();
         kernelBuilder.AddVectorStoreTextSearch<AesirGlobalDocumentTextData<Guid>>();
@@ -238,39 +252,65 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFunctionInvocationFilter, InferenceLoggingService>();
         services.AddSingleton<IPromptRenderFilter, InferenceLoggingService>();
         services.AddSingleton<IAutoFunctionInvocationFilter, InferenceLoggingService>();
-        
-        // global documents setup
-        var globalDocumentCollections =
-            configuration.GetSection("GlobalDocumentCollections").Get<GlobalDocumentCollection[]>() ?? [];
-
-        var globalDocumentCollectionService =
-            services.BuildServiceProvider().GetRequiredService<IGlobalDocumentCollectionService>();
-
-        foreach (var globalDocumentCollection in globalDocumentCollections)
-        {
-            if(!globalDocumentCollection.IsEnabled) continue;
-            
-            var args = GlobalDocumentCollectionArgs.Default;
-
-            args.SetCategoryId(globalDocumentCollection.Name);
-
-            args["PluginName"] = globalDocumentCollection.PluginName;
-            args["PluginDescription"] = globalDocumentCollection.PluginDescription;
-
-            var plugin = globalDocumentCollectionService.GetKernelPlugin(args);
-
-            kernelBuilder.Plugins.Add(plugin);
-        }
+        services.AddSingleton<IConfiguredKernelFactory, ConfiguredKernelFactory>();
         
         return services;
     }
 }
 
+
+public interface IConfiguredKernelFactory
+{
+    Kernel CreateKernel();
+}
+
+internal class ConfiguredKernelFactory(
+    IServiceProvider serviceProvider,
+    IConfiguration configuration,
+    ILogger<ConfiguredKernelFactory> logger)
+    : IConfiguredKernelFactory
+{
+    private readonly GlobalDocumentCollection[] _collections = 
+        configuration.GetSection("GlobalDocumentCollections").Get<GlobalDocumentCollection[]>() ?? [];
+
+    public Kernel CreateKernel()
+    {
+        // Get a fresh kernel from DI
+        var kernel = serviceProvider.GetRequiredService<Kernel>();
+        
+        // Add global document collection plugins
+        var globalDocumentService = serviceProvider.GetRequiredService<IGlobalDocumentCollectionService>();
+        
+        foreach (var collection in _collections.Where(c => c.IsEnabled))
+        {
+            try
+            {
+                var args = GlobalDocumentCollectionArgs.Default;
+                args.SetCategoryId(collection.Name);
+                args["PluginName"] = collection.PluginName;
+                args["PluginDescription"] = collection.PluginDescription;
+
+                var plugin = globalDocumentService.GetKernelPlugin(args);
+                kernel.Plugins.Add(plugin);
+                
+                logger.LogDebug("Added plugin {PluginName} to kernel", collection.PluginName);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to add plugin {PluginName} to kernel", collection.PluginName);
+            }
+        }
+
+        return kernel;
+    }
+}
+
+
 /// <summary>
 /// Represents configuration for a global document collection.
 /// </summary>
 // ReSharper disable once ClassNeverInstantiated.Global
-internal class GlobalDocumentCollection
+public class GlobalDocumentCollection
 {
     /// <summary>
     /// Gets or sets the name of the document collection.

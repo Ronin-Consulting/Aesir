@@ -72,9 +72,10 @@ public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetai
 
     private async Task ShowMcpServerView(AesirMcpServerBase mcpServer, INotificationService notificationService, IConfigurationService configurationService)
     {
-        var mcpServerViewModel = new McpServerViewViewModel(mcpServer, notificationService, configurationService);
-
-        mcpServerViewModel.IsActive = true;
+        var mcpServerViewModel = new McpServerViewViewModel(mcpServer, notificationService, configurationService)
+            {
+                IsActive = true
+            };
 
         var options = new DrawerOptions()
         {

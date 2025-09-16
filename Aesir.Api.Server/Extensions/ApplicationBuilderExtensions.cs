@@ -22,26 +22,4 @@ public static class ApplicationBuilderExtensions
 
         return app;
     }
-
-    /// <summary>
-    /// Ensures the Ollama backend is available by attempting to retrieve models.
-    /// </summary>
-    /// <param name="app">The application builder.</param>
-    /// <returns>The application builder for method chaining.</returns>
-    public static IApplicationBuilder EnsureOllamaBackend(this IApplicationBuilder app)
-    {
-        using var scope = app.ApplicationServices.CreateScope();
-        var modelsService = scope.ServiceProvider.GetService<IModelsService>();
-
-        try
-        {
-            _ = modelsService!.GetModelsAsync().Result;
-        }
-        catch (Exception)
-        {
-            // ignored
-        }
-
-        return app;
-    }
 }

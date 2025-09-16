@@ -61,13 +61,13 @@ public interface IFileStorageService
     /// Retrieves the file content and information by its unique identifier.
     /// </summary>
     /// <param name="id">The unique identifier of the file.</param>
-    /// <returns>A task representing the asynchronous operation that returns the file path and information or null if not found.</returns>
-    Task<(string FilePath, AesirFileInfo FileInfo)?> GetFileContentAsync(Guid id);
+    /// <returns>A task representing the asynchronous operation that returns the temporary file handle and information or null if not found.</returns>
+    Task<(TempFileHandle TempFile, AesirFileInfo FileInfo)?> GetFileContentAsync(Guid id);
     
     /// <summary>
     /// Retrieves the file content and information by its filename.
     /// </summary>
     /// <param name="filename">The name of the file.</param>
-    /// <returns>A task representing the asynchronous operation that returns the file path and information or null if not found.</returns>
-    Task<(string FilePath, AesirFileInfo FileInfo)?> GetFileContentAsync(string filename);
+    /// <returns>A task representing the asynchronous operation that returns the temporary file handle and information or null if not found.</returns>
+    Task<(TempFileHandle TempFile, AesirFileInfo FileInfo)?> GetFileContentAsync(string filename);
 }
