@@ -4,8 +4,8 @@ using ReverseMarkdown.Converters;
 
 namespace Aesir.Api.Server.Data.Migrations;
 
-[Migration(2025090813161, "Update agent columns for custom ptomp")]
-public class Migration2025090813161 : Migration
+[Migration(20250908131610, "Update agent columns for custom prompt")]
+public class Migration20250908131610 : Migration
 {
     public override void Up()
     {
