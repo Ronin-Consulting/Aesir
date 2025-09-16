@@ -103,7 +103,6 @@ services:
         reservations:
           cpus: '0.5'
           memory: 256MB
-
   qdrant:
     image: qdrant/qdrant:latest
     restart: unless-stopped

@@ -192,7 +192,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
             throw new ArgumentException("Kernel plugin args must contain a PluginName");
 
         var kernelFunctionLibrary = new KernelFunctionLibrary<Guid, AesirGlobalDocumentTextData<Guid>>(
-            _globalDocumentVectorSearch, _globalDocumentHybridSearch
+            _globalDocumentVectorSearch, _globalDocumentHybridSearch, _vectorStoreRecordCollection
         );
 
         var kernelFunctions = new List<KernelFunction>();

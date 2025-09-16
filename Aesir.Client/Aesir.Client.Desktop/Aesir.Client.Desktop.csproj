@@ -15,7 +15,7 @@
     <ItemGroup>
         <PackageReference Include="Avalonia.Desktop" Version="11.3.4" />
         <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.4" />
-        <PackageReference Include="JAJ.Packages.MiniAudioEx" Version="2.2.2" />
+        <PackageReference Include="JAJ.Packages.MiniAudioEx" Version="2.3.0" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Include="Material.Icons.Avalonia" Version="2.4.1" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.9" />
