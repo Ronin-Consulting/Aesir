@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
+using Aesir.Api.Server.Services.Implementations.Standard;
 
 namespace Aesir.Api.Server.Services;
 
@@ -62,4 +63,14 @@ public sealed class LoadImageRequest
     /// Determines the number of content items to process in a single batch operation.
     /// </summary>
     public int BatchSize { get; set; } = Math.Max(Environment.ProcessorCount / 2 + 1, 10);
+
+    /// <summary>
+    /// Gets or sets the model location descriptor.
+    /// </summary>
+    /// <remarks>
+    /// This property represents metadata identifying the location or descriptor of a model,
+    /// including necessary details such as interface engine ID and model ID.
+    /// It can be used to specify or retrieve information about the model's source or context.
+    /// </remarks>
+    public ModelLocationDescriptor? ModelLocation { get; set; }
 }

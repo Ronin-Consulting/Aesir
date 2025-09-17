@@ -13,7 +13,8 @@ namespace Aesir.Api.Server.Controllers;
 public class DocumentCollectionController(
     ILogger<DocumentCollectionController> logger,
     IFileStorageService fileStorageService,
-    IDocumentCollectionService documentCollectionService)
+    IDocumentCollectionService documentCollectionService,
+    IConfigurationService configurationService)
     : ControllerBase
 {
     /// <summary>
@@ -459,8 +460,12 @@ public class DocumentCollectionController(
                 default:
                     throw new ArgumentOutOfRangeException(nameof(folderType), folderType, null);
             }
+            
+            // assume we are using the global RAG vision inference engine and model, but
+            // at some point the agent being used may identify its separate version
+            var ragVisionModelLocationDescriptor = await GetRagVisionModelLocationDescriptorAsync();
 
-            await documentCollectionService.LoadDocumentAsync(tempFilePath, args);
+            await documentCollectionService.LoadDocumentAsync(tempFilePath, ragVisionModelLocationDescriptor, args);
 
             return (true, null, virtualFilename);
         }
@@ -473,6 +478,25 @@ public class DocumentCollectionController(
         {
             System.IO.File.Delete(tempFilePath);
         }
+    }
+    
+    /// <summary>
+    /// Retrieves the location descriptor of the RAG vision model by accessing general settings.
+    /// </summary>
+    /// <returns>
+    /// A <see cref="ModelLocationDescriptor"/> that contains the inference engine identifier and model identifier
+    /// required for locating and working with an embedding model.
+    /// </returns>
+    private async Task<ModelLocationDescriptor> GetRagVisionModelLocationDescriptorAsync()
+    {
+        var generalSettings = await configurationService.GetGeneralSettingsAsync();
+        
+        var inferenceEngineId = generalSettings.RagVisionInferenceEngineId 
+                                ?? throw new InvalidOperationException($"RagVisionInferenceEngineId has not been defined in GeneralSettings");
+        var modelId = generalSettings.RagVisionModel
+                      ?? throw new InvalidOperationException($"RagVisionModel has not been defined in GeneralSettings");
+
+        return new ModelLocationDescriptor(inferenceEngineId, modelId);
     }
 
     #endregion

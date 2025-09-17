@@ -18,28 +18,10 @@ public interface IModelsService
     /// A task representing the asynchronous operation, with a result of an enumerable collection of AI model information.
     /// </returns>
     Task<IEnumerable<AesirModelInfo>> GetModelsAsync(ModelCategory? category);
-    
+
     /// <summary>
-    /// Unloads the currently loaded chat model from memory.
+    /// Unloads the selected model from memory.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task UnloadChatModelAsync();
-    
-    /// <summary>
-    /// Unloads the currently loaded embedding model from memory.
-    /// </summary>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    Task UnloadEmbeddingModelAsync();
-    
-    /// <summary>
-    /// Unloads the currently loaded vision model from memory.
-    /// </summary>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    Task UnloadVisionModelAsync();
-    
-    /// <summary>
-    /// Asynchronously unloads all models from the system.
-    /// </summary>
-    /// <returns>A task that represents the asynchronous operation.</returns>
-    Task UnloadAllModelsAsync();
+    Task UnloadModelsAsync(string[] modelIds);
 }

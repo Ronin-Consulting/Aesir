@@ -11,10 +11,13 @@ public interface IDocumentCollectionService
     /// Loads a document from the specified path into the collection.
     /// </summary>
     /// <param name="documentPath">The path to the document to load.</param>
+    /// <param name="modelLocationDescriptor">Location of the model and associated inference engine to use for loading
+    /// information from the document.</param>
     /// <param name="fileMetaData">Optional metadata to associate with the document.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task LoadDocumentAsync(string documentPath, IDictionary<string, object>? fileMetaData = null, CancellationToken cancellationToken = default);
+    Task LoadDocumentAsync(string documentPath, ModelLocationDescriptor modelLocationDescriptor,
+        IDictionary<string, object>? fileMetaData = null, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Deletes a document from the collection based on metadata.

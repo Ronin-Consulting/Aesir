@@ -23,7 +23,8 @@ namespace Aesir.Api.Server.Services.Implementations.Standard;
 /// <param name="embeddingGenerator">Service for generating embeddings from provided text content.</param>
 /// <param name="recordFactory">A factory function used to create a record from raw content and load requests.</param>
 /// <param name="visionService">Service capable of extracting and processing visual content within PDFs.</param>
-/// <param name="modelsService">Service for managing AI models necessary for textual and visual analysis.</param>
+/// <param name="configurationService">Service for loading configuration.</param>
+/// <param name="serviceProvider">Service locator.</param>
 /// <param name="logger">Logger instance for diagnostic or operational logging purposes.</param>
 [Experimental("SKEXP0001")]
 public class PdfDataLoaderService<TKey, TRecord>(
@@ -32,10 +33,11 @@ public class PdfDataLoaderService<TKey, TRecord>(
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     Func<RawContent, LoadPdfRequest, TRecord> recordFactory,
     IVisionService visionService,
-    IModelsService modelsService,
+    IConfigurationService configurationService,
+    IServiceProvider serviceProvider,
     ILogger<PdfDataLoaderService<TKey, TRecord>> logger)
     : BaseDataLoaderService<TKey, TRecord>(uniqueKeyGenerator, vectorStoreRecordCollection, embeddingGenerator,
-        modelsService, logger), IPdfDataLoaderService<TKey, TRecord>
+        configurationService,serviceProvider, logger), IPdfDataLoaderService<TKey, TRecord>
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
@@ -67,6 +69,9 @@ public class PdfDataLoaderService<TKey, TRecord>(
         if (string.IsNullOrEmpty(request.PdfLocalPath))
             throw new InvalidOperationException("PdfPath is empty");
 
+        if (request.ModelLocation == null)
+            throw new InvalidOperationException("ModelLocation is empty");
+
         await InitializeCollectionAsync(cancellationToken);
         await DeleteExistingRecordsAsync(request.PdfFileName!, cancellationToken);
 
@@ -88,6 +93,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
 
                 var textFromImage = await ConvertImageToTextAsync(
                     content.Image!.Value,
+                    request.ModelLocation,
                     cancellationToken).ConfigureAwait(false);
 
                 return new RawContent { Text = textFromImage, PageNumber = content.PageNumber };
@@ -206,10 +212,12 @@ public class PdfDataLoaderService<TKey, TRecord>(
     /// Adds a simple retry mechanism for converting an image to text.
     /// </summary>
     /// <param name="imageBytes">The image data to be processed for text extraction.</param>
+    /// <param name="modelLocationDescriptor">The location of the model to use for vision service operations.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
     /// <returns>A task that represents the asynchronous operation, producing the extracted text from the image.</returns>
     private async Task<string> ConvertImageToTextAsync(
         ReadOnlyMemory<byte> imageBytes,
+        ModelLocationDescriptor modelLocationDescriptor,
         CancellationToken cancellationToken)
     {
         try
@@ -219,7 +227,8 @@ public class PdfDataLoaderService<TKey, TRecord>(
             await image.SaveAsPngAsync(ms, cancellationToken);
             var resizedImageBytes = new ReadOnlyMemory<byte>(ms.ToArray());
 
-            return await _visionService.GetImageTextAsync(resizedImageBytes, PngMimeType, cancellationToken)
+            return await _visionService.GetImageTextAsync(modelLocationDescriptor, resizedImageBytes, 
+                    PngMimeType, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (ClientResultException ex)

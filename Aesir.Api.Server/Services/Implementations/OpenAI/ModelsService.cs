@@ -9,13 +9,13 @@ namespace Aesir.Api.Server.Services.Implementations.OpenAI;
 /// Provides functionality to manage and control various AI models using OpenAI's backend.
 /// </summary>
 /// <param name="logger">Logger instance for recording diagnostic and operational messages related to the service.</param>
-/// <param name="client">OpenAIClient instance for handling communication with the OpenAI API.</param>
 /// <param name="configuration">Configuration settings for customizing model operations and preferences.</param>
 [Experimental("SKEXP0070")]
 public class ModelsService(
+    string serviceId,
     ILogger<ModelsService> logger,
-    OpenAIClient client,
-    IConfiguration configuration)
+    IConfiguration configuration,
+    IServiceProvider serviceProvider)
     : IModelsService
 {
     /// <summary>
@@ -39,6 +39,9 @@ public class ModelsService(
 
         try
         {
+            var client = serviceProvider.GetKeyedService<OpenAIClient>(serviceId) ??
+                         throw new InvalidOperationException($"Not OpenAIClient registered for {serviceId}");
+            
             // Get available models from API
             var openAiModels = (await client.GetOpenAIModelClient().GetModelsAsync()).Value;
             
@@ -124,55 +127,14 @@ public class ModelsService(
         return models;
     }
 
-    /// <summary>
-    /// Asynchronously unloads the chat model from the system or clears any associated resources.
+    /// Asynchronously unloads all specified models from the system using the OpenAI API.
     /// This operation is currently a no-op and does not perform any functional task.
-    /// </summary>
     /// <returns>
     /// A task representing the asynchronous unload operation.
     /// </returns>
-    public Task UnloadChatModelAsync()
+    public async Task UnloadModelsAsync(string[] modelIds)
     {
         // no op
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Asynchronously unloads the embedding model from the service.
-    /// This method performs no operation and acts as a placeholder for potential future implementation.
-    /// </summary>
-    /// <returns>
-    /// A completed task representing the asynchronous operation.
-    /// </returns>
-    public Task UnloadEmbeddingModelAsync()
-    {
-        // no op
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Unloads the vision model asynchronously. This operation is a no-op in its current implementation.
-    /// </summary>
-    /// <returns>
-    /// A task that represents the asynchronous operation.
-    /// </returns>
-    public Task UnloadVisionModelAsync()
-    {
-        // no op
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Unloads all loaded models, freeing up resources and resetting the state
-    /// of available model configurations in the server.
-    /// </summary>
-    /// <returns>
-    /// A completed task representing the operation of unloading all loaded models without
-    /// performing any additional actions.
-    /// </returns>
-    public Task UnloadAllModelsAsync()
-    {
-        // no op
-        return Task.CompletedTask;
+        await Task.CompletedTask;
     }
 }

@@ -13,9 +13,10 @@ namespace Aesir.Api.Server.Services.Implementations.Ollama;
 /// <param name="configuration">The configuration interface containing application settings.</param>
 [Experimental("SKEXP0070")]
 public class ModelsService(
-    ILogger<ChatService> logger,
-    OllamaApiClient api,
-    IConfiguration configuration)
+    string serviceId,
+    ILogger<ModelsService> logger,
+    IConfiguration configuration,
+    IServiceProvider serviceProvider)
     : IModelsService
 {
     /// <summary>
@@ -33,6 +34,9 @@ public class ModelsService(
 
         try
         {
+            var api = serviceProvider.GetKeyedService<OllamaApiClient>(serviceId) ??
+                      throw new InvalidOperationException($"Not OllamaApiClient registered for {serviceId}");
+            
             // get ollama models loaded
             var ollamaModels = (await api.ListLocalModelsAsync()).ToList();
 
@@ -118,80 +122,26 @@ public class ModelsService(
         return models;
     }
 
-    /// Asynchronously unloads all configured chat models from the system using the Ollama API.
-    /// This method retrieves a list of allowed chat models from the application configuration,
-    /// then attempts to unload each model by making asynchronous requests to the underlying API.
+    /// Asynchronously unloads all specified models from the system using the Ollama API.
     /// Any errors encountered during the unloading process will be logged.
     /// <returns>
-    /// A task that represents the asynchronous operation of unloading the chat models.
+    /// A task that represents the asynchronous operation of unloading the selected models.
     /// </returns>
-    public async Task UnloadChatModelAsync()
+    public async Task UnloadModelsAsync(string[] modelIds)
     {
-        var allowedModelNames = (configuration.GetSection("Inference:Ollama:ChatModels").Get<string[]>()
-                                 ?? throw new InvalidOperationException("No chat models configured")).ToList();
-
-        await Parallel.ForEachAsync(allowedModelNames, async (modelName, token) =>
+        await Parallel.ForEachAsync(modelIds, async (modelId, token) =>
         {
             try
             {
-                await api.RequestModelUnloadAsync(modelName, token);
+                var api = serviceProvider.GetKeyedService<OllamaApiClient>(serviceId) ??
+                          throw new InvalidOperationException($"Not OllamaApiClient registered for {serviceId}");
+                
+                await api.RequestModelUnloadAsync(modelId, token);
             }
             catch (Exception ex)
             {
-                logger.LogWarning("Unload of chat model had error: {Error}", ex);
+                logger.LogWarning("Unload of model had error: {Error}", ex);
             }
         });
     }
-
-    /// Asynchronously unloads the configured embedding model from the system.
-    /// If the embedding model is not configured, an InvalidOperationException is thrown.
-    /// Logs a warning if an error occurs during the unload process.
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task UnloadEmbeddingModelAsync()
-    {
-        var modelName = configuration.GetValue<string>("Inference:Ollama:EmbeddingModel")
-                                 ?? throw new InvalidOperationException("No embedding model configured");
-        
-        try
-        {
-            await api.RequestModelUnloadAsync(modelName);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning("Unload of embedding model had error: {Error}", ex);
-        }
-    }
-
-    /// Asynchronously unloads the configured vision model from the system.
-    /// This method retrieves the name of the configured vision model from the application's configuration
-    /// and attempts to unload the model using the associated API client. If the configuration setting
-    /// for the vision model is unavailable, an InvalidOperationException is thrown. Additionally, the
-    /// completion or any exception during the unload process is logged.
-    /// <returns>A Task that represents the asynchronous operation.</returns>
-    public async Task UnloadVisionModelAsync()
-    {
-        var modelName = configuration.GetValue<string>("Inference:Ollama:VisionModel")
-                        ?? throw new InvalidOperationException("No vision model configured");
-
-        try
-        {
-            await api.RequestModelUnloadAsync(modelName);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning("Unload of vision model had error: {Error}", ex);
-        }
-    }
-    
-    /// <summary>
-    /// Asynchronously unloads all models from the system.
-    /// </summary>
-    /// <returns>A task that represents the asynchronous operation.</returns>
-    public async Task UnloadAllModelsAsync()
-    {
-        await UnloadChatModelAsync();
-        await UnloadEmbeddingModelAsync();
-        await UnloadVisionModelAsync();
-    }
-
 }

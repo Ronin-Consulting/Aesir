@@ -10,6 +10,7 @@ using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
 using OllamaSharp;
+using OpenAI;
 using Qdrant.Client;
 
 namespace Aesir.Api.Server.Extensions;
@@ -44,16 +45,18 @@ public static class ServiceCollectionExtensions
             .Get<AesirInferenceEngine[]>() ?? [];
         foreach (var inferenceEngine in inferenceEngines)
         {
+            var inferenceEngineIdKey = inferenceEngine.Id.ToString();
+            
             switch (inferenceEngine.Type)
             {
                 case InferenceEngineType.Ollama:
                 {
-                    kernelBuilder.AddOllamaChatCompletion();
+                    kernelBuilder.AddOllamaChatCompletion(serviceId: inferenceEngineIdKey);
                     
                     const string? serviceId = null;
                     services.AddKeyedSingleton<IEmbeddingGenerator<string, Embedding<float>>>(serviceId, (serviceProvider, _) =>
                     {
-                        var ollamaClient = serviceProvider.GetRequiredService<OllamaApiClient>();
+                        var ollamaClient = services.BuildServiceProvider().GetKeyedService<OllamaApiClient>(inferenceEngineIdKey);
                         ollamaClient.SelectedModel = embeddingModel;
                 
                         var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
@@ -73,8 +76,10 @@ public static class ServiceCollectionExtensions
                 }
                 case InferenceEngineType.OpenAICompatible:
                 {
-                    kernelBuilder.AddOpenAIChatCompletion("set-by-agent");
-                    kernelBuilder.AddOpenAIEmbeddingGenerator(embeddingModel, dimensions: 1024);
+                    var openAiClient = services.BuildServiceProvider().GetKeyedService<OpenAIClient>(inferenceEngineIdKey);
+                    
+                    kernelBuilder.AddOpenAIChatCompletion("set-by-agent", openAiClient, inferenceEngineIdKey);
+                    kernelBuilder.AddOpenAIEmbeddingGenerator(embeddingModel, openAiClient, 1024, inferenceEngineIdKey);
                     break;
                 }
             }
@@ -129,7 +134,8 @@ public static class ServiceCollectionExtensions
                     };
                 },
                 serviceProvider.GetRequiredService<IVisionService>(),
-                serviceProvider.GetRequiredService<IModelsService>(),
+                serviceProvider.GetRequiredService<IConfigurationService>(),
+                serviceProvider,
                 serviceProvider
                     .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>>()
             );
@@ -156,7 +162,8 @@ public static class ServiceCollectionExtensions
                     };
                 },
                 serviceProvider.GetRequiredService<IVisionService>(),
-                serviceProvider.GetRequiredService<IModelsService>(),
+                serviceProvider.GetRequiredService<IConfigurationService>(),
+                serviceProvider,
                 serviceProvider
                     .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
@@ -183,7 +190,8 @@ public static class ServiceCollectionExtensions
                     };
                 },
                 serviceProvider.GetRequiredService<IVisionService>(),
-                serviceProvider.GetRequiredService<IModelsService>(),
+                serviceProvider.GetRequiredService<IConfigurationService>(),
+                serviceProvider,
                 serviceProvider
                     .GetRequiredService<ILogger<ImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
@@ -236,7 +244,8 @@ public static class ServiceCollectionExtensions
                         Key = Guid.Empty // This will be replaced in the service
                     };
                 },
-                serviceProvider.GetRequiredService<IModelsService>(),
+                serviceProvider.GetRequiredService<IConfigurationService>(),
+                serviceProvider,
                 serviceProvider
                     .GetRequiredService<ILogger<TextFileLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
