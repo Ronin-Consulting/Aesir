@@ -232,7 +232,7 @@ public class ConfigurationService(
         VerifyIsDatabaseMode();
         
         const string sql = @"
-            DELETE FROM aesir.aesir_infernece_engine
+            DELETE FROM aesir.aesir_inference_engine
             WHERE id = @Id::uuid
         ";
 
