@@ -305,7 +305,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         const string pluginName = "ChatTools";
 
         var kernelFunctionLibrary = new KernelFunctionLibrary<Guid, AesirConversationDocumentTextData<Guid>>(
-            _conversationDocumentVectorSearch, _conversationDocumentHybridSearch
+            _conversationDocumentVectorSearch, _conversationDocumentHybridSearch, _vectorStoreRecordCollection
         );
 
         var kernelFunctions = new List<KernelFunction>();
@@ -345,6 +345,11 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
                     kernelFunctionLibrary.GetImageAnalysisFunction(imageSearchFilter, MaxTopResults)
                 );
         
+                // summarize documents
+                kernelFunctions.Add(
+                    kernelFunctionLibrary.GetSummarizeConversationDocumentFunction(conversationId)
+                );
+                
                 // text searches
                 if (_conversationDocumentHybridSearch != null)
                 {

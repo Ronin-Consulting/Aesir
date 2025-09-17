@@ -30,9 +30,10 @@ public partial class ToolsView : UserControl, IRecipient<ShowToolDetailMessage>,
             {
                 var notificationService = Ioc.Default.GetService<INotificationService>()!;
                 var configurationService = Ioc.Default.GetService<IConfigurationService>()!;
-                var viewModel = new ToolViewViewModel(detailMessage.Tool, notificationService, configurationService);
-
-                viewModel.IsActive = true;
+                var viewModel = new ToolViewViewModel(detailMessage.Tool, notificationService, configurationService)
+                    {
+                        IsActive = true
+                    };
 
                 var options = new DrawerOptions()
                 {

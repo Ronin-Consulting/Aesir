@@ -435,7 +435,7 @@ public partial class AgentFormDataModel : ObservableValidator
     /// </summary>
     [ObservableProperty] 
     [NotifyDataErrorInfo] 
-    [ConditionalRequired(nameof(PromptPersona), Aesir.Common.Prompts.PromptPersona.Custom, ErrorMessage = "Prompt content is required")] 
+    [ConditionalRequired(nameof(ChatPromptPersona), Aesir.Common.Prompts.PromptPersona.Custom, ErrorMessage = "Prompt content is required")] 
     private string? _chatCustomPromptContent;
     
     /// <summary>

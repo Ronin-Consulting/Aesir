@@ -31,9 +31,10 @@ public partial class AgentsView : UserControl, IRecipient<ShowAgentDetailMessage
                 var notificationService = Ioc.Default.GetService<INotificationService>()!;
                 var configurationService = Ioc.Default.GetService<IConfigurationService>()!;
                 var modelService = Ioc.Default.GetService<IModelService>()!;
-                var viewModel = new AgentViewViewModel(detailMessage.Agent, notificationService, configurationService, modelService);
-
-                viewModel.IsActive = true;
+                var viewModel = new AgentViewViewModel(detailMessage.Agent, notificationService, configurationService, modelService)
+                    {
+                        IsActive = true
+                    };
 
                 var options = new DrawerOptions()
                 {

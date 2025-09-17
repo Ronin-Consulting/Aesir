@@ -33,10 +33,10 @@
         <PackageReference Include="Microsoft.SemanticKernel.PromptTemplates.Handlebars" Version="1.65.0" />
         <PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.65.0-alpha" />
         <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0"/>
-        <PackageReference Include="ModelContextProtocol-SemanticKernel" Version="0.3.0" />
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
+        <PackageReference Include="ModelContextProtocol-SemanticKernel" Version="0.4.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Npgsql" Version="9.0.3"/>
-        <PackageReference Include="OllamaSharp" Version="5.4.1" />
+        <PackageReference Include="OllamaSharp" Version="5.4.4" />
         <PackageReference Include="OpenAI" Version="2.4.0" />
         <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.12.0"/>
         <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.12" />

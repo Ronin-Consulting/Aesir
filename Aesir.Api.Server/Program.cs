@@ -28,8 +28,28 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
         
+        // Database-based configuration needs these registered beforehand...
+        builder.Services.AddSingleton<IDbContext, PgDbContext>();
         builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
         
+        // Configure connection pooling with NpgsqlDataSource
+        builder.Services.AddSingleton<NpgsqlDataSource>(provider =>
+        {
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
+                throw new InvalidOperationException("DefaultConnection connection string not configured");
+            
+            var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+            
+            // Configure connection pool parameters for optimal performance
+            dataSourceBuilder.ConnectionStringBuilder.MaxPoolSize = 100;
+            dataSourceBuilder.ConnectionStringBuilder.MinPoolSize = 10;
+            dataSourceBuilder.ConnectionStringBuilder.ConnectionIdleLifetime = 300; // 5 minutes
+            dataSourceBuilder.ConnectionStringBuilder.ConnectionPruningInterval = 10; // 10 seconds
+            dataSourceBuilder.ConnectionStringBuilder.CommandTimeout = 30; // 30 seconds
+            
+            return dataSourceBuilder.Build();
+        });
+
         // Load configuration from database or fix up / check file configuration
         NormalizeFileOrDatabaseConfiguration(builder);
 
@@ -207,27 +227,6 @@ public class Program
 
         #endregion
 
-        // Configure connection pooling with NpgsqlDataSource
-        builder.Services.AddSingleton<NpgsqlDataSource>(provider =>
-        {
-            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
-                throw new InvalidOperationException("DefaultConnection connection string not configured");
-            
-            var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-            
-            // Configure connection pool parameters for optimal performance
-            dataSourceBuilder.ConnectionStringBuilder.MaxPoolSize = 100;
-            dataSourceBuilder.ConnectionStringBuilder.MinPoolSize = 10;
-            dataSourceBuilder.ConnectionStringBuilder.ConnectionIdleLifetime = 300; // 5 minutes
-            dataSourceBuilder.ConnectionStringBuilder.ConnectionPruningInterval = 10; // 10 seconds
-            dataSourceBuilder.ConnectionStringBuilder.CommandTimeout = 30; // 30 seconds
-            
-            return dataSourceBuilder.Build();
-        });
-
-        builder.Services.AddSingleton<IDbContext, PgDbContext>();
-
-        builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
         builder.Services.AddSingleton<IMcpServerService, McpServerService>();
         builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
         builder.Services.AddSingleton<IFileStorageService, FileStorageService>();
@@ -314,7 +313,7 @@ public class Program
         {   
             // Ensure database and tables exist before trying to load config
             EnsureDatabaseMigrations(builder);
-
+            
             // create an initial scope so we can use the database loading
             var tempServiceProvider = builder.Services.BuildServiceProvider();
             using var scope = tempServiceProvider.CreateScope();
