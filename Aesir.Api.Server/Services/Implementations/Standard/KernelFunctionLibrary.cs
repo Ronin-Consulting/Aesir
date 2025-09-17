@@ -267,7 +267,7 @@ public class KernelFunctionLibrary<TKey, TRecord>(
             (from method in methods
                 where method.Name.StartsWith("GetSearchResults")
                 select KernelFunctionFactory.CreateFromMethod(
-                    method, webSearchPlugin
+                    method, webSearchPlugin, "GetWebSearchResults"
                 )).ToList();
 
         var webSearchFunction = functions.FirstOrDefault();
