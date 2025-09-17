@@ -1,0 +1,90 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:u="https://irihi.tech/ursa"
+    xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+    xmlns:dvm="clr-namespace:Aesir.Client.ViewModels.Design"
+    xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+    xmlns:models="clr-namespace:Aesir.Common.Models;assembly=Aesir.Common"
+    mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
+    x:Class="Aesir.Client.Views.DocumentView"
+    x:DataType="vm:DocumentViewViewModel">
+    
+    <Design.DataContext>    
+        <dvm:DesignToolViewViewModel />
+    </Design.DataContext>
+    
+    <Grid
+        MinWidth="400"
+        Margin="8"
+        RowDefinitions="Auto, *, Auto">
+        <!-- Header -->
+        <TextBlock
+            Grid.Row="0"
+            Margin="8"
+            FontSize="16"
+            FontWeight="600"
+            Text="Document Detail" />
+        
+        <!-- Form Body -->
+        <u:Form
+            Grid.Row="1"
+            Margin="8"
+            HorizontalAlignment="Stretch"
+            LabelPosition="Top">
+            <u:Form.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
+                </ItemsPanelTemplate>
+            </u:Form.ItemsPanel>
+            <u:FormItem 
+                Grid.Row="0" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="File Name" >
+                <TextBox Text="{Binding FormModel.Name}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="3" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Chats" 
+                IsVisible="{Binding FormModel.HasChats}">
+                <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
+            </u:FormItem>
+        </u:Form>
+        
+        <!-- Buttons -->
+        <DockPanel
+            Grid.Row="2"
+            Margin="8">
+            <u:IconButton 
+                DockPanel.Dock="Left"
+                Classes="Danger"
+                Content="Delete"
+                IconPlacement="Left" 
+                Command="{Binding DeleteCommand}">
+                <u:IconButton.Icon>
+                    <avalonia:MaterialIcon Kind="Delete" Width="20" Height="20" />
+                </u:IconButton.Icon>
+            </u:IconButton>
+            <StackPanel
+                Orientation="Horizontal"
+                Spacing="8"
+                HorizontalAlignment="Right">
+                <u:IconButton 
+                    Classes="Tertiary"
+                    Content="Cancel"
+                    IconPlacement="Left" 
+                    Command="{Binding CancelCommand}">
+                    <u:IconButton.Icon>
+                        <avalonia:MaterialIcon Kind="Cancel" Width="20" Height="20" />
+                    </u:IconButton.Icon>
+                </u:IconButton>
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+    
+</UserControl>

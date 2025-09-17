@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Aesir.Client.Models;
 using Aesir.Common.FileTypes;
 using Aesir.Common.Models;
 using Avalonia.Platform.Storage;
@@ -58,16 +59,16 @@ public class DocumentCollectionService(
     /// Asynchronously retrieves a collection of documents available in the system.
     /// </summary>
     /// <returns>
-    /// A task that represents the asynchronous operation. The task result contains a collection of <see cref="AesirDocumentBase"/> objects.
+    /// A task that represents the asynchronous operation. The task result contains a collection of <see cref="AesirDocument"/> objects.
     /// </returns>
-    public async Task<IEnumerable<AesirDocumentBase>> GetDocumentsAsync()
+    public async Task<IEnumerable<AesirDocument>> GetDocumentsAsync()
     {
         try
         {
             return (await _flurlClient.Request()
                 .AppendPathSegment("conversations")
                 .AppendPathSegment("files")
-                .GetJsonAsync<IEnumerable<AesirDocumentBase>>());
+                .GetJsonAsync<IEnumerable<AesirDocument>>());
         }
         catch (FlurlHttpException ex)
         {

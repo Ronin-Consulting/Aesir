@@ -38,26 +38,6 @@
                 <DockPanel 
                     DockPanel.Dock="Bottom"
                     Margin="20,0,20,15">
-                    <Button 
-                            DockPanel.Dock="Right" 
-                            IsVisible="False"
-                            Classes="Primary" 
-                            Theme="{DynamicResource OutlineButton}"
-                            HorizontalContentAlignment="Center"
-                            Padding="12,5,12,5"
-                            Command="{Binding ShowAddTool}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <avalonia:MaterialIcon Kind="PlusBox" 
-                                                   Width="20" 
-                                                   Height="20" 
-                                                   HorizontalAlignment="Center" 
-                                                   VerticalAlignment="Center" />
-                            <TextBlock Text="Add Tool"
-                                       VerticalAlignment="Center"
-                                       FontWeight="Medium" />
-                        </StackPanel>
-                    </Button>
-
                     <TextBlock
                         DockPanel.Dock="Left"
                         Text="{Binding Documents.Count, StringFormat='Displaying {0} documents'}" />
@@ -66,6 +46,7 @@
                           IsReadOnly="True" 
                           GridLinesVisibility="None"
                           BorderThickness="1" BorderBrush="DimGray"
+                          PointerPressed="InputElement_OnPointerPressed"
                           SelectedItem="{Binding SelectedDocument}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Id" Binding="{Binding Id}"/>

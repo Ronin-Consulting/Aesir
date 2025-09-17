@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Messages;
+using Aesir.Client.Models;
 using Aesir.Client.Services;
 using Aesir.Common.Models;
 using Avalonia.Threading;
@@ -30,21 +31,26 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable
     public ICommand ShowChat { get; protected set; }
 
     /// <summary>
-    /// Represents a command that triggers the display of an interface for adding a new tool.
+    /// Represents a command that triggers the display of an interface for document details.
     /// </summary>
-    public ICommand ShowAddTool { get; protected set; }
+    public ICommand ShowDocumentDetails { get; protected set; }
+
+    /// <summary>
+    /// Represents a command that detects a click on the grid as a reselect.
+    /// </summary>
+    public ICommand ReselectFromGrid { get; protected set; }
 
     /// <summary>
     /// Represents a collection of tools displayed in the tools view.
     /// </summary>
-    public ObservableCollection<AesirDocumentBase> Documents { get; protected set; }
+    public ObservableCollection<AesirDocument> Documents { get; protected set; }
 
     /// <summary>
     /// Represents the currently selected tool from the collection of tools.
     /// This property is bound to the selection within the user interface and updates whenever
     /// a new tool is chosen. Triggers logic related to tool selection changes.
     /// </summary>
-    public AesirToolBase? SelectedDocument
+    public AesirDocument? SelectedDocument
     {
         get => _selectedDocument;
         set
@@ -77,13 +83,12 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable
     private readonly IDocumentCollectionService _documentCollectionService;
 
     /// <summary>
-    /// Backing field for the currently selected tool in the view model.
+    /// Backing field for the currently selected document in the view model.
     /// </summary>
-    private AesirToolBase? _selectedDocument;
+    private AesirDocument? _selectedDocument;
 
-    /// Represents the view model for managing tools within the application.
+    /// Represents the view model for managing documents within the application.
     /// Provides commands to display the chat and tool creation interfaces.
-    /// Maintains a collection of tools and tracks the currently selected tool.
     /// Integrates navigation and configuration services to coordinate application workflows.
     public DocumentsViewViewModel(
         ILogger<ToolsViewViewModel> logger,
@@ -95,9 +100,10 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable
         _documentCollectionService = documentCollectionService;
 
         ShowChat = new RelayCommand(ExecuteShowChat);
-        ShowAddTool = new RelayCommand(ExecuteShowAddTool);
+        ShowDocumentDetails = new RelayCommand(ExecuteShowDocumentDetails);
+        ReselectFromGrid = new RelayCommand(ExecuteReselectFromGrid);
 
-        Documents = new ObservableCollection<AesirDocumentBase>();
+        Documents = new ObservableCollection<AesirDocument>();
     }
 
     /// Called when the view model is activated.
@@ -144,27 +150,27 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable
         _navigationService.NavigateToChat();
     }
 
-    /// Executes the command to show the interface for adding a new tool.
-    /// Sends a message indicating that the interface for tool details should be displayed.
-    /// This method is bound to the `ShowAddTool` command in the view model and is triggered
-    /// when the corresponding user action is performed in the UI.
-    private void ExecuteShowAddTool()
+    /// Executes the command to show the interface for Document details.
+    /// Sends a message indicating that the interface for Document details should be displayed.
+    private void ExecuteShowDocumentDetails()
     {
-        WeakReferenceMessenger.Default.Send(new ShowToolDetailMessage(
-            new AesirToolBase()
-            {
-                Type = ToolType.McpServer // default to MCP Server for new tools
-            }));
+        WeakReferenceMessenger.Default.Send(new ShowDocumentDetailMessage(SelectedDocument));   
+    }
+
+    /// Executes the command to show the interface for re-selecting a document when the grid is clicked.
+    private void ExecuteReselectFromGrid()
+    {
+        WeakReferenceMessenger.Default.Send(new ShowDocumentDetailMessage(SelectedDocument));   
     }
 
     /// Handles logic when a Document is selected in the ToolsViewViewModel.
     /// Sends a message to display detailed information about the selected tool.
     /// <param name="selectedDocument">The Document that has been selected. If null, no action is taken.</param>
-    private void OnDocumentSelected(AesirToolBase? selectedDocument)
+    private void OnDocumentSelected(AesirDocument? selectedDocument)
     {
         if (selectedDocument != null)
         {
-            WeakReferenceMessenger.Default.Send(new ShowToolDetailMessage(selectedDocument));
+            WeakReferenceMessenger.Default.Send(new ShowDocumentDetailMessage(selectedDocument));
         }
     }
 

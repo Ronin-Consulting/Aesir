@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Aesir.Common.Models;
 
-public class AesirDocumentBase
+public abstract class AesirDocumentBase
 {
     /*
      * This currently mirrors AesirFileInfo in the server project.

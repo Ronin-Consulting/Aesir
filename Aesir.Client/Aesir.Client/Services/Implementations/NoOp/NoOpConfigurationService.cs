@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Aesir.Client.Models;
 using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 
@@ -68,9 +69,9 @@ public class NoOpConfigurationService : IConfigurationService
         await Task.CompletedTask;
     }
 
-    public async Task<IEnumerable<AesirDocumentBase>> GetDocumentsAsync()
+    public async Task<IEnumerable<AesirDocument>> GetDocumentsAsync()
     {
-        return await Task.FromResult(new List<AesirDocumentBase>());
+        return await Task.FromResult(new List<AesirDocument>());
     }
 
     public async Task<IEnumerable<AesirToolBase>> GetToolsAsync()
