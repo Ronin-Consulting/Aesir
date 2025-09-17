@@ -2,7 +2,9 @@
 # How to run
   
 1. #### API Server
-   1. Update your local "hosts" file (C:\Windows\System32\drivers\etc\hosts) with a line "127.0.0.1 aesir.localhost",
+   1. Update your local "hosts" file with a line "127.0.0.1 aesir.localhost",
+      1. On Windows, path "C:\Windows\System32\drivers\etc\hosts"
+      2. On Unux, path "/etc/hosts"
    2. **IF** Rider IDE then right click the file "docker-compose-api.dev.yml" and select "Debug ..." or "Run..." from menu that's it,
    3. **ELSE** change directory to "~/Aesir" folder and run the following command "docker compose -f docker-compose-api-dev.yml up".
    4. **NOTE:** To use OpenAI instead of Ollama, set `"Inference:UseOpenAICompatible": true` in appsettings.Development.json and add your API key to `"Inference:OpenAI:ApiKey"`.
