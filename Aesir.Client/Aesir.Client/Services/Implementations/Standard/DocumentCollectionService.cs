@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Aesir.Common.FileTypes;
+using Aesir.Common.Models;
 using Avalonia.Platform.Storage;
 using Flurl.Http;
 using Flurl.Http.Configuration;
@@ -51,6 +53,28 @@ public class DocumentCollectionService(
     private readonly IFlurlClient _flurlClient = flurlClientCache
         .GetOrAdd("DocumentCollectionClient",
             configuration.GetValue<string>("Inference:DocumentCollections"));
+
+    /// <summary>
+    /// Asynchronously retrieves a collection of documents available in the system.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains a collection of <see cref="AesirDocumentBase"/> objects.
+    /// </returns>
+    public async Task<IEnumerable<AesirDocumentBase>> GetDocumentsAsync()
+    {
+        try
+        {
+            return (await _flurlClient.Request()
+                .AppendPathSegment("conversations")
+                .AppendPathSegment("files")
+                .GetJsonAsync<IEnumerable<AesirDocumentBase>>());
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }   
+    }
 
     /// <summary>
     /// Retrieves the content of a specified file from the server as a stream.

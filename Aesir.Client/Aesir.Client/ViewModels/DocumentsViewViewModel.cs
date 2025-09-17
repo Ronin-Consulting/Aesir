@@ -74,7 +74,7 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable
     /// Provides access to configuration-related operations and data
     /// management for agents and tools within the system.
     /// </summary>
-    private readonly IConfigurationService _configurationService;
+    private readonly IDocumentCollectionService _documentCollectionService;
 
     /// <summary>
     /// Backing field for the currently selected tool in the view model.
@@ -88,11 +88,11 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable
     public DocumentsViewViewModel(
         ILogger<ToolsViewViewModel> logger,
         INavigationService navigationService,
-        IConfigurationService configurationService)
+        IDocumentCollectionService documentCollectionService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _navigationService = navigationService;
-        _configurationService = configurationService;
+        _documentCollectionService = documentCollectionService;
 
         ShowChat = new RelayCommand(ExecuteShowChat);
         ShowAddTool = new RelayCommand(ExecuteShowAddTool);
@@ -126,7 +126,7 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable
     {
         try
         {
-            var docs = await _configurationService.GetDocumentsAsync();
+            var docs = await _documentCollectionService.GetDocumentsAsync();
             Documents.Clear();
             foreach (var doc in docs)
                 Documents.Add(doc);

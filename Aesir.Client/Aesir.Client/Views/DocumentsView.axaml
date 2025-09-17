@@ -69,7 +69,8 @@
                           SelectedItem="{Binding SelectedDocument}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Id" Binding="{Binding Id}"/>
-                        <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
+                        <DataGridTextColumn Header="FileName" Binding="{Binding FileName}"/>
+                        <DataGridTextColumn Header="FileSize" Binding="{Binding FileSize}"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>
