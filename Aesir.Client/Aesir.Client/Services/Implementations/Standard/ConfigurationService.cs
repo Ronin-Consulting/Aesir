@@ -287,6 +287,38 @@ public class ConfigurationService(
     }
 
     /// <summary>
+    /// Asynchronously retrieves a collection of documents available in the system.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains a collection of <see cref="AesirToolBase"/> objects.
+    /// </returns>
+    public async Task<IEnumerable<AesirDocumentBase>> GetDocumentsAsync()
+    {
+        try
+        {
+            List<AesirDocumentBase> docs = new List<AesirDocumentBase>();
+            docs.Add(new AesirDocumentBase()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Funky Doco LLAMA.pdf"
+            });
+            docs.Add(new  AesirDocumentBase(){
+                Id = Guid.NewGuid(),
+                    Name = "Smooth Doco WILDEBEAST.pdf"
+            });
+            return docs;
+            // return (await _flurlClient.Request()
+            //     .AppendPathSegment("documents")
+            //     .GetJsonAsync<IEnumerable<AesirDocumentBase>>());
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }   
+    }
+
+    /// <summary>
     /// Asynchronously retrieves a collection of tools available in the system.
     /// </summary>
     /// <returns>

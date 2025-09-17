@@ -25,6 +25,13 @@ public interface INavigationService
     void NavigateToMcpServers();
 
     /// <summary>
+    /// Navigates the application to the Documents view.
+    /// Utilizes the application's messaging system to send a
+    /// <see cref="NavigationMessage"/> with the ViewType set to Documents.
+    /// </summary>
+    void NavigateToDocuments();
+
+    /// <summary>
     /// Navigates the application to the Tools view.
     /// Utilizes the application's messaging system to send a
     /// <see cref="NavigationMessage"/> with the ViewType set to Tools.

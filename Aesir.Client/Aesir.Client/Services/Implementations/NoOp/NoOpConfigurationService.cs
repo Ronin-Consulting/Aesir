@@ -68,6 +68,11 @@ public class NoOpConfigurationService : IConfigurationService
         await Task.CompletedTask;
     }
 
+    public async Task<IEnumerable<AesirDocumentBase>> GetDocumentsAsync()
+    {
+        return await Task.FromResult(new List<AesirDocumentBase>());
+    }
+
     public async Task<IEnumerable<AesirToolBase>> GetToolsAsync()
     {
         return await Task.FromResult(new List<AesirToolBase>());

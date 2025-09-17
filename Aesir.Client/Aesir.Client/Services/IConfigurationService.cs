@@ -102,6 +102,14 @@ public interface IConfigurationService
     Task DeleteAgentAsync(Guid id);
 
     /// <summary>
+    /// Asynchronously retrieves a collection of documents available in the system.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains a collection of <see cref="AesirDocumentBase"/> objects.
+    /// </returns>
+    Task<IEnumerable<AesirDocumentBase>> GetDocumentsAsync();
+
+    /// <summary>
     /// Asynchronously retrieves a collection of tools available in the system.
     /// </summary>
     /// <returns>

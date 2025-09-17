@@ -58,6 +58,11 @@ public partial class ChatHistoryViewModel
     public ICommand ShowAgents { get; }
 
     /// <summary>
+    /// Represents a command that shows a documents view
+    /// </summary>
+    public ICommand ShowDocuments { get; }
+
+    /// <summary>
     /// Represents a command that shows a tools view
     /// </summary>
     public ICommand ShowTools { get; }
@@ -120,6 +125,7 @@ public partial class ChatHistoryViewModel
         ShowGeneralSettings = new RelayCommand(ExecuteShowGeneralSettings);
         ShowInferenceEngines = new RelayCommand(ExecuteShowInferenceEngines);
         ShowAgents = new RelayCommand(ExecuteShowAgents);
+        ShowDocuments = new RelayCommand(ExecuteShowDocuments);
         ShowTools = new RelayCommand(ExecuteShowTools);
         ShowMcpServers = new RelayCommand(ExecuteShowMcpServers);
     }
@@ -290,6 +296,11 @@ public partial class ChatHistoryViewModel
     private void ExecuteShowAgents()
     {
         _navigationService.NavigateToAgents();
+    }
+
+    private void ExecuteShowDocuments()
+    {
+        _navigationService.NavigateToDocuments();
     }
 
     private void ExecuteShowTools()

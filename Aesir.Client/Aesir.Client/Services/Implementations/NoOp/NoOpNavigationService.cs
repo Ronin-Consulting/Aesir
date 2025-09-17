@@ -10,6 +10,10 @@ public class NoOpNavigationService : INavigationService
     {
     }
 
+    public void NavigateToDocuments()
+    {
+    }
+
     public void NavigateToTools()
     {
     }
