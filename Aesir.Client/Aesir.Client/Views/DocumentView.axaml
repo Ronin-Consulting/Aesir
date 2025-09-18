@@ -8,12 +8,13 @@
     xmlns:dvm="clr-namespace:Aesir.Client.ViewModels.Design"
     xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
     xmlns:models="clr-namespace:Aesir.Common.Models;assembly=Aesir.Common"
+    xmlns:avaloniaIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
     mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
     x:Class="Aesir.Client.Views.DocumentView"
     x:DataType="vm:DocumentViewViewModel">
     
     <Design.DataContext>    
-        <dvm:DesignToolViewViewModel />
+        <dvm:DesignDocumentViewViewModel />
     </Design.DataContext>
     
     <Grid
@@ -44,15 +45,51 @@
                 Grid.Column="0"
                 Grid.ColumnSpan="3"
                 Label="File Name" >
-                <TextBox Text="{Binding FormModel.Name}" />
+                <TextBlock Text="{Binding FormModel.Name}" />
             </u:FormItem>
             <u:FormItem 
-                Grid.Row="3" 
+                Grid.Row="1" 
                 Grid.Column="0"
                 Grid.ColumnSpan="3"
                 Label="Chats" 
                 IsVisible="{Binding FormModel.HasChats}">
-                <TextBlock Text="{Binding Converter={StaticResource EnumDescConverter}}" />
+                <ItemsControl ItemsSource="{Binding FormModel.Chats}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Title}" Margin="0,0,10,0"/>
+                                <TextBlock Text="{Binding UpdatedAtDisplay}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </u:FormItem>
+            <u:FormItem
+                Grid.Row="2" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Chats" >
+                <StackPanel
+                    Name="FileStackPanel"
+                    RelativePanel.AlignBottomWithPanel="True"
+                    RelativePanel.AlignTopWithPanel="True"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Stretch">
+                    <avaloniaIcons:MaterialIcon
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Kind="FileDocument"
+                        Width="40" Height="40" />
+                    <Button Click="Button_OnClick">
+                    <TextBlock Text="Download File"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Margin="0 0 0 0" 
+                               TextTrimming="PrefixCharacterEllipsis"
+                               Width="165"
+                    />
+                    </Button>
+                </StackPanel>
             </u:FormItem>
         </u:Form>
         

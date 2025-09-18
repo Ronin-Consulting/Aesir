@@ -46,12 +46,12 @@
                           IsReadOnly="True" 
                           GridLinesVisibility="None"
                           BorderThickness="1" BorderBrush="DimGray"
-                          PointerPressed="InputElement_OnPointerPressed"
+                          CellPointerPressed="InputElement_OnCellPointerPressed"
                           SelectedItem="{Binding SelectedDocument}">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Id" Binding="{Binding Id}"/>
-                        <DataGridTextColumn Header="FileName" Binding="{Binding FileName}"/>
-                        <DataGridTextColumn Header="FileSize" Binding="{Binding FileSize}"/>
+                        <DataGridTextColumn FontWeight="Bold" Header="FileName" Binding="{Binding FileNameDisplay}"/>
+                        <DataGridTextColumn Header="FileSize" Binding="{Binding FileSizeDisplay}"/>
+                        <DataGridTextColumn Header="Last Modified" Binding="{Binding UpdatedAtDisplay}"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>

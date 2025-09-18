@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Threading.Tasks;
 using Aesir.Client.Messages;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
@@ -6,6 +8,7 @@ using Aesir.Client.Shared;
 using Aesir.Client.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Messaging;
@@ -32,7 +35,8 @@ public partial class DocumentsView : UserControl, IRecipient<ShowDocumentDetailM
             {
                 var notificationService = Ioc.Default.GetService<INotificationService>()!;
                 var documentCollectionService = Ioc.Default.GetService<IDocumentCollectionService>()!;
-                var viewModel = new DocumentViewViewModel(detailMessage.Document, notificationService, documentCollectionService)
+                var chatHistoryService=Ioc.Default.GetService<IChatHistoryService>()!;
+                var viewModel = new DocumentViewViewModel(detailMessage.Document, notificationService, documentCollectionService, chatHistoryService)
                     {
                         IsActive = true
                     };
@@ -77,15 +81,20 @@ public partial class DocumentsView : UserControl, IRecipient<ShowDocumentDetailM
         WeakReferenceMessenger.Default.Unregister<ShowDocumentDetailMessage>(this);
     }
     
-    private void InputElement_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void InputElement_OnCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs dataGridCellPointerPressedEventArgs)
     {
         // sender is often the clicked UI element, like ListBoxItem
         var control = sender as Control;
-        if (control!= null)
+        if (control != null)
         {
-            var selectedItem = control.DataContext as AesirDocument; // your clicked item
-            // Use selectedItem here
-            WeakReferenceMessenger.Default.Send(new ShowDocumentDetailMessage(selectedItem));
+            var model = control.DataContext as DocumentsViewViewModel; // your clicked item
+            if (model?.SelectedDocument!=null)
+            {
+                WeakReferenceMessenger.Default.Send(new ShowDocumentDetailMessage(model.SelectedDocument));
+            }
         }
     }
+
+
+
 }

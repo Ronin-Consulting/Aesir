@@ -1,16 +1,27 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
+using Aesir.Client.Shared;
+using Aesir.Client.Views;
 using Aesir.Common.Models;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
+using Ursa.Common;
+using Ursa.Controls;
+using Ursa.Controls.Options;
 
 namespace Aesir.Client.ViewModels;
 
@@ -23,7 +34,7 @@ namespace Aesir.Client.ViewModels;
 /// tools, and to add new tools. Additionally, it manages the collection of tools
 /// and tracks the selected tool.
 /// </remarks>
-public class DocumentsViewViewModel : ObservableRecipient, IDisposable
+public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipient<FileDownloadMessage>
 {
     /// <summary>
     /// Represents a command that triggers the display of the chat interface.
@@ -194,4 +205,90 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable
         Dispose(true);
         GC.SuppressFinalize(this);
     }
+
+    public void Receive(FileDownloadMessage message)
+    {
+        Dispatcher.UIThread.Post(async void () =>
+        {
+            await SaveFilePickerAsync(message.FileName);
+        });
+    }
+    
+    private async Task SaveFilePickerAsync(string filePath)
+    {
+        // Get the top-level window or control to access the StorageProvider
+        var topLevel = TopLevel.GetTopLevel(GetTopLevelControl());
+        var fileName = Path.GetFileName(filePath);  
+        
+        if (topLevel?.StorageProvider == null)
+        {
+            _logger.LogWarning("Storage provider not available");
+        }
+
+        if (topLevel != null)
+        {
+            // Open a Save File dialog
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Download File",
+                SuggestedFileName = Path.GetFileName(filePath), 
+                ShowOverwritePrompt = true
+            });
+
+            if (file != null)
+            {
+                string localFilePath = file.Path.LocalPath;
+                await DownloadFileAsync(fileName, localFilePath);
+            }
+        }
+    } 
+    
+    /// Downloads a file from a remote source and saves it to a specified local file path.
+    /// <param name="fileName">The name of the file to download from the remote source.</param>
+    /// <param name="localFilePath">The local file path where the downloaded file will be saved.</param>
+    /// <returns>A task that represents the asynchronous file download operation. It completes when the file has been fully downloaded and saved.</returns>
+    private async Task DownloadFileAsync(string fileName, string localFilePath)
+    {
+        try
+        {
+            await using var contentStream = await _documentCollectionService.GetFileContentStreamAsync(fileName);
+            // Create a FileStream to write the downloaded content to a local file
+            await using var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
+            // Copy the content from the network stream to the file stream
+            await contentStream.CopyToAsync(fileStream);
+        }
+        catch (Exception ex)
+        {
+            // Handle other potential errors during file writing
+            _logger.LogError(ex, "Error saving file to {LocalPath}", localFilePath);
+            throw;
+        }
+    }
+    
+    
+    /// Retrieves the top-level control of the application based on the application's lifetime configuration.
+    /// Determines whether the application is running with a classic desktop style or in a single-view environment
+    /// and returns the respective top-level control if available.
+    /// Logs an error and returns null in case of any exceptions during retrieval.
+    /// <returns>
+    /// The ContentControl representing the top-level application control, or null if it cannot be determined.
+    /// </returns>
+    private ContentControl? GetTopLevelControl()
+    {
+        try
+        {
+            return Application.Current?.ApplicationLifetime switch
+            {
+                IClassicDesktopStyleApplicationLifetime desktop => desktop.MainWindow,
+                ISingleViewApplicationLifetime singleView => singleView.MainView as ContentControl,
+                _ => null
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get top level control");
+            return null;
+        }
+    }
+
 }

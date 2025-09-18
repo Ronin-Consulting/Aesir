@@ -1,7 +1,11 @@
 using System.Linq;
+using Aesir.Client.Messages;
+using Aesir.Client.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Aesir.Client.Views;
 
@@ -20,5 +24,15 @@ public partial class DocumentView : UserControl
         foreach (var ctl in this.GetSelfAndLogicalDescendants().OfType<Control>())
             DataValidationErrors.ClearErrors(ctl);
 
+    }
+
+    private void Button_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not DocumentViewViewModel viewModel) return;
+
+        WeakReferenceMessenger.Default.Send(new FileDownloadMessage()
+        {
+            FileName = viewModel.FormModel.Name
+        });
     }
 }

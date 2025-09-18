@@ -1,33 +1,31 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel.DataAnnotations;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
 using Aesir.Client.Shared;
-using Aesir.Client.Validators;
 using Aesir.Common.Models;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Irihi.Avalonia.Shared.Contracts;
-using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
 
 /// <summary>
 /// Represents the view model for document-related views, providing properties, commands,
-/// and events to manage tool configurations and interactions in the user interface.
+/// and events to manage Document configurations and interactions in the user interface.
 /// </summary>
 /// <remarks>
 /// This class extends <see cref="ObservableRecipient"/> to manage state and perform
-/// operations related to tool interactions. It provides commands to display chat,
-/// tools, and to add new tools. Additionally, it manages the collection of tools
-/// and tracks the selected tool.
+/// operations related to Document interactions. It provides commands to display chat,
+/// Documents, and to add new Documents. Additionally, it manages the collection of Documents
+/// and tracks the selected Document.
 /// </remarks>
 public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
 {
@@ -42,26 +40,33 @@ public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
     private INotificationService _notificationService;
 
     /// <summary>
-    /// Service for accessing and managing configuration data, including tools
-    /// and tools, within the application.
+    /// Service for accessing and managing configuration data, including Documents
+    /// and Documents, within the application.
     /// </summary>
     private readonly IDocumentCollectionService _documentCollectionService;
+    
+    private readonly IChatHistoryService _chatHistoryService;
 
     /// <summary>
-    /// Represents the form data model for the tool view, used to handle data
-    /// binding and validation within the ToolViewViewModel.
+    /// Represents the form data model for the Document view, used to handle data
+    /// binding and validation within the DocumentViewViewModel.
     /// </summary>
     [ObservableProperty] private DocumentFormDataModel _formModel;
     
     /// <summary>
-    /// Command used to cancel the current operation or revert changes in the Tool View.
+    /// Command used to cancel the current operation or revert changes in the Document View.
     /// </summary>
     public ICommand CancelCommand { get; set; }
 
     /// <summary>
-    /// Command used to delete the associated tool or entity.
+    /// Command used to delete the associated Document or entity.
     /// </summary>
     public ICommand DeleteCommand { get; set; }
+
+    /// <summary>
+    /// Represents a command that triggers the display of the chat interface.
+    /// </summary>
+    public ICommand DownloadCommand { get; protected set; }
 
     /// <summary>
     /// Event triggered to request the closure of the view or dialog.
@@ -73,25 +78,31 @@ public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
     /// and communication between the user interface and underlying services.
     public DocumentViewViewModel(AesirDocument document, 
         INotificationService notificationService,
-        IDocumentCollectionService documentCollectionService)
+        IDocumentCollectionService documentCollectionService,
+        IChatHistoryService chatHistoryService)
     {
         _document = document;
         _documentCollectionService =documentCollectionService;
         _notificationService = notificationService;
+        _chatHistoryService = chatHistoryService;
 
+        var chats = GetChatsForDocument(_document);
+        
         FormModel = new()
         {
-            Name = _document.FileName,
-            Chats = GetChatsForDocument(_document),
-            
+            Name = Path.GetFileName(_document.FileName),
+            Path = _document.FileName,
+            Chats = chats,
+            HasChats = chats.Any()
         };
         CancelCommand = new RelayCommand(ExecuteCancelCommand);
         DeleteCommand = new AsyncRelayCommand(ExecuteDeleteCommand);
+        DownloadCommand = new RelayCommand(ExecuteDownloadCommand);
     }
 
-    private IEnumerable<AesirChatSessionBase>? GetChatsForDocument(AesirDocument document)
+    private IEnumerable<AesirChatSession>? GetChatsForDocument(AesirDocument document)
     {
-        return new List<AesirChatSessionBase>([
+        return new List<AesirChatSession>([
             new  AesirChatSession()
             {
                 Id = Guid.NewGuid(),
@@ -106,48 +117,55 @@ public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
     }
 
     /// <summary>
-    /// Invoked when the view model is activated. This method executes initialization logic such as
-    /// invoking UI-thread-specific tasks and loading the necessary resources or state for operation.
-    /// </summary>
-    protected override void OnActivated()
-    {
-        base.OnActivated();
-
-        // Dispatcher.UIThread.InvokeAsync(LoadAvailableAsync);
-    }
-
-    /// <summary>
     /// Executes the logic to delete the document.
     /// </summary>
     private async Task ExecuteDeleteCommand()
     {
-        var closeResult = CloseResult.Errored;
-        
-        try
+        var dialogService = Ioc.Default.GetService<IDialogService>();
+        if (dialogService == null) return;
+
+        var result = await dialogService.ShowConfirmationDialogAsync(
+            "Delete Document and Associated Chats",
+            $"Are you sure you want to delete this document and ALL associated chats?");
+        if (result)
         {
-            if (FormModel.Chats != null)
+            var closeResult = CloseResult.Errored;
+
+            try
             {
-                foreach (var chat in FormModel.Chats)
+                if (FormModel.Chats != null)
                 {
-                    // await _documentCollectionService.DeleteUploadedGlobalFileAsync(_document.FileName,"0");
-                    await _documentCollectionService.DeleteUploadedConversationFileAsync(_document.FileName,
-                        chat.Conversation.Id);
+                    foreach (var chat in FormModel.Chats)
+                    {
+                        await _chatHistoryService.DeleteChatSessionAsync(chat.Id);
+                        // await _documentCollectionService.DeleteUploadedGlobalFileAsync(_document.FileName,"0");
+                        await _documentCollectionService.DeleteUploadedConversationFileAsync(_document.FileName,
+                            chat.Conversation.Id);
+                    }
                 }
+
+                closeResult = CloseResult.Deleted;
             }
+            catch (Exception e)
+            {
+                _notificationService.ShowErrorNotification("Error",
+                    $"'{FormModel.Name}' failed to delete document : {e.Message}");
 
-            closeResult = CloseResult.Deleted;
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                Close(closeResult);
+            }
         }
-        catch (Exception e)
-        {   
-            _notificationService.ShowErrorNotification("Error",
-                $"'{FormModel.Name}' failed to delete document : {e.Message}");
+    }
 
-            Console.WriteLine(e);
-        }
-        finally
+    private void ExecuteDownloadCommand()
+    {
+        WeakReferenceMessenger.Default.Send(new FileDownloadMessage()
         {
-            Close(closeResult);
-        }
+            FileName = FormModel.Path
+        });
     }
 
     /// <summary>
@@ -184,17 +202,10 @@ public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
         RequestClose?.Invoke(this, closeResult);
     }
     
-    protected override void OnDeactivated()
-    {
-        base.OnDeactivated();
-    
-        // FormModel.PropertyChanged -= OnFormModelPropertyChanged;
-    }
-
 }
 
 /// <summary>
-/// Represents a model for the tool form data used to bind properties and validate inputs in the tool view.
+/// Represents a model for the Document form data used to bind properties and validate inputs in the Document view.
 /// </summary>
 public partial class DocumentFormDataModel : ObservableValidator
 {
@@ -202,11 +213,16 @@ public partial class DocumentFormDataModel : ObservableValidator
     /// The name of the document
     /// </summary>
     [ObservableProperty] private string? _name;
-    
+
+    /// <summary>
+    /// The name of the document
+    /// </summary>
+    [ObservableProperty] private string? _path;
+
     /// <summary>
     /// The chats that the document is associated with.
     /// </summary>
-    [ObservableProperty] IEnumerable<AesirChatSessionBase>? _chats;
+    [ObservableProperty] IEnumerable<AesirChatSession>? _chats;
  
     /// <summary>
     /// Whether the document is in chats.
