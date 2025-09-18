@@ -74,7 +74,7 @@ public partial class DocumentsView : UserControl, IRecipient<ShowDocumentDetailM
 
     public void Dispose()
     {
-        WeakReferenceMessenger.Default.Unregister<ShowToolDetailMessage>(this);
+        WeakReferenceMessenger.Default.Unregister<ShowDocumentDetailMessage>(this);
     }
     
     private void InputElement_OnPointerPressed(object? sender, PointerPressedEventArgs e)
