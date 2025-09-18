@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -33,9 +34,9 @@ namespace Aesir.Client.ViewModels;
 /// speech processing, and chat session management. It also handles lifecycle and resource management.
 /// </remarks>
 public partial class ChatViewViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>,
-    IRecipient<FileUploadStatusMessage>, IRecipient<RegenerateMessageMessage>, IDisposable
+    IRecipient<FileUploadStatusMessage>, IRecipient<RegenerateMessageMessage>, IRecipient<FileDownloadRequestMessage>,IDisposable
 {
-    /// <summary>
+    /// <summary>s
     /// The predefined constant value representing the default display name for an agent in the selection process.
     /// Used to indicate that no agent has been explicitly chosen, often serving as a placeholder or default state.
     /// </summary>
@@ -237,6 +238,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// </summary>
     private readonly INotificationService _notificationService;
 
+    private readonly IDocumentCollectionService _documentCollectionService;
+
     /// Encapsulates the logic and state management for the chat view in the application.
     /// Coordinates user interactions such as managing chat history, initiating new conversations, and handling speech input.
     /// Collaborates with underlying services to facilitate real-time chat operations and file handling functionality.
@@ -247,7 +250,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         ILogger<ChatViewViewModel> logger,
         FileToUploadViewModel fileToUploadViewModel,
         INavigationService navigationService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IDocumentCollectionService documentCollectionService)
     {
         _appState = appState ?? throw new ArgumentNullException(nameof(appState));
         _speechService = speechService;
@@ -255,6 +259,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _navigationService = navigationService;
         _notificationService = notificationService;
+        _documentCollectionService = documentCollectionService;
 
         ToggleLeftPane = new RelayCommand(() => PanelOpen = !PanelOpen);
         ToggleNewChat = new RelayCommand(ExecuteNewChat);
@@ -334,6 +339,14 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         SendingChatOrProcessingFile = message.IsProcessing;
     }
 
+    /// Processes a message of type FileDownloadRequestMessage, triggering actions for downloading
+    /// a file associated with the current conversation.
+    /// <param name="message">The message containing details about the file requested for download, including its name.</param>
+    public async void Receive(FileDownloadRequestMessage message)
+    {   
+        await SaveFilePickerAsync(_appState.ChatSession!.Conversation.Id, message.FileName);
+    }
+    
     /// Processes a RegenerateMessageMessage by determining the type of the contained message
     /// and invoking the appropriate message regeneration logic.
     /// <param name="message">
@@ -690,6 +703,68 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         }
     }
 
+    /// Opens a file picker dialog to allow the user to select a location and file name for saving a file.
+    /// Validates the availability of the required storage provider.
+    /// Constructs the file path using the conversation ID and the provided file name before initiating download.
+    /// <param name="convId">The unique identifier for the conversation used to construct the file path.</param>
+    /// <param name="fileName">The name of the file to be saved, suggested to the user in the file picker dialog.</param>
+    /// <return>A task that represents the asynchronous operation of showing the file picker dialog and handling file saving logic.</return>
+    private async Task SaveFilePickerAsync(string convId, string fileName)
+    {
+        // Get the top-level window or control to access the StorageProvider
+        var topLevel = TopLevel.GetTopLevel(GetTopLevelControl());
+        if (topLevel?.StorageProvider == null)
+        {
+            _logger.LogWarning("Storage provider not available");
+        }
+
+        if (topLevel != null)
+        {
+            // Open a Save File dialog
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Download File",
+                SuggestedFileName = fileName, 
+                ShowOverwritePrompt = true
+            });
+
+            if (file != null)
+            {
+                // database filename is the conversation id + filename
+                var fullFileName = $"/{convId}/{fileName}";
+                
+                var localFilePath = file.Path.LocalPath;
+                await DownloadFileAsync(fullFileName, localFilePath);
+                
+                // Optionally, show a success message to the user
+            }
+        }
+    }
+
+
+    /// Downloads a file from a remote source and saves it to a specified local file path.
+    /// <param name="fileName">The name of the file to download from the remote source.</param>
+    /// <param name="localFilePath">The local file path where the downloaded file will be saved.</param>
+    /// <returns>A task that represents the asynchronous file download operation. It completes when the file has been fully downloaded and saved.</returns>
+    private async Task DownloadFileAsync(string fileName, string localFilePath)
+    {
+        try
+        {
+            await using var contentStream = await _documentCollectionService.GetFileContentStreamAsync(fileName);
+            // Create a FileStream to write the downloaded content to a local file
+            await using var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
+            // Copy the content from the network stream to the file stream
+            await contentStream.CopyToAsync(fileStream);
+        }
+        catch (Exception ex)
+        {
+            // Handle other potential errors during file writing
+            _logger.LogError(ex, "Error saving file to {LocalPath}", localFilePath);
+            throw;
+        }
+    }
+    
+    
     /// Asynchronously regenerates the conversation by resending a specific user message and clearing all subsequent messages.
     /// This method locates the target user message within the conversation, removes all messages following it,
     /// and restarts the conversation by reprocessing the user message.
