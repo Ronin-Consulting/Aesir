@@ -88,17 +88,18 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
         // model host and database.
         
         Progress += 0;
-        
+
+        var readyAtBoot = false;
         try
         {
-            Status = "Determining agents available...";
+            Status = "Checking for minimal configuration...";
             for (var i = 0; i < 5; i++)
             {
                 try
                 {
                     Progress += 1;
 
-                    await _appState.LoadAvailableAgentsAsync();
+                    readyAtBoot = await _appState.CheckSystemConfigurationReady();
                     
                     break;
                 }
@@ -111,7 +112,7 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load agents");
+            _logger.LogError(ex, "Failed to check if system is minimally ready");
 
             Status = "Error connecting to host";
             IsError = true;
@@ -122,45 +123,82 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
         }
 
         await Task.Delay(TimeSpan.FromSeconds(1));
-        Progress = 33;
+        Progress += 25;
         
-        try
+        if (readyAtBoot)
         {
-            Status = "Loading existing chat sessions...";
-
-            for (var i = 0; i < 5; i++)
+            try
             {
-                try
+                Status = "Determining agents available...";
+                for (var i = 0; i < 5; i++)
                 {
-                    Progress += 1;
-                    
-                    await _appState.LoadAvailableChatSessionsAsync();
-                    
-                    break;
-                }
-                catch
-                {
-                    if (i == 4) throw;
-                    await Task.Delay(TimeSpan.FromSeconds(1));
+                    try
+                    {
+                        Progress += 1;
+
+                        await _appState.LoadAvailableAgentsAsync();
+
+                        break;
+                    }
+                    catch
+                    {
+                        if (i == 4) throw;
+                        await Task.Delay(TimeSpan.FromSeconds(1));
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load agents");
+
+                Status = "Error connecting to host";
+                IsError = true;
+
+                DispatcherTimer.RunOnce(ShutdownForError, TimeSpan.FromSeconds(10), DispatcherPriority.Default);
+
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            Progress = 25;
+
+            try
+            {
+                Status = "Loading existing chat sessions...";
+
+                for (var i = 0; i < 5; i++)
+                {
+                    try
+                    {
+                        Progress += 1;
+
+                        await _appState.LoadAvailableChatSessionsAsync();
+
+                        break;
+                    }
+                    catch
+                    {
+                        if (i == 4) throw;
+                        await Task.Delay(TimeSpan.FromSeconds(1));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load existing chat sessions");
+
+                Status = "Error load existing chat sessions";
+                IsError = true;
+
+                DispatcherTimer.RunOnce(ShutdownForError, TimeSpan.FromSeconds(10), DispatcherPriority.Default);
+
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            Progress += 25;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load existing chat sessions");
-            
-            Status = "Error load existing chat sessions";
-            IsError = true;
-            
-            DispatcherTimer.RunOnce(ShutdownForError, TimeSpan.FromSeconds(10), DispatcherPriority.Default);
-            
-            return;
-        }
-        
-        await Task.Delay(TimeSpan.FromSeconds(1));
-        Progress += 33;
-        
-        
+
         Status = "Preparing main window...";
         await Task.Delay(TimeSpan.FromSeconds(1));
         

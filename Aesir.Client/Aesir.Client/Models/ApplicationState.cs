@@ -69,6 +69,17 @@ public partial class ApplicationState(
     public ObservableCollection<AesirAgentBase> AvailableAgents { get; set; } = [];
 
     /// <summary>
+    /// Asynchronously loads if the system was ready at boot.
+    /// </summary>
+    /// <returns>
+    /// True if the system is ready to use; false otherwise
+    /// </returns>
+    public async Task<bool> CheckSystemConfigurationReady()
+    {
+        return await configurationService.GetIsSystemConfigurationReadyAsync();
+    }
+
+    /// <summary>
     /// Asynchronously loads the list of available models and updates the shared application state.
     /// </summary>
     /// <returns>

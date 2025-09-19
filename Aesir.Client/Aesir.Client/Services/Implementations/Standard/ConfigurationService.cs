@@ -42,6 +42,51 @@ public class ConfigurationService(
             configuration.GetValue<string>("Inference:Configuration"));
 
     /// <summary>
+    /// Retrieves an indicator if the system is fully ready for use or needs further configuration
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation.
+    /// The task result contains true if the system is ready; false otherwise.
+    /// </returns>
+    public async Task<bool> GetIsSystemConfigurationReadyAsync()
+    {
+        try
+        {
+            return (await _flurlClient.Request()
+                .AppendPathSegment($"systemready")
+                .GetJsonAsync<bool>());
+
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }   
+    }
+    
+    /// <summary>
+    /// Retrieves an indicator if the system is being run in database configuration mode.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation.
+    /// The task result contains true if it's in database configuration mode; false otherwise.
+    /// </returns>
+    public async Task<bool> GetIsInDatabaseModeAsync()
+    {
+        try
+        {
+            return (await _flurlClient.Request()
+                .AppendPathSegment($"databaseconfigurationmode")
+                .GetJsonAsync<bool>());
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }   
+    }
+
+    /// <summary>
     /// Retrieves the general settings
     /// </summary>
     /// <returns>
