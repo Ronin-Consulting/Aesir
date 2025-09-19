@@ -59,7 +59,8 @@ public class ModelsService(
                         OwnedBy = "Aesir",
                         CreatedAt = m.ModifiedAt,
                         IsChatModel = false,
-                        IsEmbeddingModel = true
+                        IsEmbeddingModel = true,
+                        Details = AesirModelDetails.NewFrom(m.Details)
                     });
                 });
             }
@@ -83,7 +84,8 @@ public class ModelsService(
                         OwnedBy = "Aesir",
                         CreatedAt = m.ModifiedAt,
                         IsChatModel = true,
-                        IsEmbeddingModel = false
+                        IsEmbeddingModel = false,
+                        Details = AesirModelDetails.NewFrom(m.Details)
                     });
                 });
             }
@@ -107,7 +109,8 @@ public class ModelsService(
                         OwnedBy = "Aesir",
                         CreatedAt = m.ModifiedAt,
                         IsChatModel = false,
-                        IsEmbeddingModel = false
+                        IsEmbeddingModel = false,
+                        Details = AesirModelDetails.NewFrom(m.Details)
                     });
                 });
             }
