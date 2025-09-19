@@ -12,13 +12,14 @@
     <UserControl.Resources>
         <SolidColorBrush x:Key="AesirBackground" Opacity="0.16" Color="#54A9FF" />
     </UserControl.Resources>
-    
+
     <StackPanel Orientation="Vertical" HorizontalAlignment="Right" Margin="0,0,0,24">
-        <StackPanel Orientation="Vertical" HorizontalAlignment="Right" IsVisible="{Binding FileName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <Border Theme="{DynamicResource CardBorder}" 
+        <StackPanel Orientation="Vertical" HorizontalAlignment="Right"
+                    IsVisible="{Binding FileName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <Border Theme="{DynamicResource CardBorder}"
                     Height="70" Width="215" Margin="25 0 0 12">
                 <RelativePanel Height="70" Width="210"
-                               VerticalAlignment="Stretch" 
+                               VerticalAlignment="Stretch"
                                HorizontalAlignment="Stretch">
                     <StackPanel
                         Name="FileStackPanel"
@@ -31,13 +32,24 @@
                             VerticalAlignment="Center"
                             Kind="{Binding FileIconKind}"
                             Width="40" Height="40" />
-                        <TextBlock Text="{Binding FileName}"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   Margin="0 0 0 0" 
-                                   TextTrimming="PrefixCharacterEllipsis"
-                                   Width="165"
-                        />
+
+                        <HyperlinkButton
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Margin="0 0 0 0"
+                            Width="165"
+                            ToolTip.Tip="Click to Download"
+                            Command="{Binding RequestDownloadCommand}"
+                        >
+                            <HyperlinkButton.Content>
+                                <TextBlock Text="{Binding FileName}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Margin="0 0 0 0"
+                                           TextTrimming="PrefixCharacterEllipsis"
+                                           Width="165" />
+                            </HyperlinkButton.Content>
+                        </HyperlinkButton>
                     </StackPanel>
                 </RelativePanel>
             </Border>
@@ -48,18 +60,17 @@
                     BorderThickness="1"
                     CornerRadius="20"
                     HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-            >
+                    VerticalAlignment="Center">
                 <controls:CustomTextBox
                     Name="MessageEditor"
-                    Text="{Binding RawMessage, Mode=TwoWay}" 
+                    Text="{Binding RawMessage, Mode=TwoWay}"
                     Background="Transparent"
                     Margin="10"
-                    Padding="0"
-                />
+                    Padding="0" />
             </Border>
             <Panel Name="EditorActionPanel" HorizontalAlignment="Right" Margin="0,5,0,0">
-                <Button IsVisible="{Binding IsEditing}" Background="Transparent" BorderThickness="0" Padding="5" Click="EndEditAction_Clicked">
+                <Button IsVisible="{Binding IsEditing}" Background="Transparent" BorderThickness="0" Padding="5"
+                        Click="EndEditAction_Clicked">
                     <avaloniaIcons:MaterialIcon Kind="Check" Width="20" Height="20" />
                 </Button>
             </Panel>
@@ -70,21 +81,21 @@
                     BorderThickness="1"
                     CornerRadius="20"
                     HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-            >
+                    VerticalAlignment="Center">
                 <htmlRenderer:HtmlLabel
                     Name="HtmlLabel"
-                    Text="{Binding Message}" 
+                    Text="{Binding Message}"
                     AutoSize="True"
                     MaxWidth="746"
                     Background="Transparent"
                     BaseStylesheet="* { color: #F9F9F9; line-height: 1.0; margin: 0; padding: 0; } p { margin: 0 0 0 0; line-height: 1.0; padding-left: 10px; white-space: pre-line; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow-x: hidden; hyphens: auto; }"
                     Margin="10"
-                    Padding="0"
-                />
+                    Padding="0" />
             </Border>
-            <StackPanel Name="ActionPanel" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0" Opacity="0.0">
-                <Button Background="Transparent" BorderThickness="0" Padding="5" Command="{Binding RegenerateMessageCommand}" >
+            <StackPanel Name="ActionPanel" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0"
+                        Opacity="0.0">
+                <Button Background="Transparent" BorderThickness="0" Padding="5"
+                        Command="{Binding RegenerateMessageCommand}">
                     <avaloniaIcons:MaterialIcon Kind="Refresh" Width="20" Height="20" />
                 </Button>
                 <Button Background="Transparent" BorderThickness="0" Padding="5" Click="StartEditAction_Clicked">
