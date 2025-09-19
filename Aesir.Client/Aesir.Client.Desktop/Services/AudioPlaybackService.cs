@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aesir.Client.Services;
 using Microsoft.Extensions.Logging;
-using MiniAudioEx;
+using MiniAudioEx.Core.StandardAPI;
 
 namespace Aesir.Client.Desktop.Services;
 

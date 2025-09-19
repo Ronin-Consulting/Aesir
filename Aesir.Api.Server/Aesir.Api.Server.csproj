@@ -36,10 +36,10 @@
         <PackageReference Include="ModelContextProtocol-SemanticKernel" Version="0.4.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Npgsql" Version="9.0.3"/>
-        <PackageReference Include="OllamaSharp" Version="5.4.4" />
+        <PackageReference Include="OllamaSharp" Version="5.4.5" />
         <PackageReference Include="OpenAI" Version="2.4.0" />
         <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.12.0"/>
-        <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.12" />
+        <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.13" />
         <PackageReference Include="PdfPig" Version="0.1.11" />
         <PackageReference Include="Pgvector" Version="0.3.2"/>
         <PackageReference Include="Polly" Version="8.6.3" />
