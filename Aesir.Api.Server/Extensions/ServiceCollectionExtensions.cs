@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Aesir.Api.Server.Configuration;
 using Aesir.Api.Server.Models;
 using Aesir.Common.FileTypes;
 using Aesir.Api.Server.Services;
@@ -25,24 +26,23 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configuration">The application configuration.</param>
+    /// <param name="aesirConfigProvider">Config provider.</param>
     /// <returns>The service collection for method chaining.</returns>
     [Experimental("SKEXP0070")]
-    public static IServiceCollection SetupSemanticKernel(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection SetupSemanticKernel(this IServiceCollection services, IConfiguration configuration, IAesirConfigProvider  aesirConfigProvider)
     {
         // TODO if some part of configuration is missing AND we are in db config mode, boot up app anyway
         // so user can complete setup
 
         // load general settings (from file or db)
-        var generalSettings = configuration.GetSection("GeneralSettings")
-            .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
-        var embeddingModel = generalSettings["RagEmbeddingModel"] ?? 
+        var generalSettings = aesirConfigProvider.GetGeneralSettings();
+        var embeddingModel = generalSettings.RagEmbeddingModel ?? 
                              throw new InvalidOperationException("RagEmbeddingMode not configured");
         
         var kernelBuilder = services.AddKernel();
         
         // load inference engines (from file or db)
-        var inferenceEngines = configuration.GetSection("InferenceEngines")
-            .Get<AesirInferenceEngine[]>() ?? [];
+        var inferenceEngines = aesirConfigProvider.GetInferenceEngines();
         foreach (var inferenceEngine in inferenceEngines)
         {
             var inferenceEngineIdKey = inferenceEngine.Id.ToString();
