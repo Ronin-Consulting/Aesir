@@ -19,6 +19,13 @@ public interface IChatHistoryService
     Task<IEnumerable<AesirChatSessionItem>?> GetChatSessionsAsync(string userId = "Unknown");
 
     /// <summary>
+    /// Retrieves a collection of chat session items associated with a file.
+    /// </summary>
+    /// <param name="fileName">The name of the file whose chat sessions are to be retrieved.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a collection of <see cref="AesirChatSessionItem"/> objects, or null if no sessions are available.</returns>
+    Task<IEnumerable<AesirChatSessionItem>?> GetChatSessionsByFileAsync(string fileName = "Unknown");
+    
+    /// <summary>
     /// Searches for chat sessions associated with a specific user, filtered by a search term.
     /// </summary>
     /// <param name="userId">The unique identifier of the user whose chat sessions are being searched.</param>

@@ -37,7 +37,7 @@
             LabelPosition="Top">
             <u:Form.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem 
@@ -49,6 +49,34 @@
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="1" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Mime Type" >
+                <TextBlock Text="{Binding FormModel.MimeType}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="2" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Size" >
+                <TextBlock Text="{Binding FormModel.Size}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="3" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Created" >
+                <TextBlock Text="{Binding FormModel.Created}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="4" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Last Modified" >
+                <TextBlock Text="{Binding FormModel.Modified}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="5" 
                 Grid.Column="0"
                 Grid.ColumnSpan="3"
                 Label="Chats" 
@@ -64,34 +92,38 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </u:FormItem>
-            <u:FormItem
-                Grid.Row="2" 
+            <u:FormItem 
+                Grid.Row="6" 
                 Grid.Column="0"
                 Grid.ColumnSpan="3"
-                Label="Chats" >
-                <StackPanel
-                    Name="FileStackPanel"
-                    RelativePanel.AlignBottomWithPanel="True"
-                    RelativePanel.AlignTopWithPanel="True"
-                    Orientation="Horizontal"
-                    VerticalAlignment="Stretch">
-                    <avaloniaIcons:MaterialIcon
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Kind="FileDocument"
-                        Width="40" Height="40" />
-                    <Button Click="Button_OnClick">
-                    <TextBlock Text="Download File"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               Margin="0 0 0 0" 
-                               TextTrimming="PrefixCharacterEllipsis"
-                               Width="165"
-                    />
-                    </Button>
-                </StackPanel>
+                Label="Download/View">
+                <Button 
+                    Click="Button_OnClick"
+                    HorizontalAlignment="Left"
+                    Padding="0,3,0,3">
+                    <StackPanel
+                        Name="FileStackPanel"
+                        RelativePanel.AlignBottomWithPanel="True"
+                        RelativePanel.AlignTopWithPanel="True"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Stretch">
+                        <avaloniaIcons:MaterialIcon
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Kind="FileDocument"
+                            Width="40" Height="40" />
+                        <TextBlock Text="{Binding FormModel.Name}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Margin="0 0 0 0" 
+                                   TextTrimming="PrefixCharacterEllipsis"
+                                   Width="165"
+                        />
+                    </StackPanel>
+                </Button>
             </u:FormItem>
         </u:Form>
+        
         
         <!-- Buttons -->
         <DockPanel

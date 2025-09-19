@@ -32,7 +32,7 @@ public partial class DocumentView : UserControl
 
         WeakReferenceMessenger.Default.Send(new FileDownloadMessage()
         {
-            FileName = viewModel.FormModel.Name
+            FileName = viewModel.FormModel.Path
         });
     }
 }

@@ -238,7 +238,7 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipie
             if (file != null)
             {
                 string localFilePath = file.Path.LocalPath;
-                await DownloadFileAsync(fileName, localFilePath);
+                await DownloadFileAsync(filePath, localFilePath);
             }
         }
     } 
@@ -247,11 +247,11 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipie
     /// <param name="fileName">The name of the file to download from the remote source.</param>
     /// <param name="localFilePath">The local file path where the downloaded file will be saved.</param>
     /// <returns>A task that represents the asynchronous file download operation. It completes when the file has been fully downloaded and saved.</returns>
-    private async Task DownloadFileAsync(string fileName, string localFilePath)
+    private async Task DownloadFileAsync(string filePath, string localFilePath)
     {
         try
         {
-            await using var contentStream = await _documentCollectionService.GetFileContentStreamAsync(fileName);
+            await using var contentStream = await _documentCollectionService.GetFileContentStreamAsync(filePath);
             // Create a FileStream to write the downloaded content to a local file
             await using var fileStream = new FileStream(localFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
             // Copy the content from the network stream to the file stream

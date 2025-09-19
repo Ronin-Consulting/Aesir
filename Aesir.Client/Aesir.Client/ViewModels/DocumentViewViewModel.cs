@@ -93,27 +93,20 @@ public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
             Name = Path.GetFileName(_document.FileName),
             Path = _document.FileName,
             Chats = chats,
-            HasChats = chats.Any()
+            HasChats = chats.Any(),
+            Created = _document.CreatedAtDisplay,
+            Modified = _document.UpdatedAtDisplay,
+            MimeType = _document.MimeType,
+            Size = _document.FileSizeDisplay,
         };
         CancelCommand = new RelayCommand(ExecuteCancelCommand);
         DeleteCommand = new AsyncRelayCommand(ExecuteDeleteCommand);
         DownloadCommand = new RelayCommand(ExecuteDownloadCommand);
     }
 
-    private IEnumerable<AesirChatSession>? GetChatsForDocument(AesirDocument document)
+    private IEnumerable<AesirChatSessionItem>? GetChatsForDocument(AesirDocument document)
     {
-        return new List<AesirChatSession>([
-            new  AesirChatSession()
-            {
-                Id = Guid.NewGuid(),
-                Conversation = new AesirConversation()
-                {
-                    Id = Guid.NewGuid().ToString(), 
-                    Messages = new List<AesirChatMessage>([ new AesirChatMessage(){Content = "Content",Role = "Role",ThoughtsContent = "Thoughts"}])
-                }
-            }
-            // "Chat 1", "Chat 2", "Chat 3", "Chat 4"
-        ]);
+        return _chatHistoryService.GetChatSessionsByFileAsync(document.FileNameOnly).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -138,9 +131,7 @@ public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
                     foreach (var chat in FormModel.Chats)
                     {
                         await _chatHistoryService.DeleteChatSessionAsync(chat.Id);
-                        // await _documentCollectionService.DeleteUploadedGlobalFileAsync(_document.FileName,"0");
-                        await _documentCollectionService.DeleteUploadedConversationFileAsync(_document.FileName,
-                            chat.Conversation.Id);
+                        await _documentCollectionService.DeleteUploadedConversationFileAsync(_document.FileName, chat.Id.ToString());
                     }
                 }
 
@@ -222,10 +213,30 @@ public partial class DocumentFormDataModel : ObservableValidator
     /// <summary>
     /// The chats that the document is associated with.
     /// </summary>
-    [ObservableProperty] IEnumerable<AesirChatSession>? _chats;
+    [ObservableProperty] IEnumerable<AesirChatSessionItem>? _chats;
  
     /// <summary>
     /// Whether the document is in chats.
     /// </summary>
     [ObservableProperty] private bool? _hasChats;   
+ 
+    /// <summary>
+    /// Whether the document is in chats.
+    /// </summary>
+    [ObservableProperty] private string? _size;   
+ 
+    /// <summary>
+    /// Whether the document is in chats.
+    /// </summary>
+    [ObservableProperty] private string? _mimeType;   
+ 
+    /// <summary>
+    /// Whether the document is in chats.
+    /// </summary>
+    [ObservableProperty] private string? _created;   
+ 
+    /// <summary>
+    /// Whether the document is in chats.
+    /// </summary>
+    [ObservableProperty] private string? _modified;   
 }

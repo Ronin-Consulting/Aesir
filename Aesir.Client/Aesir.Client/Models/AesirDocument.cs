@@ -6,6 +6,9 @@ namespace Aesir.Client.Models;
 public class AesirDocument:AesirDocumentBase
 {
     public string FileNameDisplay => Path.GetFileName(FileName);
+
+    public string FileNameOnly => Path.GetFileName(FileName);
+
     public string FileSizeDisplay
     {
         get
@@ -13,6 +16,8 @@ public class AesirDocument:AesirDocumentBase
             return FormatFileSize(FileSize);
         }
     }
+
+    public string CreatedAtDisplay=> CreatedAt.ToString("g");
 
     public string UpdatedAtDisplay=> UpdatedAt.ToString("g");
 

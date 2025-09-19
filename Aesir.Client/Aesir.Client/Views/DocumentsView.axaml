@@ -51,6 +51,8 @@
                     <DataGrid.Columns>
                         <DataGridTextColumn FontWeight="Bold" Header="FileName" Binding="{Binding FileNameDisplay}"/>
                         <DataGridTextColumn Header="FileSize" Binding="{Binding FileSizeDisplay}"/>
+                        <DataGridTextColumn Header="Mime Type" Binding="{Binding MimeType}"/>
+                        <DataGridTextColumn Header="Created" Binding="{Binding CreatedAtDisplay}"/>
                         <DataGridTextColumn Header="Last Modified" Binding="{Binding UpdatedAtDisplay}"/>
                     </DataGrid.Columns>
                 </DataGrid>

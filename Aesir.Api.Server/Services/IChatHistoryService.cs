@@ -28,6 +28,14 @@ public interface IChatHistoryService
     /// <returns>A task representing the asynchronous operation that returns a collection of chat sessions.</returns>
     Task<IEnumerable<AesirChatSession>> GetChatSessionsAsync(string userId);
 
+
+    /// <summary>
+    /// Retrieves all chat sessions for a specific filename.
+    /// </summary>
+    /// <param name="fileName">The file name (not path).</param>
+    /// <returns>A task representing the asynchronous operation that returns a collection of chat sessions.</returns>
+    Task<IEnumerable<AesirChatSession>> GetChatSessionsByFilenameAsync(string fileName);
+
     /// <summary>
     /// Retrieves chat sessions for a specific user within a date range.
     /// </summary>
