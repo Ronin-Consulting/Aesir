@@ -42,6 +42,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// </summary>
     private const string DefaultAgentNameValue = "Select an agent";
 
+    [ObservableProperty] private bool _isSystemConfigurationComplete;
+
     /// <summary>
     /// Indicates whether the panel is currently open in the ChatViewViewModel.
     /// A value of true signifies that the panel is open, while false means it is closed.
@@ -373,11 +375,33 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// session data, and related resources are prepared for application functionality.
     /// <returns>
     /// A task representing the asynchronous operation of application state loading.
-    /// </returns
+    /// </returns>
     private async Task LoadApplicationStateAsync()
     {
-        await LoadSelectedAgentAsync();
-        await LoadChatSessionAsync();
+        await LoadIsSystemConfigurationReadyAsync();
+        
+        if (IsSystemConfigurationComplete)
+        {
+            await LoadSelectedAgentAsync();
+            await LoadChatSessionAsync();
+        }
+    }
+
+    /// Asynchronously verifies and updates the state of system configuration readiness.
+    /// Invokes the application state service to determine if the system setup requirements are satisfied.
+    /// In case of an error, logs and reports the failure through the notification service.
+    /// <returns>A task representing the asynchronous operation.</returns>
+    private async Task LoadIsSystemConfigurationReadyAsync()
+    {
+        try
+        {
+            IsSystemConfigurationComplete = await _appState.CheckSystemConfigurationReady();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check if system is ready");
+            _notificationService.ShowErrorNotification("Error", "Failed to check if system is ready. Please check your connection.");
+        }
     }
 
     /// Loads the agent details for the currently selected agent asynchronously.
