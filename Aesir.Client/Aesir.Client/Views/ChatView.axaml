@@ -178,16 +178,16 @@
                             </StackPanel>
                         </Panel>
                         <Border BorderThickness="0,1,0,0" DockPanel.Dock="Bottom">
-                                                            <DockPanel Margin="10">
-                                    <controls:Conversation DockPanel.Dock="Top" Height="625" />
-                                    <Border CornerRadius="10"
-                                            Background="#232429"
-                                            BorderBrush="{ StaticResource SemiColorBorder }"
-                                            BorderThickness="1"
-                                            Padding="10"
-                                            DockPanel.Dock="Bottom"
-                                    >
-                                    <DockPanel  Height="75" VerticalSpacing="10">
+                            <DockPanel Margin="10" LastChildFill="False">
+                                <Border CornerRadius="10"
+                                        Background="#232429"
+                                        BorderBrush="{ StaticResource SemiColorBorder }"
+                                        BorderThickness="1"
+                                        Padding="10"
+                                        DockPanel.Dock="Bottom"
+                                        VerticalAlignment="Bottom"
+                                >
+                                    <DockPanel Height="75" VerticalSpacing="10">
                                         <controls:CustomTextBox DockPanel.Dock="Top" HorizontalAlignment="Stretch"
                                                                 Name="MessageAiTextBox"
                                                                 PropertyChanged="MessageAiTextBox_OnPropertyChanged"
@@ -195,7 +195,7 @@
                                                                 MinHeight="32" MaxHeight="256" LineHeight="24"
                                                                 TextWrapping="Wrap"
                                                                 NewLine="{Binding Source={x:Static sys:String.Empty}}"
-                                                                Watermark="Message AI"
+                                                                Watermark="Message Agent"
                                                                 Text="{Binding ChatMessage, Mode=TwoWay}"
                                                                 VerticalContentAlignment="Center">
                                             <controls:CustomTextBox.IsEnabled>
@@ -226,7 +226,7 @@
                                         </controls:CustomTextBox>
                                         <Panel DockPanel.Dock="Bottom" HorizontalAlignment="Stretch">
                                             <StackPanel HorizontalAlignment="Left" Orientation="Horizontal" Spacing="6">
-                                                <Button Classes="Primary" 
+                                                <Button Classes="Primary"
                                                         Margin="0,0,0,0"
                                                         Theme="{DynamicResource OutlineButton}"
                                                         Command="{Binding ShowFileSelectionCommand}"
@@ -252,7 +252,8 @@
                                                         Theme="{DynamicResource OutlineButton}"
                                                         IsEnabled="False"
                                                         ToolTip.Tip="Thinking Setting">
-                                                    <avalonia:MaterialIcon Kind="HeadThinkingOutline" Width="20" Height="34" />
+                                                    <avalonia:MaterialIcon Kind="HeadThinkingOutline" Width="20"
+                                                                           Height="34" />
                                                 </Button>
                                             </StackPanel>
                                             <Button Name="SendMessageButton" HorizontalAlignment="Right"
@@ -271,8 +272,9 @@
                                             </Button>
                                         </Panel>
                                     </DockPanel>
-                                    </Border>
-                                </DockPanel>
+                                </Border>
+                                <controls:Conversation DockPanel.Dock="Top" />
+                            </DockPanel>
                         </Border>
                     </DockPanel>
                 </Border>
