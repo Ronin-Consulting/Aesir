@@ -213,9 +213,10 @@
                                             <StackPanel HorizontalAlignment="Left" Orientation="Horizontal" Spacing="6">
                                                 <Button Classes="Primary"
                                                         Margin="0,0,0,0"
-                                                        Theme="{DynamicResource OutlineButton}"
                                                         Command="{Binding ShowFileSelectionCommand}"
-                                                        ToolTip.Tip="Attach File">
+                                                        ToolTip.Tip="Attach File"
+                                                        Theme="{DynamicResource OutlineButton}"
+                                                        >
                                                     <Button.IsEnabled>
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
@@ -227,10 +228,16 @@
                                                 </Button>
                                                 <ToggleButton Classes="Primary"
                                                         Margin="0,0,0,0"
-                                                        ToolTip.Tip="Toggle Web Search"
                                                         IsChecked="True"
+                                                        ToolTip.Tip="Toggle Web Search"
+                                                        Theme="{DynamicResource OutlineButton}"
                                                 >
-                                                    <avalonia:MaterialIcon Kind="Web" Width="20" Height="34" />
+                                                    <Panel>
+                                                        <avalonia:MaterialIcon Kind="Web" Width="20"
+                                                                               Height="34" IsVisible="{Binding $parent[ToggleButton].IsChecked}" />
+                                                        <avalonia:MaterialIcon Kind="WebOff" Width="20"
+                                                                               Height="34" IsVisible="{Binding !$parent[ToggleButton].IsChecked}" />
+                                                    </Panel>
                                                     <Button.IsEnabled>
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
@@ -241,9 +248,15 @@
                                                 <ToggleButton Classes="Primary"
                                                               Margin="0,0,0,0"
                                                               IsChecked="True"
-                                                              ToolTip.Tip="Thinking Setting">
-                                                    <avalonia:MaterialIcon Kind="HeadThinkingOutline" Width="20"
-                                                                           Height="34" />
+                                                              ToolTip.Tip="Thinking Setting"
+                                                              Theme="{DynamicResource OutlineButton}"
+                                                              >
+                                                    <Panel>
+                                                        <avalonia:MaterialIcon Kind="Lightbulb" Width="20"
+                                                                               Height="34" IsVisible="{Binding $parent[ToggleButton].IsChecked}" />
+                                                        <avalonia:MaterialIcon Kind="LightbulbOff" Width="20"
+                                                                               Height="34" IsVisible="{Binding !$parent[ToggleButton].IsChecked}" />
+                                                    </Panel>
                                                     <Button.IsEnabled>
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
