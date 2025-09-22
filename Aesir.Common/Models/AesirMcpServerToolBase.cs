@@ -16,4 +16,6 @@ public class AesirMcpServerToolBase
     /// Gets or sets the schema of the MCP Server Tool
     /// </summary>
     public string? Schema { get; set; }
+    
+    public bool IsNull => Name == null && Description == null && Schema == null;
 }

@@ -25,7 +25,8 @@ namespace Aesir.Api.Server.Services.Implementations.Samurai;
 /// <param name="embeddingGenerator">Generator responsible for producing embeddings from text data.</param>
 /// <param name="recordFactory">Factory function for creating instances of TRecord using raw content and request parameters.</param>
 /// <param name="visionService">Service for performing image processing tasks like OCR within PDFs.</param>
-/// <param name="modelsService">Service providing AI models for text analysis and additional transformations.</param>
+/// <param name="configurationService">Service for loading configuration.</param>
+/// <param name="serviceProvider">Service locator.</param>
 /// <param name="logger">Logger instance for recording events and debugging information during operations.</param>
 [Experimental("SKEXP0001")]
 public class PdfDataLoaderService<TKey, TRecord>(
@@ -34,10 +35,11 @@ public class PdfDataLoaderService<TKey, TRecord>(
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     Func<RawContent, LoadPdfRequest, TRecord> recordFactory,
     IVisionService visionService,
-    IModelsService modelsService,
-    ILogger<PdfDataLoaderService<TKey, TRecord>> logger)
-    : BaseDataLoaderService<TKey, TRecord>(uniqueKeyGenerator, vectorStoreRecordCollection, embeddingGenerator,
-        modelsService, logger), IPdfDataLoaderService<TKey, TRecord>
+    IConfigurationService configurationService,
+    IServiceProvider serviceProvider,
+    ILogger<PdfDataLoaderService<TKey, TRecord>> logger) : BaseDataLoaderService<TKey, TRecord>(uniqueKeyGenerator, 
+        vectorStoreRecordCollection, embeddingGenerator, configurationService, serviceProvider, logger), 
+        IPdfDataLoaderService<TKey, TRecord>
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
@@ -304,7 +306,10 @@ public class PdfDataLoaderService<TKey, TRecord>(
         await image.SaveAsPngAsync(ms, cancellationToken);
         var resizedImageBytes = new ReadOnlyMemory<byte>(ms.ToArray());
 
-        return await _visionService.GetImageTextAsync(resizedImageBytes, PngMimeType, cancellationToken)
+        var ragVisionModelLocationDescriptor =  await GetRagVisionModelLocationDescriptorAsync();
+        
+        return await _visionService.GetImageTextAsync(ragVisionModelLocationDescriptor, resizedImageBytes, 
+                PngMimeType, cancellationToken)
             .ConfigureAwait(false);
     }
 }

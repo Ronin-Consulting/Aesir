@@ -28,6 +28,7 @@
 - [X] Support "Thinking" In Chat
 - [ ] Support Showing Execution Of Tools In Chat Thoughts
 - [X] Implement RAG
+  - [ ] Implement Document Management
   - [x] Upload - Global Documents
   - [x] Upload - Conversation Documents
   - [ ] ~~Download (should we do this?)~~

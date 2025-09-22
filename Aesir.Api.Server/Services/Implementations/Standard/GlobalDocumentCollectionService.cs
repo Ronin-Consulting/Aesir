@@ -74,12 +74,14 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
     /// Asynchronously loads a document from the specified file path into the global document collection.
     /// </summary>
     /// <param name="documentPath">The file path of the document to be loaded.</param>
+    /// <param name="modelLocationDescriptor">Location of the model and associated inference engine to use for loading
+    /// information from the document.</param>
     /// <param name="fileMetaData">Optional dictionary containing metadata to associate with the document.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests during the operation.</param>
     /// <returns>A task that represents the asynchronous operation of loading the document.</returns>
     /// <exception cref="InvalidDataException">Thrown when the file content type is not supported.</exception>
-    public async Task LoadDocumentAsync(string documentPath, IDictionary<string, object>? fileMetaData = null,
-        CancellationToken cancellationToken = default)
+    public async Task LoadDocumentAsync(string documentPath, ModelLocationDescriptor modelLocationDescriptor,
+        IDictionary<string, object>? fileMetaData = null, CancellationToken cancellationToken = default)
     {
         // for now enforce only PDFs
         if (!documentPath.ValidFileContentType(FileTypeManager.MimeTypes.Pdf, out var actualContentType))
@@ -97,7 +99,8 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
             PdfLocalPath = documentPath,
             PdfFileName = fileNameMetaData.ToString(),
             BetweenBatchDelayInMs = 10,
-            Metadata = fileMetaData
+            Metadata = fileMetaData,
+            ModelLocation = modelLocationDescriptor
         };
         await _pdfDataLoader.LoadPdfAsync(request, cancellationToken);
     }
@@ -192,7 +195,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
             throw new ArgumentException("Kernel plugin args must contain a PluginName");
 
         var kernelFunctionLibrary = new KernelFunctionLibrary<Guid, AesirGlobalDocumentTextData<Guid>>(
-            _globalDocumentVectorSearch, _globalDocumentHybridSearch
+            _globalDocumentVectorSearch, _globalDocumentHybridSearch, _vectorStoreRecordCollection
         );
 
         var kernelFunctions = new List<KernelFunction>();

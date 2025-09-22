@@ -33,10 +33,11 @@ public class TextFileLoaderService<TKey, TRecord>(
     VectorStoreCollection<TKey, TRecord> vectorStoreRecordCollection,
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     Func<RawContent, LoadTextFileRequest, TRecord> recordFactory,
-    IModelsService modelsService,
+    IConfigurationService configurationService,
+    IServiceProvider serviceProvider,
     ILogger<TextFileLoaderService<TKey, TRecord>> logger
 ) : BaseDataLoaderService<TKey, TRecord>(uniqueKeyGenerator, vectorStoreRecordCollection, embeddingGenerator,
-    modelsService, logger), ITextFileLoaderService<TKey, TRecord>
+    configurationService, serviceProvider, logger), ITextFileLoaderService<TKey, TRecord>
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {

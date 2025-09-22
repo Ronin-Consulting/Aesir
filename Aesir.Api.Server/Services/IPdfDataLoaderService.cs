@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
+using Aesir.Api.Server.Services.Implementations.Standard;
 
 namespace Aesir.Api.Server.Services;
 
@@ -53,6 +54,16 @@ public sealed class LoadPdfRequest
     /// Gets or sets a collection of key-value pairs representing metadata associated with the PDF file.
     /// </summary>
     public IDictionary<string, object>? Metadata { get; set; }
+
+    /// <summary>
+    /// Gets or sets the model location descriptor.
+    /// </summary>
+    /// <remarks>
+    /// This property represents metadata identifying the location or descriptor of a model,
+    /// including necessary details such as interface engine ID and model ID.
+    /// It can be used to specify or retrieve information about the model's source or context.
+    /// </remarks>
+    public ModelLocationDescriptor? ModelLocation { get; set; }
 }
 
 /// <summary>

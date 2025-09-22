@@ -1,11 +1,12 @@
 using System.Threading.Tasks;
-using Aesir.Client.Controls;
 using Aesir.Client.ViewModels;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
 using Ursa.Controls;
+using ConfirmDialog = Aesir.Client.Views.ConfirmDialog;
+using InputDialog = Aesir.Client.Views.InputDialog;
 using Notification = Ursa.Controls.Notification;
 using WindowNotificationManager = Ursa.Controls.WindowNotificationManager;
 

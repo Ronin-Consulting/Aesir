@@ -40,10 +40,15 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
     protected readonly IEmbeddingGenerator<string, Embedding<float>> EmbeddingGenerator;
 
     /// <summary>
-    /// Service responsible for managing and interacting with machine learning models,
-    /// including operations such as loading, unloading, and model lifecycle management.
+    /// Service responsible for managing and providing access to configuration settings.
     /// </summary>
-    protected readonly IModelsService ModelsService;
+    protected readonly IConfigurationService ConfigurationService;
+    
+    /// <summary>
+    /// Provides access to the underlying application service container, enabling retrieval
+    /// and management of dependency-injected services.
+    /// </summary>
+    protected readonly IServiceProvider ServiceProvider;
 
     /// <summary>
     /// Logger instance used for recording messages, errors, and other logging information
@@ -75,13 +80,15 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
         UniqueKeyGenerator<TKey> uniqueKeyGenerator,
         VectorStoreCollection<TKey, TRecord> vectorStoreRecordCollection,
         IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
-        IModelsService modelsService,
+        IConfigurationService configurationService,
+        IServiceProvider serviceProvider,
         ILogger logger)
     {
         UniqueKeyGenerator = uniqueKeyGenerator;
         VectorStoreRecordCollection = vectorStoreRecordCollection;
         EmbeddingGenerator = embeddingGenerator;
-        ModelsService = modelsService;
+        ConfigurationService = configurationService;
+        ServiceProvider = serviceProvider;
         Logger = logger;
     }
 
@@ -210,19 +217,61 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
     /// Unloads AI models to free system resources.
     /// </summary>
     /// <returns>A task that represents the asynchronous operation of unloading models.</returns>
-    protected Task UnloadModelsAsync()
+    protected async Task UnloadModelsAsync()
     {
+        var ragEmbeddingModelLocationDescriptor = await GetRagEmbeddingModelLocationDescriptorAsync();
+        var ragVisionModelLocationDescriptor = await GetRagVisionModelLocationDescriptorAsync();
+
+        var ragEmbeddingModelsService = ServiceProvider.GetKeyedService<IModelsService>(ragEmbeddingModelLocationDescriptor.InterfaceEngineId) 
+            ?? throw new InvalidOperationException($"Failed to get RAG embedding models service for engine {ragEmbeddingModelLocationDescriptor.InterfaceEngineId}");
+        var ragVisionModelsService = ServiceProvider.GetKeyedService<IModelsService>(ragVisionModelLocationDescriptor.InterfaceEngineId)
+            ?? throw new InvalidOperationException($"Failed to get RAG vision models service for engine {ragVisionModelLocationDescriptor.InterfaceEngineId}");
+        
         // Fire-and-forget: start the tasks but don't await them
         // They will run to completion in the background
-        _ = ModelsService.UnloadVisionModelAsync().ContinueWith(
-            t => { /* Ignore any exceptions */ }, 
-            TaskContinuationOptions.OnlyOnFaulted);
+        _ = ragEmbeddingModelsService.UnloadModelsAsync([ragEmbeddingModelLocationDescriptor.ModelId])
+            .ContinueWith(t => { /* Ignore any exceptions */ }, TaskContinuationOptions.OnlyOnFaulted);
         
-        _ = ModelsService.UnloadEmbeddingModelAsync().ContinueWith(
-            t => { /* Ignore any exceptions */ }, 
-            TaskContinuationOptions.OnlyOnFaulted);
+        _ = ragVisionModelsService.UnloadModelsAsync([ragVisionModelLocationDescriptor.ModelId])
+            .ContinueWith(t => { /* Ignore any exceptions */ }, TaskContinuationOptions.OnlyOnFaulted);
+    }
 
-        return Task.CompletedTask;
+    /// <summary>
+    /// Retrieves the location descriptor of the RAG embedding model by accessing general settings.
+    /// </summary>
+    /// <returns>
+    /// A <see cref="ModelLocationDescriptor"/> that contains the inference engine identifier and model identifier
+    /// required for locating and working with an embedding model.
+    /// </returns>
+    protected async Task<ModelLocationDescriptor> GetRagEmbeddingModelLocationDescriptorAsync()
+    {
+        var generalSettings = await ConfigurationService.GetGeneralSettingsAsync();
+        
+        var inferenceEngineId = generalSettings.RagEmbeddingInferenceEngineId 
+            ?? throw new InvalidOperationException($"RagEmbeddingInferenceEngineId has not been defined in GeneralSettings");
+        var modelId = generalSettings.RagEmbeddingModel
+            ?? throw new InvalidOperationException($"RagEmbeddingModel has not been defined in GeneralSettings");
+
+        return new ModelLocationDescriptor(inferenceEngineId, modelId);
+    }
+
+    /// <summary>
+    /// Retrieves the location descriptor of the RAG vision model by accessing general settings.
+    /// </summary>
+    /// <returns>
+    /// A <see cref="ModelLocationDescriptor"/> that contains the inference engine identifier and model identifier
+    /// required for locating and working with an embedding model.
+    /// </returns>
+    protected async Task<ModelLocationDescriptor> GetRagVisionModelLocationDescriptorAsync()
+    {
+        var generalSettings = await ConfigurationService.GetGeneralSettingsAsync();
+        
+        var inferenceEngineId = generalSettings.RagVisionInferenceEngineId 
+                                ?? throw new InvalidOperationException($"RagVisionInferenceEngineId has not been defined in GeneralSettings");
+        var modelId = generalSettings.RagVisionModel
+                      ?? throw new InvalidOperationException($"RagVisionModel has not been defined in GeneralSettings");
+
+        return new ModelLocationDescriptor(inferenceEngineId, modelId);
     }
 
     /// <summary>

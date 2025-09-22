@@ -137,12 +137,14 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// Asynchronously loads a document into the conversation document collection from the specified path.
     /// </summary>
     /// <param name="documentPath">The full path of the document to load.</param>
+    /// <param name="modelLocationDescriptor">Location of the model and associated inference engine to use for loading
+    /// information from the document.</param>
     /// <param name="fileMetaData">Optional metadata containing additional attributes of the document.</param>
     /// <param name="cancellationToken">A token to monitor for request cancellation while loading the document.</param>
     /// <returns>A task that represents the asynchronous operation of loading the document.</returns>
     /// <exception cref="InvalidDataException">Thrown when the document format is unsupported or invalid.</exception>
-    public async Task LoadDocumentAsync(string documentPath, IDictionary<string, object>? fileMetaData,
-        CancellationToken cancellationToken)
+    public async Task LoadDocumentAsync(string documentPath, ModelLocationDescriptor modelLocationDescriptor, 
+        IDictionary<string, object>? fileMetaData, CancellationToken cancellationToken)
     {
         var allSupportedFileContentTypes = FileTypeManager.DocumentProcessingMimeTypes;
 
@@ -163,7 +165,8 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
                 PdfLocalPath = documentPath,
                 PdfFileName = fileNameMetaData.ToString(),
                 BetweenBatchDelayInMs = 10,
-                Metadata = fileMetaData
+                Metadata = fileMetaData,
+                ModelLocation = modelLocationDescriptor
             };
             await _pdfDataLoader.LoadPdfAsync(pdfRequest, cancellationToken);
         }
@@ -174,7 +177,8 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             {
                 ImageLocalPath = documentPath,
                 ImageFileName = fileNameMetaData.ToString(),
-                Metadata = fileMetaData
+                Metadata = fileMetaData,
+                ModelLocation = modelLocationDescriptor 
             };
             
             await _imageDataLoader.LoadImageAsync(imageRequest, cancellationToken);
@@ -301,7 +305,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         const string pluginName = "ChatTools";
 
         var kernelFunctionLibrary = new KernelFunctionLibrary<Guid, AesirConversationDocumentTextData<Guid>>(
-            _conversationDocumentVectorSearch, _conversationDocumentHybridSearch
+            _conversationDocumentVectorSearch, _conversationDocumentHybridSearch, _vectorStoreRecordCollection
         );
 
         var kernelFunctions = new List<KernelFunction>();
@@ -341,6 +345,11 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
                     kernelFunctionLibrary.GetImageAnalysisFunction(imageSearchFilter, MaxTopResults)
                 );
         
+                // summarize documents
+                kernelFunctions.Add(
+                    kernelFunctionLibrary.GetSummarizeConversationDocumentFunction(conversationId)
+                );
+                
                 // text searches
                 if (_conversationDocumentHybridSearch != null)
                 {

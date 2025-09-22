@@ -27,9 +27,11 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+
+        var configurationReadinessService = new ConfigurationReadinessService();
         
-        // Database-based configuration needs these registered beforehand...
         builder.Services.AddSingleton<IDbContext, PgDbContext>();
+        builder.Services.AddSingleton<IConfigurationReadinessService>(configurationReadinessService); // TODO this will be readonly through interface, we set values here
         builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
         
         // Configure connection pooling with NpgsqlDataSource
@@ -51,39 +53,55 @@ public class Program
         });
 
         // Load configuration from database or fix up / check file configuration
-        NormalizeFileOrDatabaseConfiguration(builder);
-
+        NormalizeFileOrDatabaseConfiguration(builder, configurationReadinessService);
+        
         #region AI Backend Clients
         
-        // load general settings (from file or db)
+        // load general settings (from file or db) - must have some of this filled out to be fully ready
         var generalSettings = builder.Configuration.GetSection("GeneralSettings")
-            .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
-        var ragVisionInferenceEngineId = generalSettings["RagVisionInferenceEngineId"] ?? 
-                                         throw new InvalidOperationException("RagVisionInferenceEngineId not configured");
-        var ragVisionModel = generalSettings["RagVisionModel"] ?? 
-                             throw new InvalidOperationException("RagVisionModel not configured");
+            .Get<AesirGeneralSettings>() ?? new AesirGeneralSettings();
             
-        // load inference engines (from file or db)
+        // load inference engines (from file or db) - must have at least one to be fully ready
         var inferenceEngines = builder.Configuration.GetSection("InferenceEngines")
-            .Get<AesirInferenceEngine[]>() ?? [];
+            .Get<AesirInferenceEngine[]>()?.Where(x => !x.IsNull()).ToArray() ?? [];
+            
+        // load agents (from file or db)
+        var agents = builder.Configuration.GetSection("Agents")
+            .Get<AesirAgent[]>()?.Where(x => !x.IsNull()).ToArray() ?? [];
         
         foreach (var inferenceEngine in inferenceEngines)
         {
+            if (!configurationReadinessService.IsInferenceEngineReadyAtBoot(inferenceEngine.Id!.Value))
+            {
+                Console.Write($"Configuration for Inference Engine `{inferenceEngine.Name}` is not ready and being skipped for initialization");
+                continue;
+            }
+
+            var inferenceEngineIdKey = inferenceEngine.Id.Value.ToString();
+            
             switch (inferenceEngine.Type)
             {
                 case InferenceEngineType.Ollama:
                 {
                     // should be transient to always get fresh kernel
-                    builder.Services.AddTransient<IModelsService, AesirOllama.ModelsService>();
-                    builder.Services.AddTransient<IChatService>(serviceProvider =>
+                    builder.Services.AddKeyedTransient<IModelsService>(inferenceEngineIdKey, (serviceProvider, key) =>
+                        new AesirOllama.ModelsService(
+                            inferenceEngineIdKey,
+                            serviceProvider.GetRequiredService<ILogger<AesirOllama.ModelsService>>(),
+                            serviceProvider.GetRequiredService<IConfiguration>(),
+                            serviceProvider));
+                    builder.Services.AddKeyedTransient<IChatService>(inferenceEngineIdKey, (serviceProvider, key) =>
                     {
+                        // only one of these
                         var logger = serviceProvider.GetRequiredService<ILogger<AesirOllama.ChatService>>();
-                        var ollamApiClient = serviceProvider.GetRequiredService<OllamaApiClient>();
                         var kernel = serviceProvider.GetRequiredService<Kernel>();
-                        var chatCompletionService = serviceProvider.GetRequiredService<IChatCompletionService>();
                         var chatHistoryService = serviceProvider.GetRequiredService<IChatHistoryService>();
                         var conversationDocumentCollectionService =
                             serviceProvider.GetRequiredService<IConversationDocumentCollectionService>();
+
+                        // these are keyed by inference engine id
+                        var ollamApiClient = serviceProvider.GetRequiredKeyedService<OllamaApiClient>(inferenceEngineIdKey);
+                        var chatCompletionService = serviceProvider.GetRequiredKeyedService<IChatCompletionService>(inferenceEngineIdKey);
 
                         var enableThinking = Boolean.Parse(inferenceEngine.Configuration["EnableChatModelThinking"] ?? "false");
 
@@ -97,18 +115,10 @@ public class Program
                             enableThinking
                         );
                     });
-                    
-                    builder.Services.AddTransient<AesirOllama.VisionModelConfig>(serviceProvider =>
-                    {
-                        return new AesirOllama.VisionModelConfig
-                        {
-                            ModelId = ragVisionModel
-                        };
-                    });
                     // Changed to scoped for better performance while maintaining model lifecycle
                     builder.Services.AddTransient<IVisionService, AesirOllama.VisionService>();
 
-                    const string ollamaClientName = "OllamaApiClient";
+                    var ollamaClientName = $"OllamaApiClient-{inferenceEngineIdKey}";
                     builder.Services.AddHttpClient(ollamaClientName, client =>
                         {
                             var endpoint = inferenceEngine.Configuration["Endpoint"] ??
@@ -125,9 +135,9 @@ public class Program
 
                     builder.Services.AddTransient<LoggingHttpMessageHandler>();
 
-                    builder.Services.AddTransient<OllamaApiClient>(p =>
+                    builder.Services.AddKeyedTransient<OllamaApiClient>(inferenceEngineIdKey, (serviceProvider, key) =>
                     {
-                        var httpClientFactory = p.GetRequiredService<IHttpClientFactory>();
+                        var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
 
                         var httpClient = httpClientFactory.CreateClient(ollamaClientName);
 
@@ -138,19 +148,36 @@ public class Program
                 case InferenceEngineType.OpenAICompatible:
                 {
                     // should be transient to always get fresh kernel
-                    builder.Services.AddTransient<IModelsService, AesirOpenAI.ModelsService>();
-                    builder.Services.AddTransient<IChatService, AesirOpenAI.ChatService>();
-
-                    builder.Services.AddTransient<AesirOpenAI.VisionModelConfig>(serviceProvider =>
+                    builder.Services.AddKeyedTransient<IModelsService>(inferenceEngineIdKey, (serviceProvider, key) =>
+                        new AesirOpenAI.ModelsService(
+                            inferenceEngineIdKey,
+                            serviceProvider.GetRequiredService<ILogger<AesirOpenAI.ModelsService>>(),
+                            serviceProvider.GetRequiredService<IConfiguration>(),
+                            serviceProvider));
+                    builder.Services.AddKeyedTransient<IChatService>(inferenceEngineIdKey, (serviceProvider, key) =>
                     {
-                        return new AesirOpenAI.VisionModelConfig
-                        {
-                            ModelId = ragVisionModel
-                        };
+                        // only one of these
+                        var logger = serviceProvider.GetRequiredService<ILogger<AesirOpenAI.ChatService>>();
+                        var kernel = serviceProvider.GetRequiredService<Kernel>();
+                        var chatHistoryService = serviceProvider.GetRequiredService<IChatHistoryService>();
+                        var conversationDocumentCollectionService =
+                            serviceProvider.GetRequiredService<IConversationDocumentCollectionService>();
+
+                        // these are keyed by inference engine id
+                        var chatCompletionService = serviceProvider.GetRequiredKeyedService<IChatCompletionService>(inferenceEngineIdKey);
+
+                        return new AesirOpenAI.ChatService(
+                            logger,
+                            kernel,
+                            chatCompletionService,
+                            chatHistoryService,
+                            conversationDocumentCollectionService
+                        );
                     });
+                    
                     // should be transient so during dispose we unload model
                     builder.Services.AddTransient<IVisionService, AesirOpenAI.VisionService>();
-
+                    
                     var apiKey = inferenceEngine.Configuration["ApiKey"] ??
                                  throw new InvalidOperationException("OpenAI API key not configured");
 
@@ -159,10 +186,10 @@ public class Program
                                    throw new InvalidOperationException("OpenAI Endpoint not configured");
 
                     if (string.IsNullOrEmpty(endPoint))
-                        builder.Services.AddSingleton(new OpenAIClient(apiCreds));
+                        builder.Services.AddKeyedSingleton(inferenceEngineIdKey, new OpenAIClient(apiCreds));
                     else
                     {
-                        builder.Services.AddSingleton(new OpenAIClient(apiCreds, new OpenAIClientOptions()
+                        builder.Services.AddKeyedSingleton(inferenceEngineIdKey, new OpenAIClient(apiCreds, new OpenAIClientOptions()
                         {
                             Endpoint = new Uri(endPoint)
                         }));
@@ -173,11 +200,11 @@ public class Program
         }
         
         // load speech settings
-        var ttsModelPath = generalSettings["TtsModelPath"] ?? 
+        var ttsModelPath = generalSettings.TtsModelPath ?? 
                            throw new InvalidOperationException("TtsModelPath not configured");
-        var sttModelPath = generalSettings["SttModelPath"] ?? 
+        var sttModelPath = generalSettings.SttModelPath ?? 
                            throw new InvalidOperationException("SttModelPath not configured");
-        var vadModelPath = generalSettings["VadModelPath"] ?? 
+        var vadModelPath = generalSettings.VadModelPath ?? 
                            throw new InvalidOperationException("VadModelPath not configured");
 
         builder.Services.AddSingleton<ITtsService>(sp =>
@@ -212,7 +239,7 @@ public class Program
         builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
         builder.Services.AddSingleton<IFileStorageService, FileStorageService>();
 
-        builder.Services.SetupSemanticKernel(builder.Configuration);
+        builder.Services.SetupSemanticKernel(builder.Configuration, configurationReadinessService);
 
         RegisterMigratorServices(builder, builder.Services);
 
@@ -258,10 +285,7 @@ public class Program
 
         app.MigrateDatabase();
 
-        var modelsService = app.Services.GetRequiredService<IModelsService>();
-        var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
-
-        appLifetime.ApplicationStopping.Register(() => { modelsService.UnloadAllModelsAsync().Wait(); });
+        RegisterModelUnload(app, generalSettings, agents);
         
         app.Run();
     }
@@ -281,25 +305,31 @@ public class Program
     }
 
     /// <summary>
-    /// Configures the application's settings by normalizing the primary configuration
-    /// source to either a file-based or database-based configuration, as specified by the user.
+    /// Configures the application's settings by either:
+    /// - reading the database configuration and writing it to the application settings or;
+    /// - reading the file-based configuration and creating any missing ids in the application settings.
     /// </summary>
     /// <param name="builder">
     /// The <see cref="WebApplicationBuilder"/> instance used to configure the web application,
     /// including services, logging, and configuration settings.
     /// </param>
-    private static void NormalizeFileOrDatabaseConfiguration(WebApplicationBuilder builder)
+    /// <param name="configurationReadinessService">instance used to record configuration readiness when in
+    /// database configuration mode</param>
+    private static void NormalizeFileOrDatabaseConfiguration(WebApplicationBuilder builder,
+        ConfigurationReadinessService configurationReadinessService)
     {
         // Read the configuration source setting from the default file-based configuration
         var useDbConfig = builder.Configuration.GetValue<bool>("Configuration:LoadFromDatabase", false);
 
         if (useDbConfig)
         {   
+            // read database entities into configuration, check for full system boot readiness ...
+            
             // Ensure database and tables exist before trying to load config
             EnsureDatabaseMigrations(builder);
             
             // create an initial scope so we can use the database loading
-            var tempServiceProvider = builder.Services.BuildServiceProvider();
+            using var tempServiceProvider = builder.Services.BuildServiceProvider();
             using var scope = tempServiceProvider.CreateScope();
             var configurationService = scope.ServiceProvider.GetRequiredService<IConfigurationService>();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
@@ -307,15 +337,15 @@ public class Program
             try
             {   
                 // Load our application-specific config sections from database
-                var dbConfig = LoadConfigFromDatabaseAsync(configurationService)
-                    .GetAwaiter().GetResult();
+                var dbConfig = LoadConfigFromDatabaseAsync(configurationService,
+                        configurationReadinessService).GetAwaiter().GetResult();
                 
                 // Clear sections we will populate from database so we don't end up with file values leaked in
                 var sectionToReplace = new string[]
                 {
                     "GeneralSettings", 
                     "InferenceEngines", 
-                    "Agents,", 
+                    "Agents", 
                     "Tools", 
                     "McpServers"
                 };
@@ -338,11 +368,11 @@ public class Program
             {
                 logger.LogError(ex, "Failed to load configuration from database, using file configuration");
             }
-        
-            tempServiceProvider.Dispose();
         }
         else
         {
+            // validate settings and add/fix up ids ...
+            
             // give each inference engine an Id
             var inferenceEngines = builder.Configuration.GetSection("InferenceEngines")
                 .Get<AesirInferenceEngine[]>() ?? [];
@@ -430,7 +460,14 @@ public class Program
             }
         }
     }
-    
+
+    /// <summary>
+    /// Ensures that all pending database migrations are applied, preparing the database for application use.
+    /// </summary>
+    /// <param name="builder">
+    /// The <see cref="WebApplicationBuilder"/> instance containing the application's configuration, services,
+    /// and other setup settings required to execute the migrations.
+    /// </param>
     private static void EnsureDatabaseMigrations(WebApplicationBuilder builder)
     {
         // Create a temporary service collection just for migrations
@@ -457,8 +494,13 @@ public class Program
         }
     }
     
-    private static async Task<Dictionary<string, string?>> LoadConfigFromDatabaseAsync(IConfigurationService configurationService)
-    {
+    private static async Task<Dictionary<string, string?>> LoadConfigFromDatabaseAsync(
+        IConfigurationService configurationService, ConfigurationReadinessService configurationReadinessService)
+    {   
+        // Instead of all this, we should simply boot up a limited IoC having the ConfigurationService when
+        // needed in Program and ServiceCollectionExtensions. At that point this entire method is no longer needed
+        // and everyone would only ever use ConfigurationService.
+        
         var config = new Dictionary<string, string?>();
 
         var generalSettingsTask = configurationService.GetGeneralSettingsAsync();
@@ -469,13 +511,18 @@ public class Program
         await Task.WhenAll(inferenceEnginesTask, agentsTask, toolsTask, mcpServersTask);
 
         var generalSettings = await generalSettingsTask;
-        var inferenceEngines = await inferenceEnginesTask;
+        var inferenceEnginesEnum = await inferenceEnginesTask;
         var agents = await agentsTask;
         var tools = await toolsTask;
         var mcpServers = await mcpServersTask;
+        
+        var inferenceEngines = inferenceEnginesEnum.ToArray();
+
+        // Check database configuration for "fully ready" vs booting into "setup only" state
+        CheckDatabaseConfigurationBootReadiness(configurationReadinessService, generalSettings, inferenceEngines);
 
         // load general settings
-        var aesirInferenceEngines = inferenceEngines.ToArray();
+        var aesirInferenceEngines = inferenceEngines;
         config["GeneralSettings:RagEmbeddingInferenceEngineId"] = generalSettings.RagEmbeddingInferenceEngineId?.ToString();
         config["GeneralSettings:RagEmbeddingInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == generalSettings.RagEmbeddingInferenceEngineId)?.Name;
         config["GeneralSettings:RagEmbeddingModel"] = generalSettings.RagEmbeddingModel;
@@ -498,13 +545,6 @@ public class Program
             foreach (var entry in inferenceEngine.Configuration)
                 config[$"InferenceEngines:{idx}:Configuration:{entry.Key}"] = entry.Value;
         }
-        
-        // It may not be necessary to load these in to configuration settings, we only need to load
-        // items used by Program, ServiceCollectionExtensions, and anything else that is done prior to full
-        // boot up. Once fully booted, ConfigurationService will load from database when in database mode.
-        // An alternative approach is we could simply boot up a limited IoC having the ConfigurationService when
-        // needed in Program and ServiceCollectionExtensions, which is probably a better longer term solution. At
-        // that point this entire method is no longer needed and everyone would only ever use ConfigurationService.
         
         // load agents
         var aesirAgents = agents.ToArray();
@@ -566,4 +606,103 @@ public class Program
         return config;
     }
 
+    private static void RegisterModelUnload(WebApplication app, AesirGeneralSettings generalSettings, AesirAgent[] agents)
+    {
+        var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
+        // This is an imperfect routine. Ideally the IModelsService would know what models have been loaded, but 
+        // they currently don't. We will assume the RAG embedding model, RAG vision model, and any model on any
+        // agent have been loaded. They possibly have not, so we rely on the IModelsService implementations
+        // to handle this gracefully. In the future we should track models that have been used/loaded.
+        
+        // unload all chat models
+        foreach (var agent in agents)
+        {
+            var chatInferenceEngineId = agent.ChatInferenceEngineId?.ToString() ??
+                throw new InvalidOperationException($"ChatInferenceEngineId not configured for {agent.Name}");
+            var chatModel = agent.ChatModel ??
+                throw new InvalidOperationException($"ChatModel not configured for {agent.Name}");
+
+            var chatModelsService = app.Services.GetKeyedService<IModelsService>(chatInferenceEngineId) ??
+                throw new InvalidOperationException($"Missing expected ModelsService for {chatInferenceEngineId}");
+            
+            appLifetime.ApplicationStopping.Register(() => {
+                chatModelsService.UnloadModelsAsync([chatModel]).Wait();
+            });
+        }
+        
+        // unload RAG embedding model
+        if (generalSettings.RagEmbeddingInferenceEngineId == null || generalSettings.RagEmbeddingModel == null)
+        {
+            logger.LogWarning("RAG embedding model configuration is not yet complete");
+        }
+        else
+        {
+            var ragEmbeddingInferenceEngineId = generalSettings.RagEmbeddingInferenceEngineId?.ToString() ??
+                                                throw new InvalidOperationException($"RagEmbeddingInferenceEngineId not configured");
+            var ragEmbeddingModelsService = app.Services.GetKeyedService<IModelsService>(ragEmbeddingInferenceEngineId) ??
+                throw new InvalidOperationException($"Missing expected ModelsService for {ragEmbeddingInferenceEngineId}");
+            appLifetime.ApplicationStopping.Register(() => {
+                ragEmbeddingModelsService.UnloadModelsAsync([generalSettings.RagEmbeddingModel]).Wait();
+            });
+        }
+
+        // unload RAG vision model
+        if (generalSettings.RagVisionInferenceEngineId == null || generalSettings.RagVisionModel == null)
+        {
+            logger.LogWarning("RAG vision model configuration is not yet complete");
+        }
+        else
+        {
+            var ragVisionInferenceEngineId = generalSettings.RagVisionInferenceEngineId?.ToString() ??
+                                        throw new InvalidOperationException($"RagVisionInferenceEngineId not configured");
+            var ragVisionModelsService = app.Services.GetKeyedService<IModelsService>(ragVisionInferenceEngineId) ??
+                                            throw new InvalidOperationException($"Missing expected ModelsService for {ragVisionInferenceEngineId}");
+            appLifetime.ApplicationStopping.Register(() => {
+                ragVisionModelsService.UnloadModelsAsync([generalSettings.RagVisionModel]).Wait();
+            });
+        }
+    }
+
+    private static void CheckDatabaseConfigurationBootReadiness(ConfigurationReadinessService configurationReadinessService, 
+        AesirGeneralSettings generalSettings, AesirInferenceEngine[] inferenceEngines)
+    {
+        if (inferenceEngines.Length == 0)
+            configurationReadinessService.ReportMissingConfiguration("No Inference Engines configured");
+
+        foreach (var inferenceEngine in inferenceEngines)
+        {
+            if (inferenceEngine.Type == InferenceEngineType.OpenAICompatible)
+            {
+                if (inferenceEngine.Configuration["ApiKey"] == null)
+                {
+                    configurationReadinessService.ReportMissingConfiguration(
+                        $"API Key missing for Inference Engine {inferenceEngine.Name}");
+
+                    configurationReadinessService.MarkInferenceEngineNotReadyAtBoot(inferenceEngine.Id.Value);
+                }
+            }
+
+            if (inferenceEngine.Configuration["Endpoint"] == null)
+            {
+                configurationReadinessService.ReportMissingConfiguration(
+                    $"Endpoint missing for Inference Engine {inferenceEngine.Name}");
+                
+                configurationReadinessService.MarkInferenceEngineNotReadyAtBoot(inferenceEngine.Id.Value);
+            }
+        }
+        
+        if (generalSettings.RagEmbeddingInferenceEngineId == null)
+            configurationReadinessService.ReportMissingConfiguration("RAG embedding inference engine configuration is not yet complete");
+        
+        if (generalSettings.RagEmbeddingModel == null)
+            configurationReadinessService.ReportMissingConfiguration("RAG embedding model configuration is not yet complete");
+        
+        if (generalSettings.RagVisionInferenceEngineId == null)
+            configurationReadinessService.ReportMissingConfiguration("RAG vision inference engine configuration is not yet complete");
+        
+        if (generalSettings.RagVisionModel == null)
+            configurationReadinessService.ReportMissingConfiguration("RAG vision model configuration is not yet complete");
+    }
 }

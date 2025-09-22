@@ -60,12 +60,14 @@ public class AutoDocumentCollectionService : IDocumentCollectionService
     /// Loads a document from the specified path into the appropriate document collection, based on the DocumentCollectionType contained in the file metadata.
     /// </summary>
     /// <param name="documentPath">The file path of the document to load.</param>
+    /// <param name="modelLocationDescriptor">Location of the model and associated inference engine to use for loading
+    /// information from the document.</param>
     /// <param name="fileMetaData">The metadata associated with the file, which must include a valid DocumentCollectionType property.</param>
     /// <param name="cancellationToken">A token for propagating cancellation notifications.</param>
     /// <returns>A task representing the asynchronous load operation.</returns>
     /// <exception cref="ArgumentException">Thrown when the fileMetaData is null or does not contain a valid DocumentCollectionType property.</exception>
-    public Task LoadDocumentAsync(string documentPath, IDictionary<string, object>? fileMetaData = null,
-        CancellationToken cancellationToken = default)
+    public Task LoadDocumentAsync(string documentPath, ModelLocationDescriptor modelLocationDescriptor, 
+        IDictionary<string, object>? fileMetaData = null, CancellationToken cancellationToken = default)
     {
         if (fileMetaData == null || !fileMetaData.TryGetValue("DocumentCollectionType", out var metaValue))
             throw new ArgumentException("File metadata must contain a DocumentCollectionType property");
@@ -74,9 +76,9 @@ public class AutoDocumentCollectionService : IDocumentCollectionService
         return documentCollectionType switch
         {
             DocumentCollectionType.Conversation => _conversationDocumentCollectionService.LoadDocumentAsync(
-                documentPath, fileMetaData, cancellationToken),
+                documentPath, modelLocationDescriptor, fileMetaData, cancellationToken),
             DocumentCollectionType.Global => _globalDocumentCollectionService.LoadDocumentAsync(documentPath,
-                fileMetaData, cancellationToken),
+                modelLocationDescriptor, fileMetaData, cancellationToken),
             _ => throw new ArgumentException("Invalid DocumentCollectionType")
         };
     }

@@ -9,6 +9,16 @@ namespace Aesir.Client.Services.Implementations.NoOp;
 
 public class NoOpConfigurationService : IConfigurationService
 {
+    public async Task<bool> GetIsSystemConfigurationReadyAsync()
+    {
+        return await Task.FromResult(true);
+    }
+
+    public async Task<bool> GetIsInDatabaseModeAsync()
+    {
+        return await Task.FromResult(false);
+    }
+
     public async Task<AesirGeneralSettingsBase> GetGeneralSettingsAsync()
     {
         return await Task.FromResult(new AesirGeneralSettingsBase());   

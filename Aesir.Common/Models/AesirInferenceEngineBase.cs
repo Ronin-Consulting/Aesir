@@ -33,7 +33,14 @@ public class AesirInferenceEngineBase
     /// Gets or sets the configuration of the inference engine
     /// </summary>
     [JsonPropertyName("configuration")]
-    public IDictionary<string, string?> Configuration { get; set; }
+    public IDictionary<string, string?>? Configuration { get; set; }
+
+    public bool IsNull()
+    {
+        // return true if all properties are null
+        return Id == null && Name == null && Description == null && Type == null && 
+               (Configuration == null || Configuration.Count == 0);
+    }
 }
 
 public enum InferenceEngineType

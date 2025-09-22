@@ -33,10 +33,11 @@ public class ImageDataLoaderService<TKey, TRecord>(
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     Func<RawContent, LoadImageRequest, TRecord> recordFactory,
     IVisionService visionService,
-    IModelsService modelsService,
+    IConfigurationService configurationService,
+    IServiceProvider serviceProvider,
     ILogger<ImageDataLoaderService<TKey, TRecord>> logger)
     : BaseDataLoaderService<TKey, TRecord>(uniqueKeyGenerator, vectorStoreRecordCollection, embeddingGenerator,
-        modelsService, logger), IImageDataLoaderService<TKey, TRecord>
+        configurationService, serviceProvider, logger), IImageDataLoaderService<TKey, TRecord>
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
@@ -79,6 +80,9 @@ public class ImageDataLoaderService<TKey, TRecord>(
             ))
             throw new NotSupportedException($"Only PNG images are currently supported and not: {actualContentType}");
 
+        if (request.ModelLocation == null)
+            throw new InvalidOperationException("ModelLocation is empty");
+
         await InitializeCollectionAsync(cancellationToken);
         await DeleteExistingRecordsAsync(request.ImageFileName!, cancellationToken);
 
@@ -110,6 +114,7 @@ public class ImageDataLoaderService<TKey, TRecord>(
                 var extractedText = await ConvertImageToTextAsync(
                     new ReadOnlyMemory<byte>(pageBytes),
                     FileTypeManager.MimeTypes.Png, // Convert to PNG for processing
+                    request.ModelLocation,
                     cancellationToken).ConfigureAwait(false);
 
                 // Create raw content for this page
@@ -159,6 +164,7 @@ public class ImageDataLoaderService<TKey, TRecord>(
             var extractedText = await ConvertImageToTextAsync(
                 new ReadOnlyMemory<byte>(imageBytes),
                 actualContentType,
+                request.ModelLocation,
                 cancellationToken).ConfigureAwait(false);
 
             // Create raw content for processing
@@ -202,6 +208,7 @@ public class ImageDataLoaderService<TKey, TRecord>(
     /// </summary>
     /// <param name="imageBytes">The image data as a read-only memory of bytes.</param>
     /// <param name="contentType">The content type of the image, used to validate and process the image format.</param>
+    /// <param name="modelLocationDescriptor">The location of the model to use for vision service operations.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests during the asynchronous operation.</param>
     /// <returns>A task that represents the asynchronous operation, returning the extracted text from the image.</returns>
     /// <exception cref="HttpOperationException">
@@ -210,10 +217,11 @@ public class ImageDataLoaderService<TKey, TRecord>(
     private async Task<string> ConvertImageToTextAsync(
         ReadOnlyMemory<byte> imageBytes,
         string contentType,
+        ModelLocationDescriptor modelLocationDescriptor,
         CancellationToken cancellationToken)
     {
         return await _visionService
-            .GetImageTextAsync(imageBytes, contentType, cancellationToken)
+            .GetImageTextAsync(modelLocationDescriptor, imageBytes, contentType, cancellationToken)
             .ConfigureAwait(false);
     }
 }

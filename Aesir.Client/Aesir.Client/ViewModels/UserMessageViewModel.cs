@@ -18,8 +18,7 @@ namespace Aesir.Client.ViewModels;
 /// Represents the ViewModel specifically designed for handling messages created by users.
 /// Inherits from <see cref="MessageViewModel"/> to provide additional user-specific message functionality.
 /// </summary>
-public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, IMarkdownService markdownService)
-    : MessageViewModel(logger, markdownService)
+public partial class UserMessageViewModel : MessageViewModel
 {
     /// <summary>
     /// Specifies whether the user message is currently being edited.
@@ -37,19 +36,50 @@ public partial class UserMessageViewModel(ILogger<UserMessageViewModel> logger, 
     /// </summary>
     [ObservableProperty] private string? _fileName;
 
+    /// <summary>
+    /// Represents the specific kind of icon used for file-related representations in the user message context.
+    /// </summary>
     [ObservableProperty] 
     private MaterialIconKind _fileIconKind = MaterialIconKind.FileDocument;
+
+    /// <summary>
+    /// Command that facilitates the initiation of a file download request within the context of a user's message.
+    /// </summary>
+    public ICommand RequestDownloadCommand { get; }
     
     /// <summary>
     /// An instance of the markdown service used to convert markdown text into rendered HTML content.
     /// </summary>
-    private readonly IMarkdownService _markdownService = markdownService;
+    private readonly IMarkdownService _markdownService;
 
     /// <summary>
     /// Represents the role of the message sender.
     /// </summary>
     public override string Role => "user";
 
+    /// <summary>
+    /// A ViewModel that manages and processes user-generated messages, offering specialized functionalities
+    /// for handling markdown conversion, asynchronous message updates, and download requests.
+    /// Extends <see cref="MessageViewModel"/> to provide user-specific message capabilities.
+    /// </summary>
+    public UserMessageViewModel(ILogger<UserMessageViewModel> logger, IMarkdownService markdownService)
+        : base(logger, markdownService)
+    {
+        _markdownService = markdownService;
+        RequestDownloadCommand = new RelayCommand(RequestDownloadFile);
+    }
+
+    /// <summary>
+    /// Sends a file download request message, primarily focused on the current file name.
+    /// </summary>
+    private void RequestDownloadFile()
+    {
+        WeakReferenceMessenger.Default.Send(new FileDownloadRequestMessage()
+        {
+            FileName = FileName
+        });
+    }
+    
     /// <summary>
     /// Creates a command to execute the regenerate message functionality.
     /// </summary>

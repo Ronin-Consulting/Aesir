@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Aesir.Api.Server.Services.Implementations.Standard;
 using Aesir.Common.FileTypes;
 using Aesir.Common.Prompts;
 using Microsoft.SemanticKernel;
@@ -13,13 +14,11 @@ namespace Aesir.Api.Server.Services.Implementations.Ollama;
 /// A service for analyzing images and extracting textual content using the specified vision AI model and configurations.
 /// </summary>
 /// <param name="logger">Instance of a logger to capture and record service-related activities and errors.</param>
-/// <param name="visionModelConfig">Provides model-specific parameters and settings required for the AI vision processing.</param>
-/// <param name="chatCompletionService">Facilitates coordination and interactions with the backend AI vision model.</param>
+/// <param name="serviceProvider">Locates other services.</param>
 [Experimental("SKEXP0070")]
 public class VisionService(
     ILogger<VisionService> logger,
-    VisionModelConfig visionModelConfig,
-    IChatCompletionService chatCompletionService)
+    IServiceProvider serviceProvider)
     : IVisionService
 {
     /// <summary>
@@ -29,26 +28,20 @@ public class VisionService(
     private static readonly IPromptProvider PromptProvider = DefaultPromptProvider.Instance;
 
     /// <summary>
-    /// Holds the identifier of the vision model configured for image analysis and processing operations.
-    /// </summary>
-    /// <remarks>
-    /// This field is derived from the <see cref="VisionModelConfig"/> class's <c>ModelId</c> property
-    /// and is critical for determining which vision model is engaged during tasks requiring image processing.
-    /// Proper configuration is mandatory to ensure the functionality of vision-related operations.
-    /// </remarks>
-    private readonly string _visionModel = visionModelConfig.ModelId;
-
-    /// <summary>
     /// Extracts and returns the textual content from the provided image using the configured vision model.
     /// </summary>
+    /// <param name="modelLocationDescriptor">The loation of the model to use.</param>
     /// <param name="imageBytes">The raw bytes of the image to be analyzed.</param>
     /// <param name="contentType">The MIME type of the image, such as "image/png", "image/jpeg", or "image/tiff".</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task representing the asynchronous operation. The task result contains the extracted text from the image as a plain string.</returns>
-    public async Task<string> GetImageTextAsync(ReadOnlyMemory<byte> imageBytes, string contentType,
+    public async Task<string> GetImageTextAsync(ModelLocationDescriptor modelLocationDescriptor, ReadOnlyMemory<byte> imageBytes, string contentType,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_visionModel))
+        var chatCompletionService = serviceProvider.GetKeyedService<IChatCompletionService>(modelLocationDescriptor.InterfaceEngineId)
+            ?? throw new InvalidOperationException($"Failed to get Chat Completion service for engine {modelLocationDescriptor.InterfaceEngineId}");
+        
+        if (string.IsNullOrWhiteSpace(modelLocationDescriptor.ModelId))
             throw new InvalidOperationException("No vision model provided");
         
         // Resize the image to a resolution that works well with the vision model
@@ -89,7 +82,7 @@ public class VisionService(
 
         var settings = new OllamaPromptExecutionSettings
         {
-            ModelId = _visionModel,
+            ModelId = modelLocationDescriptor.ModelId,
             Temperature = 0.2f
         };
         

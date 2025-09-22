@@ -11,7 +11,7 @@ namespace Aesir.Api.Server.Controllers
     [ApiController]
     [Route("chat/completions")]
     [Produces("application/json")]
-    public class ChatController(IChatService chatService, IConfigurationService configurationService) : ControllerBase
+    public class ChatController(IServiceProvider serviceProvider, IConfigurationService configurationService) : ControllerBase
     {   
         /// <summary>
         /// Handles a chat completion request and returns the result asynchronously.
@@ -21,7 +21,11 @@ namespace Aesir.Api.Server.Controllers
         [HttpPost]
         public async Task<AesirChatResult> ChatCompletionsAsync([FromBody] AesirChatRequest request)
         {
-            return await chatService.ChatCompletionsAsync(request);
+            //return await chatService.ChatCompletionsAsync(request);
+            
+            // either remove this method and all the calls to it (currently on test code) or support this by
+            // getting first inference engine, or by including an inference engine in request object
+            throw new InvalidOperationException("Currently unsupported without an agent context");
         }
 
         /// <summary>
@@ -32,7 +36,11 @@ namespace Aesir.Api.Server.Controllers
         [HttpPost("streamed")]
         public IAsyncEnumerable<AesirChatStreamedResult> ChatCompletionsStreamedAsync([FromBody] AesirChatRequest request)
         {
-            return chatService.ChatCompletionsStreamedAsync(request);
+            //return chatService.ChatCompletionsStreamedAsync(request);
+            
+            // either remove this method and all the calls to it (currently on test code) or support this by
+            // getting first inference engine, or by including an inference engine in request object
+            throw new InvalidOperationException("Currently unsupported without an agent context");
         }
         
         /// <summary>
@@ -59,12 +67,15 @@ namespace Aesir.Api.Server.Controllers
                 TopP = agent.ChatTopP ?? 0.1,
                 User = request.User
             };
+
+            // Resolve the correct ChatService based on the agent's inference engine
+            var agentChatService = serviceProvider.GetKeyedService<IChatService>(agent.ChatInferenceEngineId.ToString());
+            if (agentChatService == null)
+            {
+                throw new InvalidOperationException($"No agent chat service found for inference engine ID: {agent.ChatInferenceEngineId}");
+            }
             
-            // TODO we will need to look up the right inference engine and tell the
-            // TODO chat completion service which one to use (or maybe lookup the right chat completion service?)
-            // TODO this should match what we register in Program.cs > Main
-            
-            return await chatService.ChatCompletionsAsync(chatRequest);
+            return await agentChatService.ChatCompletionsAsync(chatRequest);
         }
 
         /// <summary>
@@ -83,7 +94,7 @@ namespace Aesir.Api.Server.Controllers
                 ChatSessionUpdatedAt = request.ChatSessionUpdatedAt,
                 ClientDateTime = request.ClientDateTime,
                 Conversation = request.Conversation,
-                EnableThinking = true,
+                EnableThinking = true, // TODO should eventually be configuration on agent (it's an override of inference engine value)
                 MaxTokens = agent.ChatMaxTokens ?? 32768,
                 Model = agent.ChatModel,
                 Temperature = agent.ChatTemperature ?? 0.1,
@@ -91,12 +102,15 @@ namespace Aesir.Api.Server.Controllers
                 TopP = agent.ChatTopP ?? 0.1,
                 User = request.User
             };
+
+            // Resolve the correct ChatService based on the agent's inference engine
+            var agentChatService = serviceProvider.GetKeyedService<IChatService>(agent.ChatInferenceEngineId.ToString());
+            if (agentChatService == null)
+            {
+                throw new InvalidOperationException($"No agent chat service found for inference engine ID: {agent.ChatInferenceEngineId}");
+            }
             
-            // TODO we will need to look up the right inference engine and tell the
-            // TODO chat completion service which one to use (or maybe lookup the right chat completion service?)
-            // TODO this should match what we register in Program.cs > Main
-            
-            return chatService.ChatCompletionsStreamedAsync(chatRequest);
+            return agentChatService.ChatCompletionsStreamedAsync(chatRequest);
         }
     }
 }

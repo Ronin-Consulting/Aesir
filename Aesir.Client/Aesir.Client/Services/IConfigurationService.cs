@@ -13,6 +13,24 @@ namespace Aesir.Client.Services;
 public interface IConfigurationService
 {
     /// <summary>
+    /// Asynchronously determines if the system is ready for operation or needs further configuration.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task is a <see cref="bool"/>
+    /// indicating whether the system is ready (true) or not (false).
+    /// </returns>
+    Task<bool> GetIsSystemConfigurationReadyAsync();
+    
+    /// <summary>
+    /// Asynchronously determines if the system is being run in database configuration mode.
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task is a <see cref="bool"/>
+    /// indicating whether the system is being configured from the database (true) or not (false).
+    /// </returns>
+    Task<bool> GetIsInDatabaseModeAsync();
+    
+    /// <summary>
     /// Asynchronously the Aesir general settings.
     /// </summary>
     /// <returns>

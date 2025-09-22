@@ -11,7 +11,7 @@ namespace Aesir.Api.Server.Controllers;
 [ApiController]
 [Route("models")]
 [Produces("application/json")]
-public class ModelsController(IModelsService modelsService, IConfigurationService configurationService) : ControllerBase
+public class ModelsController(IServiceProvider serviceProvider, IConfigurationService configurationService) : ControllerBase
 {
     /// <summary>
     /// Retrieves information about available AI models.
@@ -20,14 +20,12 @@ public class ModelsController(IModelsService modelsService, IConfigurationServic
     [HttpGet("{inferenceEngineId:guid}/{category}")]
     public async Task<IEnumerable<AesirModelInfo>> GetModels([FromRoute] Guid inferenceEngineId, [FromRoute]ModelCategory? category)
     {
-        // TODO lookup inference engine and check type
-        // TODO lookup proper modelsservice by name
-        // TODO ask it for models
-
-        var inferenceEngine= await configurationService.GetInferenceEngineAsync(inferenceEngineId);
-        
-        //inferenceEngine.Type
-        //inferenceEngine.Name
+        // Resolve the correct ModelsService based on the inference engine
+        var modelsService = serviceProvider.GetKeyedService<IModelsService>(inferenceEngineId.ToString());
+        if (modelsService == null)
+        {
+            throw new InvalidOperationException($"No models service found for inference engine ID: {inferenceEngineId}");
+        }
             
         return await modelsService.GetModelsAsync(category);
     }

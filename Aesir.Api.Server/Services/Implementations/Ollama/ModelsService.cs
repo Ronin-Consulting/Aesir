@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
 using Aesir.Common.Models;
 using OllamaSharp;
+using OllamaSharp.Models;
 
 namespace Aesir.Api.Server.Services.Implementations.Ollama;
 
@@ -13,9 +14,10 @@ namespace Aesir.Api.Server.Services.Implementations.Ollama;
 /// <param name="configuration">The configuration interface containing application settings.</param>
 [Experimental("SKEXP0070")]
 public class ModelsService(
-    ILogger<ChatService> logger,
-    OllamaApiClient api,
-    IConfiguration configuration)
+    string serviceId,
+    ILogger<ModelsService> logger,
+    IConfiguration configuration,
+    IServiceProvider serviceProvider)
     : IModelsService
 {
     /// <summary>
@@ -33,165 +35,112 @@ public class ModelsService(
 
         try
         {
-            // get ollama models loaded
+            var api = serviceProvider.GetKeyedService<OllamaApiClient>(serviceId) ??
+                      throw new InvalidOperationException($"Not OllamaApiClient registered for {serviceId}");
+
             var ollamaModels = (await api.ListLocalModelsAsync()).ToList();
+            var modelDetails = new Dictionary<string, ShowModelResponse>(StringComparer.Ordinal);
+            var throttler = new SemaphoreSlim(Environment.ProcessorCount);
+            var tasks = new List<Task>(ollamaModels.Count);
+            tasks.AddRange(ollamaModels.Select(model => FetchDetailsAsync(model.Name)));
+            await Task.WhenAll(tasks).ConfigureAwait(false);
 
-            // populate embedding models
-            if (category is null or ModelCategory.Embedding)
+            async Task FetchDetailsAsync(string name)
             {
-                var allowedModelNames =
-                    configuration.GetSection("Configuration:RestrictEmbeddingModelsTo").Get<string[]>() ?? [];
-
-                // restrict the models if the configuration requested it
-                var allowedModels = ollamaModels.ToList();
-                if (allowedModelNames.Length > 0)
-                    allowedModels = ollamaModels.Where(m => allowedModelNames.Contains(m.Name)).ToList();
-
-                allowedModels.ForEach(m =>
+                await throttler.WaitAsync().ConfigureAwait(false);
+                try
                 {
-                    models.Add(new AesirModelInfo
+                    var details = await api.ShowModelAsync(name).ConfigureAwait(false);
+                    lock (modelDetails)
                     {
-                        Id = m.Name,
-                        OwnedBy = "Aesir",
-                        CreatedAt = m.ModifiedAt,
-                        IsChatModel = false,
-                        IsEmbeddingModel = true
-                    });
-                });
+                        modelDetails[name] = details;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to get details for model {ModelName}", name);
+                }
+                finally
+                {
+                    throttler.Release();
+                }
+            }
+            
+            IEnumerable<TModel> Restrict<TModel>(IEnumerable<TModel> source, string configKey, Func<TModel, string> nameSelector)
+            {
+                var allowed = configuration.GetSection(configKey).Get<string[]>() ?? [];
+                return allowed.Length == 0 ? source : source.Where(m => allowed.Contains(nameSelector(m)));
             }
 
-            // populate chat models
-            if (category is null or ModelCategory.Chat)
+            AesirModelInfo MapToAesirModelInfo(Model m, ShowModelResponse? modelDetail, bool isChat, bool isEmbedding) => new()
             {
-                var allowedModelNames =
-                    configuration.GetSection("Configuration:RestrictChatModelsTo").Get<string[]>() ?? [];
-
-                // restrict the models if the configuration requested it
-                var allowedModels = ollamaModels.ToList();
-                if (allowedModelNames.Length > 0)
-                    allowedModels = ollamaModels.Where(m => allowedModelNames.Contains(m.Name)).ToList();
-
-                allowedModels.ForEach(m =>
+                Id = m.Name,
+                OwnedBy = "Aesir",
+                CreatedAt = m.ModifiedAt,
+                IsChatModel = isChat,
+                IsEmbeddingModel = isEmbedding,
+                Details = new AesirModelDetails
                 {
-                    models.Add(new AesirModelInfo
-                    {
-                        Id = m.Name,
-                        OwnedBy = "Aesir",
-                        CreatedAt = m.ModifiedAt,
-                        IsChatModel = true,
-                        IsEmbeddingModel = false
-                    });
-                });
-            }
+                    ParentModel = m.Details.ParentModel,
+                    Format = m.Details.Format,
+                    Family = m.Details.Family,
+                    Families = m.Details.Families,
+                    ParameterSize = m.Details.ParameterSize,
+                    QuantizationLevel = m.Details.QuantizationLevel,
+                    License = modelDetail?.License,
+                    Capabilities = modelDetail?.Capabilities,
+                    ExtraInfo = modelDetail?.Info.ExtraInfo
+                }
+            };
 
-            // populate vision models
-            if (category is null or ModelCategory.Vision)
+            var categories = new[]
             {
-                var allowedModelNames =
-                    configuration.GetSection("Configuration:RestrictVisionModelsTo").Get<string[]>() ?? [];
+                new { Category = ModelCategory.Embedding, ConfigKey = "Configuration:RestrictEmbeddingModelsTo", IsChat = false, IsEmbedding = true },
+                new { Category = ModelCategory.Chat,      ConfigKey = "Configuration:RestrictChatModelsTo",      IsChat = true,  IsEmbedding = false },
+                new { Category = ModelCategory.Vision,    ConfigKey = "Configuration:RestrictVisionModelsTo",    IsChat = false, IsEmbedding = false }
+            };
 
-                // restrict the models if the configuration requested it
-                var allowedModels = ollamaModels.ToList();
-                if (allowedModelNames.Length > 0)
-                    allowedModels = ollamaModels.Where(m => allowedModelNames.Contains(m.Name)).ToList();
-
-                allowedModels.ForEach(m =>
-                {
-                    models.Add(new AesirModelInfo
-                    {
-                        Id = m.Name,
-                        OwnedBy = "Aesir",
-                        CreatedAt = m.ModifiedAt,
-                        IsChatModel = false,
-                        IsEmbeddingModel = false
-                    });
-                });
+            foreach (var c in categories)
+            {
+                if (category is not null && category != c.Category) continue;
+                
+                var allowed = Restrict(ollamaModels, c.ConfigKey, m => m.Name);
+                models.AddRange(
+                    allowed.Select(m => 
+                        MapToAesirModelInfo(m, modelDetails.TryGetValue(m.Name, out var details) ? 
+                            details : null, c.IsChat, c.IsEmbedding)
+                ));
             }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error getting models from Ollama");
-
             throw;
         }
 
         return models;
     }
 
-    /// Asynchronously unloads all configured chat models from the system using the Ollama API.
-    /// This method retrieves a list of allowed chat models from the application configuration,
-    /// then attempts to unload each model by making asynchronous requests to the underlying API.
+    /// Asynchronously unloads all specified models from the system using the Ollama API.
     /// Any errors encountered during the unloading process will be logged.
     /// <returns>
-    /// A task that represents the asynchronous operation of unloading the chat models.
+    /// A task that represents the asynchronous operation of unloading the selected models.
     /// </returns>
-    public async Task UnloadChatModelAsync()
+    public async Task UnloadModelsAsync(string[] modelIds)
     {
-        var allowedModelNames = (configuration.GetSection("Inference:Ollama:ChatModels").Get<string[]>()
-                                 ?? throw new InvalidOperationException("No chat models configured")).ToList();
-
-        await Parallel.ForEachAsync(allowedModelNames, async (modelName, token) =>
+        await Parallel.ForEachAsync(modelIds, async (modelId, token) =>
         {
             try
             {
-                await api.RequestModelUnloadAsync(modelName, token);
+                var api = serviceProvider.GetKeyedService<OllamaApiClient>(serviceId) ??
+                          throw new InvalidOperationException($"Not OllamaApiClient registered for {serviceId}");
+                
+                await api.RequestModelUnloadAsync(modelId, token);
             }
             catch (Exception ex)
             {
-                logger.LogWarning("Unload of chat model had error: {Error}", ex);
+                logger.LogWarning("Unload of model had error: {Error}", ex);
             }
         });
     }
-
-    /// Asynchronously unloads the configured embedding model from the system.
-    /// If the embedding model is not configured, an InvalidOperationException is thrown.
-    /// Logs a warning if an error occurs during the unload process.
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task UnloadEmbeddingModelAsync()
-    {
-        var modelName = configuration.GetValue<string>("Inference:Ollama:EmbeddingModel")
-                                 ?? throw new InvalidOperationException("No embedding model configured");
-        
-        try
-        {
-            await api.RequestModelUnloadAsync(modelName);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning("Unload of embedding model had error: {Error}", ex);
-        }
-    }
-
-    /// Asynchronously unloads the configured vision model from the system.
-    /// This method retrieves the name of the configured vision model from the application's configuration
-    /// and attempts to unload the model using the associated API client. If the configuration setting
-    /// for the vision model is unavailable, an InvalidOperationException is thrown. Additionally, the
-    /// completion or any exception during the unload process is logged.
-    /// <returns>A Task that represents the asynchronous operation.</returns>
-    public async Task UnloadVisionModelAsync()
-    {
-        var modelName = configuration.GetValue<string>("Inference:Ollama:VisionModel")
-                        ?? throw new InvalidOperationException("No vision model configured");
-
-        try
-        {
-            await api.RequestModelUnloadAsync(modelName);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning("Unload of vision model had error: {Error}", ex);
-        }
-    }
-    
-    /// <summary>
-    /// Asynchronously unloads all models from the system.
-    /// </summary>
-    /// <returns>A task that represents the asynchronous operation.</returns>
-    public async Task UnloadAllModelsAsync()
-    {
-        await UnloadChatModelAsync();
-        await UnloadEmbeddingModelAsync();
-        await UnloadVisionModelAsync();
-    }
-
 }

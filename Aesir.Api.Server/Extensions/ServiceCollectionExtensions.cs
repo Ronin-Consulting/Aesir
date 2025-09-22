@@ -4,12 +4,12 @@ using Aesir.Common.FileTypes;
 using Aesir.Api.Server.Services;
 using Aesir.Api.Server.Services.Implementations.Standard;
 using Aesir.Common.Models;
-using Aesir.Common.Prompts;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
 using OllamaSharp;
+using OpenAI;
 using Qdrant.Client;
 
 namespace Aesir.Api.Server.Extensions;
@@ -26,16 +26,22 @@ public static class ServiceCollectionExtensions
     /// <param name="configuration">The application configuration.</param>
     /// <returns>The service collection for method chaining.</returns>
     [Experimental("SKEXP0070")]
-    public static IServiceCollection SetupSemanticKernel(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection SetupSemanticKernel(this IServiceCollection services, IConfiguration configuration,
+        ConfigurationReadinessService configurationReadinessService)
     {
-        // TODO if some part of configuration is missing AND we are in db config mode, boot up app anyway
-        // so user can complete setup
-
+        // registering any of these things is pointless if we are not fully ready with inference engines and embedding
+        // setup, and causes more weirdo dependency errors
+        if (!configurationReadinessService.IsReadyAtBoot)
+            return services;
+        
         // load general settings (from file or db)
         var generalSettings = configuration.GetSection("GeneralSettings")
-            .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
-        var embeddingModel = generalSettings["RagEmbeddingModel"] ?? 
-                             throw new InvalidOperationException("RagEmbeddingMode not configured");
+            .Get<AesirGeneralSettings>() ?? new AesirGeneralSettings();
+        var ragEmbeddingInferenceEngineId = generalSettings.RagEmbeddingInferenceEngineId;
+        var embeddingModel = generalSettings.RagEmbeddingModel;
+        
+        if (ragEmbeddingInferenceEngineId == null)
+            Console.Write($"Configuration for RAG embedding inference engine is not ready and being skipped for initialization");
         
         var kernelBuilder = services.AddKernel();
         
@@ -44,37 +50,56 @@ public static class ServiceCollectionExtensions
             .Get<AesirInferenceEngine[]>() ?? [];
         foreach (var inferenceEngine in inferenceEngines)
         {
+            if (!configurationReadinessService.IsInferenceEngineReadyAtBoot(inferenceEngine.Id.Value))
+            {
+                Console.Write($"Configuration for Inference Engine `{inferenceEngine.Name}` is not ready and being skipped for initialization");
+                continue;
+            }
+            
+            var inferenceEngineIdKey = inferenceEngine.Id.ToString();
+            
             switch (inferenceEngine.Type)
             {
                 case InferenceEngineType.Ollama:
                 {
-                    kernelBuilder.AddOllamaChatCompletion();
-                    
-                    const string? serviceId = null;
-                    services.AddKeyedSingleton<IEmbeddingGenerator<string, Embedding<float>>>(serviceId, (serviceProvider, _) =>
-                    {
-                        var ollamaClient = serviceProvider.GetRequiredService<OllamaApiClient>();
-                        ollamaClient.SelectedModel = embeddingModel;
-                
-                        var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+                    kernelBuilder.AddOllamaChatCompletion(serviceId: inferenceEngineIdKey);
 
-                        var builder = ((IEmbeddingGenerator<string, Embedding<float>>)ollamaClient)
-                            .AsBuilder();
-
-                        if (loggerFactory is not null)
+                    if (inferenceEngine.Id == ragEmbeddingInferenceEngineId)
+                    {   
+                        const string? serviceId = null;
+                        services.AddKeyedSingleton<IEmbeddingGenerator<string, Embedding<float>>>(serviceId, (serviceProvider, _) =>
                         {
-                            builder.UseLogging(loggerFactory);
-                        }
+                            var ollamaClient = services.BuildServiceProvider().GetKeyedService<OllamaApiClient>(inferenceEngineIdKey);
+                            ollamaClient.SelectedModel = embeddingModel;
+                
+                            var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
 
-                        return builder.Build(serviceProvider);
-                    });
-                    
+                            var builder = ((IEmbeddingGenerator<string, Embedding<float>>)ollamaClient)
+                                .AsBuilder();
+
+                            if (loggerFactory is not null)
+                            {
+                                builder.UseLogging(loggerFactory);
+                            }
+
+                            return builder.Build(serviceProvider);
+                        });
+                    }
+
                     break;
                 }
                 case InferenceEngineType.OpenAICompatible:
                 {
-                    kernelBuilder.AddOpenAIChatCompletion("set-by-agent");
-                    kernelBuilder.AddOpenAIEmbeddingGenerator(embeddingModel, dimensions: 1024);
+                    var openAiClient = services.BuildServiceProvider().GetKeyedService<OpenAIClient>(inferenceEngineIdKey);
+                    
+                    kernelBuilder.AddOpenAIChatCompletion("set-by-agent", openAiClient, inferenceEngineIdKey);
+
+                    if (inferenceEngine.Id == ragEmbeddingInferenceEngineId)
+                    {
+                        kernelBuilder.AddOpenAIEmbeddingGenerator(embeddingModel, openAiClient, 1024,
+                            inferenceEngineIdKey);
+                    }
+
                     break;
                 }
             }
@@ -129,7 +154,8 @@ public static class ServiceCollectionExtensions
                     };
                 },
                 serviceProvider.GetRequiredService<IVisionService>(),
-                serviceProvider.GetRequiredService<IModelsService>(),
+                serviceProvider.GetRequiredService<IConfigurationService>(),
+                serviceProvider,
                 serviceProvider
                     .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>>()
             );
@@ -156,7 +182,8 @@ public static class ServiceCollectionExtensions
                     };
                 },
                 serviceProvider.GetRequiredService<IVisionService>(),
-                serviceProvider.GetRequiredService<IModelsService>(),
+                serviceProvider.GetRequiredService<IConfigurationService>(),
+                serviceProvider,
                 serviceProvider
                     .GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
@@ -183,7 +210,8 @@ public static class ServiceCollectionExtensions
                     };
                 },
                 serviceProvider.GetRequiredService<IVisionService>(),
-                serviceProvider.GetRequiredService<IModelsService>(),
+                serviceProvider.GetRequiredService<IConfigurationService>(),
+                serviceProvider,
                 serviceProvider
                     .GetRequiredService<ILogger<ImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
@@ -236,7 +264,8 @@ public static class ServiceCollectionExtensions
                         Key = Guid.Empty // This will be replaced in the service
                     };
                 },
-                serviceProvider.GetRequiredService<IModelsService>(),
+                serviceProvider.GetRequiredService<IConfigurationService>(),
+                serviceProvider,
                 serviceProvider
                     .GetRequiredService<ILogger<TextFileLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
