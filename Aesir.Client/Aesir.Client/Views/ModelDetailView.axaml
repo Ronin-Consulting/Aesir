@@ -1,0 +1,68 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:u="https://irihi.tech/ursa"
+             xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Aesir.Client.Views.ModelDetailView"
+             x:DataType="vm:ModelDetailViewViewModel"
+             Height="300"
+             Width="600"
+    >
+    <ScrollViewer Height="300">
+        <StackPanel Margin="20  4 4 4" Spacing="10">
+            <u:Divider Content="Genealogy" HorizontalContentAlignment="Left" Margin="0  10 0 0"/>
+            <u:Form LabelPosition="Top" LabelWidth="*">
+                <TextBox Classes="TextArea" TextWrapping="Wrap" Width="550"
+                         u:FormItem.Label="Parent Model"
+                         IsReadOnly="True"
+                         Text="{Binding ParentModel}"
+                />
+                <TextBox Classes="TextArea" TextWrapping="Wrap" Width="550"
+                         u:FormItem.Label="Family"
+                         IsReadOnly="True"
+                         Text="{Binding Family}"
+                />
+                <TextBox Classes="TextArea" TextWrapping="Wrap" Width="550"
+                         u:FormItem.Label="Families"
+                         IsReadOnly="True"
+                         Text="{Binding Families}"
+                />
+            </u:Form>
+            <u:Divider Content="Architecture" HorizontalContentAlignment="Left" Margin="0  10 0 0"/>
+            <u:Form LabelPosition="Top" LabelWidth="*">
+                <TextBox Classes="TextArea" TextWrapping="Wrap" Width="550"
+                         u:FormItem.Label="Format"
+                         IsReadOnly="True"
+                         Text="{Binding Format}"
+                />
+                <TextBox Classes="TextArea" TextWrapping="Wrap" Width="550"
+                         u:FormItem.Label="Parameter Size"
+                         IsReadOnly="True"
+                         Text="{Binding ParameterSize}"
+                />
+                <TextBox Classes="TextArea" TextWrapping="Wrap" Width="550"
+                         u:FormItem.Label="Quantization Level"
+                         IsReadOnly="True"
+                         Text="{Binding QuantizationLevel}"
+                />
+                <TextBox Classes="TextArea" TextWrapping="Wrap" Width="550"
+                         u:FormItem.Label="Capabilities"
+                         IsReadOnly="True"
+                         Text="{Binding Capabilities}"
+                />
+            </u:Form>
+            <u:Divider Content="Extra Info" HorizontalContentAlignment="Left" Margin="0  10 0 0"/>
+            <TextBox Classes="TextArea" Height="150" Width="550" HorizontalAlignment="Left"
+                     IsReadOnly="True"
+                     Text="{Binding ExtraInfo}"
+            />
+            <u:Divider Content="License" HorizontalContentAlignment="Left" Margin="0  10 0 0"/>
+            <TextBox Classes="TextArea" Height="150" Width="550" HorizontalAlignment="Left"
+                     IsReadOnly="True"
+                     Text="{Binding License}"
+            />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

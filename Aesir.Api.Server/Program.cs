@@ -62,7 +62,7 @@ public class Program
         
         foreach (var inferenceEngine in inferenceEngines)
         {
-            if (!configurationReadinessService.IsInferenceEngineReadyAtBoot(inferenceEngine.Id.Value))
+            if (!configurationReadinessService.IsInferenceEngineReadyAtBoot(inferenceEngine.Id!.Value))
             {
                 Console.Write($"Configuration for Inference Engine `{inferenceEngine.Name}` is not ready and being skipped for initialization");
                 continue;

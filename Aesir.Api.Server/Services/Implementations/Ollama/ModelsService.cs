@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
 using Aesir.Common.Models;
 using OllamaSharp;
+using OllamaSharp.Models;
 
 namespace Aesir.Api.Server.Services.Implementations.Ollama;
 
@@ -36,89 +37,84 @@ public class ModelsService(
         {
             var api = serviceProvider.GetKeyedService<OllamaApiClient>(serviceId) ??
                       throw new InvalidOperationException($"Not OllamaApiClient registered for {serviceId}");
-            
-            // get ollama models loaded
+
             var ollamaModels = (await api.ListLocalModelsAsync()).ToList();
+            var modelDetails = new Dictionary<string, ShowModelResponse>(StringComparer.Ordinal);
+            var throttler = new SemaphoreSlim(Environment.ProcessorCount);
+            var tasks = new List<Task>(ollamaModels.Count);
+            tasks.AddRange(ollamaModels.Select(model => FetchDetailsAsync(model.Name)));
+            await Task.WhenAll(tasks).ConfigureAwait(false);
 
-            // populate embedding models
-            if (category is null or ModelCategory.Embedding)
+            async Task FetchDetailsAsync(string name)
             {
-                var allowedModelNames =
-                    configuration.GetSection("Configuration:RestrictEmbeddingModelsTo").Get<string[]>() ?? [];
-
-                // restrict the models if the configuration requested it
-                var allowedModels = ollamaModels.ToList();
-                if (allowedModelNames.Length > 0)
-                    allowedModels = ollamaModels.Where(m => allowedModelNames.Contains(m.Name)).ToList();
-
-                allowedModels.ForEach(m =>
+                await throttler.WaitAsync().ConfigureAwait(false);
+                try
                 {
-                    models.Add(new AesirModelInfo
+                    var details = await api.ShowModelAsync(name).ConfigureAwait(false);
+                    lock (modelDetails)
                     {
-                        Id = m.Name,
-                        OwnedBy = "Aesir",
-                        CreatedAt = m.ModifiedAt,
-                        IsChatModel = false,
-                        IsEmbeddingModel = true,
-                        Details = AesirModelDetails.NewFrom(m.Details)
-                    });
-                });
+                        modelDetails[name] = details;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to get details for model {ModelName}", name);
+                }
+                finally
+                {
+                    throttler.Release();
+                }
+            }
+            
+            IEnumerable<TModel> Restrict<TModel>(IEnumerable<TModel> source, string configKey, Func<TModel, string> nameSelector)
+            {
+                var allowed = configuration.GetSection(configKey).Get<string[]>() ?? [];
+                return allowed.Length == 0 ? source : source.Where(m => allowed.Contains(nameSelector(m)));
             }
 
-            // populate chat models
-            if (category is null or ModelCategory.Chat)
+            AesirModelInfo MapToAesirModelInfo(Model m, ShowModelResponse? modelDetail, bool isChat, bool isEmbedding) => new()
             {
-                var allowedModelNames =
-                    configuration.GetSection("Configuration:RestrictChatModelsTo").Get<string[]>() ?? [];
-
-                // restrict the models if the configuration requested it
-                var allowedModels = ollamaModels.ToList();
-                if (allowedModelNames.Length > 0)
-                    allowedModels = ollamaModels.Where(m => allowedModelNames.Contains(m.Name)).ToList();
-
-                allowedModels.ForEach(m =>
+                Id = m.Name,
+                OwnedBy = "Aesir",
+                CreatedAt = m.ModifiedAt,
+                IsChatModel = isChat,
+                IsEmbeddingModel = isEmbedding,
+                Details = new AesirModelDetails
                 {
-                    models.Add(new AesirModelInfo
-                    {
-                        Id = m.Name,
-                        OwnedBy = "Aesir",
-                        CreatedAt = m.ModifiedAt,
-                        IsChatModel = true,
-                        IsEmbeddingModel = false,
-                        Details = AesirModelDetails.NewFrom(m.Details)
-                    });
-                });
-            }
+                    ParentModel = m.Details.ParentModel,
+                    Format = m.Details.Format,
+                    Family = m.Details.Family,
+                    Families = m.Details.Families,
+                    ParameterSize = m.Details.ParameterSize,
+                    QuantizationLevel = m.Details.QuantizationLevel,
+                    License = modelDetail?.License,
+                    Capabilities = modelDetail?.Capabilities,
+                    ExtraInfo = modelDetail?.Info.ExtraInfo
+                }
+            };
 
-            // populate vision models
-            if (category is null or ModelCategory.Vision)
+            var categories = new[]
             {
-                var allowedModelNames =
-                    configuration.GetSection("Configuration:RestrictVisionModelsTo").Get<string[]>() ?? [];
+                new { Category = ModelCategory.Embedding, ConfigKey = "Configuration:RestrictEmbeddingModelsTo", IsChat = false, IsEmbedding = true },
+                new { Category = ModelCategory.Chat,      ConfigKey = "Configuration:RestrictChatModelsTo",      IsChat = true,  IsEmbedding = false },
+                new { Category = ModelCategory.Vision,    ConfigKey = "Configuration:RestrictVisionModelsTo",    IsChat = false, IsEmbedding = false }
+            };
 
-                // restrict the models if the configuration requested it
-                var allowedModels = ollamaModels.ToList();
-                if (allowedModelNames.Length > 0)
-                    allowedModels = ollamaModels.Where(m => allowedModelNames.Contains(m.Name)).ToList();
-
-                allowedModels.ForEach(m =>
-                {
-                    models.Add(new AesirModelInfo
-                    {
-                        Id = m.Name,
-                        OwnedBy = "Aesir",
-                        CreatedAt = m.ModifiedAt,
-                        IsChatModel = false,
-                        IsEmbeddingModel = false,
-                        Details = AesirModelDetails.NewFrom(m.Details)
-                    });
-                });
+            foreach (var c in categories)
+            {
+                if (category is not null && category != c.Category) continue;
+                
+                var allowed = Restrict(ollamaModels, c.ConfigKey, m => m.Name);
+                models.AddRange(
+                    allowed.Select(m => 
+                        MapToAesirModelInfo(m, modelDetails.TryGetValue(m.Name, out var details) ? 
+                            details : null, c.IsChat, c.IsEmbedding)
+                ));
             }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error getting models from Ollama");
-
             throw;
         }
 
