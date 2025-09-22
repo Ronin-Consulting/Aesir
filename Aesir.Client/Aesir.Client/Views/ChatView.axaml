@@ -9,6 +9,7 @@
     xmlns:converters="clr-namespace:Aesir.Client.Converters"
     xmlns:sys="clr-namespace:System;assembly=System.Runtime"
     xmlns:common="clr-namespace:Aesir.Common.Models;assembly=Aesir.Common"
+    xmlns:u="https://irihi.tech/ursa"
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
     x:Class="Aesir.Client.Views.ChatView"
     x:DataType="vm:ChatViewViewModel">
@@ -184,8 +185,7 @@
                                         BorderThickness="1"
                                         Padding="10"
                                         DockPanel.Dock="Bottom"
-                                        VerticalAlignment="Bottom"
-                                >
+                                        VerticalAlignment="Bottom">
                                     <DockPanel MinHeight="75" VerticalSpacing="10">
                                         <controls:CustomTextBox DockPanel.Dock="Top" HorizontalAlignment="Stretch"
                                                                 Name="MessageAiTextBox"
@@ -207,20 +207,6 @@
                                             <controls:CustomTextBox.InnerLeftContent>
                                             </controls:CustomTextBox.InnerLeftContent>
                                             <controls:CustomTextBox.InnerRightContent>
-                                                <Button Classes="Small Primary"
-                                                        Padding="0"
-                                                        Margin="0"
-                                                        Theme="{DynamicResource BorderlessButton}"
-                                                        Command="{Binding ShowHandsFree}"
-                                                        ToolTip.Tip="Hands Free Mode"
-                                                        IsEnabled="{Binding IsSystemConfigurationComplete}">
-                                                    <Panel>
-                                                        <avalonia:MaterialIcon
-                                                            HorizontalAlignment="Center"
-                                                            VerticalAlignment="Center"
-                                                            Kind="Waveform" Width="20" Height="20" />
-                                                    </Panel>
-                                                </Button>
                                             </controls:CustomTextBox.InnerRightContent>
                                         </controls:CustomTextBox>
                                         <Panel DockPanel.Dock="Bottom" HorizontalAlignment="Stretch">
@@ -239,36 +225,63 @@
                                                     </Button.IsEnabled>
                                                     <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="34" />
                                                 </Button>
-                                                <Button Classes="Primary"
+                                                <ToggleButton Classes="Tertiary"
                                                         Margin="0,0,0,0"
-                                                        Theme="{DynamicResource OutlineButton}"
-                                                        IsEnabled="True"
-                                                        ToolTip.Tip="Toggle Web Search">
+                                                        ToolTip.Tip="Toggle Web Search"
+                                                        IsChecked="True"
+                                                >
                                                     <avalonia:MaterialIcon Kind="Web" Width="20" Height="34" />
-                                                </Button>
-                                                <Button Classes="Primary"
-                                                        Margin="0,0,0,0"
-                                                        Theme="{DynamicResource OutlineButton}"
-                                                        IsEnabled="False"
-                                                        ToolTip.Tip="Thinking Setting">
+                                                    <Button.IsEnabled>
+                                                        <MultiBinding
+                                                            Converter="{x:Static converters:BooleanAndConverter.Instance}">
+                                                            <Binding Path="IsSystemConfigurationComplete" />
+                                                        </MultiBinding>
+                                                    </Button.IsEnabled>
+                                                </ToggleButton>
+                                                <ToggleButton Classes="Tertiary"
+                                                              Margin="0,0,0,0"
+                                                              IsChecked="True"
+                                                              ToolTip.Tip="Thinking Setting">
                                                     <avalonia:MaterialIcon Kind="HeadThinkingOutline" Width="20"
                                                                            Height="34" />
+                                                    <Button.IsEnabled>
+                                                        <MultiBinding
+                                                            Converter="{x:Static converters:BooleanAndConverter.Instance}">
+                                                            <Binding Path="IsSystemConfigurationComplete" />
+                                                        </MultiBinding>
+                                                    </Button.IsEnabled>
+                                                </ToggleButton>
+                                            </StackPanel>
+                                            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
+                                                <Button Classes="Primary"
+                                                        Margin="0,0,0,0"
+                                                        Theme="{DynamicResource OutlineButton}"
+                                                        Command="{Binding ShowHandsFree}"
+                                                        ToolTip.Tip="Hands Free Mode"
+                                                        IsEnabled="{Binding IsSystemConfigurationComplete}">
+                                                    <Panel>
+                                                        <avalonia:MaterialIcon
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"
+                                                            Kind="Waveform" Width="20" Height="34" />
+                                                    </Panel>
+                                                </Button>
+                                                <u:Divider Orientation="Vertical" Height="34"  />
+                                                <Button Name="SendMessageButton"
+                                                        Margin="0,0,0,0"
+                                                        Theme="{DynamicResource OutlineButton}"
+                                                        Command="{Binding SendMessageCommand}"
+                                                        ToolTip.Tip="Send">
+                                                    <Button.IsEnabled>
+                                                        <MultiBinding
+                                                            Converter="{x:Static converters:BooleanAndConverter.Instance}">
+                                                            <Binding Path="IsSystemConfigurationComplete" />
+                                                            <Binding Path="HasChatMessage" />
+                                                        </MultiBinding>
+                                                    </Button.IsEnabled>
+                                                    <avalonia:MaterialIcon Kind="Send" Width="20" Height="34" />
                                                 </Button>
                                             </StackPanel>
-                                            <Button Name="SendMessageButton" HorizontalAlignment="Right"
-                                                    Margin="6,0,0,0"
-                                                    Theme="{DynamicResource OutlineButton}"
-                                                    Command="{Binding SendMessageCommand}"
-                                                    ToolTip.Tip="Send">
-                                                <Button.IsEnabled>
-                                                    <MultiBinding
-                                                        Converter="{x:Static converters:BooleanAndConverter.Instance}">
-                                                        <Binding Path="IsSystemConfigurationComplete" />
-                                                        <Binding Path="HasChatMessage" />
-                                                    </MultiBinding>
-                                                </Button.IsEnabled>
-                                                <avalonia:MaterialIcon Kind="Send" Width="20" Height="20" />
-                                            </Button>
                                         </Panel>
                                     </DockPanel>
                                 </Border>
