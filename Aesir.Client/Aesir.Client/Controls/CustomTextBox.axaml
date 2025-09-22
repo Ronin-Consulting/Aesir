@@ -6,5 +6,7 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Aesir.Client.Controls.CustomTextBox"
              >
-    <TextBox Name="InnerTextBox" AcceptsReturn="False" Text="{Binding $parent[controls:CustomTextBox].Text}"/>
+    <TextBox Name="InnerTextBox" AcceptsReturn="False" Text="{Binding $parent[controls:CustomTextBox].Text}" 
+             Theme="{StaticResource LooklessTextBox}"         
+    />
 </UserControl>
