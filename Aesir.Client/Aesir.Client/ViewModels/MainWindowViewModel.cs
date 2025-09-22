@@ -72,6 +72,7 @@ public partial class MainWindowViewModel : ObservableRecipient, IRecipient<Navig
         {
             NavigationMessage.ViewType.Chat => Ioc.Default.GetService<ChatViewViewModel>()!,
             NavigationMessage.ViewType.McpServers => Ioc.Default.GetService<McpServersViewViewModel>()!,
+            NavigationMessage.ViewType.Documents => Ioc.Default.GetService<DocumentsViewViewModel>()!,
             NavigationMessage.ViewType.Tools => Ioc.Default.GetService<ToolsViewViewModel>()!,
             NavigationMessage.ViewType.Agents => Ioc.Default.GetService<AgentsViewViewModel>()!,
             NavigationMessage.ViewType.InferenceEngines => Ioc.Default.GetService<InferenceEnginesViewViewModel>()!,

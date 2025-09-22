@@ -82,6 +82,13 @@
         <DependentUpon>GeneralSettingsView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\DocumentsView.axaml.cs">
+        <DependentUpon>DocumentsView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\DocumentView.axaml.cs">
+        <DependentUpon>DocumentView.axaml</DependentUpon>
+      </Compile>
       <Compile Update="Views\InputDialog.axaml.cs">
         <DependentUpon>InputDialog.axaml</DependentUpon>
         <SubType>Code</SubType>

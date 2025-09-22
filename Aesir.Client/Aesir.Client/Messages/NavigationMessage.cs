@@ -20,6 +20,11 @@ public class NavigationMessage
         McpServers,
 
         /// <summary>
+        /// Represents the "Documents" view
+        /// </summary>
+        Documents,
+
+        /// <summary>
         /// Represents the "Tools" view
         /// </summary>
         Tools,

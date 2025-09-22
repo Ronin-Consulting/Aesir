@@ -52,9 +52,9 @@
                                 <avalonia:MaterialIcon Kind="Engine" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Agents" Command="{Binding ShowAgents}">
+                        <MenuItem Header="MCP Servers" Command="{Binding ShowMcpServers}">
                             <MenuItem.Icon>
-                                <avalonia:MaterialIcon Kind="Robot" />
+                                <avalonia:MaterialIcon Kind="Dns" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="Tools" Command="{Binding ShowTools}">
@@ -62,9 +62,14 @@
                                 <avalonia:MaterialIcon Kind="Tools" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="MCP Servers" Command="{Binding ShowMcpServers}">
+                        <MenuItem Header="Agents" Command="{Binding ShowAgents}">
                             <MenuItem.Icon>
-                                <avalonia:MaterialIcon Kind="Dns" />
+                                <avalonia:MaterialIcon Kind="Robot" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Documents" Command="{Binding ShowDocuments}">
+                            <MenuItem.Icon>
+                                <avalonia:MaterialIcon Kind="FileDocument" />
                             </MenuItem.Icon>
                         </MenuItem>
                     </MenuFlyout>

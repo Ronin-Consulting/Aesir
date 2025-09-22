@@ -46,6 +46,30 @@ namespace Aesir.Api.Server.Controllers
         }
 
         /// <summary>
+        /// Retrieves a collection of chat session items for a specified file.
+        /// </summary>
+        /// <param name="fileName">The name of the file whose chat sessions are being requested.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a collection of <see cref="AesirChatSessionItem"/> representing the chat sessions.</returns>
+        [HttpGet("file/{fileName}")]
+        public async Task<IEnumerable<AesirChatSessionItem>> GetChatSessionsByFileAsync([FromRoute] string fileName)
+        {
+            var results = (await chatHistoryService.GetChatSessionsByFilenameAsync(fileName))
+                .Select(
+                    chatSession => new AesirChatSessionItem()
+                    {
+                        Id = chatSession.Id,
+                        Title = chatSession.Title,
+                        UpdatedAt = chatSession.UpdatedAt,
+                    }
+                ).ToList();
+
+            logger.LogDebug("Found {Count} chat sessions for file {fileName}", results.Count, fileName);
+            logger.LogDebug("Results = {Results}", JsonSerializer.Serialize(results));
+
+            return results;
+        }
+
+        /// <summary>
         /// Searches for chat sessions associated with the specified user ID that match the given search term.
         /// Returns a collection of lightweight chat session items containing basic metadata for listing purposes.
         /// </summary>

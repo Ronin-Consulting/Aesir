@@ -33,6 +33,16 @@ public class NavigationService : INavigationService
     }
 
     /// <summary>
+    /// Navigates the application to the Documents view.
+    /// Sends a <see cref="NavigationMessage"/> with the ViewType set to Documents
+    /// using the application's messaging system.
+    /// </summary>
+    public void NavigateToDocuments()
+    {
+        WeakReferenceMessenger.Default.Send(new NavigationMessage(NavigationMessage.ViewType.Documents));
+    }
+
+    /// <summary>
     /// Navigates the application to the Tools view.
     /// Sends a <see cref="NavigationMessage"/> with the ViewType set to Tools
     /// using the application's messaging system.

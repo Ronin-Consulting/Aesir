@@ -149,6 +149,17 @@ public class DocumentCollectionController(
     #region Conversation Files
 
     /// <summary>
+    /// Retrieves a list of files from all conversations.
+    /// </summary>
+    /// <param name="conversationId">The unique identifier of the conversation.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains the action result with the list of files.</returns>
+    [HttpGet("conversations/files")]
+    public async Task<IActionResult> GetConversationFilesAsync()
+    {
+        return await GetFilesAllFoldersAsync(FolderType.Conversation);
+    }
+
+    /// <summary>
     /// Uploads a file to the server and associates it with a specific conversation.
     /// The file must comply with the maximum file size and other constraints set by the system.
     /// </summary>
@@ -258,6 +269,26 @@ public class DocumentCollectionController(
         {
             EnableRangeProcessing = true
         };
+    }
+
+    /// <summary>
+    /// Retrieves a list of files from all folders.
+    /// </summary>
+    /// <param name="folderType">The type of folder, such as Global or Conversation.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains an HTTP response with the list of files or an error status if the retrieval fails.</returns>
+    private async Task<IActionResult> GetFilesAllFoldersAsync(FolderType folderType)
+    {
+        try
+        {
+            var files = await fileStorageService.GetFilesAsync();
+            return Ok(files);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving files for {FolderType}",
+                folderType.ToString().ToLowerInvariant());
+            return StatusCode(500, "An error occurred while retrieving files.");
+        }
     }
 
     /// <summary>

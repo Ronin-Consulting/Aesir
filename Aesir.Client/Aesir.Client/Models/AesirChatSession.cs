@@ -50,6 +50,8 @@ public class AesirChatSession : AesirChatSessionBase
         };
     }
 
+    public string UpdatedAtDisplay => UpdatedAt.ToString("g");
+
     /// <summary>
     /// Adds a new message to the current conversation if it is not already present.
     /// </summary>

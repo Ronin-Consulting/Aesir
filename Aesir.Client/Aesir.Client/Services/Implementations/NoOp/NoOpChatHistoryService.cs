@@ -13,6 +13,11 @@ public class NoOpChatHistoryService : IChatHistoryService
         return await Task.FromResult(new List<AesirChatSessionItem>());
     }
 
+    public async Task<IEnumerable<AesirChatSessionItem>?> GetChatSessionsByFileAsync(string fileName = "Unknown")
+    {
+        return await Task.FromResult(new List<AesirChatSessionItem>());
+    }
+
     public async Task<IEnumerable<AesirChatSessionItem>?> SearchChatSessionsAsync(string userId = "Unknown", string searchTerm = "")
     {
         return await Task.FromResult(new List<AesirChatSessionItem>());

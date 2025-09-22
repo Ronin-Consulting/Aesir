@@ -1,5 +1,9 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Aesir.Client.Models;
+using Aesir.Common.Models;
 using Avalonia.Platform.Storage;
 
 namespace Aesir.Client.Services;
@@ -10,6 +14,13 @@ namespace Aesir.Client.Services;
 /// </summary>
 public interface IDocumentCollectionService
 {
+    /// <summary>
+    /// Retrieves list of all files from the server.
+    /// </summary>
+    /// A task that represents the asynchronous operation. The task result contains a collection of <see cref="AesirDocument"/> objects.
+    /// <exception cref="Exception">Thrown if there is an error during the file retrieval process.</exception>
+    Task<IEnumerable<AesirDocument>> GetDocumentsAsync();
+    
     /// <summary>
     /// Retrieves the content of a specified file from the server as a stream.
     /// </summary>

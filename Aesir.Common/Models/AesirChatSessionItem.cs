@@ -30,4 +30,6 @@ public class AesirChatSessionItem
     /// </summary>
     [JsonPropertyName("updated_at")]
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
+    
+    public string UpdatedAtDisplay=> UpdatedAt.ToString("g");
 }

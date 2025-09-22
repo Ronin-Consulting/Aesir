@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Aesir.Client.Models;
 using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 
@@ -76,6 +77,11 @@ public class NoOpConfigurationService : IConfigurationService
     public async Task DeleteAgentAsync(Guid id)
     {
         await Task.CompletedTask;
+    }
+
+    public async Task<IEnumerable<AesirDocument>> GetDocumentsAsync()
+    {
+        return await Task.FromResult(new List<AesirDocument>());
     }
 
     public async Task<IEnumerable<AesirToolBase>> GetToolsAsync()

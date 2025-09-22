@@ -1,13 +1,13 @@
 using System;
+using System.Threading.Tasks;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Messaging;
-using System.Threading.Tasks;
 using Aesir.Common.FileTypes;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Material.Icons;
 
 namespace Aesir.Client.ViewModels;

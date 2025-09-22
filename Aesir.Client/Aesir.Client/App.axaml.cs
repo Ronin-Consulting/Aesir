@@ -125,6 +125,7 @@ public partial class App : Application
         AppServices.AddTransient<FileToUploadViewModel>();
         AppServices.AddTransient<SplashViewModel>();
         AppServices.AddTransient<McpServersViewViewModel>();
+        AppServices.AddTransient<DocumentsViewViewModel>();
         AppServices.AddTransient<ToolsViewViewModel>();
         AppServices.AddTransient<AgentsViewViewModel>();
         AppServices.AddTransient<InferenceEnginesViewViewModel>();

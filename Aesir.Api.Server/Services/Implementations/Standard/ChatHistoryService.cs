@@ -96,6 +96,38 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
     }
 
     /// <summary>
+    /// Asynchronously retrieves chat sessions for a specified file.
+    /// </summary>
+    /// <param name="fileName">The name of the file for which the chat sessions are being retrieved.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains a collection of
+    /// <see cref="Aesir.Api.Server.Models.AesirChatSession"/> objects corresponding to the chat sessions that contain the file.
+    /// </returns>
+    public async Task<IEnumerable<AesirChatSession>> GetChatSessionsByFilenameAsync(string fileName)
+    {
+        string sql = "select (REGEXP_MATCHES(file_name, '/([^/]+)/'))[1] as chat_id "+
+                     "from aesir.aesir_file_storage "+
+                     "where file_name LIKE CONCAT('%/', @fileName)";
+        var chatIds = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QueryAsync<string>(sql, new { fileName = fileName }));
+
+        if (chatIds.Any())
+        {
+            var list = string.Join("','", chatIds);
+
+            string sql2 = "SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title "+
+                "FROM aesir.aesir_chat_session "+
+                "WHERE conversation->>'Id' in ('"+list+"') "+
+                "ORDER BY updated_at DESC ";
+
+            return await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryAsync<AesirChatSession>(sql2, new { }));
+        }
+
+        return [];
+    }
+
+    /// <summary>
     /// Retrieves a collection of chat sessions for a given user within a specified date range.
     /// </summary>
     /// <param name="userId">The unique identifier of the user whose chat sessions are to be retrieved.</param>

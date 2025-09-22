@@ -1,0 +1,159 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:u="https://irihi.tech/ursa"
+    xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+    xmlns:dvm="clr-namespace:Aesir.Client.ViewModels.Design"
+    xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+    xmlns:models="clr-namespace:Aesir.Common.Models;assembly=Aesir.Common"
+    xmlns:avaloniaIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+    mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
+    x:Class="Aesir.Client.Views.DocumentView"
+    x:DataType="vm:DocumentViewViewModel">
+    
+    <Design.DataContext>    
+        <dvm:DesignDocumentViewViewModel />
+    </Design.DataContext>
+    
+    <Grid
+        MinWidth="400"
+        Margin="8"
+        RowDefinitions="Auto, *, Auto">
+        <!-- Header -->
+        <TextBlock
+            Grid.Row="0"
+            Margin="8"
+            FontSize="16"
+            FontWeight="600"
+            Text="Document Detail" />
+        
+        <!-- Form Body -->
+        <u:Form
+            Grid.Row="1"
+            Margin="8"
+            HorizontalAlignment="Stretch"
+            LabelPosition="Top">
+            <u:Form.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
+                </ItemsPanelTemplate>
+            </u:Form.ItemsPanel>
+            <u:FormItem 
+                Grid.Row="0" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="File Name" >
+                <TextBlock Text="{Binding FormModel.Name}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="1" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Mime Type" >
+                <TextBlock Text="{Binding FormModel.MimeType}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="2" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Size" >
+                <TextBlock Text="{Binding FormModel.Size}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="3" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Created" >
+                <TextBlock Text="{Binding FormModel.Created}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="4" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Last Modified" >
+                <TextBlock Text="{Binding FormModel.Modified}" />
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="5" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Chats" 
+                IsVisible="{Binding FormModel.HasChats}">
+                <ItemsControl ItemsSource="{Binding FormModel.Chats}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Title}" Margin="0,0,10,0"/>
+                                <TextBlock Text="{Binding UpdatedAtDisplay}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </u:FormItem>
+            <u:FormItem 
+                Grid.Row="6" 
+                Grid.Column="0"
+                Grid.ColumnSpan="3"
+                Label="Download/View">
+                <Button 
+                    Click="Button_OnClick"
+                    HorizontalAlignment="Left"
+                    Padding="0,3,0,3">
+                    <StackPanel
+                        Name="FileStackPanel"
+                        RelativePanel.AlignBottomWithPanel="True"
+                        RelativePanel.AlignTopWithPanel="True"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Stretch">
+                        <avaloniaIcons:MaterialIcon
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Kind="FileDocument"
+                            Width="40" Height="40" />
+                        <TextBlock Text="{Binding FormModel.Name}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Margin="0 0 0 0" 
+                                   TextTrimming="PrefixCharacterEllipsis"
+                                   Width="165"
+                        />
+                    </StackPanel>
+                </Button>
+            </u:FormItem>
+        </u:Form>
+        
+        
+        <!-- Buttons -->
+        <DockPanel
+            Grid.Row="2"
+            Margin="8">
+            <u:IconButton 
+                DockPanel.Dock="Left"
+                Classes="Danger"
+                Content="Delete"
+                IconPlacement="Left" 
+                Command="{Binding DeleteCommand}">
+                <u:IconButton.Icon>
+                    <avalonia:MaterialIcon Kind="Delete" Width="20" Height="20" />
+                </u:IconButton.Icon>
+            </u:IconButton>
+            <StackPanel
+                Orientation="Horizontal"
+                Spacing="8"
+                HorizontalAlignment="Right">
+                <u:IconButton 
+                    Classes="Tertiary"
+                    Content="Cancel"
+                    IconPlacement="Left" 
+                    Command="{Binding CancelCommand}">
+                    <u:IconButton.Icon>
+                        <avalonia:MaterialIcon Kind="Cancel" Width="20" Height="20" />
+                    </u:IconButton.Icon>
+                </u:IconButton>
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+    
+</UserControl>
