@@ -183,7 +183,7 @@ public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
 
     private void ExecuteDownloadCommand()
     {
-        WeakReferenceMessenger.Default.Send(new FileDownloadMessage()
+        WeakReferenceMessenger.Default.Send(new FileDownloadRequestMessage()
         {
             FileName = FormModel.Path
         });
