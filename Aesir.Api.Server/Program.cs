@@ -24,50 +24,41 @@ namespace Aesir.Api.Server;
 public class Program
 {
     [Experimental("SKEXP0070")]
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-
+        
+        var npgsqlDataSource = CreateNpgsqlDataSource(builder);
+        var dbContext = new PgDbContext(npgsqlDataSource);
         var configurationReadinessService = new ConfigurationReadinessService();
         
-        builder.Services.AddSingleton<IDbContext, PgDbContext>();
-        builder.Services.AddSingleton<IConfigurationReadinessService>(configurationReadinessService); // TODO this will be readonly through interface, we set values here
-        builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
-        
-        // Configure connection pooling with NpgsqlDataSource
-        builder.Services.AddSingleton<NpgsqlDataSource>(provider =>
+        // boot up a configuration service so we can use it now
+        using var loggerFactory = LoggerFactory.Create(loggingBuilder =>
         {
-            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
-                throw new InvalidOperationException("DefaultConnection connection string not configured");
-            
-            var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-            
-            // Configure connection pool parameters for optimal performance
-            dataSourceBuilder.ConnectionStringBuilder.MaxPoolSize = 100;
-            dataSourceBuilder.ConnectionStringBuilder.MinPoolSize = 10;
-            dataSourceBuilder.ConnectionStringBuilder.ConnectionIdleLifetime = 300; // 5 minutes
-            dataSourceBuilder.ConnectionStringBuilder.ConnectionPruningInterval = 10; // 10 seconds
-            dataSourceBuilder.ConnectionStringBuilder.CommandTimeout = 30; // 30 seconds
-            
-            return dataSourceBuilder.Build();
+            loggingBuilder.AddConfiguration(builder.Configuration.GetSection("Logging"));
+            loggingBuilder.AddConsole();
+            if (builder.Environment.IsDevelopment())
+            {
+                loggingBuilder.AddDebug();
+            }
         });
+        var configurationServiceLogger = loggerFactory.CreateLogger<ConfigurationService>();
+        var configurationService = new ConfigurationService(configurationServiceLogger, dbContext, builder.Configuration);
 
-        // Load configuration from database or fix up / check file configuration
-        NormalizeFileOrDatabaseConfiguration(builder, configurationReadinessService);
+        builder.Services.AddSingleton(npgsqlDataSource);
+        builder.Services.AddSingleton<IDbContext>(dbContext);
+        builder.Services.AddSingleton<IConfigurationService>(configurationService);
+        builder.Services.AddSingleton<IConfigurationReadinessService>(configurationReadinessService);
+
+        // Check database configuration or fix up and check file configuration, prior to being used by ConfigurationService
+        await PrepareConfigurationForUse(builder, configurationService, configurationReadinessService);
         
         #region AI Backend Clients
-        
-        // load general settings (from file or db) - must have some of this filled out to be fully ready
-        var generalSettings = builder.Configuration.GetSection("GeneralSettings")
-            .Get<AesirGeneralSettings>() ?? new AesirGeneralSettings();
-            
-        // load inference engines (from file or db) - must have at least one to be fully ready
-        var inferenceEngines = builder.Configuration.GetSection("InferenceEngines")
-            .Get<AesirInferenceEngine[]>()?.Where(x => !x.IsNull()).ToArray() ?? [];
-            
-        // load agents (from file or db)
-        var agents = builder.Configuration.GetSection("Agents")
-            .Get<AesirAgent[]>()?.Where(x => !x.IsNull()).ToArray() ?? [];
+
+        // load entites from file config or db config
+        var inferenceEngines = (await configurationService.GetInferenceEnginesAsync()).ToList();
+        var generalSettings = await configurationService.GetGeneralSettingsAsync();
+        var agents = (await configurationService.GetAgentsAsync()).ToList();
         
         foreach (var inferenceEngine in inferenceEngines)
         {
@@ -239,7 +230,7 @@ public class Program
         builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
         builder.Services.AddSingleton<IFileStorageService, FileStorageService>();
 
-        builder.Services.SetupSemanticKernel(builder.Configuration, configurationReadinessService);
+        await builder.Services.SetupSemanticKernelAsync(configurationService, configurationReadinessService);
 
         RegisterMigratorServices(builder, builder.Services);
 
@@ -290,6 +281,46 @@ public class Program
         app.Run();
     }
 
+    /// <summary>
+    /// Creates an <see cref="NpgsqlDataSource"/> configured with a connection string from the application configuration
+    /// and optimized connection pool settings for performance.
+    /// </summary>
+    /// <param name="builder">
+    /// The <see cref="WebApplicationBuilder"/> containing the configuration settings, including the connection string.
+    /// </param>
+    /// <returns>
+    /// An instance of <see cref="NpgsqlDataSource"/> with the configured connection string and pooling options.
+    /// </returns>
+    private static NpgsqlDataSource CreateNpgsqlDataSource(WebApplicationBuilder builder)
+    {
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
+                               throw new InvalidOperationException("DefaultConnection connection string not configured");
+            
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+            
+        // Configure connection pool parameters for optimal performance
+        dataSourceBuilder.ConnectionStringBuilder.MaxPoolSize = 100;
+        dataSourceBuilder.ConnectionStringBuilder.MinPoolSize = 10;
+        dataSourceBuilder.ConnectionStringBuilder.ConnectionIdleLifetime = 300; // 5 minutes
+        dataSourceBuilder.ConnectionStringBuilder.ConnectionPruningInterval = 10; // 10 seconds
+        dataSourceBuilder.ConnectionStringBuilder.CommandTimeout = 30; // 30 seconds
+            
+        return dataSourceBuilder.Build();
+    }
+
+    /// <summary>
+    /// Registers services required for database migrations, including FluentMigrator core,
+    /// PostgreSQL runner configuration, and logging services.
+    /// </summary>
+    /// <param name="builder">
+    /// The <see cref="WebApplicationBuilder"/> instance containing configuration and application setup data.
+    /// </param>
+    /// <param name="services">
+    /// The service collection to which migration-related services will be added.
+    /// </param>
+    /// <returns>
+    /// The modified <see cref="IServiceCollection"/> containing the registered migration services.
+    /// </returns>
     private static IServiceCollection RegisterMigratorServices(WebApplicationBuilder builder, IServiceCollection services)
     {
         services
@@ -305,159 +336,33 @@ public class Program
     }
 
     /// <summary>
-    /// Configures the application's settings by either:
-    /// - reading the database configuration and writing it to the application settings or;
-    /// - reading the file-based configuration and creating any missing ids in the application settings.
+    /// Prepares the application configuration for use by ensuring the database is ready when in database mode
+    /// or by validating and preparing file-based configuration when not in database mode.
     /// </summary>
     /// <param name="builder">
-    /// The <see cref="WebApplicationBuilder"/> instance used to configure the web application,
-    /// including services, logging, and configuration settings.
+    /// The <see cref="WebApplicationBuilder"/> instance used to configure the application.
     /// </param>
-    /// <param name="configurationReadinessService">instance used to record configuration readiness when in
-    /// database configuration mode</param>
-    private static void NormalizeFileOrDatabaseConfiguration(WebApplicationBuilder builder,
-        ConfigurationReadinessService configurationReadinessService)
+    /// <param name="configurationService">
+    /// The service responsible for handling application configuration and its preparation.
+    /// </param>
+    /// <param name="configurationReadinessService">
+    /// The service responsible for determining the readiness of the configuration and providing necessary operations for preparation.
+    /// </param>
+    private static async Task PrepareConfigurationForUse(WebApplicationBuilder builder, 
+        ConfigurationService configurationService, ConfigurationReadinessService configurationReadinessService)
     {
-        // Read the configuration source setting from the default file-based configuration
-        var useDbConfig = builder.Configuration.GetValue<bool>("Configuration:LoadFromDatabase", false);
-
-        if (useDbConfig)
-        {   
-            // read database entities into configuration, check for full system boot readiness ...
-            
+        if (configurationService.DatabaseMode)
+        {
             // Ensure database and tables exist before trying to load config
             EnsureDatabaseMigrations(builder);
             
-            // create an initial scope so we can use the database loading
-            using var tempServiceProvider = builder.Services.BuildServiceProvider();
-            using var scope = tempServiceProvider.CreateScope();
-            var configurationService = scope.ServiceProvider.GetRequiredService<IConfigurationService>();
-            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-            try
-            {   
-                // Load our application-specific config sections from database
-                var dbConfig = LoadConfigFromDatabaseAsync(configurationService,
-                        configurationReadinessService).GetAwaiter().GetResult();
-                
-                // Clear sections we will populate from database so we don't end up with file values leaked in
-                var sectionToReplace = new string[]
-                {
-                    "GeneralSettings", 
-                    "InferenceEngines", 
-                    "Agents", 
-                    "Tools", 
-                    "McpServers"
-                };
-                var keysToRemove = builder.Configuration.AsEnumerable()
-                    .Where(kvp => kvp.Key != null && sectionToReplace.Any(section => 
-                        kvp.Key.StartsWith($"{section}:", StringComparison.OrdinalIgnoreCase) || 
-                        kvp.Key.Equals(section, StringComparison.OrdinalIgnoreCase)))
-                    .Select(kvp => kvp.Key)
-                    .ToList();
-                foreach (var key in keysToRemove)
-                    builder.Configuration[key] = null;
-                
-                // now populate sections from the database loaded values
-                foreach (var kvp in dbConfig)
-                    builder.Configuration[kvp.Key] = kvp.Value;
-        
-                logger.LogInformation("Successfully loaded application configuration from database");
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to load configuration from database, using file configuration");
-            }
+            // Check database configuration for "fully ready" vs booting into "setup only" state
+            await configurationService.PrepareDatabaseConfigurationAsync(configurationReadinessService);
         }
         else
         {
-            // validate settings and add/fix up ids ...
-            
-            // give each inference engine an Id
-            var inferenceEngines = builder.Configuration.GetSection("InferenceEngines")
-                .Get<AesirInferenceEngine[]>() ?? [];
-            if (inferenceEngines.Length == 0)
-                throw new InvalidOperationException("InferenceEngines configuration is missing or empty");
-            for (var i = 0; i < inferenceEngines.Length; i++)
-            {
-                var inferenceEngine = inferenceEngines[i];
-                
-                // this logic assumes we are given the inference engines in order of their idx
-                inferenceEngine.Id = Guid.NewGuid();
-                builder.Configuration[$"InferenceEngines:{i}:Id"] = inferenceEngine.Id.ToString();
-            }
-
-            // update the rag embedding inference engine id
-            var generalSettings = builder.Configuration.GetSection("GeneralSettings")
-                .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
-            var ragEmbeddingInferenceEngineName = generalSettings["RagEmbeddingInferenceEngineName"] ??
-                                         throw new InvalidOperationException("RagEmbeddingInferenceEngineName not configured");
-            var ragEmbeddingInferenceEngine = inferenceEngines.FirstOrDefault(ie => ie.Name == ragEmbeddingInferenceEngineName) ?? 
-                                                  throw new InvalidOperationException("RagEmbeddingInferenceEngineName does not match a configured Inference Engine");
-            builder.Configuration[$"GeneralSettings:RagEmbeddingInferenceEngineId"] = ragEmbeddingInferenceEngine?.Id?.ToString() ?? null;
-            
-            // update the rag vision inference engine id
-            var ragVisionInferenceEngineName = generalSettings["RagVisionInferenceEngineName"] ??
-                                         throw new InvalidOperationException("RagVisionInferenceEngineName not configured");
-            var ragVisionInferenceEngine = inferenceEngines.FirstOrDefault(ie => ie.Name == ragVisionInferenceEngineName) ?? 
-                                     throw new InvalidOperationException("RagVisionInferenceEngineName does not match a configured Inference Engine");
-            builder.Configuration[$"GeneralSettings:RagVisionInferenceEngineId"] = ragVisionInferenceEngine?.Id?.ToString() ?? null;
-            
-            // give each agent an id
-            var agents = builder.Configuration.GetSection("Agents")
-                .Get<AesirAgent[]>() ?? [];
-            if (inferenceEngines.Length == 0)
-                throw new InvalidOperationException("Agents configuration is missing or empty");
-            for (var i = 0; i < agents.Length; i++)
-            {
-                var agent = agents[i];
-                
-                // this logic assumes we are given the agents in order of their idx
-                agent.Id = Guid.NewGuid();
-                builder.Configuration[$"Agents:{i}:Id"] = agent.Id.ToString();
-                
-                // determine chat inference engine id
-                var chatInferenceEngineName = builder.Configuration[$"Agents:{i}:ChatInferenceEngineName"] ??
-                                             throw new InvalidOperationException("ChatInferenceEngineName not configured");
-                var chatInferenceEngineId = inferenceEngines.FirstOrDefault(ie => ie.Name == chatInferenceEngineName)?.Id ?? 
-                                            throw new InvalidOperationException("ChatInferenceEngineName does not match a configured Inference Engine");
-                builder.Configuration[$"Agents:{i}:ChatInferenceEngineId"] = chatInferenceEngineId.ToString();
-            }
-            
-            // give each mcp server an id
-            var mcpServers = builder.Configuration.GetSection("McpServers")
-                .Get<AesirMcpServer[]>() ?? [];
-            for (var i = 0; i < mcpServers.Length; i++)
-            {
-                var mcpServer = mcpServers[i];
-                
-                // this logic assumes we are given the agents in order of their idx
-                mcpServer.Id = Guid.NewGuid();
-                builder.Configuration[$"McpServers:{i}:Id"] = mcpServer.Id.ToString();
-            }
-            
-            // give each tool an id
-            var tools = builder.Configuration.GetSection("Tools")
-                .Get<AesirTool[]>() ?? [];
-            for (var i = 0; i < tools.Length; i++)
-            {
-                var tool = tools[i];
-                
-                // this logic assumes we are given the agents in order of their idx
-                tool.Id = Guid.NewGuid();
-                builder.Configuration[$"Tools:{i}:Id"] = tool.Id.ToString();
-                
-                // determine mcp server id
-                if (tool.Type == ToolType.McpServer)
-                {
-                    var mcpServerName = builder.Configuration[$"Tools:{i}:McpServerName"] ??
-                                        throw new InvalidOperationException("McpServerName not configured");
-                    var mcpServerId = mcpServers.FirstOrDefault(ie => ie.Name == mcpServerName)?.Id ??
-                                      throw new InvalidOperationException(
-                                          "McpServerName does not match a configured MCP Server");
-                    builder.Configuration[$"Tools:{i}:McpServerId"] = mcpServerId.ToString();
-                }
-            }
+            // Validate settings and add/fix up ids ...
+            configurationService.PrepareFileConfigurationAsync();
         }
     }
 
@@ -493,120 +398,8 @@ public class Program
             throw; // Re-throw to prevent starting with potentially missing tables
         }
     }
-    
-    private static async Task<Dictionary<string, string?>> LoadConfigFromDatabaseAsync(
-        IConfigurationService configurationService, ConfigurationReadinessService configurationReadinessService)
-    {   
-        // Instead of all this, we should simply boot up a limited IoC having the ConfigurationService when
-        // needed in Program and ServiceCollectionExtensions. At that point this entire method is no longer needed
-        // and everyone would only ever use ConfigurationService.
-        
-        var config = new Dictionary<string, string?>();
 
-        var generalSettingsTask = configurationService.GetGeneralSettingsAsync();
-        var inferenceEnginesTask = configurationService.GetInferenceEnginesAsync();
-        var agentsTask = configurationService.GetAgentsAsync();
-        var toolsTask = configurationService.GetToolsAsync();
-        var mcpServersTask = configurationService.GetMcpServersAsync();
-        await Task.WhenAll(inferenceEnginesTask, agentsTask, toolsTask, mcpServersTask);
-
-        var generalSettings = await generalSettingsTask;
-        var inferenceEnginesEnum = await inferenceEnginesTask;
-        var agents = await agentsTask;
-        var tools = await toolsTask;
-        var mcpServers = await mcpServersTask;
-        
-        var inferenceEngines = inferenceEnginesEnum.ToArray();
-
-        // Check database configuration for "fully ready" vs booting into "setup only" state
-        CheckDatabaseConfigurationBootReadiness(configurationReadinessService, generalSettings, inferenceEngines);
-
-        // load general settings
-        var aesirInferenceEngines = inferenceEngines;
-        config["GeneralSettings:RagEmbeddingInferenceEngineId"] = generalSettings.RagEmbeddingInferenceEngineId?.ToString();
-        config["GeneralSettings:RagEmbeddingInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == generalSettings.RagEmbeddingInferenceEngineId)?.Name;
-        config["GeneralSettings:RagEmbeddingModel"] = generalSettings.RagEmbeddingModel;
-        config["GeneralSettings:RagVisionInferenceEngineId"] = generalSettings.RagVisionInferenceEngineId?.ToString();
-        config["GeneralSettings:RagVisionInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == generalSettings.RagVisionInferenceEngineId)?.Name;
-        config["GeneralSettings:RagVisionModel"] = generalSettings.RagVisionModel;
-        config["GeneralSettings:TtsModelPath"] = generalSettings.TtsModelPath;
-        config["GeneralSettings:SttModelPath"] = generalSettings.SttModelPath;
-        config["GeneralSettings:VadModelPath"] = generalSettings.VadModelPath;
-            
-        // load inference engines
-        for (var idx = 0; idx < aesirInferenceEngines.Length; idx++)
-        {
-            var inferenceEngine = aesirInferenceEngines[idx];
-            config[$"InferenceEngines:{idx}:Id"] = inferenceEngine.Id.ToString();
-            config[$"InferenceEngines:{idx}:Name"] = inferenceEngine.Name;
-            config[$"InferenceEngines:{idx}:Description"] = inferenceEngine.Description ?? "";
-            config[$"InferenceEngines:{idx}:Type"] = inferenceEngine.Type!.ToString();
-
-            foreach (var entry in inferenceEngine.Configuration)
-                config[$"InferenceEngines:{idx}:Configuration:{entry.Key}"] = entry.Value;
-        }
-        
-        // load agents
-        var aesirAgents = agents.ToArray();
-        for (var idx = 0; idx < aesirAgents.Length; idx++)
-        {
-            var agent = aesirAgents[idx];
-            config[$"Agents:{idx}:Id"] = agent.Id.ToString();
-            config[$"Agents:{idx}:Name"] = agent.Name;
-            config[$"Agents:{idx}:Description"] = agent.Description ?? "";
-            config[$"Agents:{idx}:ChatInferenceEngineId"] = agent.ChatInferenceEngineId.ToString();
-            config[$"Agents:{idx}:ChatInferenceEngineName"] = aesirInferenceEngines.FirstOrDefault(ie => ie.Id == agent.ChatInferenceEngineId)?.Name;;
-            config[$"Agents:{idx}:ChatModel"] = agent.ChatModel;
-            config[$"Agents:{idx}:ChatMaxTokens"] = agent.ChatMaxTokens?.ToString() ?? "";
-            config[$"Agents:{idx}:ChatTemperature"] = agent.ChatTemperature?.ToString() ?? "";
-            config[$"Agents:{idx}:ChatTopP"] = agent.ChatTopP?.ToString() ?? "";
-            config[$"Agents:{idx}:ChatPromptPersona"] = agent.ChatPromptPersona.ToString();
-            config[$"Agents:{idx}:ChatCustomPromptContent"] = agent.ChatCustomPromptContent;
-        }
-        
-        // load mcp servers
-        var aesirMcpServers = mcpServers.ToArray();
-        for (var idx = 0; idx < aesirMcpServers.Length; idx++)
-        {
-            var mcpServer = aesirMcpServers[idx];
-            config[$"McpServers:{idx}:Id"] = mcpServer.Id.ToString();
-            config[$"McpServers:{idx}:Name"] = mcpServer.Name;
-            config[$"McpServers:{idx}:Description"] = mcpServer.Description ?? "";
-            config[$"McpServers:{idx}:Command"] = mcpServer.Command;
-            config[$"McpServers:{idx}:Location"] = mcpServer.Location.ToString();
-            config[$"McpServers:{idx}:Url"] = mcpServer.Url;
-
-            for (var idx2 = 0; idx2 < mcpServer.Arguments.Count; idx2++)
-            {
-                var arg = mcpServer.Arguments[idx2];
-                config[$"McpServers:{idx}:Arguments:{idx2}"] = arg;
-            }
-
-            foreach (var entry in mcpServer.HttpHeaders)
-                config[$"McpServers:{idx}:HttpHeaders:{entry.Key}"] = entry.Value;
-
-            foreach (var entry in mcpServer.EnvironmentVariables)
-                config[$"McpServers:{idx}:EnvironmentVariables:{entry.Key}"] = entry.Value;
-        }
-        
-        // load tools
-        var aesirTools = tools.ToArray();
-        for (var idx = 0; idx < aesirTools.Length; idx++)
-        {
-            var tool = aesirTools[idx];
-            config[$"Tools:{idx}:Id"] = tool.Id.ToString();
-            config[$"Tools:{idx}:Name"] = tool.Name;
-            config[$"Tools:{idx}:Description"] = tool.Description ?? "";
-            config[$"Tools:{idx}:Type"] = tool.Type.ToString();
-            config[$"Tools:{idx}:McpServerId"] = tool.McpServerId.ToString();
-            config[$"Tools:{idx}:McpServerName"] = aesirMcpServers.FirstOrDefault(ms => ms.Id == tool.McpServerId)?.Name;;
-            config[$"Tools:{idx}:McpServerTool"] = tool.McpServerTool;
-        }
-        
-        return config;
-    }
-
-    private static void RegisterModelUnload(WebApplication app, AesirGeneralSettings generalSettings, AesirAgent[] agents)
+    private static void RegisterModelUnload(WebApplication app, AesirGeneralSettings generalSettings, IList<AesirAgent> agents)
     {
         var appLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
         var logger = app.Services.GetRequiredService<ILogger<Program>>();
@@ -663,46 +456,5 @@ public class Program
                 ragVisionModelsService.UnloadModelsAsync([generalSettings.RagVisionModel]).Wait();
             });
         }
-    }
-
-    private static void CheckDatabaseConfigurationBootReadiness(ConfigurationReadinessService configurationReadinessService, 
-        AesirGeneralSettings generalSettings, AesirInferenceEngine[] inferenceEngines)
-    {
-        if (inferenceEngines.Length == 0)
-            configurationReadinessService.ReportMissingConfiguration("No Inference Engines configured");
-
-        foreach (var inferenceEngine in inferenceEngines)
-        {
-            if (inferenceEngine.Type == InferenceEngineType.OpenAICompatible)
-            {
-                if (inferenceEngine.Configuration["ApiKey"] == null)
-                {
-                    configurationReadinessService.ReportMissingConfiguration(
-                        $"API Key missing for Inference Engine {inferenceEngine.Name}");
-
-                    configurationReadinessService.MarkInferenceEngineNotReadyAtBoot(inferenceEngine.Id.Value);
-                }
-            }
-
-            if (inferenceEngine.Configuration["Endpoint"] == null)
-            {
-                configurationReadinessService.ReportMissingConfiguration(
-                    $"Endpoint missing for Inference Engine {inferenceEngine.Name}");
-                
-                configurationReadinessService.MarkInferenceEngineNotReadyAtBoot(inferenceEngine.Id.Value);
-            }
-        }
-        
-        if (generalSettings.RagEmbeddingInferenceEngineId == null)
-            configurationReadinessService.ReportMissingConfiguration("RAG embedding inference engine configuration is not yet complete");
-        
-        if (generalSettings.RagEmbeddingModel == null)
-            configurationReadinessService.ReportMissingConfiguration("RAG embedding model configuration is not yet complete");
-        
-        if (generalSettings.RagVisionInferenceEngineId == null)
-            configurationReadinessService.ReportMissingConfiguration("RAG vision inference engine configuration is not yet complete");
-        
-        if (generalSettings.RagVisionModel == null)
-            configurationReadinessService.ReportMissingConfiguration("RAG vision model configuration is not yet complete");
     }
 }
