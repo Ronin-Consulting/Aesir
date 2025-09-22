@@ -1,5 +1,6 @@
 using Aesir.Api.Server.Data;
 using Aesir.Api.Server.Models;
+using Aesir.Common.Models;
 using Dapper;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
@@ -31,6 +32,168 @@ public class ConfigurationService(
     /// Indicates if the service is in database mode or file mode
     /// </summary>
     public bool DatabaseMode => configuration.GetValue("Configuration:LoadFromDatabase", false);
+
+    /// <summary>
+    /// Prepares the database configuration by verifying the readiness and completeness
+    /// of necessary settings required for application functionality. Should only be called once during startup.
+    /// </summary>
+    /// <param name="configurationReadinessService">
+    /// Service responsible for reporting missing or incomplete configuration details.
+    /// </param>
+    /// <returns>
+    /// A task that represents the asynchronous preparation of the database configuration.
+    /// </returns>
+    public async Task PrepareDatabaseConfigurationAsync(
+        ConfigurationReadinessService configurationReadinessService)
+    {
+        if (!DatabaseMode)
+            throw new InvalidOperationException("System is not in database configuration mode");
+        
+        var inferenceEngines = (await GetInferenceEnginesAsync()).ToArray() ?? [];
+
+        if (inferenceEngines.Length == 0)
+            configurationReadinessService.ReportMissingConfiguration("No Inference Engines configured");
+
+        foreach (var inferenceEngine in inferenceEngines)
+        {
+            if (inferenceEngine.Type == InferenceEngineType.OpenAICompatible)
+            {
+                if (inferenceEngine.Configuration["ApiKey"] == null)
+                {
+                    configurationReadinessService.ReportMissingConfiguration(
+                        $"API Key missing for Inference Engine {inferenceEngine.Name}");
+
+                    configurationReadinessService.MarkInferenceEngineNotReadyAtBoot(inferenceEngine.Id.Value);
+                }
+            }
+
+            if (inferenceEngine.Configuration["Endpoint"] == null)
+            {
+                configurationReadinessService.ReportMissingConfiguration(
+                    $"Endpoint missing for Inference Engine {inferenceEngine.Name}");
+                
+                configurationReadinessService.MarkInferenceEngineNotReadyAtBoot(inferenceEngine.Id.Value);
+            }
+        }
+        
+        var generalSettings = await GetGeneralSettingsAsync();
+        
+        if (generalSettings.RagEmbeddingInferenceEngineId == null)
+            configurationReadinessService.ReportMissingConfiguration("RAG embedding inference engine configuration is not yet complete");
+        
+        if (generalSettings.RagEmbeddingModel == null)
+            configurationReadinessService.ReportMissingConfiguration("RAG embedding model configuration is not yet complete");
+        
+        if (generalSettings.RagVisionInferenceEngineId == null)
+            configurationReadinessService.ReportMissingConfiguration("RAG vision inference engine configuration is not yet complete");
+        
+        if (generalSettings.RagVisionModel == null)
+            configurationReadinessService.ReportMissingConfiguration("RAG vision model configuration is not yet complete");
+    }
+
+    /// <summary>
+    /// Prepares and validates file-based configuration settings by assigning unique
+    /// identifiers to various components such as inference engines, agents, servers, and tools.
+    /// </summary>
+    /// <remarks>
+    /// This method ensures the system's configuration is properly structured and each component
+    /// is assigned a unique identifier. It throws an exception if any required configuration
+    /// data is missing or if the system is not in file configuration mode. Additionally, it
+    /// updates relevant sections in the configuration to reflect the changes.
+    /// </remarks>
+    public void PrepareFileConfigurationAsync()
+    {
+        if (DatabaseMode)
+            throw new InvalidOperationException("System is not in file configuration mode");
+        
+        // validate settings and add/fix up ids ...
+        
+        // give each inference engine an Id
+        var inferenceEngines = configuration.GetSection("InferenceEngines")
+            .Get<AesirInferenceEngine[]>() ?? [];
+        if (inferenceEngines.Length == 0)
+            throw new InvalidOperationException("InferenceEngines configuration is missing or empty");
+        for (var i = 0; i < inferenceEngines.Length; i++)
+        {
+            var inferenceEngine = inferenceEngines[i];
+            
+            // this logic assumes we are given the inference engines in order of their idx
+            inferenceEngine.Id = Guid.NewGuid();
+            configuration[$"InferenceEngines:{i}:Id"] = inferenceEngine.Id.ToString();
+        }
+
+        // update the rag embedding inference engine id
+        var generalSettings = configuration.GetSection("GeneralSettings")
+            .Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
+        var ragEmbeddingInferenceEngineName = generalSettings["RagEmbeddingInferenceEngineName"] ??
+                                     throw new InvalidOperationException("RagEmbeddingInferenceEngineName not configured");
+        var ragEmbeddingInferenceEngine = inferenceEngines.FirstOrDefault(ie => ie.Name == ragEmbeddingInferenceEngineName) ?? 
+                                              throw new InvalidOperationException("RagEmbeddingInferenceEngineName does not match a configured Inference Engine");
+        configuration[$"GeneralSettings:RagEmbeddingInferenceEngineId"] = ragEmbeddingInferenceEngine?.Id?.ToString() ?? null;
+        
+        // update the rag vision inference engine id
+        var ragVisionInferenceEngineName = generalSettings["RagVisionInferenceEngineName"] ??
+                                     throw new InvalidOperationException("RagVisionInferenceEngineName not configured");
+        var ragVisionInferenceEngine = inferenceEngines.FirstOrDefault(ie => ie.Name == ragVisionInferenceEngineName) ?? 
+                                 throw new InvalidOperationException("RagVisionInferenceEngineName does not match a configured Inference Engine");
+        configuration[$"GeneralSettings:RagVisionInferenceEngineId"] = ragVisionInferenceEngine?.Id?.ToString() ?? null;
+        
+        // give each agent an id
+        var agents = configuration.GetSection("Agents")
+            .Get<AesirAgent[]>() ?? [];
+        if (inferenceEngines.Length == 0)
+            throw new InvalidOperationException("Agents configuration is missing or empty");
+        for (var i = 0; i < agents.Length; i++)
+        {
+            var agent = agents[i];
+            
+            // this logic assumes we are given the agents in order of their idx
+            agent.Id = Guid.NewGuid();
+            configuration[$"Agents:{i}:Id"] = agent.Id.ToString();
+            
+            // determine chat inference engine id
+            var chatInferenceEngineName = configuration[$"Agents:{i}:ChatInferenceEngineName"] ??
+                                         throw new InvalidOperationException("ChatInferenceEngineName not configured");
+            var chatInferenceEngineId = inferenceEngines.FirstOrDefault(ie => ie.Name == chatInferenceEngineName)?.Id ?? 
+                                        throw new InvalidOperationException("ChatInferenceEngineName does not match a configured Inference Engine");
+            configuration[$"Agents:{i}:ChatInferenceEngineId"] = chatInferenceEngineId.ToString();
+        }
+        
+        // give each mcp server an id
+        var mcpServers = configuration.GetSection("McpServers")
+            .Get<AesirMcpServer[]>() ?? [];
+        for (var i = 0; i < mcpServers.Length; i++)
+        {
+            var mcpServer = mcpServers[i];
+            
+            // this logic assumes we are given the agents in order of their idx
+            mcpServer.Id = Guid.NewGuid();
+            configuration[$"McpServers:{i}:Id"] = mcpServer.Id.ToString();
+        }
+        
+        // give each tool an id
+        var tools = configuration.GetSection("Tools")
+            .Get<AesirTool[]>() ?? [];
+        for (var i = 0; i < tools.Length; i++)
+        {
+            var tool = tools[i];
+            
+            // this logic assumes we are given the agents in order of their idx
+            tool.Id = Guid.NewGuid();
+            configuration[$"Tools:{i}:Id"] = tool.Id.ToString();
+            
+            // determine mcp server id
+            if (tool.Type == ToolType.McpServer)
+            {
+                var mcpServerName = configuration[$"Tools:{i}:McpServerName"] ??
+                                    throw new InvalidOperationException("McpServerName not configured");
+                var mcpServerId = mcpServers.FirstOrDefault(ie => ie.Name == mcpServerName)?.Id ??
+                                  throw new InvalidOperationException(
+                                      "McpServerName does not match a configured MCP Server");
+                configuration[$"Tools:{i}:McpServerId"] = mcpServerId.ToString();
+            }
+        }
+    }
     
     /// <summary>
     /// Validates that the application is running in database mode.

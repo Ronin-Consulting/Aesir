@@ -23,11 +23,12 @@ public static class ServiceCollectionExtensions
     /// Configures Semantic Kernel services including chat completions, embeddings, vector stores, and document collections.
     /// </summary>
     /// <param name="services">The service collection to configure.</param>
-    /// <param name="configuration">The application configuration.</param>
+    /// <param name="configurationService">The service for configuration.</param>
+    /// <param name="configurationReadinessService">The service for configuration readiness.</param>
     /// <returns>The service collection for method chaining.</returns>
     [Experimental("SKEXP0070")]
-    public static IServiceCollection SetupSemanticKernel(this IServiceCollection services, IConfiguration configuration,
-        ConfigurationReadinessService configurationReadinessService)
+    public static async Task<IServiceCollection> SetupSemanticKernelAsync(this IServiceCollection services, 
+        IConfigurationService configurationService, ConfigurationReadinessService configurationReadinessService)
     {
         // registering any of these things is pointless if we are not fully ready with inference engines and embedding
         // setup, and causes more weirdo dependency errors
@@ -35,8 +36,7 @@ public static class ServiceCollectionExtensions
             return services;
         
         // load general settings (from file or db)
-        var generalSettings = configuration.GetSection("GeneralSettings")
-            .Get<AesirGeneralSettings>() ?? new AesirGeneralSettings();
+        var generalSettings = await configurationService.GetGeneralSettingsAsync();
         var ragEmbeddingInferenceEngineId = generalSettings.RagEmbeddingInferenceEngineId;
         var embeddingModel = generalSettings.RagEmbeddingModel;
         
@@ -46,8 +46,7 @@ public static class ServiceCollectionExtensions
         var kernelBuilder = services.AddKernel();
         
         // load inference engines (from file or db)
-        var inferenceEngines = configuration.GetSection("InferenceEngines")
-            .Get<AesirInferenceEngine[]>() ?? [];
+        var inferenceEngines = (await configurationService.GetInferenceEnginesAsync()).ToArray() ?? [];
         foreach (var inferenceEngine in inferenceEngines)
         {
             if (!configurationReadinessService.IsInferenceEngineReadyAtBoot(inferenceEngine.Id.Value))
