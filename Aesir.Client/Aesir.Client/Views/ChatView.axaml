@@ -243,6 +243,13 @@
                                                 <Button Classes="Primary"
                                                         Margin="0,0,0,0"
                                                         Theme="{DynamicResource OutlineButton}"
+                                                        IsEnabled="True"
+                                                        ToolTip.Tip="Toggle Web Search">
+                                                    <avalonia:MaterialIcon Kind="Web" Width="20" Height="34" />
+                                                </Button>
+                                                <Button Classes="Primary"
+                                                        Margin="0,0,0,0"
+                                                        Theme="{DynamicResource OutlineButton}"
                                                         IsEnabled="False"
                                                         ToolTip.Tip="Thinking Setting">
                                                     <avalonia:MaterialIcon Kind="HeadThinkingOutline" Width="20" Height="34" />
