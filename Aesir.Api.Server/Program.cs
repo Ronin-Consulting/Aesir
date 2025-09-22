@@ -63,15 +63,15 @@ public class Program
             
         // load inference engines (from file or db) - must have at least one to be fully ready
         var inferenceEngines = builder.Configuration.GetSection("InferenceEngines")
-            .Get<AesirInferenceEngine[]>() ?? [];
+            .Get<AesirInferenceEngine[]>()?.Where(x => !x.IsNull()).ToArray() ?? [];
             
         // load agents (from file or db)
         var agents = builder.Configuration.GetSection("Agents")
-            .Get<AesirAgent[]>() ?? [];
+            .Get<AesirAgent[]>()?.Where(x => !x.IsNull()).ToArray() ?? [];
         
         foreach (var inferenceEngine in inferenceEngines)
         {
-            if (!configurationReadinessService.IsInferenceEngineReadyAtBoot(inferenceEngine.Id.Value))
+            if (!configurationReadinessService.IsInferenceEngineReadyAtBoot(inferenceEngine.Id!.Value))
             {
                 Console.Write($"Configuration for Inference Engine `{inferenceEngine.Name}` is not ready and being skipped for initialization");
                 continue;
@@ -329,7 +329,7 @@ public class Program
             EnsureDatabaseMigrations(builder);
             
             // create an initial scope so we can use the database loading
-            var tempServiceProvider = builder.Services.BuildServiceProvider();
+            using var tempServiceProvider = builder.Services.BuildServiceProvider();
             using var scope = tempServiceProvider.CreateScope();
             var configurationService = scope.ServiceProvider.GetRequiredService<IConfigurationService>();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
@@ -345,7 +345,7 @@ public class Program
                 {
                     "GeneralSettings", 
                     "InferenceEngines", 
-                    "Agents,", 
+                    "Agents", 
                     "Tools", 
                     "McpServers"
                 };
@@ -368,8 +368,6 @@ public class Program
             {
                 logger.LogError(ex, "Failed to load configuration from database, using file configuration");
             }
-        
-            tempServiceProvider.Dispose();
         }
         else
         {
