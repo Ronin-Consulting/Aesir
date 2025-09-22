@@ -162,7 +162,6 @@ public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
                     foreach (var chat in FormModel.Chats)
                     {
                         await _chatHistoryService.DeleteChatSessionAsync(chat.Id);
-                        await _documentCollectionService.DeleteUploadedConversationFileAsync(_document.FileName, chat.Id.ToString());
                     }
                 }
 
