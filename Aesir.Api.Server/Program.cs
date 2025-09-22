@@ -281,6 +281,16 @@ public class Program
         app.Run();
     }
 
+    /// <summary>
+    /// Creates an <see cref="NpgsqlDataSource"/> configured with a connection string from the application configuration
+    /// and optimized connection pool settings for performance.
+    /// </summary>
+    /// <param name="builder">
+    /// The <see cref="WebApplicationBuilder"/> containing the configuration settings, including the connection string.
+    /// </param>
+    /// <returns>
+    /// An instance of <see cref="NpgsqlDataSource"/> with the configured connection string and pooling options.
+    /// </returns>
     private static NpgsqlDataSource CreateNpgsqlDataSource(WebApplicationBuilder builder)
     {
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
