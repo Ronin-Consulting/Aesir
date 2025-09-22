@@ -123,7 +123,7 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
         }
 
         await Task.Delay(TimeSpan.FromSeconds(1));
-        Progress += 25;
+        Progress += 33;
         
         if (readyAtBoot)
         {
@@ -160,7 +160,7 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
             }
 
             await Task.Delay(TimeSpan.FromSeconds(1));
-            Progress = 25;
+            Progress += 33;
 
             try
             {
@@ -196,7 +196,7 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
             }
 
             await Task.Delay(TimeSpan.FromSeconds(1));
-            Progress += 25;
+            Progress += 33;
         }
 
         Status = "Preparing main window...";
