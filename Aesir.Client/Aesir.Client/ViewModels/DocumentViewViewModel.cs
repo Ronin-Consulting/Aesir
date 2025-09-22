@@ -9,6 +9,7 @@ using Aesir.Client.Models;
 using Aesir.Client.Services;
 using Aesir.Client.Shared;
 using Aesir.Common.Models;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
@@ -86,14 +87,12 @@ public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
         _notificationService = notificationService;
         _chatHistoryService = chatHistoryService;
 
-        var chats = GetChatsForDocument(_document);
-        
         FormModel = new()
         {
             Name = Path.GetFileName(_document.FileName),
             Path = _document.FileName,
-            Chats = chats,
-            HasChats = chats.Any(),
+            Chats = new List<AesirChatSessionItem>(),
+            HasChats = false,
             Created = _document.CreatedAtDisplay,
             Modified = _document.UpdatedAtDisplay,
             MimeType = _document.MimeType,
@@ -103,10 +102,42 @@ public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
         DeleteCommand = new AsyncRelayCommand(ExecuteDeleteCommand);
         DownloadCommand = new RelayCommand(ExecuteDownloadCommand);
     }
-
-    private IEnumerable<AesirChatSessionItem>? GetChatsForDocument(AesirDocument document)
+    
+    /// Called when the view model is activated.
+    /// Invokes an asynchronous operation to load chats data into the view model's collection.
+    /// This method is designed to execute on the UI thread and ensures the proper initialization
+    /// of chat-related data when the view model becomes active.
+    protected override void OnActivated()
     {
-        return _chatHistoryService.GetChatSessionsByFileAsync(document.FileNameOnly).GetAwaiter().GetResult();
+        base.OnActivated();
+
+        Dispatcher.UIThread.InvokeAsync(LoadChatsAsync);
+    }
+    
+    /// <summary>
+    /// Does the initial load of the chats.
+    /// </summary>
+    private async Task LoadChatsAsync()
+    {
+        await RefreshChatsAsync();
+    }
+
+    /// Asynchronously loads chats into the view model's FormModel.Chats collection.
+    /// Fetches the chats from the chat history service and populates the collection.
+    /// Handles any exceptions that may occur during the loading process.
+    public async Task RefreshChatsAsync()
+    {
+        try
+        {
+            var chats = await _chatHistoryService.GetChatSessionsByFileAsync(FormModel.Name);
+            FormModel.Chats.Clear();
+            FormModel.Chats.AddRange(chats);
+            FormModel.HasChats = chats.Any();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading chats: {ex.Message}");
+        } 
     }
 
     /// <summary>
@@ -213,7 +244,7 @@ public partial class DocumentFormDataModel : ObservableValidator
     /// <summary>
     /// The chats that the document is associated with.
     /// </summary>
-    [ObservableProperty] IEnumerable<AesirChatSessionItem>? _chats;
+    [ObservableProperty] List<AesirChatSessionItem>? _chats;
  
     /// <summary>
     /// Whether the document is in chats.

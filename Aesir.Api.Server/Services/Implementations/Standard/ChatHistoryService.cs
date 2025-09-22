@@ -107,7 +107,7 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
     {
         string sql = "select (REGEXP_MATCHES(file_name, '/([^/]+)/'))[1] as chat_id "+
                      "from aesir.aesir_file_storage "+
-                     "where file_name LIKE '%/' + @fileName";
+                     "where file_name LIKE CONCAT('%/', @fileName)";
         var chatIds = await dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryAsync<string>(sql, new { fileName = fileName }));
 
