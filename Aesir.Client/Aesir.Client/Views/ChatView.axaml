@@ -225,7 +225,7 @@
                                                     </Button.IsEnabled>
                                                     <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="34" />
                                                 </Button>
-                                                <ToggleButton Classes="Tertiary"
+                                                <ToggleButton Classes="Primary"
                                                         Margin="0,0,0,0"
                                                         ToolTip.Tip="Toggle Web Search"
                                                         IsChecked="True"
@@ -238,7 +238,7 @@
                                                         </MultiBinding>
                                                     </Button.IsEnabled>
                                                 </ToggleButton>
-                                                <ToggleButton Classes="Tertiary"
+                                                <ToggleButton Classes="Primary"
                                                               Margin="0,0,0,0"
                                                               IsChecked="True"
                                                               ToolTip.Tip="Thinking Setting">
