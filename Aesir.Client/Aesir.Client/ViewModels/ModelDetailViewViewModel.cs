@@ -37,19 +37,27 @@ public partial class ModelDetailViewViewModel : ObservableRecipient, IDialogCont
     
     public ModelDetailViewViewModel(AesirModelDetails? details)
     {
-        ParentModel = details?.ParentModel;
-        Family = details?.Family;
+        ParentModel = string.IsNullOrEmpty(details?.ParentModel) ? "N/A" : details.ParentModel;
+        Family = string.IsNullOrEmpty(details?.Family) ? "N/A" : details.Family;
+        
+        Families = "N/A";
         if (details?.Families is { Length: > 0 })
             Families = string.Join("\n", details.Families);
-        Format = details?.Format;
-        ParameterSize = details?.ParameterSize;
-        QuantizationLevel = details?.QuantizationLevel;
+        
+        Format = string.IsNullOrEmpty(details?.Format) ? "N/A" : details.Format;
+        ParameterSize = string.IsNullOrEmpty(details?.ParameterSize) ? "N/A" : details.ParameterSize;
+        QuantizationLevel = string.IsNullOrEmpty(details?.QuantizationLevel) ? "N/A" : details.QuantizationLevel;
+        
+        Capabilities = "N/A";
         if (details?.Capabilities is { Length: > 0 })
             Capabilities = string.Join("\n", details.Capabilities);
+        
+        ExtraInfo = "N/A";
         if (details?.ExtraInfo is { Count: > 0 })
             ExtraInfo = string.Join(",\n", 
                 details.ExtraInfo.Select(x => $"{x.Key}: {x.Value}"));
-        License = details?.License;
+        
+        License = string.IsNullOrEmpty(details?.License) ? "N/A" : details.License;
     }
 
     public void Close()

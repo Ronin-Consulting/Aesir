@@ -7,12 +7,14 @@ using System.Windows.Input;
 using Aesir.Client.Services;
 using Aesir.Client.Shared;
 using Aesir.Client.Validators;
+using Aesir.Client.Views;
 using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Irihi.Avalonia.Shared.Contracts;
+using Ursa.Controls;
 
 namespace Aesir.Client.ViewModels;
 
@@ -80,7 +82,7 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     /// <summary>
     /// Collection of available chat models that can be used.
     /// </summary>
-    public ObservableCollection<string> AvailableChatModels { get; }
+    public ObservableCollection<AesirModelInfo> AvailableChatModels { get; }
 
     /// <summary>
     /// Collection of tools available for selection in the agent configuration.
@@ -112,6 +114,8 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     /// </summary>
     public ICommand DeleteCommand { get; set; }
 
+    public ICommand ShowModelDetailsCommand { get; set; }
+    
     /// <summary>
     /// Event triggered to request the closure of the view or dialog.
     /// </summary>
@@ -131,32 +135,36 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
 
         _initialChatInferenceEngineId = agent.ChatInferenceEngineId;
         
-        FormModel = new()
+        FormModel = new AgentFormDataModel
         {
             IsExisting = agent.Id.HasValue,
             Name = agent.Name,
             Description = agent.Description,
             ChatPromptPersona = agent.ChatPromptPersona,
             ChatCustomPromptContent = agent.ChatCustomPromptContent,
-            ChatModel = agent.ChatModel,
+            ChatModel = new AesirModelInfo()
+            {
+                Id = agent.ChatModel!
+            },
             ChatMaxTokens = agent.ChatMaxTokens,
             ChatTemperature = agent.ChatTemperature,
             ChatTopP = agent.ChatTopP,
-            Tools = new ObservableCollection<string>()
+            Tools = []
         };
         IsDirty = false;
         EditCustomPromptCommand = new RelayCommand(ExecuteEditCustomPrompt);
         SaveCommand = new AsyncRelayCommand(ExecuteSaveCommand);
         CancelCommand = new RelayCommand(ExecuteCancelCommand);
         DeleteCommand = new AsyncRelayCommand(ExecuteDeleteCommand);
-
-        AvailableChatInferenceEngines = new ObservableCollection<AesirInferenceEngineBase>();
-        AvailableChatModels = new ObservableCollection<string>();
-        AvailableTools = new ObservableCollection<string>();
+        ShowModelDetailsCommand = new AsyncRelayCommand(ExecuteShowModelDetailsCommand);
+        
+        AvailableChatInferenceEngines = [];
+        AvailableChatModels = [];
+        AvailableTools = [];
     
         FormModel.PropertyChanged += OnFormModelPropertyChanged;
     }
-
+    
     /// <summary>
     /// Invoked when the view model is activated. This method executes initialization logic such as
     /// invoking UI-thread-specific tasks and loading the necessary resources or state for operation.
@@ -233,9 +241,9 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
         try
         {
             var availableModels = await _modelService.GetModelsAsync(
-                FormModel.ChatInferenceEngine.Id.Value, ModelCategory.Chat);
+                FormModel.ChatInferenceEngine.Id!.Value, ModelCategory.Chat);
             foreach (var model in availableModels)
-                AvailableChatModels.Add(model.Id);
+                AvailableChatModels.Add(model);
         }
         catch (Exception e)
         {
@@ -251,8 +259,9 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
         FormModel.ChatModel = null;
 
         // Be a little wiser and only set the value if they exist in the collections (may have been removed from db)
-        if (!string.IsNullOrEmpty(currentChatModel) && AvailableChatModels.Contains(currentChatModel))
-            FormModel.ChatModel = currentChatModel;
+        if (currentChatModel != null && AvailableChatModels.Contains(currentChatModel))
+            // re-load the chat model from the collection because it can have full details and not just id.
+            FormModel.ChatModel = AvailableChatModels.First(m => m.Id == currentChatModel.Id);
     }
 
     /// <summary>
@@ -291,8 +300,8 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
             {
                 Name = FormModel.Name,
                 Description = FormModel.Description,
-                ChatInferenceEngineId = FormModel.ChatInferenceEngine.Id,
-                ChatModel = FormModel.ChatModel,
+                ChatInferenceEngineId = FormModel.ChatInferenceEngine!.Id,
+                ChatModel = FormModel.ChatModel!.Id,
                 ChatPromptPersona = FormModel.ChatPromptPersona,
                 ChatCustomPromptContent = FormModel.ChatPromptPersona == PromptPersona.Custom ? FormModel.ChatCustomPromptContent : null,
                 ChatMaxTokens = FormModel.ChatMaxTokens,
@@ -381,6 +390,28 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
         }
     }
 
+    private async Task ExecuteShowModelDetailsCommand()
+    {
+        var options = new OverlayDialogOptions()
+        {
+            FullScreen = false,
+            HorizontalAnchor = HorizontalPosition.Center,
+            VerticalAnchor = VerticalPosition.Center,
+            Mode = DialogMode.Info,
+            Buttons = DialogButton.OK,
+            Title = "Model Details",
+            CanLightDismiss = true,
+            CanDragMove = true,
+            IsCloseButtonVisible = true,
+            CanResize = false
+        };
+
+        var modelDetail = FormModel.ChatModel;
+
+        await OverlayDialog.ShowModal<ModelDetailView, ModelDetailViewViewModel>(
+            new ModelDetailViewViewModel(modelDetail?.Details), options: options);
+    }
+
     /// <summary>
     /// Triggers the request to close the associated view or dialog by invoking the <see cref="RequestClose"/> event.
     /// </summary>
@@ -446,8 +477,8 @@ public partial class AgentFormDataModel : ObservableValidator
     /// <summary>
     /// Represents the selected chat model for the agent, which is a required field and is validated for compliance.
     /// </summary>
-    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Chat Model is required")] private string? _chatModel;
-
+    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Chat Model is required")] private AesirModelInfo? _chatModel;
+    
     /// <summary>
     /// Represents the max tokens allowed for the chat session.
     /// </summary>
@@ -466,12 +497,12 @@ public partial class AgentFormDataModel : ObservableValidator
     /// <summary>
     /// Collection of tools used within the AgentFormDataModel
     /// </summary>
-    [ObservableProperty] private ObservableCollection<string> _tools = new ObservableCollection<string>();
+    [ObservableProperty] private ObservableCollection<string> _tools = [];
     
     /// <summary>
     /// Represents the description of the agent, required for validation and user input.
     /// </summary>
-    [ObservableProperty] string? _description;
+    [ObservableProperty] private string? _description;
 
     /// <summary>
     /// Validates all properties of the current object and checks if any validation errors exist.

@@ -116,7 +116,7 @@
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="5" 
-                Grid.ColumnSpan="3"
+                Grid.ColumnSpan="1"
                 Label="Chat Model" >
                 <ComboBox HorizontalAlignment="Stretch"
                           ItemsSource="{Binding AvailableChatModels}"
@@ -128,6 +128,23 @@
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
+            </u:FormItem>
+            <u:FormItem
+                Grid.Row="5"
+                Grid.Column="2"
+                Label=""
+                HorizontalAlignment="Left">
+                <u:IconButton 
+                    Classes="Tertiary"
+                    Content="Show Details"
+                    IconPlacement="Right" 
+                    MinHeight="34"
+                    IsEnabled="{Binding FormModel.ChatModel, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Command="{Binding ShowModelDetailsCommand}">
+                    <u:IconButton.Icon>
+                        <avalonia:MaterialIcon Kind="OpenInNew" Width="20" Height="20"/>
+                    </u:IconButton.Icon>
+                </u:IconButton>
             </u:FormItem>
             <u:FormItem 
                 Grid.Row="6" 
