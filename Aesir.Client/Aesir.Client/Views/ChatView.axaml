@@ -13,7 +13,7 @@
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
     x:Class="Aesir.Client.Views.ChatView"
     x:DataType="vm:ChatViewViewModel">
-    
+
     <UserControl.Styles>
         <Style Selector="MenuFlyoutPresenter.agentMenu">
         </Style>
@@ -48,7 +48,7 @@
             <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
     </UserControl.Styles>
-    
+
     <DockPanel>
         <!-- Error Panel - Shows at the top when there's a configuration error -->
         <Border
@@ -61,18 +61,19 @@
             IsVisible="{Binding !IsSystemConfigurationComplete}"
             ZIndex="200">
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <avalonia:MaterialIcon Kind="Alert" 
-                                       Width="16" 
-                                       Height="16" 
+                <avalonia:MaterialIcon Kind="Alert"
+                                       Width="16"
+                                       Height="16"
                                        Foreground="#CC0000"
                                        VerticalAlignment="Center" />
-                <TextBlock Text="System configuration is not yet complete. Please setup Inference Engine(s) and General Settings, then restart the server to take effect." 
-                           FontSize="13"
-                           Foreground="#CC0000"
-                           VerticalAlignment="Center" />
+                <TextBlock
+                    Text="System configuration is not yet complete. Please setup Inference Engine(s) and General Settings, then restart the server to take effect."
+                    FontSize="13"
+                    Foreground="#CC0000"
+                    VerticalAlignment="Center" />
             </StackPanel>
         </Border>
-        
+
         <!-- Main Panel - Shows below error panel (if present) -->
         <RelativePanel>
             <DockPanel
@@ -80,12 +81,13 @@
                 RelativePanel.AlignLeftWithPanel="True"
                 ZIndex="100">
                 <DockPanel Width="450" Margin="14, 10, 10, 10">
-                    <Button Classes="Primary" DockPanel.Dock="Left" 
+                    <Button Classes="Primary" DockPanel.Dock="Left"
                             Theme="{DynamicResource OutlineButton}"
                             Command="{Binding ToggleLeftPane}"
                             ToolTip.Tip="Toggle Sidebar">
-                        <avalonia:MaterialIcon Kind="{Binding PanelOpen, Converter={x:Static converters:BoolMenuIconConverter.Instance}}"
-                                               Width="20" Height="20" />
+                        <avalonia:MaterialIcon
+                            Kind="{Binding PanelOpen, Converter={x:Static converters:BoolMenuIconConverter.Instance}}"
+                            Width="20" Height="20" />
                     </Button>
                     <Panel />
                 </DockPanel>
@@ -124,8 +126,8 @@
                                            VerticalAlignment="Center"
                                            Theme="{StaticResource TitleTextBlock}"
                                            Text="AESIR AI"
-                                           Classes="H4"/>
-                                <Button Classes="Primary" 
+                                           Classes="H4" />
+                                <Button Classes="Primary"
                                         Theme="{DynamicResource OutlineButton}"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Left"
@@ -136,22 +138,25 @@
                                                     ItemsSource="{Binding AvailableAgents}">
                                             <MenuFlyout.ItemTemplate>
                                                 <DataTemplate x:DataType="common:AesirAgentBase">
-                                                    <Button Command="{Binding $parent[UserControl].((vm:ChatViewViewModel)DataContext).SelectAgent}"
-                                                            CommandParameter="{Binding}">
+                                                    <Button
+                                                        Command="{Binding $parent[UserControl].((vm:ChatViewViewModel)DataContext).SelectAgent}"
+                                                        CommandParameter="{Binding}">
                                                         <DockPanel>
-                                                            <avalonia:MaterialIcon Kind="Check" 
-                                                                    Width="16" Height="16" 
+                                                            <avalonia:MaterialIcon Kind="Check"
+                                                                    Width="16" Height="16"
                                                                     VerticalAlignment="Center"
                                                                     DockPanel.Dock="Right"
                                                                     Margin="8,0,0,0">
                                                                 <avalonia:MaterialIcon.IsVisible>
-                                                                    <MultiBinding Converter="{x:Static converters:AgentSelectionVisibilityConverter.Instance}">
+                                                                    <MultiBinding
+                                                                        Converter="{x:Static converters:AgentSelectionVisibilityConverter.Instance}">
                                                                         <Binding />
-                                                                        <Binding Path="$parent[UserControl].((vm:ChatViewViewModel)DataContext).SelectedAgent" />
+                                                                        <Binding
+                                                                            Path="$parent[UserControl].((vm:ChatViewViewModel)DataContext).SelectedAgent" />
                                                                     </MultiBinding>
                                                                 </avalonia:MaterialIcon.IsVisible>
                                                             </avalonia:MaterialIcon>
-                                                            <TextBlock Text="{Binding Name}" 
+                                                            <TextBlock Text="{Binding Name}"
                                                                        VerticalAlignment="Center" />
                                                         </DockPanel>
                                                     </Button>
@@ -163,73 +168,104 @@
                                         <TextBlock Text="{Binding SelectedAgentName}"
                                                    VerticalAlignment="Center"
                                                    FontWeight="Medium" />
-                                        <avalonia:MaterialIcon Kind="ChevronRight" 
-                                                               Width="18" 
-                                                               Height="18" 
-                                                               HorizontalAlignment="Center" 
+                                        <avalonia:MaterialIcon Kind="ChevronRight"
+                                                               Width="18"
+                                                               Height="18"
+                                                               HorizontalAlignment="Center"
                                                                VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
                         </Panel>
                         <Border BorderThickness="0,1,0,0" DockPanel.Dock="Bottom">
-                            <DockPanel Margin="10">
-                                <DockPanel DockPanel.Dock="Bottom">
-                                    <Button Classes="Primary" DockPanel.Dock="Left" Margin="0,0,6,0"
-                                            Theme="{DynamicResource OutlineButton}"
-                                            Command="{Binding ShowFileSelectionCommand}"
-                                            ToolTip.Tip="Attach File">
-                                        <Button.IsEnabled>
-                                            <MultiBinding Converter="{x:Static converters:BooleanAndConverter.Instance}">
-                                                <Binding Path="SelectedFileEnabled" />
-                                                <Binding Path="IsSystemConfigurationComplete" />
-                                            </MultiBinding>
-                                        </Button.IsEnabled>
-                                        <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="34" />
-                                    </Button>
-                                    <Button Name="SendMessageButton" IsVisible="{Binding HasChatMessage}"
-                                            DockPanel.Dock="Right" Margin="6,0,0,0"
-                                            Theme="{DynamicResource OutlineButton}" Command="{Binding SendMessageCommand}"
-                                            ToolTip.Tip="Send"
-                                            IsEnabled="{Binding IsSystemConfigurationComplete}">
-                                        <avalonia:MaterialIcon Kind="Send" Width="20" Height="20" />
-                                    </Button>
-                                    <controls:CustomTextBox Name="MessageAiTextBox"
-                                                            PropertyChanged="MessageAiTextBox_OnPropertyChanged"
-                                                            Classes="Bordered TextArea"
-                                                            MinHeight="32" MaxHeight="256" LineHeight="24" TextWrapping="Wrap"
-                                                            NewLine="{Binding Source={x:Static sys:String.Empty}}"
-                                                            Watermark="Message AI" Text="{Binding ChatMessage, Mode=TwoWay}"
-                                                            VerticalContentAlignment="Center">
-                                        <controls:CustomTextBox.IsEnabled>
-                                            <MultiBinding Converter="{x:Static converters:BooleanAndConverter.Instance}">
-                                                <Binding Path="SelectedFileEnabled" />
-                                                <Binding Path="!SendingChatOrProcessingFile" />
-                                            </MultiBinding>
-                                        </controls:CustomTextBox.IsEnabled>
-                                        <controls:CustomTextBox.InnerLeftContent>
-                                        </controls:CustomTextBox.InnerLeftContent>
-                                        <controls:CustomTextBox.InnerRightContent>
-                                            <Button Classes="Small Primary"
-                                                    Padding="0"
-                                                    Margin="0"
-                                                    Theme="{DynamicResource BorderlessButton}"
-                                                    Command="{Binding ShowHandsFree}"
-                                                    ToolTip.Tip="Hands Free Mode"
-                                                    IsEnabled="{Binding IsSystemConfigurationComplete}"
-                                                    >
-                                                <Panel>
-                                                    <avalonia:MaterialIcon
-                                                        HorizontalAlignment="Center"
-                                                        VerticalAlignment="Center"
-                                                        Kind="Waveform" Width="20" Height="20" />
-                                                </Panel>
+                                                            <DockPanel Margin="10">
+                                    <controls:Conversation DockPanel.Dock="Top" Height="625" />
+                                    <Border CornerRadius="10"
+                                            Background="#232429"
+                                            BorderBrush="{ StaticResource SemiColorBorder }"
+                                            BorderThickness="1"
+                                            Padding="10"
+                                            DockPanel.Dock="Bottom"
+                                    >
+                                    <DockPanel  Height="75" VerticalSpacing="10">
+                                        <controls:CustomTextBox DockPanel.Dock="Top" HorizontalAlignment="Stretch"
+                                                                Name="MessageAiTextBox"
+                                                                PropertyChanged="MessageAiTextBox_OnPropertyChanged"
+                                                                Classes="Bordered TextArea"
+                                                                MinHeight="32" MaxHeight="256" LineHeight="24"
+                                                                TextWrapping="Wrap"
+                                                                NewLine="{Binding Source={x:Static sys:String.Empty}}"
+                                                                Watermark="Message AI"
+                                                                Text="{Binding ChatMessage, Mode=TwoWay}"
+                                                                VerticalContentAlignment="Center">
+                                            <controls:CustomTextBox.IsEnabled>
+                                                <MultiBinding
+                                                    Converter="{x:Static converters:BooleanAndConverter.Instance}">
+                                                    <Binding Path="SelectedFileEnabled" />
+                                                    <Binding Path="!SendingChatOrProcessingFile" />
+                                                </MultiBinding>
+                                            </controls:CustomTextBox.IsEnabled>
+                                            <controls:CustomTextBox.InnerLeftContent>
+                                            </controls:CustomTextBox.InnerLeftContent>
+                                            <controls:CustomTextBox.InnerRightContent>
+                                                <Button Classes="Small Primary"
+                                                        Padding="0"
+                                                        Margin="0"
+                                                        Theme="{DynamicResource BorderlessButton}"
+                                                        Command="{Binding ShowHandsFree}"
+                                                        ToolTip.Tip="Hands Free Mode"
+                                                        IsEnabled="{Binding IsSystemConfigurationComplete}">
+                                                    <Panel>
+                                                        <avalonia:MaterialIcon
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"
+                                                            Kind="Waveform" Width="20" Height="20" />
+                                                    </Panel>
+                                                </Button>
+                                            </controls:CustomTextBox.InnerRightContent>
+                                        </controls:CustomTextBox>
+                                        <Panel DockPanel.Dock="Bottom" HorizontalAlignment="Stretch">
+                                            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal" Spacing="6">
+                                                <Button Classes="Primary" 
+                                                        Margin="0,0,0,0"
+                                                        Theme="{DynamicResource OutlineButton}"
+                                                        Command="{Binding ShowFileSelectionCommand}"
+                                                        ToolTip.Tip="Attach File">
+                                                    <Button.IsEnabled>
+                                                        <MultiBinding
+                                                            Converter="{x:Static converters:BooleanAndConverter.Instance}">
+                                                            <Binding Path="SelectedFileEnabled" />
+                                                            <Binding Path="IsSystemConfigurationComplete" />
+                                                        </MultiBinding>
+                                                    </Button.IsEnabled>
+                                                    <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="34" />
+                                                </Button>
+                                                <Button Classes="Primary"
+                                                        Margin="0,0,0,0"
+                                                        Theme="{DynamicResource OutlineButton}"
+                                                        IsEnabled="False"
+                                                        ToolTip.Tip="Thinking Setting">
+                                                    <avalonia:MaterialIcon Kind="HeadThinkingOutline" Width="20" Height="34" />
+                                                </Button>
+                                            </StackPanel>
+                                            <Button Name="SendMessageButton" HorizontalAlignment="Right"
+                                                    Margin="6,0,0,0"
+                                                    Theme="{DynamicResource OutlineButton}"
+                                                    Command="{Binding SendMessageCommand}"
+                                                    ToolTip.Tip="Send">
+                                                <Button.IsEnabled>
+                                                    <MultiBinding
+                                                        Converter="{x:Static converters:BooleanAndConverter.Instance}">
+                                                        <Binding Path="IsSystemConfigurationComplete" />
+                                                        <Binding Path="HasChatMessage" />
+                                                    </MultiBinding>
+                                                </Button.IsEnabled>
+                                                <avalonia:MaterialIcon Kind="Send" Width="20" Height="20" />
                                             </Button>
-                                        </controls:CustomTextBox.InnerRightContent>
-                                    </controls:CustomTextBox>
+                                        </Panel>
+                                    </DockPanel>
+                                    </Border>
                                 </DockPanel>
-                                <controls:Conversation />
-                            </DockPanel>
                         </Border>
                     </DockPanel>
                 </Border>
