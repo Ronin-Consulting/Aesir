@@ -47,7 +47,7 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
-        <Style Selector="ToggleButton.aesirTool:checked /template/ ContentPresenter">
+        <Style Selector="ToggleButton.AesirToggleButton:checked /template/ ContentPresenter">
             <Setter Property="Background" Value="#2954A9FF" />
         </Style>
     </UserControl.Styles>
@@ -84,14 +84,23 @@
                 RelativePanel.AlignLeftWithPanel="True"
                 ZIndex="100">
                 <DockPanel Width="450" Margin="14, 10, 10, 10">
-                    <Button Classes="Primary" DockPanel.Dock="Left"
-                            Theme="{DynamicResource OutlineButton}"
-                            Command="{Binding ToggleLeftPane}"
-                            ToolTip.Tip="Toggle Sidebar">
-                        <avalonia:MaterialIcon
-                            Kind="{Binding PanelOpen, Converter={x:Static converters:BoolMenuIconConverter.Instance}}"
-                            Width="20" Height="20" />
-                    </Button>
+                    <ToggleButton Classes="Primary AesirToggleButton" DockPanel.Dock="Left"
+                                  Theme="{DynamicResource OutlineButton}"
+                                  ToolTip.Tip="Toggle Sidebar"
+                                  Command="{Binding ToggleLeftPane}">
+                        <Panel>
+                            <avalonia:MaterialIcon Kind="MenuOpen" Width="20"
+                                                   Height="20" IsVisible="{Binding $parent[ToggleButton].IsChecked}" />
+                            <avalonia:MaterialIcon Kind="MenuClose" Width="20"
+                                                   Height="20" IsVisible="{Binding !$parent[ToggleButton].IsChecked}" />
+                        </Panel>
+                        <Button.IsEnabled>
+                            <MultiBinding
+                                Converter="{x:Static converters:BooleanAndConverter.Instance}">
+                                <Binding Path="IsSystemConfigurationComplete" />
+                            </MultiBinding>
+                        </Button.IsEnabled>
+                    </ToggleButton>
                     <Panel />
                 </DockPanel>
                 <DockPanel
@@ -218,8 +227,7 @@
                                                         Margin="0,0,0,0"
                                                         Command="{Binding ShowFileSelectionCommand}"
                                                         ToolTip.Tip="Attach File"
-                                                        Theme="{DynamicResource OutlineButton}"
-                                                        >
+                                                        Theme="{DynamicResource OutlineButton}">
                                                     <Button.IsEnabled>
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
@@ -229,17 +237,18 @@
                                                     </Button.IsEnabled>
                                                     <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="34" />
                                                 </Button>
-                                                <ToggleButton Classes="Primary aesirTool"
-                                                        Margin="0,0,0,0"
-                                                        IsChecked="True"
-                                                        ToolTip.Tip="Toggle Web Search"
-                                                        Theme="{DynamicResource OutlineButton}"
-                                                >
+                                                <ToggleButton Classes="Primary AesirToggleButton"
+                                                              Margin="0,0,0,0"
+                                                              IsChecked="True"
+                                                              ToolTip.Tip="Toggle Web Search"
+                                                              Theme="{DynamicResource OutlineButton}">
                                                     <Panel>
                                                         <avalonia:MaterialIcon Kind="Web" Width="20"
-                                                                               Height="34" IsVisible="{Binding $parent[ToggleButton].IsChecked}" />
+                                                                               Height="34"
+                                                                               IsVisible="{Binding $parent[ToggleButton].IsChecked}" />
                                                         <avalonia:MaterialIcon Kind="WebOff" Width="20"
-                                                                               Height="34" IsVisible="{Binding !$parent[ToggleButton].IsChecked}" />
+                                                                               Height="34"
+                                                                               IsVisible="{Binding !$parent[ToggleButton].IsChecked}" />
                                                     </Panel>
                                                     <Button.IsEnabled>
                                                         <MultiBinding
@@ -248,17 +257,18 @@
                                                         </MultiBinding>
                                                     </Button.IsEnabled>
                                                 </ToggleButton>
-                                                <ToggleButton Classes="Primary aesirTool"
+                                                <ToggleButton Classes="Primary AesirToggleButton"
                                                               Margin="0,0,0,0"
                                                               IsChecked="True"
                                                               ToolTip.Tip="Thinking Setting"
-                                                              Theme="{DynamicResource OutlineButton}"
-                                                              >
+                                                              Theme="{DynamicResource OutlineButton}">
                                                     <Panel>
                                                         <avalonia:MaterialIcon Kind="Lightbulb" Width="20"
-                                                                               Height="34" IsVisible="{Binding $parent[ToggleButton].IsChecked}" />
+                                                                               Height="34"
+                                                                               IsVisible="{Binding $parent[ToggleButton].IsChecked}" />
                                                         <avalonia:MaterialIcon Kind="LightbulbOff" Width="20"
-                                                                               Height="34" IsVisible="{Binding !$parent[ToggleButton].IsChecked}" />
+                                                                               Height="34"
+                                                                               IsVisible="{Binding !$parent[ToggleButton].IsChecked}" />
                                                     </Panel>
                                                     <Button.IsEnabled>
                                                         <MultiBinding
@@ -268,7 +278,8 @@
                                                     </Button.IsEnabled>
                                                 </ToggleButton>
                                             </StackPanel>
-                                            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
+                                            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal"
+                                                        Spacing="8">
                                                 <Button Classes="Primary"
                                                         Margin="0,0,0,0"
                                                         Theme="{DynamicResource OutlineButton}"
@@ -282,7 +293,7 @@
                                                             Kind="Waveform" Width="20" Height="34" />
                                                     </Panel>
                                                 </Button>
-                                                <u:Divider Orientation="Vertical" Height="34"  />
+                                                <u:Divider Orientation="Vertical" Height="34" />
                                                 <Button Name="SendMessageButton"
                                                         Margin="0,0,0,0"
                                                         Theme="{DynamicResource OutlineButton}"
