@@ -140,6 +140,9 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     [ObservableProperty]
     private ICollection<ToolRequest> _toolRequests = new HashSet<ToolRequest>();
     
+    [ObservableProperty]
+    private ICollection<ToolRequest> _toolsAvailable = new HashSet<ToolRequest>();
+    
     public ICommand ToggleToolRequest { get; }
     
     /// <summary>
@@ -251,7 +254,9 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// document-specific tasks within the ChatView context.
     /// </summary>
     private readonly IDocumentCollectionService _documentCollectionService;
-    
+
+    private readonly IConfigurationService _configurationService;
+
     /// Encapsulates the logic and state management for the chat view in the application.
     /// Coordinates user interactions such as managing chat history, initiating new conversations, and handling speech input.
     /// Collaborates with underlying services to facilitate real-time chat operations and file handling functionality.
@@ -263,7 +268,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         FileToUploadViewModel fileToUploadViewModel,
         INavigationService navigationService,
         INotificationService notificationService,
-        IDocumentCollectionService documentCollectionService)
+        IDocumentCollectionService documentCollectionService,
+        IConfigurationService configurationService)
     {
         _appState = appState ?? throw new ArgumentNullException(nameof(appState));
         _speechService = speechService;
@@ -272,10 +278,11 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         _navigationService = navigationService;
         _notificationService = notificationService;
         _documentCollectionService = documentCollectionService;
+        _configurationService = configurationService;
 
         ToggleLeftPane = new RelayCommand(() => PanelOpen = !PanelOpen);
         ToggleNewChat = new RelayCommand(ExecuteNewChat);
-        SelectAgent = new RelayCommand<AesirAgentBase>(ExecuteSelectAgent);
+        SelectAgent = new AsyncRelayCommand<AesirAgentBase>(ExecuteSelectAgentAsync);
         ShowHandsFree = new RelayCommand(ExecuteShowHandsFree);
 
         ToggleToolRequest = new RelayCommand<string?>(ExecuteToggleToolRequest);
@@ -291,17 +298,17 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         if (string.IsNullOrWhiteSpace(toolName)) return;
         
         // does ToolRequests contain the tool with the same name?
-        if (ToolRequests.Any(x => x.Name == toolName))
+        if (ToolRequests.Any(x => x.ToolName == toolName))
         {
             // yes, remove it
-            ToolRequests.Remove(ToolRequests.First(x => x.Name == toolName));
+            ToolRequests.Remove(ToolRequests.First(x => x.ToolName == toolName));
         }
         else
         {
             // no, add it
             ToolRequests.Add(new ToolRequest
             {
-                Name = toolName
+                ToolName = toolName
             });
         }
         
@@ -326,22 +333,23 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// Executes the logic for selecting an agent from the available agents list.
     /// Updates the application state with the selected agent and modifies properties tied to the selection.
     /// <param name="agent">The agent to be selected. If null, no action is performed.</param>
-    private void ExecuteSelectAgent(AesirAgentBase? agent)
+    private async Task ExecuteSelectAgentAsync(AesirAgentBase? agent)
     {
         if (agent != null)
         {
             SelectedAgent = agent;
             SelectedAgentName = agent.Name;
             _appState.SelectedAgent = agent;
-            
-            // TODO this needs to reload the chat MessageViewModel with the appropriate system message
-            
-            // pull the configured tools from the agent and add to the ToolRequests collection
-            // TODO this needs to be done in the agent class
-            // add built in defaults
-            ToolRequests.Add(ToolRequest.WebSearchToolRequest);
 
-            ToolRequests = new HashSet<ToolRequest>(ToolRequests);
+            ToolsAvailable =
+                (await _configurationService.GetToolsForAgentAsync(agent.Id!.Value)).Select(t =>
+                new ToolRequest()
+                    {
+                        ToolName = t.ToolName!
+                    }
+            ).ToHashSet();
+            
+            ToolRequests = new HashSet<ToolRequest>(ToolsAvailable);
         }
     }
 
@@ -461,7 +469,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             if (AvailableAgents.Count == 0)
                 SelectedAgentName = "No agent available";
             else if (AvailableAgents.Count == 1)
-                ExecuteSelectAgent(AvailableAgents.First());
+                await ExecuteSelectAgentAsync(AvailableAgents.First());
         }
         catch (Exception ex)
         {
