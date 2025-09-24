@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Aesir.Client.ViewModels;
+using Aesir.Common.Models;
 
 namespace Aesir.Client.Services;
 
@@ -16,17 +17,12 @@ public interface IChatSessionManager
     /// <returns>A task that represents the asynchronous operation.</returns>
     Task LoadChatSessionAsync();
 
-    /// <summary>
-    /// Processes a chat request asynchronously using the specified model and a collection of conversation messages.
-    /// </summary>
-    /// <param name="agentId">
-    /// The id of the agent to be used for processing the chat request.
-    /// </param>
-    /// <param name="conversationMessages">
-    /// A collection of <see cref="MessageViewModel"/> objects representing the conversation's messages.
-    /// </param>
-    /// <returns>
-    /// A <see cref="Task{TResult}"/> representing the asynchronous operation, containing the model's response as a string.
-    /// </returns>
-    Task<string> ProcessChatRequestAsync(Guid agentId, ObservableCollection<MessageViewModel?> conversationMessages);
+    /// Processes a chat request asynchronously by utilizing the specified agent, the ongoing conversation messages,
+    /// and optional tool requests. Handles the orchestration of chat-related activities within the chat session.
+    /// <param name="agentId">The identifier of the agent associated with the chat session.</param>
+    /// <param name="conversationMessages">The collection of messages in the current conversation context.</param>
+    /// <param name="tools">An optional array of tool requests to be incorporated during processing, if applicable.</param>
+    /// <returns>A task that represents the asynchronous operation, returning the response as a string.</returns>
+    Task<string> ProcessChatRequestAsync(Guid agentId, ObservableCollection<MessageViewModel?> conversationMessages,
+        params ToolRequest[] tools);
 }
