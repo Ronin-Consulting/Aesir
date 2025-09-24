@@ -119,7 +119,7 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
             Name = tool.Name,
             Type = tool.Type,
             Description = tool.Description,
-            McpServerTool = tool.McpServerTool
+            McpServerTool = tool.ToolName
         };
         IsDirty = false;
         SaveCommand = new AsyncRelayCommand(ExecuteSaveCommand);
@@ -238,7 +238,7 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
                 Description = FormModel.Description,
                 Type = FormModel.Type,
                 McpServerId = FormModel.McpServer?.Id,
-                McpServerTool = FormModel.McpServerTool
+                ToolName = FormModel.McpServerTool
             };
 
             var closeResult = CloseResult.Errored;
