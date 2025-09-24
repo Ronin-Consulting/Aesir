@@ -136,7 +136,12 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// a detailed record of the interaction.
     /// </summary>
     public ObservableCollection<MessageViewModel?> ConversationMessages { get; } = [];
-
+    
+    [ObservableProperty]
+    private ICollection<ToolRequest> _toolRequests = new HashSet<ToolRequest>();
+    
+    public ICommand ToggleToolRequest { get; }
+    
     /// <summary>
     /// Represents a command to toggle the visibility of the left panel in the user interface.
     /// This is typically used to show or hide a sidebar or navigation panel based on the user's interaction.
@@ -240,8 +245,13 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// </summary>
     private readonly INotificationService _notificationService;
 
+    /// <summary>
+    /// The service responsible for managing document collections and providing access to their content.
+    /// Utilized for operations such as retrieving document streams, handling file content, and other
+    /// document-specific tasks within the ChatView context.
+    /// </summary>
     private readonly IDocumentCollectionService _documentCollectionService;
-
+    
     /// Encapsulates the logic and state management for the chat view in the application.
     /// Coordinates user interactions such as managing chat history, initiating new conversations, and handling speech input.
     /// Collaborates with underlying services to facilitate real-time chat operations and file handling functionality.
@@ -268,10 +278,34 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         SelectAgent = new RelayCommand<AesirAgentBase>(ExecuteSelectAgent);
         ShowHandsFree = new RelayCommand(ExecuteShowHandsFree);
 
+        ToggleToolRequest = new RelayCommand<string?>(ExecuteToggleToolRequest);
+        
         SelectedFile = fileToUploadViewModel ?? throw new ArgumentNullException(nameof(fileToUploadViewModel));
         SelectedFile.IsActive = true;
 
-        AvailableAgents = new ObservableCollection<AesirAgentBase>();
+        AvailableAgents = [];
+    }
+
+    private void ExecuteToggleToolRequest(string? toolName)
+    {
+        if (string.IsNullOrWhiteSpace(toolName)) return;
+        
+        // does ToolRequests contain the tool with the same name?
+        if (ToolRequests.Any(x => x.Name == toolName))
+        {
+            // yes, remove it
+            ToolRequests.Remove(ToolRequests.First(x => x.Name == toolName));
+        }
+        else
+        {
+            // no, add it
+            ToolRequests.Add(new ToolRequest
+            {
+                Name = toolName
+            });
+        }
+        
+        ToolRequests = new HashSet<ToolRequest>(ToolRequests);
     }
 
     /// Executes the command to start a new chat session.
@@ -301,6 +335,13 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             _appState.SelectedAgent = agent;
             
             // TODO this needs to reload the chat MessageViewModel with the appropriate system message
+            
+            // pull the configured tools from the agent and add to the ToolRequests collection
+            // TODO this needs to be done in the agent class
+            // add built in defaults
+            ToolRequests.Add(ToolRequest.WebSearchToolRequest);
+
+            ToolRequests = new HashSet<ToolRequest>(ToolRequests);
         }
     }
 
@@ -669,7 +710,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             if (topLevel?.StorageProvider == null)
             {
                 _logger.LogWarning("Storage provider not available");
-                return Array.Empty<IStorageFile>();
+                return [];
             }
 
             return await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -682,7 +723,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to open file picker");
-            return Array.Empty<IStorageFile>();
+            return [];
         }
     }
 
