@@ -11,7 +11,11 @@ public class NoOpConfigurationService : IConfigurationService
 {
     public async Task<AesirConfigurationReadinessBase> GetIsSystemConfigurationReadyAsync()
     {
-        return await Task.FromResult(new AesirConfigurationReadinessBase());
+        return await Task.FromResult(new AesirConfigurationReadinessBase 
+        { 
+            IsReady = true, 
+            Reasons = [] 
+        });
     }
 
     public async Task<bool> GetIsInDatabaseModeAsync()

@@ -69,10 +69,11 @@ public partial class ApplicationState(
     public ObservableCollection<AesirAgentBase> AvailableAgents { get; set; } = [];
 
     /// <summary>
-    /// Asynchronously loads if the system was ready at boot.
+    /// Asynchronously loads the system configuration readiness status.
     /// </summary>
     /// <returns>
-    /// True if the system is ready to use; false otherwise
+    /// An AesirConfigurationReadinessBase object containing the readiness status
+    /// and any specific reasons why the system might not be ready.
     /// </returns>
     public async Task<AesirConfigurationReadinessBase> CheckSystemConfigurationReady()
     {
