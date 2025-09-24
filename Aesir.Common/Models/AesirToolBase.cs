@@ -49,3 +49,8 @@ public enum ToolType
     [Description("MCP Server")]
     McpServer
 }
+
+public static class AesirTools
+{
+    public const string WebSearchFunctionName = "GetWebSearchResults";
+}
