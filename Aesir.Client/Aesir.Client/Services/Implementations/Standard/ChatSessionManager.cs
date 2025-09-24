@@ -96,17 +96,18 @@ public class ChatSessionManager(
     }
 
     /// <summary>
-    /// Asynchronously processes the chat request using the specified model and the provided conversation messages.
+    /// Asynchronously processes a chat request using the specified agent, conversation messages, and tools.
     /// </summary>
-    /// <param name="agentId">The unique identifier of the agent to be utilized for processing the chat request. Must not be null or empty.</param>
-    /// <param name="conversationMessages">The collection of conversation messages that provide context for the chat request. Must not be null.</param>
+    /// <param name="agentId">The unique identifier of the agent to process the chat request. Must not be null or empty.</param>
+    /// <param name="conversationMessages">The collection of conversation messages serving as context for the chat request. Must not be null.</param>
+    /// <param name="tools">Optional tools to assist in processing the chat request.</param>
     /// <returns>A task that represents the asynchronous operation, containing the result of the chat request as a string.</returns>
-    /// <exception cref="ArgumentException">Thrown if the <paramref name="modelId"/> is null, empty, or consists only of whitespace.</exception>
-    /// <exception cref="ArgumentNullException">Thrown if the <paramref name="conversationMessages"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="conversationMessages"/> is null.</exception>
     /// <exception cref="InvalidOperationException">Thrown if the chat session is not loaded in the current application state.</exception>
-    /// <exception cref="Exception">Thrown if an error occurs while processing the chat request.</exception>
+    /// <exception cref="Exception">Thrown if an error occurs during the processing of the chat request.</exception>
     public async Task<string> ProcessChatRequestAsync(Guid agentId,
-        ObservableCollection<MessageViewModel?> conversationMessages)
+        ObservableCollection<MessageViewModel?> conversationMessages,
+        params ToolRequest[] tools)
     {
         if (conversationMessages == null)
             throw new ArgumentNullException(nameof(conversationMessages));
@@ -132,6 +133,9 @@ public class ChatSessionManager(
                 ChatSessionUpdatedAt = DateTimeOffset.Now,
                 User = "Unknown" // TODO
             };
+            
+            foreach(var tool in tools)
+                agentChatRequest.WithTool(tool);
 
             var result = _chatService.AgentChatCompletionsStreamedAsync(agentChatRequest);
             
