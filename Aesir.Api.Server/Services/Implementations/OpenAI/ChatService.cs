@@ -114,6 +114,9 @@ public class ChatService : BaseChatService
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = CreateChatHistory(request.Conversation.Messages);
 
+        _kernel.Data.Add("ChatSessionId",request.ChatSessionId);
+        _kernel.Data.Add("ConversationId",request.Conversation.Id);
+
         var completionResults = await _chatCompletionService.GetChatMessageContentsAsync(
             chatHistory,
             settings,
@@ -150,6 +153,9 @@ public class ChatService : BaseChatService
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = CreateChatHistory(request.Conversation.Messages);
+
+        _kernel.Data.Add("ChatSessionId",request.ChatSessionId);
+        _kernel.Data.Add("ConversationId",request.Conversation.Id);
 
         var streamingResults = _chatCompletionService.GetStreamingChatMessageContentsAsync(
             chatHistory,

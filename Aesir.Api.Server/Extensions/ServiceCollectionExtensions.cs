@@ -45,6 +45,12 @@ public static class ServiceCollectionExtensions
         
         var kernelBuilder = services.AddKernel();
         
+        kernelBuilder.Services.AddSingleton<InferenceLoggingService>();
+        kernelBuilder.Services.AddSingleton<IFunctionInvocationFilter>(sp => sp.GetRequiredService<InferenceLoggingService>());
+        kernelBuilder.Services.AddSingleton<IPromptRenderFilter>(sp => sp.GetRequiredService<InferenceLoggingService>());
+        kernelBuilder.Services.AddSingleton<IAutoFunctionInvocationFilter>(sp => sp.GetRequiredService<InferenceLoggingService>());
+        kernelBuilder.Services.AddSingleton<IKernelLogService, KernelLogService>();
+
         // load inference engines (from file or db)
         var inferenceEngines = (await configurationService.GetInferenceEnginesAsync()).ToArray() ?? [];
         foreach (var inferenceEngine in inferenceEngines)
