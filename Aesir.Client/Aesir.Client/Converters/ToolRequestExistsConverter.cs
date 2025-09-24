@@ -10,7 +10,7 @@ public class ToolRequestExistsConverter : FuncValueConverter<IEnumerable<ToolReq
 {
     public ToolRequestExistsConverter() : base(
         (requests, toolName) => 
-            requests?.Any(r => r.Name == toolName) ?? false
+            requests?.Any(r => r.ToolName == toolName) ?? false
     )
     {
     }

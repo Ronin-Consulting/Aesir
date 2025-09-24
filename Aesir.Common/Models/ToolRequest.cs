@@ -2,13 +2,13 @@ namespace Aesir.Common.Models;
 
 public class ToolRequest
 {
-    public static readonly ToolRequest WebSearchToolRequest = new ToolRequest { Name = AesirTools.WebToolName };
+    public static readonly ToolRequest WebSearchToolRequest = new ToolRequest { ToolName = AesirTools.WebToolName };
 	
-    public required string Name { get; set; }
+    public required string ToolName { get; set; }
     
     protected bool Equals(ToolRequest other)
     {
-        return Name == other.Name;
+        return ToolName == other.ToolName;
     }
 
     public override bool Equals(object? obj)
@@ -21,6 +21,6 @@ public class ToolRequest
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(Name);
+        return HashCode.Combine(ToolName);
     }
 }
