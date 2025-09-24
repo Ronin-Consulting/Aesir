@@ -94,12 +94,6 @@
                             <avalonia:MaterialIcon Kind="MenuClose" Width="20"
                                                    Height="20" IsVisible="{Binding !$parent[ToggleButton].IsChecked}" />
                         </Panel>
-                        <Button.IsEnabled>
-                            <MultiBinding
-                                Converter="{x:Static converters:BooleanAndConverter.Instance}">
-                                <Binding Path="IsSystemConfigurationComplete" />
-                            </MultiBinding>
-                        </Button.IsEnabled>
                     </ToggleButton>
                     <Panel />
                 </DockPanel>
