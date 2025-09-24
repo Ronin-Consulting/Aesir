@@ -9,4 +9,6 @@ public interface IConfigurationReadinessService
     /// Indicates whether the configuration was in a ready state during boot up.
     /// </summary>
     public bool IsReadyAtBoot { get; }
+
+    public IEnumerable<string> MissingRequiredConfigurationReasons { get; }
 }
