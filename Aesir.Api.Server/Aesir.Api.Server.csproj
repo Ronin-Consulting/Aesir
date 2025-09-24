@@ -13,7 +13,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Aspose.PDF.Drawing" Version="25.8.0" />
+        <PackageReference Include="Aspose.PDF.Drawing" Version="25.9.0" />
         <PackageReference Include="CsvHelper" Version="33.1.0" />
         <PackageReference Include="Dapper" Version="2.1.66"/>
         <PackageReference Include="dotnet-stop-words" Version="1.1.0"/>
@@ -36,7 +36,7 @@
         <PackageReference Include="ModelContextProtocol-SemanticKernel" Version="0.4.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Npgsql" Version="9.0.3"/>
-        <PackageReference Include="OllamaSharp" Version="5.4.5" />
+        <PackageReference Include="OllamaSharp" Version="5.4.6" />
         <PackageReference Include="OpenAI" Version="2.4.0" />
         <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.12.0"/>
         <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.13" />

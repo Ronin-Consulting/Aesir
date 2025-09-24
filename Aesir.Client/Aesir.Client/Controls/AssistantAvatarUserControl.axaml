@@ -10,7 +10,7 @@
         <StackPanel>
             <Image Name="AvatarImage" Width="340" Height="340">
                 <Image.Source>
-                    <SvgImage Invalidated="SvgImage_OnInvalidated" 
+                    <SvgImage  Invalidated="SvgImage_OnInvalidated" 
                               Source="/Assets/assistant-colorable.svg" 
                               Css="{Binding $parent[controls:AssistantAvatarUserControl].SvgCss}" />
                 </Image.Source>
