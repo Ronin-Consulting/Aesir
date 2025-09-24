@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Text.Json.Serialization;
 using Aesir.Common.Prompts;
 
@@ -65,12 +64,4 @@ public class AesirAgentBase
     /// </summary>
     [JsonPropertyName("chat_custom_prompt_content")]
     public string? ChatCustomPromptContent { get; set; }
-
-    public bool IsNull()
-    {
-        // return true if all properties are null
-        return Id == null && Name == null && Description == null && ChatInferenceEngineId == null &&
-               ChatModel == null && ChatTemperature == null && ChatTopP == null && ChatMaxTokens == null &&
-               ChatPromptPersona == null && ChatCustomPromptContent == null;
-    }
 }
