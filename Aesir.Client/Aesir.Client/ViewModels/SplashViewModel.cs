@@ -98,8 +98,9 @@ public partial class SplashViewModel: ObservableRecipient, IDialogContext
                 try
                 {
                     Progress += 1;
-
-                    readyAtBoot = await _appState.CheckSystemConfigurationReady();
+                    
+                    var readiness =  await _appState.CheckSystemConfigurationReady();
+                    readyAtBoot = readiness.IsReady;
                     
                     break;
                 }

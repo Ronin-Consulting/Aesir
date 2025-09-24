@@ -13,6 +13,8 @@ public class ConfigurationReadinessService : IConfigurationReadinessService
     /// Indicates whether the configuration was in a ready state during boot up.
     /// </summary>
     public bool IsReadyAtBoot => _missingRequiredConfigurationReasons.Count == 0;
+    
+    public IEnumerable<string> MissingRequiredConfigurationReasons => _missingRequiredConfigurationReasons;
 
     /// <summary>
     /// Adds a missing required configuration message indicating why the system can't start.

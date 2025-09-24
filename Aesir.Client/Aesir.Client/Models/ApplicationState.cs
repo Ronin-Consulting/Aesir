@@ -74,7 +74,7 @@ public partial class ApplicationState(
     /// <returns>
     /// True if the system is ready to use; false otherwise
     /// </returns>
-    public async Task<bool> CheckSystemConfigurationReady()
+    public async Task<AesirConfigurationReadinessBase> CheckSystemConfigurationReady()
     {
         return await configurationService.GetIsSystemConfigurationReadyAsync();
     }
