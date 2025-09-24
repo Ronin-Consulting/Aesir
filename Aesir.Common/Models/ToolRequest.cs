@@ -2,7 +2,7 @@ namespace Aesir.Common.Models;
 
 public class ToolRequest
 {
-    public static readonly ToolRequest WebSearchToolRequest = new ToolRequest { Name = AesirTools.WebSearchFunctionName };
+    public static readonly ToolRequest WebSearchToolRequest = new ToolRequest { Name = AesirTools.WebToolName };
 	
     public required string Name { get; set; }
     
