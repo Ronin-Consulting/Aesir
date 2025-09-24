@@ -51,7 +51,11 @@
             <Setter Property="Background" Value="#2954A9FF" />
         </Style>
     </UserControl.Styles>
-
+    
+    <UserControl.Resources>
+        <converters:ToolRequestExistsConverter x:Key="ToolRequestExistsConverter" />
+    </UserControl.Resources>
+    
     <DockPanel>
         <!-- Error Panel - Shows at the top when there's a configuration error -->
         <Border
@@ -239,9 +243,22 @@
                                                 </Button>
                                                 <ToggleButton Classes="Primary AesirToggleButton"
                                                               Margin="0,0,0,0"
-                                                              IsChecked="True"
                                                               ToolTip.Tip="Toggle Web Search"
-                                                              Theme="{DynamicResource OutlineButton}">
+                                                              Theme="{DynamicResource OutlineButton}"
+                                                              Command="{Binding ToggleToolRequest}"
+                                                >
+                                                    <ToggleButton.CommandParameter>
+                                                        <x:Static Member="common:AesirTools.WebSearchFunctionName" />
+                                                    </ToggleButton.CommandParameter>
+                                                    <ToggleButton.IsChecked>
+                                                        <Binding Path="ToolRequests"
+                                                                 Mode="OneWay"
+                                                                 Converter="{StaticResource ToolRequestExistsConverter}">
+                                                            <Binding.ConverterParameter>
+                                                                <x:Static Member="common:AesirTools.WebSearchFunctionName" />
+                                                            </Binding.ConverterParameter>
+                                                        </Binding>
+                                                    </ToggleButton.IsChecked>
                                                     <Panel>
                                                         <avalonia:MaterialIcon Kind="Web" Width="20"
                                                                                Height="34"
