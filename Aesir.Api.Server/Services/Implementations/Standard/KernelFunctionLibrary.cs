@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text.Json;
 using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Models;
+using Aesir.Common.Models;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Data;
@@ -267,7 +268,7 @@ public class KernelFunctionLibrary<TKey, TRecord>(
             (from method in methods
                 where method.Name.StartsWith("GetSearchResults")
                 select KernelFunctionFactory.CreateFromMethod(
-                    method, webSearchPlugin, "GetWebSearchResults"
+                    method, webSearchPlugin, AesirTools.WebSearchFunctionName
                 )).ToList();
 
         var webSearchFunction = functions.FirstOrDefault();
