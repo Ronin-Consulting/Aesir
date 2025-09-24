@@ -85,7 +85,7 @@ public class ChatRequestBase
     /// </returns>
     public ChatRequestBase RemoveWebTool()
     {
-	    Tools.Remove(Tools.First(t => t.Name == AesirTools.WebSearchFunctionName));
+	    Tools.Remove(Tools.First(t => t.Name == AesirTools.WebToolName));
 	    
 	    return this;
     }
