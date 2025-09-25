@@ -87,7 +87,7 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     /// <summary>
     /// Collection of tools available for selection in the agent configuration.
     /// </summary>
-    public ObservableCollection<string> AvailableTools { get; set; }
+    public ObservableCollection<AesirToolBase> AvailableTools { get; set; }
 
     /// <summary>
     /// Indicates whether the view model has unsaved changes.
@@ -210,7 +210,7 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
             var availableTools = await _configurationService.GetToolsAsync();
             AvailableTools.Clear();
             foreach (var availableTool in availableTools)
-                AvailableTools.Add(availableTool.Name);
+                AvailableTools.Add(availableTool);
             
             // get tools for agent
             if (_agent.Id != null)
@@ -219,7 +219,7 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
                 
                 FormModel.Tools.Clear();
                 foreach (var agentTool in agentTools)
-                    FormModel.Tools.Add(agentTool.Name);
+                    FormModel.Tools.Add(agentTool);
             }
         }
         catch (Exception ex)
@@ -313,9 +313,13 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
             
             try
             {
+                var selectedTools = FormModel.Tools.Select(t => t.Id.Value).ToArray();
+                
                 if (_agent.Id == null)
                 {
-                    await _configurationService.CreateAgentAsync(agent);
+                    var id = await _configurationService.CreateAgentAsync(agent);
+
+                    await _configurationService.UpdateToolsForAgentAsync(id, selectedTools);
 
                     _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' created");
 
@@ -325,6 +329,8 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
                 {
                     agent.Id = _agent.Id;
                     await _configurationService.UpdateAgentAsync(agent);
+
+                    await _configurationService.UpdateToolsForAgentAsync(agent.Id.Value, selectedTools);
 
                     _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' updated");
                     
@@ -497,7 +503,7 @@ public partial class AgentFormDataModel : ObservableValidator
     /// <summary>
     /// Collection of tools used within the AgentFormDataModel
     /// </summary>
-    [ObservableProperty] private ObservableCollection<string> _tools = [];
+    [ObservableProperty] private ObservableCollection<AesirToolBase> _tools = [];
     
     /// <summary>
     /// Represents the description of the agent, required for validation and user input.

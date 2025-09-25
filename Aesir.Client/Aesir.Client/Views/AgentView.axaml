@@ -155,7 +155,18 @@
                     MaxHeight="200"
                     HorizontalAlignment="Stretch"
                     SelectedItems="{Binding FormModel.Tools}"
-                    ItemsSource="{Binding AvailableTools}" />
+                    ItemsSource="{Binding AvailableTools}">
+                    <u:MultiComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                    </u:MultiComboBox.ItemTemplate>
+                    <u:MultiComboBox.SelectedItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                    </u:MultiComboBox.SelectedItemTemplate>
+                </u:MultiComboBox>
             </u:FormItem>
             <u:FormItem
                 Grid.Row="7"

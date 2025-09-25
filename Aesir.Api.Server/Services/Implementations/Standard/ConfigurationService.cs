@@ -342,7 +342,7 @@ public class ConfigurationService(
     /// Inserts a new AesirInferenceEngine into the database.
     /// </summary>
     /// <param name="InferenceEngine">The inference engine to insert.</param>
-    public async Task CreateInferenceEngineAsync(AesirInferenceEngine inferenceEngine)
+    public async Task<Guid> CreateInferenceEngineAsync(AesirInferenceEngine inferenceEngine)
     {   
         VerifyIsDatabaseMode();
         
@@ -351,13 +351,13 @@ public class ConfigurationService(
             (name, description, type, configuration)
             VALUES 
             (@Name, @Description, @Type, @Configuration::jsonb)
+            RETURNING id;
         ";
 
-        var rows = await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, inferenceEngine));
+        var id = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QuerySingleAsync<Guid>(sql, inferenceEngine));
 
-        if (rows == 0)
-            throw new Exception("No rows created");
+        return id;
     }
 
     /// <summary>
@@ -475,7 +475,7 @@ public class ConfigurationService(
     /// </summary>
     /// <param name="agent">The agent to insert.</param>
     /// <returns>The number of rows affected.</returns>
-    public async Task CreateAgentAsync(AesirAgent agent)
+    public async Task<Guid> CreateAgentAsync(AesirAgent agent)
     {
         VerifyIsDatabaseMode();
         
@@ -484,13 +484,13 @@ public class ConfigurationService(
             (name, description, chat_inference_engine_id, chat_model, chat_temperature, chat_top_p, chat_max_tokens, chat_prompt_persona, chat_custom_prompt_content)
             VALUES 
             (@Name, @Description, @ChatInferenceEngineId, @ChatModel, @ChatTemperature, @ChatTopP, @ChatMaxTokens, @ChatPromptPersona, @ChatCustomPromptContent)
+            RETURNING id;
         ";
 
-        var rows = await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, agent));
+        var id = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QuerySingleAsync<Guid>(sql, agent));
 
-        if (rows == 0)
-            throw new Exception("No rows created");
+        return id;
     }
 
     /// <summary>
@@ -531,8 +531,11 @@ public class ConfigurationService(
     public async Task DeleteAgentAsync(Guid id)
     {
         VerifyIsDatabaseMode();
-        
+            
         const string sql = @"
+            DELETE FROM aesir.aesir_agent_tool 
+            WHERE agent_id = @Id::uuid;
+            
             DELETE FROM aesir.aesir_agent
             WHERE id = @Id::uuid
         ";
@@ -542,8 +545,7 @@ public class ConfigurationService(
 
         if (rows == 0)
             throw new Exception("No rows deleted");
-        if (rows > 1)
-            throw new Exception("Multiple rows deleted");
+
     }
 
     /// Asynchronously retrieves a collection of tools from the configuration database.
@@ -620,6 +622,53 @@ public class ConfigurationService(
     }
 
     /// <summary>
+    /// Updates the tools associated with a specific agent.
+    /// </summary>
+    /// <param name="id">The unique identifier of the agent.</param>
+    /// <param name="toolIds">An array of unique identifiers for the tools to associate with the agent. If null, the tools will be cleared.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public async Task UpdateToolsForAgentAsync(Guid id, Guid[]? toolIds)
+    {
+        VerifyIsDatabaseMode();VerifyIsDatabaseMode();
+        
+        string sql;
+        object parameters;
+        
+        if (toolIds == null || toolIds.Length == 0)
+        {
+            // Just delete all existing associations
+            sql = @"
+                DELETE FROM aesir.aesir_agent_tool 
+                WHERE agent_id = @AgentId::uuid
+            ";
+            parameters = new { AgentId = id };
+        
+            var rows = await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.ExecuteAsync(sql, parameters));
+        }
+        else
+        {
+            // Delete existing and insert new in a single statement
+            sql = @"
+                WITH deleted AS (
+                    DELETE FROM aesir.aesir_agent_tool 
+                    WHERE agent_id = @AgentId::uuid
+                )
+                INSERT INTO aesir.aesir_agent_tool (agent_id, tool_id)
+                SELECT @AgentId::uuid, unnest(@ToolIds::uuid[])
+            ";
+            parameters = new { AgentId = id, ToolIds = toolIds };
+        
+            var rows = await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.ExecuteAsync(sql, parameters));
+        
+            if (toolIds.Length != rows)
+                throw new Exception("Incorrect number of rows updated");
+        }
+
+    }
+
+    /// <summary>
     /// Retrieves an Aesir tool by its unique identifier from the database.
     /// </summary>
     /// <param name="id">The unique identifier of the Aesir tool to retrieve.</param>
@@ -652,7 +701,7 @@ public class ConfigurationService(
     /// </summary>
     /// <param name="tool">The tool to insert.</param>
     /// <returns>The number of rows affected.</returns>
-    public async Task CreateToolAsync(AesirTool tool)
+    public async Task<Guid>  CreateToolAsync(AesirTool tool)
     {
         VerifyIsDatabaseMode();
         
@@ -661,13 +710,13 @@ public class ConfigurationService(
             (name, description, type, mcp_server_id, mcp_server_tool_name)
             VALUES 
             (@Name, @Description, @Type, @McpServerId, @McpServerTool)
+            RETURNING id;
         ";
 
-        var rows = await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, tool));
+        var id = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QuerySingleAsync<Guid>(sql, tool));
 
-        if (rows == 0)
-            throw new Exception("No rows created");
+        return id;
     }
     
     /// <summary>
@@ -782,7 +831,7 @@ public class ConfigurationService(
     /// </summary>
     /// <param name="mcpServer">The MCP server to insert.</param>
     /// <returns>The number of rows affected.</returns>
-    public async Task CreateMcpServerAsync(AesirMcpServer mcpServer)
+    public async Task<Guid> CreateMcpServerAsync(AesirMcpServer mcpServer)
     {
         VerifyIsDatabaseMode();
         
@@ -791,13 +840,13 @@ public class ConfigurationService(
             (name, description, location, command, arguments, environment_variables, url, http_headers)
             VALUES 
             (@Name, @Description, @Location, @Command, @Arguments::jsonb, @EnvironmentVariables::jsonb, @Url, @HttpHeaders::jsonb)
+            RETURNING id;
         ";
 
-        var rows = await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, mcpServer));
+        var id = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QuerySingleAsync<Guid>(sql, mcpServer));
 
-        if (rows == 0)
-            throw new Exception("No rows created");
+        return id;
     }
     
     /// <summary>

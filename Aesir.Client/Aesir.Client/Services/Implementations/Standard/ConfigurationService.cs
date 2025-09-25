@@ -55,7 +55,6 @@ public class ConfigurationService(
             return (await _flurlClient.Request()
                 .AppendPathSegment($"systemready")
                 .GetJsonAsync<bool>());
-
         }
         catch (FlurlHttpException ex)
         {
@@ -176,13 +175,19 @@ public class ConfigurationService(
     /// Creates an inference engine
     /// </summary>
     /// <param name="inferenceEngine">The <see cref="AesirInferenceEngineBase"/> object to create</param>
-    public async Task CreateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine)
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task
+    /// is a Guid representing the id of the created inference engine.
+    /// </returns>
+    public async Task<Guid> CreateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine)
     {
         try
         {
-            await _flurlClient.Request()
+            var response = await _flurlClient.Request()
                 .AppendPathSegment("inferenceengines")
                 .PostJsonAsync(inferenceEngine);
+            
+            return await response.GetJsonAsync<Guid>();
         }
         catch (FlurlHttpException ex)
         {
@@ -278,13 +283,19 @@ public class ConfigurationService(
     /// Creates an agent
     /// </summary>
     /// <param name="agent">The <see cref="AesirAgentBase"/> object to create</param>
-    public async Task CreateAgentAsync(AesirAgentBase agent)
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task
+    /// is a Guid representing the id of the created agent.
+    /// </returns>
+    public async Task<Guid> CreateAgentAsync(AesirAgentBase agent)
     {    
         try
         {
-            await _flurlClient.Request()
+            var response = await _flurlClient.Request()
                 .AppendPathSegment("agents")
                 .PostJsonAsync(agent);
+            
+            return await response.GetJsonAsync<Guid>();
         }
         catch (FlurlHttpException ex)
         {
@@ -394,16 +405,50 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Creates a tool
+    /// Asynchronously updates the tools associated with a specified agent.
     /// </summary>
-    /// <param name="tool">The <see cref="AesirToolBase"/> object to create</param>
-    public async Task CreateToolAsync(AesirToolBase tool)
-    {    
+    /// <param name="id">
+    /// The unique identifier of the agent for which the tools are being updated.
+    /// </param>
+    /// <param name="toolIds">
+    /// An array of unique identifiers for the tools to associate with the agent.
+    /// This parameter can be null to clear all existing tool associations.
+    /// </param>
+    /// <returns>
+    /// A task that represents the asynchronous operation.
+    /// </returns>
+    public async Task UpdateToolsForAgentAsync(Guid id, Guid[]? toolIds)
+    {
         try
         {
             await _flurlClient.Request()
+                .AppendPathSegment($"agents/{id}/tools")
+                .PutJsonAsync(toolIds);
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Creates a tool
+    /// </summary>
+    /// <param name="tool">The <see cref="AesirToolBase"/> object to create</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task
+    /// is a Guid representing the id of the created tool.
+    /// </returns>
+    public async Task<Guid> CreateToolAsync(AesirToolBase tool)
+    {    
+        try
+        {
+            var response = await _flurlClient.Request()
                 .AppendPathSegment("tools")
                 .PostJsonAsync(tool);
+            
+            return await response.GetJsonAsync<Guid>();
         }
         catch (FlurlHttpException ex)
         {
@@ -496,13 +541,19 @@ public class ConfigurationService(
     /// Creates an MCP Server
     /// </summary>
     /// <param name="mcpServer">The <see cref="AesirMcpServerBase"/> object to create</param>
-    public async Task CreateMcpServerAsync(AesirMcpServerBase mcpServer)
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task
+    /// is a Guid representing the id of the created MCP Server.
+    /// </returns>
+    public async Task<Guid> CreateMcpServerAsync(AesirMcpServerBase mcpServer)
     {    
         try
         {
-            await _flurlClient.Request()
+            var response = await _flurlClient.Request()
                 .AppendPathSegment("mcpservers")
                 .PostJsonAsync(mcpServer);
+            
+            return await response.GetJsonAsync<Guid>();
         }
         catch (FlurlHttpException ex)
         {
@@ -561,11 +612,11 @@ public class ConfigurationService(
     {
         try
         {
-            var result = await _flurlClient.Request()
+            var response = await _flurlClient.Request()
                 .AppendPathSegment("mcpservers/from-config")
                 .PostJsonAsync(clientConfigurationJson);
             
-            return await result.GetJsonAsync<AesirMcpServerBase>();
+            return await response.GetJsonAsync<AesirMcpServerBase>();
         }
         catch (FlurlHttpException ex)
         {

@@ -128,11 +128,11 @@ public class ConfigurationController(
     {
         try
         {
-            await configurationService.CreateInferenceEngineAsync(inferenceEngine);
+            var inferencEngineId = await configurationService.CreateInferenceEngineAsync(inferenceEngine);
 
             logger.LogDebug("Created inference engine = {InferenceEngine}", JsonSerializer.Serialize(inferenceEngine));
 
-            return Created("", new { id = inferenceEngine.Id });
+            return Created("", inferencEngineId);
         }
         catch (Exception ex)
         {
@@ -252,11 +252,11 @@ public class ConfigurationController(
     {
         try
         {
-            await configurationService.CreateAgentAsync(agent);
+            var agentId = await configurationService.CreateAgentAsync(agent);
 
             logger.LogDebug("Created agent = {Agent}", JsonSerializer.Serialize(agent));
 
-            return Created("", new { id = agent.Id });
+            return Created("", agentId);
         }
         catch (Exception ex)
         {
@@ -395,6 +395,34 @@ public class ConfigurationController(
             return StatusCode(500, "An error occurred while retrieving tools for the agent");
         }
     }
+    
+
+    /// <summary>
+    /// Updates the list of tools associated with a specific agent.
+    /// </summary>
+    /// <param name="id">The unique identifier of the agent.</param>
+    /// <param name="toolIds">The unique identifiers of the tools. If empty, all tools are removed.</param>
+    /// <returns>
+    /// Returns a NoContent status if the agent is updated successfully.
+    /// Returns a StatusCode 500 if an internal server error occurs.
+    /// </returns>
+    [HttpPut("agents/{id:guid}/tools")]
+    public async Task<IActionResult> UpdateToolsForAgentAsync([FromRoute] Guid id, [FromBody] Guid[]? toolIds)
+    {
+        try
+        {
+            await configurationService.UpdateToolsForAgentAsync(id, toolIds);
+
+            logger.LogDebug("Updated agent = {Id} wtih tools {ToolIds}", id, toolIds);
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating agent with ID = {Id}", id);
+            return StatusCode(500, "An error occurred while updating the agent");
+        }
+    }
 
     /// <summary>
     /// Creates a new tool in the system and returns the result.
@@ -406,11 +434,11 @@ public class ConfigurationController(
     {
         try
         {
-            await configurationService.CreateToolAsync(tool);
+            var toolId = await configurationService.CreateToolAsync(tool);
 
             logger.LogDebug("Created tool = {Tool}", JsonSerializer.Serialize(tool));
 
-            return Created("", new { id = tool.Id });
+            return Created("", toolId);
         }
         catch (Exception ex)
         {
@@ -535,11 +563,11 @@ public class ConfigurationController(
     {
         try
         {
-            await configurationService.CreateMcpServerAsync(mcpServer);
+            var mcpServerId = await configurationService.CreateMcpServerAsync(mcpServer);
 
             logger.LogDebug("Created MCP Server = {McpServer}", JsonSerializer.Serialize(mcpServer));
 
-            return Created("", new { id = mcpServer.Id });
+            return Created("", mcpServerId);
         }
         catch (Exception ex)
         {

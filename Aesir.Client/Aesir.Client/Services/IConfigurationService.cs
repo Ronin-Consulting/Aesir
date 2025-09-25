@@ -68,7 +68,11 @@ public interface IConfigurationService
     /// Inserts a new AesirInferenceEngineBase into the database.
     /// </summary>
     /// <param name="inferenceEngine">The inference engine to insert.</param>
-    Task CreateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine);
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task
+    /// is a Guid representing the id of the created inference engine.
+    /// </returns>
+    Task<Guid> CreateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine);
 
     /// <summary>
     /// Updates an existing AesirInferenceEngineBase in the database.
@@ -105,7 +109,11 @@ public interface IConfigurationService
     /// Inserts a new AesirAgentBase into the database.
     /// </summary>
     /// <param name="agent">The agent to insert.</param>
-    Task CreateAgentAsync(AesirAgentBase agent);
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task
+    /// is a Guid representing the id of the created agent.
+    /// </returns>
+    Task<Guid> CreateAgentAsync(AesirAgentBase agent);
 
     /// <summary>
     /// Updates an existing AesirAgentBase in the database.
@@ -128,6 +136,21 @@ public interface IConfigurationService
     Task<IEnumerable<AesirToolBase>> GetToolsAsync();
 
     /// <summary>
+    /// Asynchronously updates the tools associated with a specified agent.
+    /// </summary>
+    /// <param name="id">
+    /// The unique identifier of the agent for which the tools are being updated.
+    /// </param>
+    /// <param name="toolIds">
+    /// An array of unique identifiers for the tools to associate with the agent.
+    /// This parameter can be null to clear all existing tool associations.
+    /// </param>
+    /// <returns>
+    /// A task that represents the asynchronous operation.
+    /// </returns>
+    Task UpdateToolsForAgentAsync(Guid id, Guid[]? toolIds);
+
+    /// <summary>
     /// Retrieves a tool by its unique identifier asynchronously.
     /// </summary>
     /// <param name="id">The unique identifier of the tool to retrieve.</param>
@@ -146,7 +169,11 @@ public interface IConfigurationService
     /// Inserts a new AesirToolBase into the database.
     /// </summary>
     /// <param name="tool">The tool to insert.</param>
-    Task CreateToolAsync(AesirToolBase tool);
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task
+    /// is a Guid representing the id of the created tool.
+    /// </returns>
+    Task<Guid> CreateToolAsync(AesirToolBase tool);
 
     /// <summary>
     /// Updates an existing AesirToolBase in the database.
@@ -179,7 +206,11 @@ public interface IConfigurationService
     /// Inserts a new AesirMcpServerBase into the database.
     /// </summary>
     /// <param name="mcpServer">The MCP server to insert.</param>
-    Task CreateMcpServerAsync(AesirMcpServerBase mcpServer);
+    /// <returns>
+    /// A task that represents the asynchronous operation. The result of the task
+    /// is a Guid representing the id of the created MCP Server.
+    /// </returns>
+    Task<Guid> CreateMcpServerAsync(AesirMcpServerBase mcpServer);
 
     /// <summary>
     /// Updates an existing AesirMcpServerBase in the database.
