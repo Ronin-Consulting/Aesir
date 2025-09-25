@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using Aesir.Client.Messages;
 using Aesir.Client.Services;
 using Aesir.Common.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Aesir.Client.Models;
 
@@ -22,8 +24,9 @@ namespace Aesir.Client.Models;
 public partial class ApplicationState(
     IModelService modelService, 
     IChatHistoryService chatHistoryService,
-    IConfigurationService configurationService)
-    : ObservableRecipient, IDisposable
+    IConfigurationService configurationService
+   )
+    : ObservableRecipient, IDisposable, IRecipient<ChatSessionDeletedMessage>
 {
     /// <summary>
     /// Determines if the application is prepared to process and handle a new AI-generated message.
@@ -144,5 +147,10 @@ public partial class ApplicationState(
     {
         Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    public void Receive(ChatSessionDeletedMessage message)
+    {
+        SelectedChatSessionId = null;
     }
 }

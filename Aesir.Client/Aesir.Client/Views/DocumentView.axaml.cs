@@ -30,7 +30,7 @@ public partial class DocumentView : UserControl
     {
         if (DataContext is not DocumentViewViewModel viewModel) return;
 
-        WeakReferenceMessenger.Default.Send(new FileDownloadMessage()
+        WeakReferenceMessenger.Default.Send(new FileDownloadRequestMessage()
         {
             FileName = viewModel.FormModel.Path
         });
