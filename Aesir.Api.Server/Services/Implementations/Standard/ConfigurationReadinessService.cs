@@ -14,7 +14,10 @@ public class ConfigurationReadinessService : IConfigurationReadinessService
     /// </summary>
     public bool IsReadyAtBoot => _missingRequiredConfigurationReasons.Count == 0;
     
-    public IEnumerable<string> MissingRequiredConfigurationReasons => _missingRequiredConfigurationReasons;
+    public IEnumerable<string> MissingRequiredConfigurationReasons
+    {
+        get { return _missingRequiredConfigurationReasons; }
+    }
 
     /// <summary>
     /// Adds a missing required configuration message indicating why the system can't start.
