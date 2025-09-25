@@ -42,8 +42,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// </summary>
     private const string DefaultAgentNameValue = "Select an agent";
 
-    [ObservableProperty] private bool _isSystemConfigurationComplete;
-
+    [ObservableProperty] private AesirConfigurationReadinessBase _configurationReadiness = new() { IsReady = false, Reasons = [] };
+    
     /// <summary>
     /// Indicates whether the panel is currently open in the ChatViewViewModel.
     /// A value of true signifies that the panel is open, while false means it is closed.
@@ -380,7 +380,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     {
         await LoadIsSystemConfigurationReadyAsync();
         
-        if (IsSystemConfigurationComplete)
+        if (ConfigurationReadiness?.IsReady == true)
         {
             await LoadSelectedAgentAsync();
             await LoadChatSessionAsync();
@@ -395,7 +395,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     {
         try
         {
-            IsSystemConfigurationComplete = await _appState.CheckSystemConfigurationReady();
+            ConfigurationReadiness = await _appState.CheckSystemConfigurationReady();
         }
         catch (Exception ex)
         {
