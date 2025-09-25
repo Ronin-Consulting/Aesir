@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Aesir.Api.Server.Models;
 using Aesir.Common.Models;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
@@ -12,11 +13,14 @@ namespace Aesir.Api.Server.Services.Implementations.Standard;
 /// <param name="logger">The logger instance used for recording application events and debugging information.</param>
 /// <param name="chatHistoryService">The service responsible for persisting and retrieving chat session histories.</param>
 /// <param name="kernel">The semantic kernel utilized for processing chat completion requests and generating AI responses.</param>
+/// <param name="inferenceEngineIdKey">The service key used to register this keyed service.</param>
 [Experimental("SKEXP0070")]
 public abstract class BaseChatService(
     ILogger logger,
     IChatHistoryService chatHistoryService,
-    Kernel kernel)
+    Kernel kernel,
+    IServiceProvider serviceProvider,
+    string inferenceEngineIdKey)
     : IChatService
 {
     /// <summary>
@@ -46,6 +50,47 @@ public abstract class BaseChatService(
     /// </remarks>
     protected readonly Kernel _kernel = kernel;
 
+    /// <summary>
+    /// A protected string representing the key used to identify the inference engine
+    /// within the services and factories utilized by the <see cref="BaseChatService"/>.
+    /// </summary>
+    /// <remarks>
+    /// This key is used as an identifier to retrieve the appropriate
+    /// <see cref="IChatCompletionServiceFactory"/> implementation. It facilitates
+    /// dynamic service resolution and enables the system to interact with the correct
+    /// inference engine for AI model execution.
+    /// </remarks>
+    private readonly string _inferenceEngineIdKey = inferenceEngineIdKey;
+
+    /// <summary>
+    /// A protected instance of <see cref="IServiceProvider"/> utilized to resolve service dependencies dynamically
+    /// within the chat service implementation.
+    /// </summary>
+    /// <remarks>
+    /// Enables the retrieval of service instances, such as factories or other required components,
+    /// facilitating dependency injection and runtime service resolution.
+    /// </remarks>
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
+
+    /// <summary>
+    /// Retrieves an instance of the chat completion service based on the specified model identifier.
+    /// </summary>
+    /// <param name="modelId">
+    /// The ID of the model to use for chat completion. This parameter determines which chat completion service will be provided.
+    /// </param>
+    /// <returns>
+    /// An instance of <see cref="IChatCompletionService"/> corresponding to the specified model ID.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the chat completion service cannot be retrieved for the specified model ID.
+    /// </exception>
+    protected IChatCompletionService GetChatCompletionService(string modelId)
+    {
+        var factory = _serviceProvider.GetKeyedService<IChatCompletionServiceFactory>(_inferenceEngineIdKey);
+
+        return factory.GetChatCompletionService(modelId);
+    }
+    
     /// <summary>
     /// Processes a chat completion request and generates a response based on the provided input.
     /// </summary>

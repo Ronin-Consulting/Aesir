@@ -81,6 +81,7 @@ public class Program
                             serviceProvider.GetRequiredService<ILogger<AesirOllama.ModelsService>>(),
                             serviceProvider.GetRequiredService<IConfiguration>(),
                             serviceProvider));
+                    
                     builder.Services.AddKeyedTransient<IChatService>(inferenceEngineIdKey, (serviceProvider, key) =>
                     {
                         // only one of these
@@ -90,9 +91,8 @@ public class Program
                         var conversationDocumentCollectionService =
                             serviceProvider.GetRequiredService<IConversationDocumentCollectionService>();
 
-                        // these are keyed by inference engine id
+                        // this is keyed by inference engine id
                         var ollamApiClient = serviceProvider.GetRequiredKeyedService<OllamaApiClient>(inferenceEngineIdKey);
-                        var chatCompletionService = serviceProvider.GetRequiredKeyedService<IChatCompletionService>(inferenceEngineIdKey);
 
                         var enableThinking = Boolean.Parse(inferenceEngine.Configuration["EnableChatModelThinking"] ?? "false");
 
@@ -100,7 +100,8 @@ public class Program
                             logger,
                             ollamApiClient,
                             kernel,
-                            chatCompletionService,
+                            serviceProvider,
+                            inferenceEngineIdKey,
                             chatHistoryService,
                             conversationDocumentCollectionService,
                             enableThinking
@@ -145,6 +146,8 @@ public class Program
                             serviceProvider.GetRequiredService<ILogger<AesirOpenAI.ModelsService>>(),
                             serviceProvider.GetRequiredService<IConfiguration>(),
                             serviceProvider));
+                    
+                    // currently making one of these per inference engine, but really only need one per inference engine type
                     builder.Services.AddKeyedTransient<IChatService>(inferenceEngineIdKey, (serviceProvider, key) =>
                     {
                         // only one of these
@@ -154,13 +157,11 @@ public class Program
                         var conversationDocumentCollectionService =
                             serviceProvider.GetRequiredService<IConversationDocumentCollectionService>();
 
-                        // these are keyed by inference engine id
-                        var chatCompletionService = serviceProvider.GetRequiredKeyedService<IChatCompletionService>(inferenceEngineIdKey);
-
                         return new AesirOpenAI.ChatService(
                             logger,
                             kernel,
-                            chatCompletionService,
+                            serviceProvider,
+                            inferenceEngineIdKey,
                             chatHistoryService,
                             conversationDocumentCollectionService
                         );
