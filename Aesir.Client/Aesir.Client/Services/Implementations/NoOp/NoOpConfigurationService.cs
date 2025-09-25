@@ -43,9 +43,9 @@ public class NoOpConfigurationService : IConfigurationService
         return await Task.FromResult(new AesirInferenceEngineBase());
     }
 
-    public async Task CreateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine)
+    public async Task<Guid> CreateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine)
     {
-        await Task.CompletedTask;
+        return await Task.FromResult(Guid.NewGuid());
     }
 
     public async Task UpdateInferenceEngineAsync(AesirInferenceEngineBase inferenceEngine)
@@ -68,9 +68,9 @@ public class NoOpConfigurationService : IConfigurationService
         return await Task.FromResult(new AesirAgentBase());
     }
 
-    public async Task CreateAgentAsync(AesirAgentBase agent)
+    public async Task<Guid> CreateAgentAsync(AesirAgentBase agent)
     {
-        await Task.CompletedTask;
+        return await Task.FromResult(Guid.NewGuid());
     }
 
     public async Task UpdateAgentAsync(AesirAgentBase agent)
@@ -103,9 +103,14 @@ public class NoOpConfigurationService : IConfigurationService
         return await Task.FromResult(new List<AesirToolBase>());
     }
 
-    public async Task CreateToolAsync(AesirToolBase tool)
+    public async Task UpdateToolsForAgentAsync(Guid id, Guid[]? toolIds)
     {
         await Task.CompletedTask;
+    }
+
+    public async Task<Guid> CreateToolAsync(AesirToolBase tool)
+    {
+        return await Task.FromResult(Guid.NewGuid());
     }
 
     public async Task UpdateToolAsync(AesirToolBase tool)
@@ -133,9 +138,9 @@ public class NoOpConfigurationService : IConfigurationService
         return await Task.FromResult(new AesirMcpServerBase());
     }
 
-    public async Task CreateMcpServerAsync(AesirMcpServerBase mcpServer)
+    public async Task<Guid> CreateMcpServerAsync(AesirMcpServerBase mcpServer)
     {
-        await Task.CompletedTask;
+        return await Task.FromResult(Guid.NewGuid());
     }
 
     public async Task UpdateMcpServerAsync(AesirMcpServerBase mcpServer)

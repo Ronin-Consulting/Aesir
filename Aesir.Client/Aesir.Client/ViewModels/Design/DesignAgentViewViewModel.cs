@@ -41,10 +41,18 @@ public class DesignAgentViewViewModel : AgentViewViewModel
         ChatMaxTokens = 10000
     }, new NoOpNotificationService(), new NoOpConfigurationService(), new NoOpModelService())
     {
-        AvailableTools = new ObservableCollection<string>()
+        AvailableTools = new ObservableCollection<AesirToolBase>()
         {
-            "RAG",
-            "Web"
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Name = "RAG"
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Web"
+            }
         };
         IsDirty = false;
         EditCustomPromptCommand = new RelayCommand(() => { });

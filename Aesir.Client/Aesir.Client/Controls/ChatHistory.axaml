@@ -42,14 +42,14 @@
                     Padding="10,7,7,7">
                 <Button.Flyout>
                     <MenuFlyout Placement="Top" FlyoutPresenterClasses="userMenu">
-                        <MenuItem Header="General Settings" Command="{Binding ShowGeneralSettings}">
-                            <MenuItem.Icon>
-                                <avalonia:MaterialIcon Kind="Cog" />
-                            </MenuItem.Icon>
-                        </MenuItem>
                         <MenuItem Header="Inference Engines" Command="{Binding ShowInferenceEngines}">
                             <MenuItem.Icon>
                                 <avalonia:MaterialIcon Kind="Engine" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="General Settings" Command="{Binding ShowGeneralSettings}">
+                            <MenuItem.Icon>
+                                <avalonia:MaterialIcon Kind="Cog" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="MCP Servers" Command="{Binding ShowMcpServers}">
