@@ -32,12 +32,6 @@ public class ChatService : BaseChatService
     private readonly OllamaApiClient _api;
 
     /// <summary>
-    /// Handles chat completion functionalities, supporting both synchronous processing
-    /// and streaming of chat messages by interacting with the defined backend service.
-    /// </summary>
-    private readonly IChatCompletionService _chatCompletionService;
-
-    /// <summary>
     /// Service responsible for managing collections of documents related to conversations.
     /// Supports operations such as retrieval, search, and integration of document collections
     /// into conversation workflows for enhanced dialogue-based interactions.
@@ -79,15 +73,15 @@ public class ChatService : BaseChatService
         ILogger<ChatService> logger,
         OllamaApiClient api,
         Kernel kernel,
-        IChatCompletionService chatCompletionService,
+        IServiceProvider serviceProvider,
+        string inferenceEngineId,
         IChatHistoryService chatHistoryService,
         IConversationDocumentCollectionService conversationDocumentCollectionService,
         bool enableThinking = false)
-        : base(logger, chatHistoryService, kernel)
+        : base(logger, chatHistoryService, kernel, serviceProvider, inferenceEngineId)
     {
         _enableThinking = enableThinking;
         _api = api;
-        _chatCompletionService = chatCompletionService;
         _conversationDocumentCollectionService = conversationDocumentCollectionService;
         _enableThinking = enableThinking;
     }
@@ -144,11 +138,13 @@ public class ChatService : BaseChatService
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = await CreateChatHistoryAsync(request);
+
+        var chatCompletionService = GetChatCompletionService(request.Model);
         
         _kernel.Data.Add("ChatSessionId",request.ChatSessionId);
         _kernel.Data.Add("ConversationId",request.Conversation.Id);
 
-        var results = await _chatCompletionService.GetChatMessageContentsAsync(
+        var results = await chatCompletionService.GetChatMessageContentsAsync(
             chatHistory,
             settings,
             _kernel
@@ -184,10 +180,12 @@ public class ChatService : BaseChatService
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = await CreateChatHistoryAsync(request);
         
+        var chatCompletionService = GetChatCompletionService(request.Model);
+        
         _kernel.Data.Add("ChatSessionId",request.ChatSessionId);
         _kernel.Data.Add("ConversationId",request.Conversation.Id);
 
-        var results = _chatCompletionService.GetStreamingChatMessageContentsAsync(
+        var results = chatCompletionService.GetStreamingChatMessageContentsAsync(
             chatHistory,
             settings,
             _kernel
@@ -292,8 +290,10 @@ public class ChatService : BaseChatService
     /// <returns>A chat history constructed from the conversation messages within the provided chat request.</returns>
     private async Task<ChatHistory> CreateChatHistoryAsync(AesirChatRequest request)
     {
+        var chatCompletionService = GetChatCompletionService(request.Model);
+        
         var chatHistoryReducer = new ChatHistorySummarizationReducer(
-            _chatCompletionService, 4,8);
+            chatCompletionService, 4,8);
         
         var chatHistory = new ChatHistory();
         chatHistory.AddRange(request.Conversation.Messages.Select(ConvertToSemanticKernelMessage));

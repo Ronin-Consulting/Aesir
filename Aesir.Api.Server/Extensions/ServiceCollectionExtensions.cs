@@ -11,6 +11,8 @@ using Microsoft.SemanticKernel.Connectors.Qdrant;
 using OllamaSharp;
 using OpenAI;
 using Qdrant.Client;
+using AesirOllama = Aesir.Api.Server.Services.Implementations.Ollama;
+using AesirOpenAI = Aesir.Api.Server.Services.Implementations.OpenAI;
 
 namespace Aesir.Api.Server.Extensions;
 
@@ -67,8 +69,14 @@ public static class ServiceCollectionExtensions
             {
                 case InferenceEngineType.Ollama:
                 {
+                    // this will register the IChatCompletionService service for the inference engine id (service key)
                     kernelBuilder.AddOllamaChatCompletion(serviceId: inferenceEngineIdKey);
-
+                    
+                    // register the factory to generate IChatCompletionServices for this inference engine id
+                    // (service key), which is looked up by model (for Ollama, only one will ever be created)
+                    services.AddKeyedSingleton<IChatCompletionServiceFactory>(inferenceEngineIdKey, 
+                        (sp, key) => new AesirOllama.ChatCompletionServiceFactory(sp, inferenceEngineIdKey));
+                    
                     if (inferenceEngine.Id == ragEmbeddingInferenceEngineId)
                     {   
                         const string? serviceId = null;
@@ -97,12 +105,15 @@ public static class ServiceCollectionExtensions
                 {
                     var openAiClient = services.BuildServiceProvider().GetKeyedService<OpenAIClient>(inferenceEngineIdKey);
                     
-                    kernelBuilder.AddOpenAIChatCompletion("set-by-agent", openAiClient, inferenceEngineIdKey);
+                    // register the factory to generate IChatCompletionService for this inference engine id
+                    // (service key), which is looked up by model (for OpenAI, we will get one per model created)
+                    services.AddKeyedSingleton<IChatCompletionServiceFactory>(inferenceEngineIdKey, 
+                        (sp, key) => new AesirOpenAI.ChatCompletionServiceFactory(
+                            openAiClient, sp.GetService<ILoggerFactory>()));
 
                     if (inferenceEngine.Id == ragEmbeddingInferenceEngineId)
                     {
-                        kernelBuilder.AddOpenAIEmbeddingGenerator(embeddingModel, openAiClient, 1024,
-                            inferenceEngineIdKey);
+                        kernelBuilder.AddOpenAIEmbeddingGenerator(embeddingModel, openAiClient, 1024);
                     }
 
                     break;

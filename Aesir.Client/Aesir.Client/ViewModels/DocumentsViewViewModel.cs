@@ -34,7 +34,7 @@ namespace Aesir.Client.ViewModels;
 /// tools, and to add new tools. Additionally, it manages the collection of tools
 /// and tracks the selected tool.
 /// </remarks>
-public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipient<FileDownloadMessage>
+public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipient<FileDownloadRequestMessage>
 {
     /// <summary>
     /// Represents a command that triggers the display of the chat interface.
@@ -206,7 +206,7 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipie
         GC.SuppressFinalize(this);
     }
 
-    public void Receive(FileDownloadMessage message)
+    public void Receive(FileDownloadRequestMessage message)
     {
         Dispatcher.UIThread.Post(async void () =>
         {
