@@ -10,5 +10,5 @@ public interface IConfigurationReadinessService
     /// </summary>
     public bool IsReadyAtBoot { get; }
 
-    public IEnumerable<string> MissingRequiredConfigurationReasons { get; }
+    public IList<string> MissingRequiredConfigurationReasons { get; }
 }

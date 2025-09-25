@@ -14,9 +14,9 @@ public class ConfigurationReadinessService : IConfigurationReadinessService
     /// </summary>
     public bool IsReadyAtBoot => _missingRequiredConfigurationReasons.Count == 0;
     
-    public IEnumerable<string> MissingRequiredConfigurationReasons
+    public IList<string> MissingRequiredConfigurationReasons
     {
-        get { return _missingRequiredConfigurationReasons; }
+        get { return new List<string>(_missingRequiredConfigurationReasons); }
     }
 
     /// <summary>
