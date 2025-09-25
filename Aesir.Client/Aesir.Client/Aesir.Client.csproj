@@ -97,6 +97,10 @@
         <DependentUpon>ConfirmDialog.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\LogsView.axaml.cs">
+        <DependentUpon>LogsView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     
     <ItemGroup>

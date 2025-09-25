@@ -130,6 +130,7 @@ public partial class App : Application
         AppServices.AddTransient<AgentsViewViewModel>();
         AppServices.AddTransient<InferenceEnginesViewViewModel>();
         AppServices.AddTransient<HandsFreeControlViewModel>();
+        AppServices.AddTransient<LogsViewViewModel>();
         
         var delay = Backoff.DecorrelatedJitterBackoffV2(
             medianFirstRetryDelay: TimeSpan.FromSeconds(1), retryCount: 5, fastFirst: true);

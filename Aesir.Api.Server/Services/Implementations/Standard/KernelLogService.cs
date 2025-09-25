@@ -1,5 +1,6 @@
 ﻿using Aesir.Api.Server.Data;
 using Aesir.Api.Server.Models;
+using Aesir.Common.Models;
 using Dapper;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;

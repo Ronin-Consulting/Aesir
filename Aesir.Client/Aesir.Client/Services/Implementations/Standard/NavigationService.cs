@@ -32,6 +32,11 @@ public class NavigationService : INavigationService
         WeakReferenceMessenger.Default.Send(new NavigationMessage(NavigationMessage.ViewType.McpServers));
     }
 
+    public void NavigateToLogs()
+    {
+        WeakReferenceMessenger.Default.Send(new NavigationMessage(NavigationMessage.ViewType.Logs));
+    }
+
     /// <summary>
     /// Navigates the application to the Documents view.
     /// Sends a <see cref="NavigationMessage"/> with the ViewType set to Documents
