@@ -1,33 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using Aesir.Client.Messages;
-using Aesir.Client.Models;
 using Aesir.Client.Services;
-using Aesir.Client.Shared;
-using Aesir.Client.Views;
 using Aesir.Common.Models;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
-using Ursa.Common;
-using Ursa.Controls;
-using Ursa.Controls.Options;
 
 namespace Aesir.Client.ViewModels;
 
 /// <summary>
-/// Represents the view model for managing documents in the application.
+/// Represents the view model for managing logs in the application.
 /// </summary>
 /// <remarks>
 /// This class extends <see cref="ObservableRecipient"/> to manage state and perform
@@ -43,7 +29,7 @@ public class LogsViewViewModel : ObservableRecipient, IDisposable
     public ICommand ShowChat { get; protected set; }
 
     /// <summary>
-    /// Represents a command that triggers the display of an interface for document details.
+    /// Represents a command that triggers the display of an interface for log details.
     /// </summary>
     public ICommand ShowLogDetails { get; protected set; }
 
@@ -90,26 +76,26 @@ public class LogsViewViewModel : ObservableRecipient, IDisposable
 
     /// <summary>
     /// Provides access to configuration-related operations and data
-    /// management for agents and tools within the system.
+    /// management for logs within the system.
     /// </summary>
-    private readonly IDocumentCollectionService _documentCollectionService;
+    private readonly IKernelLogService _kernelLogService;
 
     /// <summary>
-    /// Backing field for the currently selected document in the view model.
+    /// Backing field for the currently selected log in the view model.
     /// </summary>
     private AesirKernelLogBase? _selectedLog;
 
-    /// Represents the view model for managing documents within the application.
+    /// Represents the view model for managing logs within the application.
     /// Provides commands to display the chat and tool creation interfaces.
     /// Integrates navigation and configuration services to coordinate application workflows.
     public LogsViewViewModel(
         ILogger<ToolsViewViewModel> logger,
         INavigationService navigationService,
-        IDocumentCollectionService documentCollectionService)
+        IKernelLogService kernelLogService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _navigationService = navigationService;
-        _documentCollectionService = documentCollectionService;
+        _kernelLogService = kernelLogService;
 
         ShowChat = new RelayCommand(ExecuteShowChat);
         ShowLogDetails = new RelayCommand(ExecuteShowLogDetails);
@@ -144,16 +130,16 @@ public class LogsViewViewModel : ObservableRecipient, IDisposable
     {
         try
         {
-            // var docs = await _documentCollectionService.GetDocumentsAsync();
-            var logs = new List<AesirKernelLogBase>();
-            logs.Add(new AesirKernelLogBase()
-            {
-                Id = Guid.NewGuid(),
-                Message = "Loading logs...",
-                CreatedAt = DateTime.Now,
-                Details = new AesirKernelLogDetailsBase(),
-                Level = KernelLogLevel.Info
-            });
+            var logs = await _kernelLogService.GetKernelLogsAsync(DateTimeOffset.Now.AddDays(-7),DateTimeOffset.Now);
+            // var logs = new List<AesirKernelLogBase>();
+            // logs.Add(new AesirKernelLogBase()
+            // {
+            //     Id = Guid.NewGuid(),
+            //     Message = "Loading logs...",
+            //     CreatedAt = DateTime.Now,
+            //     Details = new AesirKernelLogDetailsBase(),
+            //     Level = KernelLogLevel.Info
+            // });
             Logs.Clear();
             foreach (var log in logs)
                 Logs.Add(log);
@@ -171,14 +157,14 @@ public class LogsViewViewModel : ObservableRecipient, IDisposable
         _navigationService.NavigateToChat();
     }
 
-    /// Executes the command to show the interface for Document details.
-    /// Sends a message indicating that the interface for Document details should be displayed.
+    /// Executes the command to show the interface for log details.
+    /// Sends a message indicating that the interface for log details should be displayed.
     private void ExecuteShowLogDetails()
     {
         // WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(SelectedLog));   
     }
 
-    /// Executes the command to show the interface for re-selecting a document when the grid is clicked.
+    /// Executes the command to show the interface for re-selecting a log when the grid is clicked.
     private void ExecuteReselectFromGrid()
     {
         // WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(SelectedLog));   
