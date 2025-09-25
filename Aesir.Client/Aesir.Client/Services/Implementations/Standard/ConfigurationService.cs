@@ -48,13 +48,13 @@ public class ConfigurationService(
     /// A task that represents the asynchronous operation.
     /// The task result contains true if the system is ready; false otherwise.
     /// </returns>
-    public async Task<bool> GetIsSystemConfigurationReadyAsync()
+    public async Task<AesirConfigurationReadinessBase> GetIsSystemConfigurationReadyAsync()
     {
         try
         {
             return (await _flurlClient.Request()
                 .AppendPathSegment($"systemready")
-                .GetJsonAsync<bool>());
+                .GetJsonAsync<AesirConfigurationReadinessBase>());
 
         }
         catch (FlurlHttpException ex)

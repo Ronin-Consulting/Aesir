@@ -23,12 +23,6 @@ namespace Aesir.Api.Server.Services.Implementations.OpenAI;
 public class ChatService : BaseChatService
 {
     /// <summary>
-    /// Instance of the chat completion service used to manage chat-related operations, such as
-    /// generating responses to user inputs and facilitating real-time chat completion processes.
-    /// </summary>
-    private readonly IChatCompletionService _chatCompletionService;
-
-    /// <summary>
     /// Service used for managing document collections associated with conversations,
     /// enabling functionality such as retrieving, processing, and searching through
     /// conversation-specific documents.
@@ -47,18 +41,18 @@ public class ChatService : BaseChatService
     /// </summary>
     /// <param name="logger">Logger for diagnostic information.</param>
     /// <param name="kernel">Semantic Kernel instance for AI operations.</param>
-    /// <param name="chatCompletionService">Service for handling chat completions.</param>
+    /// <param name="inferenceEngineIdKey">The service key used to register this keyed service.</param>
     /// <param name="chatHistoryService">Service for persisting and managing chat history.</param>
     /// <param name="conversationDocumentCollectionService">Service for handling access and search functionalities for documents within conversations.</param>
     public ChatService(
         ILogger<ChatService> logger,
         Kernel kernel,
-        IChatCompletionService chatCompletionService,
+        IServiceProvider serviceProvider,
+        string inferenceEngineIdKey,
         IChatHistoryService chatHistoryService,
         IConversationDocumentCollectionService conversationDocumentCollectionService)
-        : base(logger, chatHistoryService, kernel)
+        : base(logger, chatHistoryService, kernel, serviceProvider, inferenceEngineIdKey)
     {
-        _chatCompletionService = chatCompletionService;
         _conversationDocumentCollectionService = conversationDocumentCollectionService;
     }
 
@@ -75,13 +69,16 @@ public class ChatService : BaseChatService
 
         var settings = new OpenAIPromptExecutionSettings
         {
-            ModelId = request.Model,
+            ModelId = request.Model, // this is ignored and according to the repo authors not meant to change the model,
+                                     // despite our attempt at submitted a PR
             Temperature = 0.2f
         };
 
+        var chatCompletionService = GetChatCompletionService(request.Model);
+        
         try
         {
-            var completionResults = await _chatCompletionService.GetChatMessageContentsAsync(
+            var completionResults = await chatCompletionService.GetChatMessageContentsAsync(
                 chatHistory,
                 settings,
                 _kernel);
@@ -114,7 +111,9 @@ public class ChatService : BaseChatService
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = CreateChatHistory(request.Conversation.Messages);
 
-        var completionResults = await _chatCompletionService.GetChatMessageContentsAsync(
+        var chatCompletionService = GetChatCompletionService(request.Model);
+        
+        var completionResults = await chatCompletionService.GetChatMessageContentsAsync(
             chatHistory,
             settings,
             _kernel);
@@ -151,7 +150,9 @@ public class ChatService : BaseChatService
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = CreateChatHistory(request.Conversation.Messages);
 
-        var streamingResults = _chatCompletionService.GetStreamingChatMessageContentsAsync(
+        var chatCompletionService = GetChatCompletionService(request.Model);
+        
+        var streamingResults = chatCompletionService.GetStreamingChatMessageContentsAsync(
             chatHistory,
             settings,
             _kernel);

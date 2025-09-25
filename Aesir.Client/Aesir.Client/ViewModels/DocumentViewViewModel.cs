@@ -162,6 +162,12 @@ public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
                     foreach (var chat in FormModel.Chats)
                     {
                         await _chatHistoryService.DeleteChatSessionAsync(chat.Id);
+                        
+                        WeakReferenceMessenger.Default.Send(new ChatSessionDeletedMessage()
+                        {
+                            ChatSessionId = chat.Id
+                        });
+
                     }
                 }
 
@@ -183,7 +189,7 @@ public partial class DocumentViewViewModel : ObservableRecipient, IDialogContext
 
     private void ExecuteDownloadCommand()
     {
-        WeakReferenceMessenger.Default.Send(new FileDownloadMessage()
+        WeakReferenceMessenger.Default.Send(new FileDownloadRequestMessage()
         {
             FileName = FormModel.Path
         });

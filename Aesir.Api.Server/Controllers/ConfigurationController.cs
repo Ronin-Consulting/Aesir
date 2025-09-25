@@ -32,11 +32,15 @@ public class ConfigurationController(
     [HttpGet("systemready")]
     public IActionResult IsSystemConfigurationReady()
     {
-        var systemReady = configurationReadinessService.IsReadyAtBoot;
+        var model = new AesirConfigurationReadiness()
+        {
+            IsReady = configurationReadinessService.IsReadyAtBoot,
+            Reasons = configurationReadinessService.MissingRequiredConfigurationReasons
+        };
         
-        logger.LogDebug("System Ready At Boot = {SystemReady}", systemReady);
+        logger.LogDebug("System Ready At Boot = {model.IsReady}", model);
 
-        return Ok(systemReady);
+        return Ok(model);
     }
     
     [HttpGet("databaseconfigurationmode")]

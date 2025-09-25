@@ -68,19 +68,31 @@
             BorderBrush="#E5B4B4"
             BorderThickness="0,0,0,1"
             Padding="12,8"
-            IsVisible="{Binding !IsSystemConfigurationComplete}"
+            IsVisible="{Binding !ConfigurationReadiness.IsReady}"
             ZIndex="200">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <avalonia:MaterialIcon Kind="Alert"
-                                       Width="16"
-                                       Height="16"
-                                       Foreground="#CC0000"
-                                       VerticalAlignment="Center" />
-                <TextBlock
-                    Text="System configuration is not yet complete. Please setup Inference Engine(s) and General Settings, then restart the server to take effect."
-                    FontSize="13"
-                    Foreground="#CC0000"
-                    VerticalAlignment="Center" />
+            
+            <StackPanel Orientation="Vertical" Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <avalonia:MaterialIcon Kind="Alert"
+                                           Width="16"
+                                           Height="16"
+                                           Foreground="#CC0000"
+                                           VerticalAlignment="Center" />
+                    <TextBlock
+                        Text="System configuration is not yet complete. Please setup Inference Engine(s) and General Settings, then restart the server to take effect."
+                        FontSize="13"
+                        Foreground="#CC0000"
+                        VerticalAlignment="Center" />
+                </StackPanel>
+                
+                <ItemsControl ItemsSource="{Binding ConfigurationReadiness.Reasons}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding }" Margin="25,0,10,0"
+                                       Foreground="#CC0000" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </Border>
 
@@ -110,7 +122,7 @@
                     <Button Classes="Primary" DockPanel.Dock="Right" Margin="0,0,10,0"
                             Theme="{DynamicResource OutlineButton}"
                             Command="{Binding ToggleNewChat}"
-                            IsEnabled="{Binding IsSystemConfigurationComplete}"
+                            IsEnabled="{Binding ConfigurationReadiness.IsReady}"
                             ToolTip.Tip="New Chat">
                         <avalonia:MaterialIcon Kind="CommentAdd" Width="20" Height="34" />
                     </Button>
@@ -144,7 +156,7 @@
                                         Theme="{DynamicResource OutlineButton}"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Left"
-                                        IsEnabled="{Binding IsSystemConfigurationComplete}"
+                                        IsEnabled="{Binding ConfigurationReadiness.IsReady}"
                                         Padding="10,0,0,0">
                                     <Button.Flyout>
                                         <MenuFlyout Placement="Right" FlyoutPresenterClasses="agentMenu"
@@ -233,7 +245,7 @@
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
                                                             <Binding Path="SelectedFileEnabled" />
-                                                            <Binding Path="IsSystemConfigurationComplete" />
+                                                            <Binding Path="ConfigurationReadiness.IsReady" />
                                                             <Binding Path="ToolsAvailable"
                                                                      Mode="OneWay"
                                                                      Converter="{StaticResource ToolRequestExistsConverter}">
@@ -274,7 +286,7 @@
                                                     <Button.IsEnabled>
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
-                                                            <Binding Path="IsSystemConfigurationComplete" />
+                                                            <Binding Path="ConfigurationReadiness.IsReady" />
                                                             <Binding Path="ToolsAvailable"
                                                                      Mode="OneWay"
                                                                      Converter="{StaticResource ToolRequestExistsConverter}">
@@ -297,7 +309,7 @@
                                                     <Button.IsEnabled>
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
-                                                            <Binding Path="IsSystemConfigurationComplete" />
+                                                            <Binding Path="ConfigurationReadiness.IsReady" />
                                                         </MultiBinding>
                                                     </Button.IsEnabled>
                                                     <Button.Flyout>
@@ -343,7 +355,7 @@
                                                         Theme="{DynamicResource OutlineButton}"
                                                         Command="{Binding ShowHandsFree}"
                                                         ToolTip.Tip="Hands Free Mode"
-                                                        IsEnabled="{Binding IsSystemConfigurationComplete}">
+                                                        IsEnabled="{Binding ConfigurationReadiness.IsReady}">
                                                     <Panel>
                                                         <avalonia:MaterialIcon
                                                             HorizontalAlignment="Center"
@@ -360,7 +372,7 @@
                                                     <Button.IsEnabled>
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
-                                                            <Binding Path="IsSystemConfigurationComplete" />
+                                                            <Binding Path="ConfigurationReadiness.IsReady" />
                                                             <Binding Path="HasChatMessage" />
                                                         </MultiBinding>
                                                     </Button.IsEnabled>
