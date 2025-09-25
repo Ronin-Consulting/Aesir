@@ -10,5 +10,13 @@ public interface IConfigurationReadinessService
     /// </summary>
     public bool IsReadyAtBoot { get; }
 
+    /// <summary>
+    /// Gets the collection of specific reasons why the configuration is not ready.
+    /// This provides detailed information about what configuration elements are missing or invalid.
+    /// </summary>
+    /// <returns>
+    /// A collection of human-readable strings describing configuration issues.
+    /// Returns an empty collection when the system is ready.
+    /// </returns>
     public IList<string> MissingRequiredConfigurationReasons { get; }
 }
