@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Aesir.Client.ViewModels;
+using Aesir.Common.Models;
 
 namespace Aesir.Client.Services.Implementations.NoOp;
 
@@ -12,7 +13,8 @@ public class NoOpChatSessionManager : IChatSessionManager
         await Task.CompletedTask;
     }
 
-    public async Task<string> ProcessChatRequestAsync(Guid agentId, ObservableCollection<MessageViewModel?> conversationMessages)
+    public async Task<string> ProcessChatRequestAsync(Guid agentId, ObservableCollection<MessageViewModel?> conversationMessages,
+        params ToolRequest[] tools)
     {
         return await Task.FromResult("");
     }

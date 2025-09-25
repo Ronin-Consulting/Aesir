@@ -10,6 +10,7 @@
     Title="Starting AESIR"
     Width="800"
     Height="600"
+    CanResize="False"
     Icon="/Assets/logo.ico"
     x:Class="Aesir.Client.Views.AesirSplashWindow"
     x:DataType="viewModels:SplashViewModel"

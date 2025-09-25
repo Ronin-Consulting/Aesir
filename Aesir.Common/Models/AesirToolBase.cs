@@ -34,12 +34,13 @@ public class AesirToolBase
     /// </summary>
     [JsonPropertyName("mcp_server_id")]
     public Guid? McpServerId { get; set; }
-    
+
+
     /// <summary>
-    /// Gets or sets the name of the MCP Server tool from the MCP Server if this is an MCP Server ToolType
+    /// Gets or sets the name of the tool.
     /// </summary>
-    [JsonPropertyName("mcp_server_tool_name")]
-    public string? McpServerTool { get; set; }
+    [JsonPropertyName("tool_name")]
+    public string? ToolName { get; set; }
 }
 
 public enum ToolType
@@ -48,4 +49,13 @@ public enum ToolType
     Internal,
     [Description("MCP Server")]
     McpServer
+}
+
+/// <summary>
+/// Normalized names for Aesir built-in tools. The actual tool name will map to a plugin/functions.
+/// </summary>
+public static class AesirTools
+{
+    public const string WebToolName = "WebTool";
+    public const string RagToolName = "RagTool";
 }

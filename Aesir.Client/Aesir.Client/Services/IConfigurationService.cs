@@ -19,7 +19,7 @@ public interface IConfigurationService
     /// A task that represents the asynchronous operation. The result of the task is a <see cref="bool"/>
     /// indicating whether the system is ready (true) or not (false).
     /// </returns>
-    Task<bool> GetIsSystemConfigurationReadyAsync();
+    Task<AesirConfigurationReadinessBase> GetIsSystemConfigurationReadyAsync();
     
     /// <summary>
     /// Asynchronously determines if the system is being run in database configuration mode.

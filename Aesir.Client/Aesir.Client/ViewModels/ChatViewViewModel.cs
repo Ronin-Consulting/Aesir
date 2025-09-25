@@ -42,8 +42,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// </summary>
     private const string DefaultAgentNameValue = "Select an agent";
 
-    [ObservableProperty] private bool _isSystemConfigurationComplete;
-
+    [ObservableProperty] private AesirConfigurationReadinessBase _configurationReadiness = new() { IsReady = false, Reasons = [] };
+    
     /// <summary>
     /// Indicates whether the panel is currently open in the ChatViewViewModel.
     /// A value of true signifies that the panel is open, while false means it is closed.
@@ -136,7 +136,15 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// a detailed record of the interaction.
     /// </summary>
     public ObservableCollection<MessageViewModel?> ConversationMessages { get; } = [];
-
+    
+    [ObservableProperty]
+    private ICollection<ToolRequest> _toolRequests = new HashSet<ToolRequest>();
+    
+    [ObservableProperty]
+    private ICollection<ToolRequest> _toolsAvailable = new HashSet<ToolRequest>();
+    
+    public ICommand ToggleToolRequest { get; }
+    
     /// <summary>
     /// Represents a command to toggle the visibility of the left panel in the user interface.
     /// This is typically used to show or hide a sidebar or navigation panel based on the user's interaction.
@@ -240,7 +248,14 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// </summary>
     private readonly INotificationService _notificationService;
 
+    /// <summary>
+    /// The service responsible for managing document collections and providing access to their content.
+    /// Utilized for operations such as retrieving document streams, handling file content, and other
+    /// document-specific tasks within the ChatView context.
+    /// </summary>
     private readonly IDocumentCollectionService _documentCollectionService;
+
+    private readonly IConfigurationService _configurationService;
 
     /// Encapsulates the logic and state management for the chat view in the application.
     /// Coordinates user interactions such as managing chat history, initiating new conversations, and handling speech input.
@@ -253,7 +268,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         FileToUploadViewModel fileToUploadViewModel,
         INavigationService navigationService,
         INotificationService notificationService,
-        IDocumentCollectionService documentCollectionService)
+        IDocumentCollectionService documentCollectionService,
+        IConfigurationService configurationService)
     {
         _appState = appState ?? throw new ArgumentNullException(nameof(appState));
         _speechService = speechService;
@@ -262,16 +278,41 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         _navigationService = navigationService;
         _notificationService = notificationService;
         _documentCollectionService = documentCollectionService;
+        _configurationService = configurationService;
 
         ToggleLeftPane = new RelayCommand(() => PanelOpen = !PanelOpen);
         ToggleNewChat = new RelayCommand(ExecuteNewChat);
-        SelectAgent = new RelayCommand<AesirAgentBase>(ExecuteSelectAgent);
+        SelectAgent = new AsyncRelayCommand<AesirAgentBase>(ExecuteSelectAgentAsync);
         ShowHandsFree = new RelayCommand(ExecuteShowHandsFree);
 
+        ToggleToolRequest = new RelayCommand<string?>(ExecuteToggleToolRequest);
+        
         SelectedFile = fileToUploadViewModel ?? throw new ArgumentNullException(nameof(fileToUploadViewModel));
         SelectedFile.IsActive = true;
 
-        AvailableAgents = new ObservableCollection<AesirAgentBase>();
+        AvailableAgents = [];
+    }
+
+    private void ExecuteToggleToolRequest(string? toolName)
+    {
+        if (string.IsNullOrWhiteSpace(toolName)) return;
+        
+        // does ToolRequests contain the tool with the same name?
+        if (ToolRequests.Any(x => x.ToolName == toolName))
+        {
+            // yes, remove it
+            ToolRequests.Remove(ToolRequests.First(x => x.ToolName == toolName));
+        }
+        else
+        {
+            // no, add it
+            ToolRequests.Add(new ToolRequest
+            {
+                ToolName = toolName
+            });
+        }
+        
+        ToolRequests = new HashSet<ToolRequest>(ToolRequests);
     }
 
     /// Executes the command to start a new chat session.
@@ -292,15 +333,23 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// Executes the logic for selecting an agent from the available agents list.
     /// Updates the application state with the selected agent and modifies properties tied to the selection.
     /// <param name="agent">The agent to be selected. If null, no action is performed.</param>
-    private void ExecuteSelectAgent(AesirAgentBase? agent)
+    private async Task ExecuteSelectAgentAsync(AesirAgentBase? agent)
     {
         if (agent != null)
         {
             SelectedAgent = agent;
             SelectedAgentName = agent.Name;
             _appState.SelectedAgent = agent;
+
+            ToolsAvailable =
+                (await _configurationService.GetToolsForAgentAsync(agent.Id!.Value)).Select(t =>
+                new ToolRequest()
+                    {
+                        ToolName = t.ToolName!
+                    }
+            ).ToHashSet();
             
-            // TODO this needs to reload the chat MessageViewModel with the appropriate system message
+            ToolRequests = new HashSet<ToolRequest>(ToolsAvailable);
         }
     }
 
@@ -380,7 +429,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     {
         await LoadIsSystemConfigurationReadyAsync();
         
-        if (IsSystemConfigurationComplete)
+        if (ConfigurationReadiness?.IsReady == true)
         {
             await LoadSelectedAgentAsync();
             await LoadChatSessionAsync();
@@ -395,7 +444,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     {
         try
         {
-            IsSystemConfigurationComplete = await _appState.CheckSystemConfigurationReady();
+            ConfigurationReadiness = await _appState.CheckSystemConfigurationReady();
         }
         catch (Exception ex)
         {
@@ -420,7 +469,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             if (AvailableAgents.Count == 0)
                 SelectedAgentName = "No agent available";
             else if (AvailableAgents.Count == 1)
-                ExecuteSelectAgent(AvailableAgents.First());
+                await ExecuteSelectAgentAsync(AvailableAgents.First());
         }
         catch (Exception ex)
         {
@@ -669,7 +718,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             if (topLevel?.StorageProvider == null)
             {
                 _logger.LogWarning("Storage provider not available");
-                return Array.Empty<IStorageFile>();
+                return [];
             }
 
             return await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -682,7 +731,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to open file picker");
-            return Array.Empty<IStorageFile>();
+            return [];
         }
     }
 

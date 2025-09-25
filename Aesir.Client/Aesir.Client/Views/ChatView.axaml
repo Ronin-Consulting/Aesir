@@ -50,8 +50,15 @@
         <Style Selector="ToggleButton.AesirToggleButton:checked /template/ ContentPresenter">
             <Setter Property="Background" Value="#2954A9FF" />
         </Style>
+        <Style Selector="Button.AesirSelectButton /template/ ContentPresenter">
+            <Setter Property="Background" Value="#2954A9FF" />
+        </Style>
     </UserControl.Styles>
-
+    
+    <UserControl.Resources>
+        <converters:ToolRequestExistsConverter x:Key="ToolRequestExistsConverter" />
+    </UserControl.Resources>
+    
     <DockPanel>
         <!-- Error Panel - Shows at the top when there's a configuration error -->
         <Border
@@ -61,19 +68,31 @@
             BorderBrush="#E5B4B4"
             BorderThickness="0,0,0,1"
             Padding="12,8"
-            IsVisible="{Binding !IsSystemConfigurationComplete}"
+            IsVisible="{Binding !ConfigurationReadiness.IsReady}"
             ZIndex="200">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <avalonia:MaterialIcon Kind="Alert"
-                                       Width="16"
-                                       Height="16"
-                                       Foreground="#CC0000"
-                                       VerticalAlignment="Center" />
-                <TextBlock
-                    Text="System configuration is not yet complete. Please setup Inference Engine(s) and General Settings, then restart the server to take effect."
-                    FontSize="13"
-                    Foreground="#CC0000"
-                    VerticalAlignment="Center" />
+            
+            <StackPanel Orientation="Vertical" Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <avalonia:MaterialIcon Kind="Alert"
+                                           Width="16"
+                                           Height="16"
+                                           Foreground="#CC0000"
+                                           VerticalAlignment="Center" />
+                    <TextBlock
+                        Text="System configuration is not yet complete. Please setup Inference Engine(s) and General Settings, then restart the server to take effect."
+                        FontSize="13"
+                        Foreground="#CC0000"
+                        VerticalAlignment="Center" />
+                </StackPanel>
+                
+                <ItemsControl ItemsSource="{Binding ConfigurationReadiness.Reasons}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding }" Margin="25,0,10,0"
+                                       Foreground="#CC0000" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </Border>
 
@@ -103,7 +122,7 @@
                     <Button Classes="Primary" DockPanel.Dock="Right" Margin="0,0,10,0"
                             Theme="{DynamicResource OutlineButton}"
                             Command="{Binding ToggleNewChat}"
-                            IsEnabled="{Binding IsSystemConfigurationComplete}"
+                            IsEnabled="{Binding ConfigurationReadiness.IsReady}"
                             ToolTip.Tip="New Chat">
                         <avalonia:MaterialIcon Kind="CommentAdd" Width="20" Height="34" />
                     </Button>
@@ -137,7 +156,7 @@
                                         Theme="{DynamicResource OutlineButton}"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Left"
-                                        IsEnabled="{Binding IsSystemConfigurationComplete}"
+                                        IsEnabled="{Binding ConfigurationReadiness.IsReady}"
                                         Padding="10,0,0,0">
                                     <Button.Flyout>
                                         <MenuFlyout Placement="Right" FlyoutPresenterClasses="agentMenu"
@@ -226,16 +245,36 @@
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
                                                             <Binding Path="SelectedFileEnabled" />
-                                                            <Binding Path="IsSystemConfigurationComplete" />
+                                                            <Binding Path="ConfigurationReadiness.IsReady" />
+                                                            <Binding Path="ToolsAvailable"
+                                                                     Mode="OneWay"
+                                                                     Converter="{StaticResource ToolRequestExistsConverter}">
+                                                                <Binding.ConverterParameter>
+                                                                    <x:Static Member="common:AesirTools.WebToolName" />
+                                                                </Binding.ConverterParameter>
+                                                            </Binding>
                                                         </MultiBinding>
                                                     </Button.IsEnabled>
                                                     <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="34" />
                                                 </Button>
                                                 <ToggleButton Classes="Primary AesirToggleButton"
                                                               Margin="0,0,0,0"
-                                                              IsChecked="True"
                                                               ToolTip.Tip="Toggle Web Search"
-                                                              Theme="{DynamicResource OutlineButton}">
+                                                              Theme="{DynamicResource OutlineButton}"
+                                                              Command="{Binding ToggleToolRequest}"
+                                                >
+                                                    <ToggleButton.CommandParameter>
+                                                        <x:Static Member="common:AesirTools.WebToolName" />
+                                                    </ToggleButton.CommandParameter>
+                                                    <ToggleButton.IsChecked>
+                                                        <Binding Path="ToolRequests"
+                                                                 Mode="OneWay"
+                                                                 Converter="{StaticResource ToolRequestExistsConverter}">
+                                                            <Binding.ConverterParameter>
+                                                                <x:Static Member="common:AesirTools.WebToolName" />
+                                                            </Binding.ConverterParameter>
+                                                        </Binding>
+                                                    </ToggleButton.IsChecked>
                                                     <Panel>
                                                         <avalonia:MaterialIcon Kind="Web" Width="20"
                                                                                Height="34"
@@ -247,30 +286,67 @@
                                                     <Button.IsEnabled>
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
-                                                            <Binding Path="IsSystemConfigurationComplete" />
+                                                            <Binding Path="ConfigurationReadiness.IsReady" />
+                                                            <Binding Path="ToolsAvailable"
+                                                                     Mode="OneWay"
+                                                                     Converter="{StaticResource ToolRequestExistsConverter}">
+                                                                <Binding.ConverterParameter>
+                                                                    <x:Static Member="common:AesirTools.WebToolName" />
+                                                                </Binding.ConverterParameter>
+                                                            </Binding>
                                                         </MultiBinding>
                                                     </Button.IsEnabled>
                                                 </ToggleButton>
-                                                <ToggleButton Classes="Primary AesirToggleButton"
+                                                <Button Classes="Primary AesirSelectButton"
                                                               Margin="0,0,0,0"
-                                                              IsChecked="True"
                                                               ToolTip.Tip="Thinking Setting"
-                                                              Theme="{DynamicResource OutlineButton}">
-                                                    <Panel>
+                                                              Theme="{DynamicResource OutlineButton}"
+                                                >
+                                                    <Button.Content>
                                                         <avalonia:MaterialIcon Kind="Lightbulb" Width="20"
-                                                                               Height="34"
-                                                                               IsVisible="{Binding $parent[ToggleButton].IsChecked}" />
-                                                        <avalonia:MaterialIcon Kind="LightbulbOff" Width="20"
-                                                                               Height="34"
-                                                                               IsVisible="{Binding !$parent[ToggleButton].IsChecked}" />
-                                                    </Panel>
+                                                                               Height="34" />
+                                                    </Button.Content>
                                                     <Button.IsEnabled>
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
-                                                            <Binding Path="IsSystemConfigurationComplete" />
+                                                            <Binding Path="ConfigurationReadiness.IsReady" />
                                                         </MultiBinding>
                                                     </Button.IsEnabled>
-                                                </ToggleButton>
+                                                    <Button.Flyout>
+                                                        <MenuFlyout Placement="TopEdgeAlignedLeft">
+                                                            <MenuItem Header="Low">
+                                                                <MenuItem.Icon>
+                                                                    <avalonia:MaterialIcon Kind="Check"
+                                                                            Width="16" Height="16"
+                                                                            VerticalAlignment="Center"
+                                                                            Margin="8,0,0,0"
+                                                                            IsVisible="{Binding $parent[MenuItem].IsChecked}"
+                                                                />
+                                                                </MenuItem.Icon>
+                                                            </MenuItem>
+                                                            <MenuItem Header="Medium" IsChecked="True">
+                                                                <MenuItem.Icon>
+                                                                    <avalonia:MaterialIcon Kind="Check"
+                                                                            Width="16" Height="16"
+                                                                            VerticalAlignment="Center"
+                                                                            Margin="8,0,0,0"
+                                                                            IsVisible="{Binding $parent[MenuItem].IsChecked}"    
+                                                                />
+                                                                </MenuItem.Icon>
+                                                            </MenuItem>
+                                                            <MenuItem Header="High">
+                                                                <MenuItem.Icon>
+                                                                    <avalonia:MaterialIcon Kind="Check"
+                                                                            Width="16" Height="16"
+                                                                            VerticalAlignment="Center"
+                                                                            Margin="8,0,0,0"
+                                                                            IsVisible="{Binding $parent[MenuItem].IsChecked}"            
+                                                                />
+                                                                </MenuItem.Icon>
+                                                            </MenuItem>
+                                                        </MenuFlyout>
+                                                    </Button.Flyout>
+                                                </Button>
                                             </StackPanel>
                                             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal"
                                                         Spacing="8">
@@ -279,7 +355,7 @@
                                                         Theme="{DynamicResource OutlineButton}"
                                                         Command="{Binding ShowHandsFree}"
                                                         ToolTip.Tip="Hands Free Mode"
-                                                        IsEnabled="{Binding IsSystemConfigurationComplete}">
+                                                        IsEnabled="{Binding ConfigurationReadiness.IsReady}">
                                                     <Panel>
                                                         <avalonia:MaterialIcon
                                                             HorizontalAlignment="Center"
@@ -296,7 +372,7 @@
                                                     <Button.IsEnabled>
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
-                                                            <Binding Path="IsSystemConfigurationComplete" />
+                                                            <Binding Path="ConfigurationReadiness.IsReady" />
                                                             <Binding Path="HasChatMessage" />
                                                         </MultiBinding>
                                                     </Button.IsEnabled>

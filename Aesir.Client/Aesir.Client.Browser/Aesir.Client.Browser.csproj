@@ -8,6 +8,7 @@
     <ItemGroup>
         <PackageReference Include="Avalonia.Browser" Version="11.3.6" />
         <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.6" />
+        <PackageReference Include="Flurl.Signed" Version="4.0.0" />
         <PackageReference Include="Material.Icons.Avalonia" Version="2.4.1" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
         <PackageReference Include="Semi.Avalonia" Version="11.2.1.10" />

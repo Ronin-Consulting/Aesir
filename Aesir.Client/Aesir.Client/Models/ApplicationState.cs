@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using Aesir.Client.Messages;
 using Aesir.Client.Services;
 using Aesir.Common.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Aesir.Client.Models;
 
@@ -22,8 +24,9 @@ namespace Aesir.Client.Models;
 public partial class ApplicationState(
     IModelService modelService, 
     IChatHistoryService chatHistoryService,
-    IConfigurationService configurationService)
-    : ObservableRecipient, IDisposable
+    IConfigurationService configurationService
+   )
+    : ObservableRecipient, IDisposable, IRecipient<ChatSessionDeletedMessage>
 {
     /// <summary>
     /// Determines if the application is prepared to process and handle a new AI-generated message.
@@ -69,12 +72,13 @@ public partial class ApplicationState(
     public ObservableCollection<AesirAgentBase> AvailableAgents { get; set; } = [];
 
     /// <summary>
-    /// Asynchronously loads if the system was ready at boot.
+    /// Asynchronously loads the system configuration readiness status.
     /// </summary>
     /// <returns>
-    /// True if the system is ready to use; false otherwise
+    /// An AesirConfigurationReadinessBase object containing the readiness status
+    /// and any specific reasons why the system might not be ready.
     /// </returns>
-    public async Task<bool> CheckSystemConfigurationReady()
+    public async Task<AesirConfigurationReadinessBase> CheckSystemConfigurationReady()
     {
         return await configurationService.GetIsSystemConfigurationReadyAsync();
     }
@@ -144,5 +148,10 @@ public partial class ApplicationState(
     {
         Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    public void Receive(ChatSessionDeletedMessage message)
+    {
+        SelectedChatSessionId = null;
     }
 }

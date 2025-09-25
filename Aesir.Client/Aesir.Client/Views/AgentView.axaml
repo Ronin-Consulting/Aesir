@@ -16,6 +16,12 @@
         <dvm:DesignAgentViewViewModel />
     </Design.DataContext>
     
+    <UserControl.Styles>
+        <Style Selector="ToggleSwitch.AesirToggleSwitch:checked /template/ Border#SwitchBackgroundBorder">
+            <Setter Property="Background" Value="#2954A9FF" />
+        </Style>
+    </UserControl.Styles>
+    
     <Grid
         MinWidth="400"
         Margin="8"
@@ -36,7 +42,7 @@
             LabelPosition="Top">
             <u:Form.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto,*" HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="Auto, *, Auto" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto,*" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem Label="Name" Grid.ColumnSpan="3">
@@ -210,6 +216,28 @@
                     Width="100"
                     HorizontalAlignment="Left"
                     Watermark="Override" />
+            </u:FormItem>
+            <u:FormItem
+                Grid.Row="8"
+                Grid.Column="0"
+                Label="Thinking"
+                HorizontalAlignment="Left"
+                IsVisible="{Binding FormModel.SupportsThinking}"    
+            >
+                <ToggleSwitch Classes="AesirToggleSwitch" IsChecked="{Binding FormModel.AllowThinking}"/>
+            </u:FormItem>
+            <u:FormItem
+                Grid.Row="8"
+                Grid.Column="1"
+                Grid.ColumnSpan="2"
+                Label="Think Value(s)"
+                IsVisible="{Binding FormModel.SupportsThinkValues}"  
+                ToolTip.Tip = "e.g., a single value like 'low' or multiple values like 'low, medium, high'"
+            >
+                <TextBox
+                    HorizontalAlignment="Stretch"
+                    IsEnabled="{Binding FormModel.AllowThinking}"
+                    Text="{Binding FormModel.ThinkValues}"/>
             </u:FormItem>
         </u:Form>
         

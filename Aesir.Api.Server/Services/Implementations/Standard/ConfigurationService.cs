@@ -6,21 +6,23 @@ using Dapper;
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 /// <summary>
-/// Provides operations for accessing and managing configuration data related to agents and tools.
+/// Provides services for managing configuration data, including agents, tools, inference engines,
+/// MCP servers, and general settings. Supports operations for creating, retrieving, updating, and deleting
+/// configuration entities, as well as preparing configurations from database or file storage.
 /// </summary>
 public class ConfigurationService(
-    ILogger<ConfigurationService> logger, 
+    ILogger<ConfigurationService> logger,
     IDbContext dbContext,
     IConfiguration configuration) : IConfigurationService
 {
     /// <summary>
-    /// Handles the management of configuration by providing operations such as
-    /// upserting, retrieving, deleting, and searching configurations in a database.
+    /// Manages and facilitates operations related to configuration data,
+    /// including agents, tools, general settings, inference engines, and MCP servers.
     /// </summary>
     /// <remarks>
-    /// The service uses a database as the backend for storing and retrieving
-    /// chat-related data such as chat sessions and messages. It leverages
-    /// custom type handling for JSON data types using Dapper.
+    /// This service provides functionalities to create, retrieve, update, and delete
+    /// various configuration entities while supporting both database and file-based storage modes.
+    /// It incorporates Dapper's custom type handling for advanced JSON data manipulation.
     /// </remarks>
     static ConfigurationService()
     {
@@ -29,26 +31,32 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Indicates if the service is in database mode or file mode
+    /// Determines whether the configuration is being loaded from a database or from a file.
     /// </summary>
     public bool DatabaseMode => configuration.GetValue("Configuration:LoadFromDatabase", false);
 
     /// <summary>
-    /// Prepares the database configuration by verifying the readiness and completeness
-    /// of necessary settings required for application functionality. Should only be called once during startup.
+    /// Prepares the database configuration by ensuring the completeness and readiness
+    /// of essential settings required for the application's operation. Intended to be used during the startup phase.
     /// </summary>
     /// <param name="configurationReadinessService">
-    /// Service responsible for reporting missing or incomplete configuration details.
+    /// A service responsible for identifying and reporting any missing or incomplete configuration details.
     /// </param>
     /// <returns>
-    /// A task that represents the asynchronous preparation of the database configuration.
+    /// A task representing the asynchronous preparation process of the database configuration.
     /// </returns>
+    /// <remarks>
+    /// This method validates the operational state of inference engines and confirms
+    /// that critical general settings, such as RAG embedding and vision configurations,
+    /// are properly configured. If the system is not in database configuration mode,
+    /// an <see cref="InvalidOperationException"/> is thrown.
+    /// </remarks>
     public async Task PrepareDatabaseConfigurationAsync(
         ConfigurationReadinessService configurationReadinessService)
     {
         if (!DatabaseMode)
             throw new InvalidOperationException("System is not in database configuration mode");
-        
+
         var inferenceEngines = (await GetInferenceEnginesAsync()).ToArray() ?? [];
 
         if (inferenceEngines.Length == 0)
@@ -92,22 +100,27 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Prepares and validates file-based configuration settings by assigning unique
-    /// identifiers to various components such as inference engines, agents, servers, and tools.
+    /// Prepares and validates the file-based configuration by assigning unique identifiers
+    /// to various components such as inference engines, agents, servers, and tools.
+    /// Updates related dependencies within the configuration settings based on defined relationships.
     /// </summary>
     /// <remarks>
-    /// This method ensures the system's configuration is properly structured and each component
-    /// is assigned a unique identifier. It throws an exception if any required configuration
-    /// data is missing or if the system is not in file configuration mode. Additionally, it
-    /// updates relevant sections in the configuration to reflect the changes.
+    /// This method is executed only when the system is in file configuration mode. It verifies the presence
+    /// of required configuration sections and assigns or updates identifiers for key components.
+    /// It ensures that all configured components such as inference engines, agents, and tools are properly linked
+    /// and referenced, raising exceptions if required settings are missing or invalid.
     /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the system is not in file configuration mode, or when any required configuration section
+    /// is missing or improperly configured.
+    /// </exception>
     public void PrepareFileConfigurationAsync()
     {
         if (DatabaseMode)
             throw new InvalidOperationException("System is not in file configuration mode");
-        
+
         // validate settings and add/fix up ids ...
-        
+
         // give each inference engine an Id
         var inferenceEngines = configuration.GetSection("InferenceEngines")
             .Get<AesirInferenceEngine[]>() ?? [];
@@ -194,25 +207,33 @@ public class ConfigurationService(
             }
         }
     }
-    
+
     /// <summary>
-    /// Validates that the application is running in database mode.
-    /// Throws an InvalidOperationException if not in database mode.
+    /// Ensures that the application is configured to operate in database mode.
     /// </summary>
-    /// <exception cref="InvalidOperationException">Thrown when the application is not configured to run in database mode.</exception>
+    /// <remarks>
+    /// This method is used to validate the operational mode of the application before
+    /// performing database-specific actions. If the application is not in database mode,
+    /// it will throw an exception to prevent unauthorized execution of database operations.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the application is not set to run in database mode.
+    /// </exception>
     private void VerifyIsDatabaseMode()
     {
         if (!DatabaseMode)
         {
-            throw new InvalidOperationException("This operation requires the application to be running in database mode.");
+            throw new InvalidOperationException(
+                "This operation requires the application to be running in database mode.");
         }
     }
 
     /// <summary>
-    /// Asynchronously retrieves the Aesir general settings.
+    /// Asynchronously retrieves the general settings for the Aesir application.
     /// </summary>
     /// <returns>
-    /// A task representing the operation. The task result contains the <see cref="AesirGeneralSettings"/>.
+    /// A task representing the asynchronous operation. The task result contains
+    /// an instance of <see cref="AesirGeneralSettings"/> representing the application settings.
     /// </returns>
     public async Task<AesirGeneralSettings> GetGeneralSettingsAsync()
     {
@@ -253,13 +274,17 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Updates an existing AesirGeneralSetting in the database.
+    /// Updates an existing general setting record in the database with the provided values.
     /// </summary>
-    /// <param name="generalSettings">The general setting with updated values.</param>
+    /// <param name="generalSettings">The instance of <see cref="AesirGeneralSettings"/> containing the updated property values.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <exception cref="Exception">
+    /// Thrown if no rows were updated or if multiple rows were updated, indicating an unexpected state.
+    /// </exception>
     public async Task UpdateGeneralSettingsAsync(AesirGeneralSettings generalSettings)
     {
         VerifyIsDatabaseMode();
-        
+
         const string sql = @"
             UPDATE aesir.aesir_general_settings
             SET rag_emb_inf_eng_id = @RagEmbeddingInferenceEngineId, 
@@ -284,7 +309,9 @@ public class ConfigurationService(
     /// Asynchronously retrieves a collection of Aesir inference engines.
     /// </summary>
     /// <returns>
-    /// A task representing the operation. The result contains an enumerable collection of <c>AesirInferenceEngine</c> objects.
+    /// A task representing the asynchronous operation. The task result contains
+    /// an enumerable collection of <c>AesirInferenceEngine</c> objects configured
+    /// in the database or fallback configuration settings.
     /// </returns>
     public async Task<IEnumerable<AesirInferenceEngine>> GetInferenceEnginesAsync()
     {
@@ -313,8 +340,8 @@ public class ConfigurationService(
     /// <param name="id">The unique identifier of the AesirInferenceEngine to retrieve.</param>
     /// <returns>
     /// A task that represents the asynchronous operation.
-    /// The task result contains the <see cref="AesirInferenceEngine"/> corresponding to the given identifier.
-    /// If no agent is found, returns null.
+    /// The task result contains the <see cref="AesirInferenceEngine"/> corresponding to the given identifier,
+    /// or null if no engine is found.
     /// </returns>
     public async Task<AesirInferenceEngine> GetInferenceEngineAsync(Guid id)
     {
@@ -339,13 +366,15 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Inserts a new AesirInferenceEngine into the database.
+    /// Asynchronously creates and inserts a new inference engine record into the database.
     /// </summary>
-    /// <param name="InferenceEngine">The inference engine to insert.</param>
+    /// <param name="inferenceEngine">The instance of <see cref="AesirInferenceEngine"/> that contains the properties of the inference engine to be created.</param>
+    /// <returns>A task representing the asynchronous operation of inserting the inference engine into the database.</returns>
+    /// <exception cref="Exception">Thrown if no rows are affected during the insertion operation.</exception>
     public async Task<Guid> CreateInferenceEngineAsync(AesirInferenceEngine inferenceEngine)
     {   
         VerifyIsDatabaseMode();
-        
+
         const string sql = @"
             INSERT INTO aesir.aesir_inference_engine 
             (name, description, type, configuration)
@@ -361,13 +390,14 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Updates an existing AesirInferenceEngine in the database.
+    /// Updates an existing AesirInferenceEngine record in the database.
     /// </summary>
-    /// <param name="agent">The inference engine with updated values.</param>
+    /// <param name="inferenceEngine">The AesirInferenceEngine object containing updated data.</param>
+    /// <returns>A task that represents the asynchronous operation of updating the database.</returns>
     public async Task UpdateInferenceEngineAsync(AesirInferenceEngine inferenceEngine)
     {
         VerifyIsDatabaseMode();
-        
+
         const string sql = @"
             UPDATE aesir.aesir_inference_engine
             SET name = @Name,
@@ -387,13 +417,14 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Delete an existing AesirInferenceEngine from the database.
+    /// Deletes an existing inference engine identified by its unique identifier from the database.
     /// </summary>
-    /// <param name="id">The unique identifier of the AesirInferenceEngine to delete.</param>
+    /// <param name="id">The unique identifier of the inference engine to delete.</param>
+    /// <returns>An asynchronous task representing the delete operation.</returns>
     public async Task DeleteInferenceEngineAsync(Guid id)
     {
         VerifyIsDatabaseMode();
-        
+
         const string sql = @"
             DELETE FROM aesir.aesir_inference_engine
             WHERE id = @Id::uuid
@@ -407,12 +438,13 @@ public class ConfigurationService(
         if (rows > 1)
             throw new Exception("Multiple rows deleted");
     }
-    
+
     /// <summary>
-    /// Retrieves a list of Aesir agents stored in the database asynchronously.
+    /// Asynchronously retrieves a collection of Aesir agents either from the database or configuration,
+    /// depending on the active mode of operation.
     /// </summary>
     /// <returns>
-    /// An enumerable collection of <c>AesirAgent</c> representing the agents retrieved from the database.
+    /// An asynchronous task that resolves to a collection of <c>AesirAgent</c>, representing the retrieved agents.
     /// </returns>
     public async Task<IEnumerable<AesirAgent>> GetAgentsAsync()
     {
@@ -438,13 +470,13 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Retrieves an AesirAgent by its unique identifier asynchronously.
+    /// Asynchronously retrieves an AesirAgent by its unique identifier.
     /// </summary>
     /// <param name="id">The unique identifier of the AesirAgent to retrieve.</param>
     /// <returns>
     /// A task that represents the asynchronous operation.
-    /// The task result contains the <see cref="AesirAgent"/> object corresponding to the given identifier.
-    /// If no agent is found, returns null.
+    /// The task result contains the <see cref="AesirAgent"/> corresponding to the specified identifier,
+    /// or null if no matching agent is found.
     /// </returns>
     public async Task<AesirAgent> GetAgentAsync(Guid id)
     {
@@ -469,16 +501,16 @@ public class ConfigurationService(
             return await Task.FromResult(agents.FirstOrDefault(a => a.Id == id));
         }
     }
-    
+
     /// <summary>
-    /// Inserts a new AesirAgent into the database.
+    /// Asynchronously creates a new agent in the database by inserting the specified agent details.
     /// </summary>
-    /// <param name="agent">The agent to insert.</param>
+    /// <param name="agent">The <see cref="AesirAgent"/> instance containing the details of the agent to be created.</param>
     /// <returns>The number of rows affected.</returns>
     public async Task<Guid> CreateAgentAsync(AesirAgent agent)
     {
         VerifyIsDatabaseMode();
-        
+
         const string sql = @"
             INSERT INTO aesir.aesir_agent 
             (name, description, chat_inference_engine_id, chat_model, chat_temperature, chat_top_p, chat_max_tokens, chat_prompt_persona, chat_custom_prompt_content)
@@ -494,13 +526,14 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Updates an existing AesirAgent in the database.
+    /// Updates an existing AesirAgent record in the database with new values provided in the agent parameter.
     /// </summary>
-    /// <param name="agent">The agent with updated values.</param>
+    /// <param name="agent">The AesirAgent object containing the updated values for the record.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task UpdateAgentAsync(AesirAgent agent)
     {
         VerifyIsDatabaseMode();
-        
+
         const string sql = @"
             UPDATE aesir.aesir_agent
             SET name = @Name,
@@ -525,9 +558,11 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Delete an existing AesirAgent from the database.
+    /// Deletes an existing AesirAgent from the database based on its unique identifier.
     /// </summary>
-    /// <param name="id">The unique identifier of the AesirAgent to delete.</param>
+    /// <param name="id">The unique identifier of the AesirAgent to be deleted.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <exception cref="Exception">Thrown when no rows are deleted or multiple rows are affected by the operation.</exception>
     public async Task DeleteAgentAsync(Guid id)
     {
         VerifyIsDatabaseMode();
@@ -548,18 +583,24 @@ public class ConfigurationService(
 
     }
 
-    /// Asynchronously retrieves a collection of tools from the configuration database.
-    /// This method queries and returns a list of all tools available in the database.
-    /// It utilizes an SQL query to fetch `id` and `name` fields from the `aesir.aesir_tool` table.
+    /// <summary>
+    /// Asynchronously retrieves a collection of tools from the configuration database or configuration settings.
+    /// </summary>
+    /// <remarks>
+    /// This method fetches tools data from a database if the application is in database mode,
+    /// or from configuration settings if not in database mode. The tools data includes fields like id, name, type,
+    /// and other tool-related properties. It uses an SQL query to retrieve the data from the database or retrieves
+    /// the information from a configuration section when not using the database.
+    /// </remarks>
     /// <returns>
-    /// A task representing the asynchronous operation. The result contains an enumerable collection of `AesirTool` objects.
+    /// A task that represents the asynchronous operation. The task result contains an enumerable collection of <see cref="AesirTool"/> objects.
     /// </returns>
     public async Task<IEnumerable<AesirTool>> GetToolsAsync()
     {
         if (DatabaseMode)
         {
             const string sql = @"
-            SELECT id, name, type, description, mcp_server_id AS McpServerId, mcp_server_tool_name AS McpServerTool
+            SELECT id, name, type, description, mcp_server_id AS McpServerId, tool_name AS ToolName
             FROM aesir.aesir_tool
         ";
 
@@ -576,16 +617,16 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Retrieves a collection of tools associated with a specific agent.
+    /// Retrieves a collection of tools associated with a specific agent asynchronously.
     /// </summary>
-    /// <param name="id">The unique identifier of the agent whose tools are to be fetched.</param>
-    /// <returns>A task that represents the asynchronous operation. The task result contains a collection of tools used by the specified agent.</returns>
+    /// <param name="id">The unique identifier of the agent whose associated tools are being fetched.</param>
+    /// <returns>A task representing the asynchronous operation. The task result contains an enumerable collection of tools related to the specified agent.</returns>
     public async Task<IEnumerable<AesirTool>> GetToolsUsedByAgentAsync(Guid id)
     {
         if (DatabaseMode)
         {
             const string sql = @"
-                SELECT t.id, t.name, t.type, t.description, mcp_server_id AS McpServerId, mcp_server_tool_name AS McpServerTool
+                SELECT t.id, t.name, t.type, t.description, mcp_server_id AS McpServerId, tool_name AS ToolName
                 FROM aesir.aesir_tool t 
                     INNER JOIN aesir.aesir_agent_tool at ON t.id = at.tool_id
                 WHERE at.agent_id = @AgentId::uuid
@@ -669,17 +710,17 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Retrieves an Aesir tool by its unique identifier from the database.
+    /// Retrieves an Aesir tool by its unique identifier from the database or configuration.
     /// </summary>
     /// <param name="id">The unique identifier of the Aesir tool to retrieve.</param>
-    /// <returns>A task that represents the asynchronous operation.
-    /// The task result contains the <see cref="AesirTool"/> object if found; otherwise, null.</returns>
+    /// <returns>A task representing the asynchronous operation.
+    /// The task result contains the <see cref="AesirTool"/> instance if found; otherwise, null.</returns>
     public async Task<AesirTool> GetToolAsync(Guid id)
     {
         if (DatabaseMode)
         {
             const string sql = @"
-                SELECT id, name, type, description, mcp_server_id AS McpServerId, mcp_server_tool_name AS McpServerTool
+                SELECT id, name, type, description, mcp_server_id AS McpServerId, tool_name AS ToolName
                 FROM aesir.aesir_tool
                 WHERE id = @Id::uuid
             ";
@@ -695,21 +736,21 @@ public class ConfigurationService(
             return await Task.FromResult(tools.FirstOrDefault(t => t.Id == id));
         }
     }
-    
+
     /// <summary>
-    /// Inserts a new AesirTool into the database.
+    /// Asynchronously creates a new tool record in the database.
     /// </summary>
-    /// <param name="tool">The tool to insert.</param>
-    /// <returns>The number of rows affected.</returns>
-    public async Task<Guid>  CreateToolAsync(AesirTool tool)
+    /// <param name="tool">The tool object containing the details to be inserted into the database.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains the number of rows affected by the insertion.</returns>
+    public async Task<Guid> CreateToolAsync(AesirTool tool)
     {
         VerifyIsDatabaseMode();
-        
+
         const string sql = @"
             INSERT INTO aesir.aesir_tool 
-            (name, description, type, mcp_server_id, mcp_server_tool_name)
+            (name, description, type, mcp_server_id, tool_name)
             VALUES 
-            (@Name, @Description, @Type, @McpServerId, @McpServerTool)
+            (@Name, @Description, @Type, @McpServerId, @ToolName)
             RETURNING id;
         ";
 
@@ -718,22 +759,23 @@ public class ConfigurationService(
 
         return id;
     }
-    
+
     /// <summary>
-    /// Updates an existing AesirTool in the database.
+    /// Updates an existing tool configuration in the database.
     /// </summary>
-    /// <param name="tool">The agent with updated values.</param>
+    /// <param name="tool">The AesirTool object containing the updated values for the tool.</param>
+    /// <returns>A task that represents the asynchronous operation of updating the tool in the database.</returns>
     public async Task UpdateToolAsync(AesirTool tool)
     {
         VerifyIsDatabaseMode();
-        
+
         const string sql = @"
             UPDATE aesir.aesir_tool
             SET name = @Name,
                 description = @Description,
                 type = @Type,
                 mcp_server_id = @McpServerId,
-                mcp_server_tool_name = @McpServerTool
+                tool_name = @ToolName
             WHERE id = @Id
         ";
 
@@ -747,13 +789,14 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Delete an existing AesirTool from the database.
+    /// Deletes an existing tool record from the database based on its unique identifier.
     /// </summary>
-    /// <param name="id">The unique identifier of the AesirTool to delete.</param>
+    /// <param name="id">The unique identifier of the tool to be deleted.</param>
+    /// <returns>Returns a <see cref="Task"/> representing the asynchronous operation.</returns>
     public async Task DeleteToolAsync(Guid id)
     {
         VerifyIsDatabaseMode();
-        
+
         const string sql = @"
             DELETE FROM aesir.aesir_tool
             WHERE id = @Id::uuid
@@ -767,12 +810,13 @@ public class ConfigurationService(
         if (rows > 1)
             throw new Exception("Multiple rows deleted");
     }
-    
+
     /// <summary>
     /// Retrieves a list of Aesir MCP Servers stored in the database asynchronously.
     /// </summary>
     /// <returns>
-    /// An enumerable collection of <c>AesirMcpServer</c> representing the agents retrieved from the database.
+    /// A collection of <c>AesirMcpServer</c> objects representing the MCP servers retrieved from the database
+    /// or configured in the application settings, depending on the active mode.
     /// </returns>
     public async Task<IEnumerable<AesirMcpServer>> GetMcpServersAsync()
     {
@@ -825,16 +869,17 @@ public class ConfigurationService(
             return await Task.FromResult(mcpServers.FirstOrDefault(m => m.Id == id));
         }
     }
-    
+
     /// <summary>
-    /// Inserts a new AesirMcpServer into the database.
+    /// Creates a new MCP server record in the database.
     /// </summary>
-    /// <param name="mcpServer">The MCP server to insert.</param>
-    /// <returns>The number of rows affected.</returns>
+    /// <param name="mcpServer">An instance of <see cref="AesirMcpServer"/> representing the MCP server to be created.</param>
+    /// <returns>A task representing the asynchronous operation, containing the number of rows affected by the database insert.</returns>
+    /// <exception cref="Exception">Thrown if no rows were inserted during the operation.</exception>
     public async Task<Guid> CreateMcpServerAsync(AesirMcpServer mcpServer)
     {
         VerifyIsDatabaseMode();
-        
+
         const string sql = @"
             INSERT INTO aesir.aesir_mcp_server 
             (name, description, location, command, arguments, environment_variables, url, http_headers)
@@ -848,15 +893,19 @@ public class ConfigurationService(
 
         return id;
     }
-    
+
     /// <summary>
-    /// Updates an existing AesirMcpServer in the database.
+    /// Updates an existing AesirMcpServer entry in the database with new values.
     /// </summary>
-    /// <param name="mcpServer">The MCP server with updated values.</param>
+    /// <param name="mcpServer">The AesirMcpServer object containing updated properties to persist to the database.</param>
+    /// <returns>A task that represents the asynchronous update operation.</returns>
+    /// <exception cref="Exception">
+    /// Thrown when no rows are updated or when multiple rows are unexpectedly updated in the database.
+    /// </exception>
     public async Task UpdateMcpServerAsync(AesirMcpServer mcpServer)
     {
         VerifyIsDatabaseMode();
-        
+
         const string sql = @"
             UPDATE aesir.aesir_mcp_server 
             SET name = @Name,
@@ -880,13 +929,14 @@ public class ConfigurationService(
     }
 
     /// <summary>
-    /// Delete an existing AesirMcpServer from the database.
+    /// Deletes an existing AesirMcpServer entry from the database based on its unique identifier.
     /// </summary>
     /// <param name="id">The unique identifier of the AesirMcpServer to delete.</param>
+    /// <returns>A task that represents the asynchronous operation. Throws an exception if no rows or multiple rows are affected.</returns>
     public async Task DeleteMcpServerAsync(Guid id)
     {
         VerifyIsDatabaseMode();
-        
+
         const string sql = @"
         DELETE FROM aesir.aesir_mcp_server
         WHERE id = @Id::uuid";
