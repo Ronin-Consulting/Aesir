@@ -118,8 +118,13 @@
                 Classes="Danger"
                 Content="Delete"
                 IconPlacement="Left" 
-                IsEnabled="{Binding FormModel.IsExisting}"
                 Command="{Binding DeleteCommand}">
+                <u:IconButton.IsEnabled>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="FormModel.IsExisting" />
+                        <Binding Path="FormModel.Type" Converter="{StaticResource EnumEqualityConverter}" ConverterParameter="{x:Static models:ToolType.McpServer}" />
+                    </MultiBinding>
+                </u:IconButton.IsEnabled>
                 <u:IconButton.Icon>
                     <avalonia:MaterialIcon Kind="Delete" Width="20" Height="20" />
                 </u:IconButton.Icon>
