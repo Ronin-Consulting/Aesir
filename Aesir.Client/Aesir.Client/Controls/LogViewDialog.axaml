@@ -1,0 +1,39 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+             xmlns:dvm="clr-namespace:Aesir.Client.ViewModels.Design"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Aesir.Client.Controls.LogViewDialog"
+             x:DataType="vm:ConversationLogViewDialogViewModel"
+             >
+    <Border BorderThickness="0,1,0,00">
+        <DockPanel>
+            <DockPanel 
+                DockPanel.Dock="Bottom"
+                Margin="20,0,20,15">
+                <TextBlock
+                    DockPanel.Dock="Left"
+                    Text="{Binding Logs.Count, StringFormat='Displaying {0} documents'}" />
+            </DockPanel>
+            <DataGrid Margin="20 20 20 10" ItemsSource="{Binding Logs}" 
+                      IsReadOnly="True" 
+                      GridLinesVisibility="None"
+                      BorderThickness="1" BorderBrush="DimGray"
+                      SelectedItem="{Binding SelectedLog}">
+                
+                <!-- CellPointerPressed="InputElement_OnCellPointerPressed" -->
+                <DataGrid.Columns>
+                    <DataGridTextColumn FontWeight="Bold" Header="Created" Binding="{Binding CreatedAt}"/>
+                    <DataGridTextColumn Header="Message" Binding="{Binding Message}"/>
+                    <DataGridTextColumn Header="Level" Binding="{Binding Level}"/>
+                    <DataGridTextColumn Header="Chat Session" Binding="{Binding Details.ChatSessionId }"/>
+                    <DataGridTextColumn Header="Conversation" Binding="{Binding Details.ConversationId }"/>
+                    <DataGridTextColumn Header="Details" Binding="{Binding Details }"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </Border>
+</UserControl>

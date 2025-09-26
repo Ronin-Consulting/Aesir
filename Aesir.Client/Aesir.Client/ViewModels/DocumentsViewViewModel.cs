@@ -6,22 +6,15 @@ using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
-using Aesir.Client.Shared;
-using Aesir.Client.Views;
-using Aesir.Common.Models;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
-using Ursa.Common;
-using Ursa.Controls;
-using Ursa.Controls.Options;
 
 namespace Aesir.Client.ViewModels;
 

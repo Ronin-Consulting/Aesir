@@ -18,4 +18,11 @@ public class LogsController(
         return await kernelLogService.GetLogsAsync(from, to);
     }
 
+    [HttpGet("kernel/{chatSessionId}")]
+    public async Task<IEnumerable<AesirKernelLogBase>> GetKernelLogs([FromRoute] Guid chatSessionId)
+    {
+        return await kernelLogService.GetLogsByChatSessionAsync(chatSessionId);
+    }
+
+
 }

@@ -131,15 +131,6 @@ public class LogsViewViewModel : ObservableRecipient, IDisposable
         try
         {
             var logs = await _kernelLogService.GetKernelLogsAsync(DateTimeOffset.Now.AddDays(-7),DateTimeOffset.Now);
-            // var logs = new List<AesirKernelLogBase>();
-            // logs.Add(new AesirKernelLogBase()
-            // {
-            //     Id = Guid.NewGuid(),
-            //     Message = "Loading logs...",
-            //     CreatedAt = DateTime.Now,
-            //     Details = new AesirKernelLogDetailsBase(),
-            //     Level = KernelLogLevel.Info
-            // });
             Logs.Clear();
             foreach (var log in logs)
                 Logs.Add(log);

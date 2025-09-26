@@ -35,4 +35,20 @@ public class KernelLogService(
             throw;
         }   
     }
+    
+    public async Task<IEnumerable<AesirKernelLogBase>> GetKernelLogsByChatSessionAsync(Guid? chatSessionId)
+    {
+        try
+        {
+            return (await _flurlClient.Request()
+                .AppendPathSegment("kernel")
+                .AppendPathSegment(chatSessionId)
+                .GetJsonAsync<IEnumerable<AesirKernelLogBase>>());
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }   
+    }
 }

@@ -23,8 +23,9 @@ public partial class AssistantMessageViewModel(
     ILogger<AssistantMessageViewModel> logger,
     IMarkdownService markdownService,
     IContentProcessingService contentProcessingService,
-    ISpeechService speechService)
-    : MessageViewModel(logger, markdownService)
+    ISpeechService speechService,
+    IKernelLogService kernelLogService)
+    : MessageViewModel(logger, markdownService, kernelLogService)
 {
     /// <summary>
     /// A readonly instance of the <see cref="IContentProcessingService"/> used for handling

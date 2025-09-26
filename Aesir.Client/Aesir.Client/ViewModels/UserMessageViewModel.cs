@@ -1,6 +1,8 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Aesir.Client.Controls;
 using Aesir.Client.Messages;
 using Aesir.Client.Services;
 using Aesir.Common;
@@ -11,6 +13,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Material.Icons;
 using Microsoft.Extensions.Logging;
+using Ursa.Controls;
 
 namespace Aesir.Client.ViewModels;
 
@@ -47,10 +50,13 @@ public partial class UserMessageViewModel : MessageViewModel
     /// </summary>
     public ICommand RequestDownloadCommand { get; }
     
+
     /// <summary>
     /// An instance of the markdown service used to convert markdown text into rendered HTML content.
     /// </summary>
     private readonly IMarkdownService _markdownService;
+    
+    private readonly ILogger<UserMessageViewModel> _logger;
 
     /// <summary>
     /// Represents the role of the message sender.
@@ -62,10 +68,12 @@ public partial class UserMessageViewModel : MessageViewModel
     /// for handling markdown conversion, asynchronous message updates, and download requests.
     /// Extends <see cref="MessageViewModel"/> to provide user-specific message capabilities.
     /// </summary>
-    public UserMessageViewModel(ILogger<UserMessageViewModel> logger, IMarkdownService markdownService)
-        : base(logger, markdownService)
+    public UserMessageViewModel(ILogger<UserMessageViewModel> logger, IMarkdownService markdownService,IKernelLogService kernelLogService)
+        : base(logger, markdownService, kernelLogService)
     {
         _markdownService = markdownService;
+        _logger = logger;
+        
         RequestDownloadCommand = new RelayCommand(RequestDownloadFile);
     }
 
