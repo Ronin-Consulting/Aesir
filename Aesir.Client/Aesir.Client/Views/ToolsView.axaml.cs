@@ -49,9 +49,11 @@ public partial class ToolsView : UserControl, IRecipient<ShowToolDetailMessage>,
 
                 viewModel.IsActive = false;
 
-                if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
+                if (DataContext is ToolsViewViewModel toolsViewModel)
                 {
-                    if (DataContext is ToolsViewViewModel toolsViewModel)
+                    toolsViewModel.SelectedTool = null;
+                    
+                    if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
                     {
                         await toolsViewModel.RefreshToolsAsync();
                     }
