@@ -15,7 +15,7 @@
     <ItemGroup>
         <PackageReference Include="Avalonia.Desktop" Version="11.3.6" />
         <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.6" />
-        <PackageReference Include="JAJ.Packages.MiniAudioEx" Version="2.5.1" />
+        <PackageReference Include="JAJ.Packages.MiniAudioEx" Version="2.6.2" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Include="Material.Icons.Avalonia" Version="2.4.1" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.9" />
@@ -31,7 +31,7 @@
         <PackageReference Include="System.Linq.Async" Version="6.0.3"/>
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
         <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.9" />
-        <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.0" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.1" />
     </ItemGroup>
 
     <ItemGroup>

@@ -36,13 +36,13 @@
         <PackageReference Include="ModelContextProtocol-SemanticKernel" Version="0.4.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Npgsql" Version="9.0.3"/>
-        <PackageReference Include="OllamaSharp" Version="5.4.6" />
-        <PackageReference Include="OpenAI" Version="2.4.0" />
+        <PackageReference Include="OllamaSharp" Version="5.4.7" />
+        <PackageReference Include="OpenAI" Version="2.5.0" />
         <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.12.0"/>
         <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.13" />
         <PackageReference Include="PdfPig" Version="0.1.11" />
         <PackageReference Include="Pgvector" Version="0.3.2"/>
-        <PackageReference Include="Polly" Version="8.6.3" />
+        <PackageReference Include="Polly" Version="8.6.4" />
         <PackageReference Include="Polly.Contrib.WaitAndRetry" Version="1.1.1" />
         <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1"/>
         <PackageReference Include="Qdrant.Client" Version="1.15.1" />
