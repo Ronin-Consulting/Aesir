@@ -123,11 +123,13 @@
             <u:FormItem 
                 Grid.Row="5" 
                 Grid.ColumnSpan="1"
-                Label="Chat Model" >
-                <ComboBox HorizontalAlignment="Stretch"
+                Label="Chat Model">
+                <ComboBox HorizontalAlignment="Left"
                           ItemsSource="{Binding AvailableChatModels}"
                           SelectedItem="{Binding FormModel.ChatModel}"
-                          IsEnabled="{Binding FormModel.ChatInferenceEngine, Converter={x:Static ObjectConverters.IsNotNull}}">
+                          IsEnabled="{Binding FormModel.ChatInferenceEngine, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        Width="150"  
+                >
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding}" />
