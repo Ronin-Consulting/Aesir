@@ -64,4 +64,16 @@ public class AesirAgentBase
     /// </summary>
     [JsonPropertyName("chat_custom_prompt_content")]
     public string? ChatCustomPromptContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the agent is allowed to perform active thinking or reasoning.
+    /// </summary>
+    [JsonPropertyName("allow_thinking")]
+    public bool? AllowThinking { get; set; }
+
+    /// <summary>
+    /// Gets or sets the "think" value, which can represent a boolean or a string indication such as "high", "medium", or "low".
+    /// </summary>
+    [JsonPropertyName("think_value")]
+    public ThinkValue? ThinkValue { get; set; }
 }
