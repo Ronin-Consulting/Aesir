@@ -1,4 +1,5 @@
 using Aesir.Api.Server.Data;
+using Aesir.Api.Server.Data.Test;
 using Aesir.Api.Server.Models;
 using Aesir.Common.Models;
 using Dapper;
@@ -28,6 +29,7 @@ public class ConfigurationService(
     {
         SqlMapper.AddTypeHandler(new JsonTypeHandler<IList<string?>>());
         SqlMapper.AddTypeHandler(new JsonTypeHandler<IDictionary<string, string?>>());
+        SqlMapper.AddTypeHandler(new ThinkValueTypeHandler());
     }
 
     /// <summary>
@@ -57,7 +59,7 @@ public class ConfigurationService(
         if (!DatabaseMode)
             throw new InvalidOperationException("System is not in database configuration mode");
 
-        var inferenceEngines = (await GetInferenceEnginesAsync()).ToArray() ?? [];
+        var inferenceEngines = (await GetInferenceEnginesAsync()).ToArray();
 
         if (inferenceEngines.Length == 0)
             configurationReadinessService.ReportMissingConfiguration("No Inference Engines configured");
@@ -66,21 +68,21 @@ public class ConfigurationService(
         {
             if (inferenceEngine.Type == InferenceEngineType.OpenAICompatible)
             {
-                if (inferenceEngine.Configuration["ApiKey"] == null)
+                if (inferenceEngine.Configuration?["ApiKey"] == null)
                 {
                     configurationReadinessService.ReportMissingConfiguration(
                         $"API Key missing for Inference Engine {inferenceEngine.Name}");
 
-                    configurationReadinessService.MarkInferenceEngineNotReadyAtBoot(inferenceEngine.Id.Value);
+                    configurationReadinessService.MarkInferenceEngineNotReadyAtBoot(inferenceEngine.Id!.Value);
                 }
             }
 
-            if (inferenceEngine.Configuration["Endpoint"] == null)
+            if (inferenceEngine.Configuration?["Endpoint"] == null)
             {
                 configurationReadinessService.ReportMissingConfiguration(
                     $"Endpoint missing for Inference Engine {inferenceEngine.Name}");
                 
-                configurationReadinessService.MarkInferenceEngineNotReadyAtBoot(inferenceEngine.Id.Value);
+                configurationReadinessService.MarkInferenceEngineNotReadyAtBoot(inferenceEngine.Id!.Value);
             }
         }
         
@@ -142,14 +144,14 @@ public class ConfigurationService(
                                      throw new InvalidOperationException("RagEmbeddingInferenceEngineName not configured");
         var ragEmbeddingInferenceEngine = inferenceEngines.FirstOrDefault(ie => ie.Name == ragEmbeddingInferenceEngineName) ?? 
                                               throw new InvalidOperationException("RagEmbeddingInferenceEngineName does not match a configured Inference Engine");
-        configuration[$"GeneralSettings:RagEmbeddingInferenceEngineId"] = ragEmbeddingInferenceEngine?.Id?.ToString() ?? null;
+        configuration[$"GeneralSettings:RagEmbeddingInferenceEngineId"] = ragEmbeddingInferenceEngine.Id?.ToString() ?? null;
         
         // update the rag vision inference engine id
         var ragVisionInferenceEngineName = generalSettings["RagVisionInferenceEngineName"] ??
                                      throw new InvalidOperationException("RagVisionInferenceEngineName not configured");
         var ragVisionInferenceEngine = inferenceEngines.FirstOrDefault(ie => ie.Name == ragVisionInferenceEngineName) ?? 
                                  throw new InvalidOperationException("RagVisionInferenceEngineName does not match a configured Inference Engine");
-        configuration[$"GeneralSettings:RagVisionInferenceEngineId"] = ragVisionInferenceEngine?.Id?.ToString() ?? null;
+        configuration[$"GeneralSettings:RagVisionInferenceEngineId"] = ragVisionInferenceEngine.Id?.ToString() ?? null;
         
         // give each agent an id
         var agents = configuration.GetSection("Agents")
@@ -250,8 +252,8 @@ public class ConfigurationService(
                 FROM aesir.aesir_general_settings
             ";
 
-            return await dbContext.UnitOfWorkAsync(async connection =>
-                await connection.QueryFirstOrDefaultAsync<AesirGeneralSettings>(sql));
+            return (await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryFirstOrDefaultAsync<AesirGeneralSettings>(sql)))!;
         }
         else
         {
@@ -353,16 +355,14 @@ public class ConfigurationService(
                 WHERE id = @Id::uuid
             ";
 
-            return await dbContext.UnitOfWorkAsync(async connection =>
-                await connection.QueryFirstOrDefaultAsync<AesirInferenceEngine>(sql, new { Id = id }));
+            return (await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryFirstOrDefaultAsync<AesirInferenceEngine>(sql, new { Id = id })))!;
         }
-        else
-        {
-            var inferenceEngines = configuration.GetSection("InferenceEngines")
-                .Get<AesirInferenceEngine[]>() ?? [];
 
-            return await Task.FromResult(inferenceEngines.FirstOrDefault(ie => ie.Id == id));
-        }
+        var inferenceEngines = configuration.GetSection("InferenceEngines")
+            .Get<AesirInferenceEngine[]>() ?? [];
+
+        return (await Task.FromResult(inferenceEngines.FirstOrDefault(ie => ie.Id == id)))!;
     }
 
     /// <summary>
@@ -453,7 +453,8 @@ public class ConfigurationService(
             const string sql = @"
                 SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, 
                        chat_temperature as ChatTemperature, chat_top_p as ChatTopP, chat_max_tokens as ChatMaxTokens,
-                       chat_prompt_persona as ChatPromptPersona, chat_custom_prompt_content as ChatCustomPromptContent
+                       chat_prompt_persona as ChatPromptPersona, chat_custom_prompt_content as ChatCustomPromptContent,
+                       allow_thinking as AllowThinking, think_value as ThinkValue
                 FROM aesir.aesir_agent
             ";
 
@@ -485,20 +486,21 @@ public class ConfigurationService(
             const string sql = @"
                 SELECT id, name, description, chat_inference_engine_id as ChatInferenceEngineId, chat_model as ChatModel, 
                        chat_temperature as ChatTemperature, chat_top_p as ChatTopP, chat_max_tokens as ChatMaxTokens,
-                       chat_prompt_persona as ChatPromptPersona, chat_custom_prompt_content as ChatCustomPromptContent
+                       chat_prompt_persona as ChatPromptPersona, chat_custom_prompt_content as ChatCustomPromptContent,
+                       allow_thinking as AllowThinking, think_value as ThinkValue
                 FROM aesir.aesir_agent
                 WHERE id = @Id::uuid
             ";
 
-            return await dbContext.UnitOfWorkAsync(async connection =>
-                await connection.QueryFirstOrDefaultAsync<AesirAgent>(sql, new { Id = id }));
+            return (await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryFirstOrDefaultAsync<AesirAgent>(sql, new { Id = id })))!;
         }
         else
         {
             var agents = configuration.GetSection("Agents")
                 .Get<AesirAgent[]>() ?? [];
 
-            return await Task.FromResult(agents.FirstOrDefault(a => a.Id == id));
+            return (await Task.FromResult(agents.FirstOrDefault(a => a.Id == id)))!;
         }
     }
 
@@ -513,9 +515,13 @@ public class ConfigurationService(
 
         const string sql = @"
             INSERT INTO aesir.aesir_agent 
-            (name, description, chat_inference_engine_id, chat_model, chat_temperature, chat_top_p, chat_max_tokens, chat_prompt_persona, chat_custom_prompt_content)
+            (name, description, chat_inference_engine_id, chat_model, chat_temperature, chat_top_p, 
+            chat_max_tokens, chat_prompt_persona, chat_custom_prompt_content,
+            allow_thinking, think_value)
             VALUES 
-            (@Name, @Description, @ChatInferenceEngineId, @ChatModel, @ChatTemperature, @ChatTopP, @ChatMaxTokens, @ChatPromptPersona, @ChatCustomPromptContent)
+            (@Name, @Description, @ChatInferenceEngineId, @ChatModel, @ChatTemperature, @ChatTopP, 
+            @ChatMaxTokens, @ChatPromptPersona, @ChatCustomPromptContent,
+            @AllowThinking, @ThinkValue::text)
             RETURNING id;
         ";
 
@@ -544,7 +550,9 @@ public class ConfigurationService(
                 chat_top_p = @ChatTopP, 
                 chat_max_tokens = @ChatMaxTokens,
                 chat_prompt_persona = @ChatPromptPersona,
-                chat_custom_prompt_content = @ChatCustomPromptContent
+                chat_custom_prompt_content = @ChatCustomPromptContent,
+                allow_thinking = @AllowThinking,
+                think_value = @ThinkValue
             WHERE id = @Id
         ";
 
@@ -684,7 +692,7 @@ public class ConfigurationService(
             ";
             parameters = new { AgentId = id };
         
-            var rows = await dbContext.UnitOfWorkAsync(async connection =>
+            await dbContext.UnitOfWorkAsync(async connection =>
                 await connection.ExecuteAsync(sql, parameters));
         }
         else
@@ -725,15 +733,15 @@ public class ConfigurationService(
                 WHERE id = @Id::uuid
             ";
 
-            return await dbContext.UnitOfWorkAsync(async connection =>
-                await connection.QueryFirstOrDefaultAsync<AesirTool>(sql, new { Id = id }));
+            return (await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryFirstOrDefaultAsync<AesirTool>(sql, new { Id = id })))!;
         }
         else
         {
             var tools = configuration.GetSection("Tools")
                 .Get<AesirTool[]>() ?? [];
 
-            return await Task.FromResult(tools.FirstOrDefault(t => t.Id == id));
+            return (await Task.FromResult(tools.FirstOrDefault(t => t.Id == id)))!;
         }
     }
 
@@ -858,15 +866,15 @@ public class ConfigurationService(
                 WHERE id = @Id::uuid
             ";
 
-            return await dbContext.UnitOfWorkAsync(async connection =>
-                await connection.QueryFirstOrDefaultAsync<AesirMcpServer>(sql, new { Id = id }));
+            return (await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryFirstOrDefaultAsync<AesirMcpServer>(sql, new { Id = id })))!;
         }
         else
         {
             var mcpServers = configuration.GetSection("McpServers")
                 .Get<AesirMcpServer[]>() ?? [];
 
-            return await Task.FromResult(mcpServers.FirstOrDefault(m => m.Id == id));
+            return (await Task.FromResult(mcpServers.FirstOrDefault(m => m.Id == id)))!;
         }
     }
 
