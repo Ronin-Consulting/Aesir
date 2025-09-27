@@ -2,7 +2,7 @@ using System.Data;
 using Aesir.Common.Models;
 using Dapper;
 
-namespace Aesir.Api.Server.Data.Test;
+namespace Aesir.Api.Server.Data;
 
 public class ThinkValueTypeHandler : SqlMapper.TypeHandler<ThinkValue>
 {

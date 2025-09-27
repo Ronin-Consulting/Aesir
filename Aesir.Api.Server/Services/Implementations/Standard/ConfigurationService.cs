@@ -1,5 +1,4 @@
 using Aesir.Api.Server.Data;
-using Aesir.Api.Server.Data.Test;
 using Aesir.Api.Server.Models;
 using Aesir.Common.Models;
 using Dapper;
