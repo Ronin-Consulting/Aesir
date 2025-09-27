@@ -50,9 +50,11 @@ public partial class AgentsView : UserControl, IRecipient<ShowAgentDetailMessage
 
                 viewModel.IsActive = false;
 
-                if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
+                if (DataContext is AgentsViewViewModel agentsViewModel)
                 {
-                    if (DataContext is AgentsViewViewModel agentsViewModel)
+                    agentsViewModel.SelectedAgent = null;
+                    
+                    if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
                     {
                         await agentsViewModel.RefreshAgentsAsync();
                     }

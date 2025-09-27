@@ -49,9 +49,11 @@ public partial class InferenceEnginesView : UserControl, IRecipient<ShowInferenc
 
                 viewModel.IsActive = false;
 
-                if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
+                if (DataContext is InferenceEnginesViewViewModel inferenceEnginesViewModel)
                 {
-                    if (DataContext is InferenceEnginesViewViewModel inferenceEnginesViewModel)
+                    inferenceEnginesViewModel.SelectedInferenceEngine = null;
+                    
+                    if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
                     {
                         await inferenceEnginesViewModel.RefreshInferenceEnginesAsync();
                     }

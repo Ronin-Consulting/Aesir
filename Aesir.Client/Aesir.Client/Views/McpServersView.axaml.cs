@@ -91,9 +91,11 @@ public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetai
 
         mcpServerViewModel.IsActive = false;
 
-        if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
+        if (DataContext is McpServersViewViewModel mcpServersViewModel)
         {
-            if (DataContext is McpServersViewViewModel mcpServersViewModel)
+            mcpServersViewModel.SelectedMcpServer = null;
+                    
+            if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
             {
                 await mcpServersViewModel.RefreshMcpServersAsync();
             }
