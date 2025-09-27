@@ -263,15 +263,16 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
             // re-load the chat model from the collection because it can have full details and not just id.
             FormModel.ChatModel = AvailableChatModels.First(m => m.Id == currentChatModel.Id);
 
-        if (FormModel.ChatModel != null && (FormModel.ChatModel.Details!.Capabilities ?? []).Contains("thinking") ||
+        if ((FormModel.ChatModel != null && (FormModel.ChatModel.Details?.Capabilities ?? []).Contains("thinking")) ||
             FormModel.ChatInferenceEngine.Type == InferenceEngineType.OpenAICompatible)
         {
             FormModel.SupportsThinking = true;
-            FormModel.AllowThinking = true;
+            FormModel.AllowThinking = _agent.AllowThinking ?? false;
 
             if (FormModel.ChatInferenceEngine.Type == InferenceEngineType.Ollama)
             {
                 FormModel.SupportsThinkValues = true;
+                FormModel.ThinkValues = (string?)_agent.ThinkValue;
             }
         }
         else
@@ -324,7 +325,9 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
                 ChatCustomPromptContent = FormModel.ChatPromptPersona == PromptPersona.Custom ? FormModel.ChatCustomPromptContent : null,
                 ChatMaxTokens = FormModel.ChatMaxTokens,
                 ChatTemperature = FormModel.ChatTemperature,
-                ChatTopP = FormModel.ChatTopP
+                ChatTopP = FormModel.ChatTopP,
+                AllowThinking = FormModel.AllowThinking,
+                ThinkValue = FormModel.ThinkValues
             };
 
             var closeResult = CloseResult.Errored;
