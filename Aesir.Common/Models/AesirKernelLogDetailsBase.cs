@@ -10,17 +10,8 @@ public class AesirKernelLogDetailsBase
     [JsonPropertyName("conversation_id")]
     public Guid? ConversationId { get; set; }
     
-    [JsonPropertyName("function_invocation_context")]
-    public AesirFunctionInvocationContext FunctionInvocationContext { get; set; }
-    
-    [JsonPropertyName("prompt_render_context")]
-    public AesirPromptRenderContext PromptRenderContext { get; set; }
-}
-
-public class AesirFunctionInvocationContext
-{
-    [JsonPropertyName("is_auto")]
-    public bool? IsAuto { get; set; }
+    [JsonPropertyName("type")]
+    public KernelLogType? Type { get; set; }
     
     [JsonPropertyName("arguments")]
     public List<KeyValuePair<string, string>>? Arguments { get; set; }
@@ -38,7 +29,9 @@ public class AesirFunctionInvocationContext
     public string? UnderlyingMethod { get; set; }
 }
 
-public class AesirPromptRenderContext
+public enum KernelLogType
 {
-    
+    FunctionInvocation,
+    AutoFunctionInvocation,
+    PromptRender
 }

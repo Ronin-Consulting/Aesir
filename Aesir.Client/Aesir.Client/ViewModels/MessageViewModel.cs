@@ -10,6 +10,7 @@ using Aesir.Common;
 using Aesir.Common.Models;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Ursa.Controls;
@@ -87,16 +88,25 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// Typically used for playing audio versions of messages, if available.
     /// </summary>
     public ICommand PlayMessageCommand { get; }
+    
+    private readonly ApplicationState _appState;
 
     /// The MessageViewModel class is an abstract foundation for handling the representation and management of messages
     /// within a conversation. It provides essential properties and commands for functionalities like message content updates,
     /// playback, and regeneration. This class is intended to be extended by specific message types, enabling tailored behavior
     /// for different roles or scenarios within the application.
-    protected MessageViewModel(ILogger logger, IMarkdownService markdownService,IKernelLogService kernelLogService)
+    protected MessageViewModel(
+        ApplicationState appState, 
+        ILogger logger, 
+        IMarkdownService markdownService,
+        IKernelLogService kernelLogService)
     {
         _logger = logger;
         _markdownService = markdownService;
         _kernelLogService= kernelLogService;
+        _appState = appState;
+
+        ChatSessionId = _appState.SelectedChatSessionId;
         
         // ReSharper disable once VirtualMemberCallInConstructor
         RegenerateMessageCommand = CreateRegenerateMessageCommand();
@@ -111,20 +121,20 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// </summary>
     private async Task ExecuteShowLogDialog()
     {
+        ChatSessionId = _appState.SelectedChatSessionId;
+        
         var logs = await _kernelLogService.GetKernelLogsByChatSessionAsync(ChatSessionId);
-        var model = new ConversationLogViewDialogViewModel();
-        model.Logs = new ObservableCollection<AesirKernelLogBase>();
+        var model = new LogsViewDialogViewModel();
+        model.Logs = new ObservableCollection<AesirKernelLog>();
         foreach (var log in logs) model.Logs.Add(log);
         
-        await OverlayDialog.ShowModal<LogViewDialog, ConversationLogViewDialogViewModel>(
+        await OverlayDialog.ShowModal<LogsViewDialog, LogsViewDialogViewModel>(
             model,
             options: new OverlayDialogOptions()
             {
                 Title = "Log View",
                 Mode = DialogMode.Info,
                 Buttons = DialogButton.OK,
-                HorizontalAnchor = HorizontalPosition.Center,
-                VerticalAnchor = VerticalPosition.Center,
                 CanLightDismiss = true
             }
         );
@@ -158,6 +168,8 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// <returns>A <c>Task</c> that represents the asynchronous operation of setting and processing the message content.</returns>
     public virtual async Task SetMessage(AesirChatMessage message)
     {
+        ChatSessionId = _appState.SelectedChatSessionId;
+        
         Content = message.Content.TrimStart().NormalizeLineEndings();
 
         if (message.Role == "system")
@@ -191,6 +203,8 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// </returns>
     public virtual async Task<string> SetStreamedMessageAsync(IAsyncEnumerable<AesirChatStreamedResult?> message)
     {
+        ChatSessionId = _appState.SelectedChatSessionId;
+        
         return await Task.Run(async () =>
         {
             var title = string.Empty;

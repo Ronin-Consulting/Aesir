@@ -6,7 +6,7 @@ namespace Aesir.Client.Messages;
 /// <summary>
 /// Represents a message used to show the details of a log in the system.
 /// </summary>
-public class ShowLogDetailMessage(AesirKernelLogBase? log)
+public class ShowLogDetailMessage(AesirKernelLog? log)
 {   
-    public AesirKernelLogBase Log  { get; set; } = log ?? new AesirKernelLogBase();
+    public AesirKernelLog Log  { get; set; } = log ?? new AesirKernelLog();
 }

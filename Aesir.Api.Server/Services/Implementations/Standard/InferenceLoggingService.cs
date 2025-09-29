@@ -42,7 +42,7 @@ public class InferenceLoggingService(ILogger<InferenceLoggingService> logger, IK
         logger.LogDebug("OnFunctionInvocationAsync --> Function Invocation: {FunctionName}", context.Function.Name);
 
         var details = GetFunctionContext(context);
-        await kernelLogService.LogAsync(KernelLogLevel.Info, context.Function.Name, details);
+        await kernelLogService.LogAsync(KernelLogLevel.Info, $"Function Invocation: {context.Function.Name}", details);
         
         await next(context);
 
@@ -65,7 +65,7 @@ public class InferenceLoggingService(ILogger<InferenceLoggingService> logger, IK
         logger.LogDebug("OnPromptRenderAsync --> Prompt Render for: {FunctionName}", context.Function.Name);
         
         var details = GetPromptRenderContext(context);
-        await kernelLogService.LogAsync(KernelLogLevel.Info, context.Function.Name, details);
+        await kernelLogService.LogAsync(KernelLogLevel.Info, $"Prompt Render: {context.Function.Name}", details);
 
         await next(context);
         
@@ -83,7 +83,7 @@ public class InferenceLoggingService(ILogger<InferenceLoggingService> logger, IK
         logger.LogDebug("OnAutoFunctionInvocationAsync --> Function Invocation: {FunctionName}", context.Function.Name);
 
         var details = GetAutoFunctionContext(context);
-        await kernelLogService.LogAsync(KernelLogLevel.Info, context.Function.Name, details);
+        await kernelLogService.LogAsync(KernelLogLevel.Info, $"Auto Function Invocation: {context.Function.Name}", details);
 
         if (context.Arguments != null)
         {
@@ -104,53 +104,6 @@ public class InferenceLoggingService(ILogger<InferenceLoggingService> logger, IK
         logger.LogDebug("OnAutoFunctionInvocationAsync --> Function {FunctionName} --> Result: {Result}", context.Function.Name, JsonSerializer.Serialize(context.Result.GetValue<object?>(), JsonSerializerOptions));
     }
 
-    private AesirKernelLogDetails GetFunctionContext(FunctionInvocationContext context)
-    {
-        var details = GetKernelChatDetails(context.Kernel);
-        var ctx = new AesirFunctionInvocationContext()
-        {
-            IsAuto = false,
-            Arguments = context.Arguments.Select(x =>
-                    new KeyValuePair<string, string>(x.Key, JsonSerializer.Serialize(x.Value, JsonSerializerOptions)))
-                .ToList(),
-            FunctionName = context.Function.Name,
-            FunctionDescription = context.Function.Description,
-            PluginName = context.Function.PluginName,
-            UnderlyingMethod = context.Function.UnderlyingMethod.Name,
-        };
-        details.FunctionInvocationContext = ctx;
-        return details;
-    }
-
-    private AesirKernelLogDetails GetAutoFunctionContext(AutoFunctionInvocationContext context)
-    {
-        var details = GetKernelChatDetails(context.Kernel);
-        var ctx = new AesirFunctionInvocationContext()
-        {
-            IsAuto = true,
-            Arguments = context.Arguments.Select(x =>
-                    new KeyValuePair<string, string>(x.Key, JsonSerializer.Serialize(x.Value, JsonSerializerOptions)))
-                .ToList(),
-            FunctionName = context.Function.Name,
-            FunctionDescription = context.Function.Description,
-            PluginName = context.Function.PluginName,
-            UnderlyingMethod = context.Function.UnderlyingMethod.Name,
-        };
-        details.FunctionInvocationContext = ctx;
-        return details;
-    }
-
-    private AesirKernelLogDetails GetPromptRenderContext(PromptRenderContext context)
-    {
-        var details = GetKernelChatDetails(context.Kernel);
-        var ctx = new AesirPromptRenderContext()
-        {
-
-        };
-        details.PromptRenderContext = ctx;
-        return details;
-    }
-
     private AesirKernelLogDetails GetKernelChatDetails(Kernel kernel)
     {
         var details = new AesirKernelLogDetails()
@@ -165,4 +118,51 @@ public class InferenceLoggingService(ILogger<InferenceLoggingService> logger, IK
         return details;
     }
 
+    private AesirKernelLogDetails GetFunctionContext(FunctionInvocationContext context)
+    {
+        var details = GetKernelChatDetails(context.Kernel);
+
+        details.Type = KernelLogType.FunctionInvocation;
+        details.Arguments = context.Arguments?.Select(x =>
+                new KeyValuePair<string, string>(x.Key, JsonSerializer.Serialize(x.Value, JsonSerializerOptions)))
+            .ToList();
+        details.FunctionName = context.Function.Name;
+        details.FunctionDescription = context.Function.Description;
+        details.PluginName = context.Function.PluginName;
+        details.UnderlyingMethod = context.Function.UnderlyingMethod?.Name;
+        
+        return details;
+    }
+
+    private AesirKernelLogDetails GetAutoFunctionContext(AutoFunctionInvocationContext context)
+    {
+        var details = GetKernelChatDetails(context.Kernel);
+        
+        details.Type = KernelLogType.AutoFunctionInvocation;
+        details.Arguments = context.Arguments?.Select(x =>
+                new KeyValuePair<string, string>(x.Key, JsonSerializer.Serialize(x.Value, JsonSerializerOptions)))
+            .ToList();
+        details.FunctionName = context.Function.Name;
+        details.FunctionDescription = context.Function.Description;
+        details.PluginName = context.Function.PluginName;
+        details.UnderlyingMethod = context.Function.UnderlyingMethod?.Name;
+    
+        return details;
+    }
+
+    private AesirKernelLogDetails GetPromptRenderContext(PromptRenderContext context)
+    {
+        var details = GetKernelChatDetails(context.Kernel);
+        
+        details.Type = KernelLogType.AutoFunctionInvocation;
+        details.Arguments = context.Arguments?.Select(x =>
+                new KeyValuePair<string, string>(x.Key, JsonSerializer.Serialize(x.Value, JsonSerializerOptions)))
+            .ToList();
+        details.FunctionName = context.Function.Name;
+        details.FunctionDescription = context.Function.Description;
+        details.PluginName = context.Function.PluginName;
+        details.UnderlyingMethod = context.Function.UnderlyingMethod?.Name;
+
+        return details;
+    }
 }

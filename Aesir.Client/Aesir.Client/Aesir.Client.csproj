@@ -101,6 +101,10 @@
         <DependentUpon>LogsView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Controls\LogDetailDialog.axaml.cs">
+        <DependentUpon>LogViewDetailDialog.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     
     <ItemGroup>

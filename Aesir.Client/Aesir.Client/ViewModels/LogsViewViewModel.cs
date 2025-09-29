@@ -3,12 +3,17 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Aesir.Client.Controls;
+using Aesir.Client.Messages;
+using Aesir.Client.Models;
 using Aesir.Client.Services;
 using Aesir.Common.Models;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
+using Ursa.Controls;
 
 namespace Aesir.Client.ViewModels;
 
@@ -41,14 +46,14 @@ public class LogsViewViewModel : ObservableRecipient, IDisposable
     /// <summary>
     /// Represents a collection of tools displayed in the tools view.
     /// </summary>
-    public ObservableCollection<AesirKernelLogBase> Logs { get; protected set; }
+    public ObservableCollection<AesirKernelLog> Logs { get; set; }
 
     /// <summary>
     /// Represents the currently selected tool from the collection of tools.
     /// This property is bound to the selection within the user interface and updates whenever
     /// a new tool is chosen. Triggers logic related to tool selection changes.
     /// </summary>
-    public AesirKernelLogBase? SelectedLog
+    public AesirKernelLog? SelectedLog
     {
         get => _selectedLog;
         set
@@ -66,7 +71,7 @@ public class LogsViewViewModel : ObservableRecipient, IDisposable
     /// errors, warnings, and informational messages related to the execution of
     /// various operations and application states in the view model.
     /// </summary>
-    private readonly ILogger<ToolsViewViewModel> _logger;
+    private readonly ILogger _logger;
 
     /// <summary>
     /// Provides navigation functionality to transition between various views or features
@@ -83,13 +88,13 @@ public class LogsViewViewModel : ObservableRecipient, IDisposable
     /// <summary>
     /// Backing field for the currently selected log in the view model.
     /// </summary>
-    private AesirKernelLogBase? _selectedLog;
+    private AesirKernelLog? _selectedLog;
 
     /// Represents the view model for managing logs within the application.
     /// Provides commands to display the chat and tool creation interfaces.
     /// Integrates navigation and configuration services to coordinate application workflows.
     public LogsViewViewModel(
-        ILogger<ToolsViewViewModel> logger,
+        ILogger<LogsViewViewModel> logger,
         INavigationService navigationService,
         IKernelLogService kernelLogService)
     {
@@ -101,7 +106,7 @@ public class LogsViewViewModel : ObservableRecipient, IDisposable
         ShowLogDetails = new RelayCommand(ExecuteShowLogDetails);
         ReselectFromGrid = new RelayCommand(ExecuteReselectFromGrid);
         
-        Logs = new ObservableCollection<AesirKernelLogBase>();
+        Logs = new ObservableCollection<AesirKernelLog>();
     }
 
     /// Called when the view model is activated.
@@ -148,27 +153,27 @@ public class LogsViewViewModel : ObservableRecipient, IDisposable
         _navigationService.NavigateToChat();
     }
 
-    /// Executes the command to show the interface for log details.
-    /// Sends a message indicating that the interface for log details should be displayed.
+    /// Executes the command to show the interface for Document details.
+    /// Sends a message indicating that the interface for Document details should be displayed.
     private void ExecuteShowLogDetails()
     {
-        // WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(SelectedLog));   
+        WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(_selectedLog));   
     }
 
-    /// Executes the command to show the interface for re-selecting a log when the grid is clicked.
+    /// Executes the command to show the interface for re-selecting a document when the grid is clicked.
     private void ExecuteReselectFromGrid()
     {
-        // WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(SelectedLog));   
+        WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(_selectedLog));   
     }
 
     /// Handles logic when a Log is selected in the ToolsViewViewModel.
     /// Sends a message to display detailed information about the selected tool.
     /// <param name="selectedLog">The Log that has been selected. If null, no action is taken.</param>
-    private void OnLogSelected(AesirKernelLogBase? selectedLog)
+    private void OnLogSelected(AesirKernelLog? selectedLog)
     {
         if (selectedLog != null)
         {
-            // WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(selectedLog));
+            WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(selectedLog));
         }
     }
 

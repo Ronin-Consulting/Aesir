@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Aesir.Client.Models;
-using Aesir.Common.Models;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -19,7 +18,7 @@ public class KernelLogService(
         .GetOrAdd("LogCollectionClient",
             configuration.GetValue<string>("Inference:Logs"));
 
-    public async Task<IEnumerable<AesirKernelLogBase>> GetKernelLogsAsync(DateTimeOffset from, DateTimeOffset to)
+    public async Task<IEnumerable<AesirKernelLog>> GetKernelLogsAsync(DateTimeOffset from, DateTimeOffset to)
     {
         try
         {
@@ -27,7 +26,7 @@ public class KernelLogService(
                 .AppendPathSegment("kernel")
                 .AppendQueryParam("from",from)
                 .AppendQueryParam("to",to)
-                .GetJsonAsync<IEnumerable<AesirKernelLogBase>>());
+                .GetJsonAsync<IEnumerable<AesirKernelLog>>());
         }
         catch (FlurlHttpException ex)
         {
@@ -36,14 +35,17 @@ public class KernelLogService(
         }   
     }
     
-    public async Task<IEnumerable<AesirKernelLogBase>> GetKernelLogsByChatSessionAsync(Guid? chatSessionId)
+    public async Task<IEnumerable<AesirKernelLog>> GetKernelLogsByChatSessionAsync(Guid? chatSessionId)
     {
+        if (chatSessionId == null)
+            return [];
+        
         try
         {
             return (await _flurlClient.Request()
                 .AppendPathSegment("kernel")
                 .AppendPathSegment(chatSessionId)
-                .GetJsonAsync<IEnumerable<AesirKernelLogBase>>());
+                .GetJsonAsync<IEnumerable<AesirKernelLog>>());
         }
         catch (FlurlHttpException ex)
         {

@@ -11,10 +11,6 @@
     x:Class="Aesir.Client.Views.LogsView"
     x:DataType="vm:LogsViewViewModel">
     
-    <Design.DataContext>    
-        <dvm:DesignDocumentsViewViewModel />
-    </Design.DataContext>
-    
     <DockPanel>
         <DockPanel DockPanel.Dock="Top" Margin="16, 10, 14, 16">
             <TextBlock Name="TitleTextBlock" HorizontalAlignment="Left"
@@ -49,12 +45,12 @@
                           CellPointerPressed="InputElement_OnCellPointerPressed"
                           SelectedItem="{Binding SelectedLog}">
                     <DataGrid.Columns>
-                        <DataGridTextColumn FontWeight="Bold" Header="Created" Binding="{Binding CreatedAt}"/>
-                        <DataGridTextColumn Header="Message" Binding="{Binding Message}"/>
+                        <DataGridTextColumn FontWeight="Bold" Header="Created" Binding="{Binding CreatedAtDisplay}"/>
                         <DataGridTextColumn Header="Level" Binding="{Binding Level}"/>
+                        <DataGridTextColumn Header="Message" Binding="{Binding Message}"/>
+                        <DataGridTextColumn Header="Plugin" Binding="{Binding Details.PluginName }"/>
                         <DataGridTextColumn Header="Chat Session" Binding="{Binding Details.ChatSessionId }"/>
                         <DataGridTextColumn Header="Conversation" Binding="{Binding Details.ConversationId }"/>
-                        <DataGridTextColumn Header="Details" Binding="{Binding Details }"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>

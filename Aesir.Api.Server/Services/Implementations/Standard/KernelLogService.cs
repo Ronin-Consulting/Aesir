@@ -2,19 +2,14 @@
 using Aesir.Api.Server.Models;
 using Aesir.Common.Models;
 using Dapper;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
-using Npgsql;
-using NpgsqlTypes;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
-public class KernelLogService(ILogger<ChatHistoryService> logger, IDbContext dbContext):IKernelLogService
+public class KernelLogService(ILogger<ChatHistoryService> logger, IDbContext dbContext): IKernelLogService
 {
     static KernelLogService()
     {
-        // SqlMapper.AddTypeHandler(new JsonTypeHandler<AesirKernelLogBase>());
-        SqlMapper.AddTypeHandler(new JsonTypeHandler<AesirKernelLogDetailsBase>());
+        SqlMapper.AddTypeHandler(new JsonTypeHandler<AesirKernelLogDetails>());
     }
     
     public async Task LogAsync(KernelLogLevel logLevel, string message, AesirKernelLogDetails details)
@@ -31,7 +26,7 @@ public class KernelLogService(ILogger<ChatHistoryService> logger, IDbContext dbC
         }, withTransaction: true);
     }
 
-    public async Task<IEnumerable<AesirKernelLogBase>> GetLogsAsync(DateTimeOffset from, DateTimeOffset to)
+    public async Task<IEnumerable<AesirKernelLog>> GetLogsAsync(DateTimeOffset from, DateTimeOffset to)
     {
         const string sql = @"
             SELECT id as Id, level as Level, created_at as CreatedAt, details::jsonb as Details, 
@@ -41,10 +36,10 @@ public class KernelLogService(ILogger<ChatHistoryService> logger, IDbContext dbC
         ";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<AesirKernelLogBase>(sql, new { From=from.UtcDateTime, To=to.UtcDateTime }));
+            await connection.QueryAsync<AesirKernelLog>(sql, new { From=from.UtcDateTime, To=to.UtcDateTime }));
     }
 
-    public async Task<IEnumerable<AesirKernelLogBase>> GetLogsByChatSessionAsync(Guid chatSessionId)
+    public async Task<IEnumerable<AesirKernelLog>> GetLogsByChatSessionAsync(Guid chatSessionId)
     {
         const string sql = @"
             SELECT id as Id, level as Level, created_at as CreatedAt, details::jsonb as Details, 
@@ -54,7 +49,7 @@ public class KernelLogService(ILogger<ChatHistoryService> logger, IDbContext dbC
         ";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<AesirKernelLogBase>(sql, new { ChatSessionId=chatSessionId.ToString() }));
+            await connection.QueryAsync<AesirKernelLog>(sql, new { ChatSessionId=chatSessionId.ToString() }));
     }
 }
 

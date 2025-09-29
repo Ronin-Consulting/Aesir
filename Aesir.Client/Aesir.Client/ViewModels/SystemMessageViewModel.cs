@@ -1,3 +1,4 @@
+using Aesir.Client.Models;
 using Aesir.Client.Services;
 using Microsoft.Extensions.Logging;
 
@@ -8,10 +9,11 @@ namespace Aesir.Client.ViewModels;
 /// Extends the <see cref="MessageViewModel"/> class to provide functionality specific to system-level messages.
 /// </summary>
 public class SystemMessageViewModel(
+    ApplicationState  applicationState,
     ILogger<SystemMessageViewModel> logger, 
     IMarkdownService markdownService, 
     IKernelLogService kernelLogService
-    ) : MessageViewModel(logger, markdownService,kernelLogService)
+    ) : MessageViewModel(applicationState,logger, markdownService,kernelLogService)
 {
     public override string Role => "system";
 }

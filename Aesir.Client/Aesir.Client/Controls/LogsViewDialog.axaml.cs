@@ -1,5 +1,4 @@
-using System;
-using Aesir.Client.Controls;
+﻿using System;
 using Aesir.Client.Messages;
 using Aesir.Client.ViewModels;
 using Avalonia.Controls;
@@ -7,25 +6,25 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Messaging;
 using Ursa.Controls;
 
-namespace Aesir.Client.Views;
+namespace Aesir.Client.Controls;
 
-public partial class LogsView : UserControl, IDisposable, IRecipient<ShowLogDetailMessage>
+public partial class LogsViewDialog : UserControl, IDisposable, IRecipient<ShowLogDetailMessage>
 {
-    public LogsView()
+    public LogsViewDialog()
     {
         InitializeComponent();
         
         WeakReferenceMessenger.Default.Register<ShowLogDetailMessage>(this);
     }
 
-    public void Receive(ShowLogDetailMessage detailMessage)
+    public void Receive(ShowLogDetailMessage message)
     {
         Dispatcher.UIThread.Post(async void () =>
         {
             try
             {
                 var model = new LogDetailDialogViewModel();
-                model.Log = detailMessage.Log;
+                model.Log = message.Log;
         
                 await OverlayDialog.ShowModal<LogDetailDialog, LogDetailDialogViewModel>(
                     model,
@@ -55,21 +54,17 @@ public partial class LogsView : UserControl, IDisposable, IRecipient<ShowLogDeta
     {
         WeakReferenceMessenger.Default.Unregister<ShowLogDetailMessage>(this);
     }
-    
-    private void InputElement_OnCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs dataGridCellPointerPressedEventArgs)
+
+    private void InputElement_OnCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs e)
     {
-        // sender is often the clicked UI element, like ListBoxItem
         var control = sender as Control;
         if (control != null)
         {
-            var model = control.DataContext as LogsViewViewModel; // your clicked item
+            var model = control.DataContext as LogsViewDialogViewModel; // your clicked item
             if (model?.SelectedLog!=null)
             {
                 WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(model.SelectedLog));
             }
         }
     }
-
-
-
 }

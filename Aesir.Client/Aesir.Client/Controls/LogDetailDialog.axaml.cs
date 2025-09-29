@@ -2,9 +2,9 @@
 
 namespace Aesir.Client.Controls;
 
-public partial class LogViewDialog : UserControl
+public partial class LogDetailDialog : UserControl
 {
-    public LogViewDialog()
+    public LogDetailDialog()
     {
         InitializeComponent();
     }

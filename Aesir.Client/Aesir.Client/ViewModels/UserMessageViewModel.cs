@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using Aesir.Client.Controls;
 using Aesir.Client.Messages;
+using Aesir.Client.Models;
 using Aesir.Client.Services;
 using Aesir.Common;
 using Aesir.Common.FileTypes;
@@ -68,8 +69,10 @@ public partial class UserMessageViewModel : MessageViewModel
     /// for handling markdown conversion, asynchronous message updates, and download requests.
     /// Extends <see cref="MessageViewModel"/> to provide user-specific message capabilities.
     /// </summary>
-    public UserMessageViewModel(ILogger<UserMessageViewModel> logger, IMarkdownService markdownService,IKernelLogService kernelLogService)
-        : base(logger, markdownService, kernelLogService)
+    public UserMessageViewModel(
+        ApplicationState  applicationState, 
+        ILogger<UserMessageViewModel> logger, IMarkdownService markdownService,IKernelLogService kernelLogService)
+        : base(applicationState, logger, markdownService, kernelLogService)
     {
         _markdownService = markdownService;
         _logger = logger;
