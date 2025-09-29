@@ -21,6 +21,7 @@ using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
+using Humanizer;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.ViewModels;
@@ -142,6 +143,15 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     
     [ObservableProperty]
     private ICollection<ToolRequest> _toolsAvailable = new HashSet<ToolRequest>();
+
+    [ObservableProperty]
+    private bool _thinkingToggleVisible;
+    
+    [ObservableProperty]
+    private ICollection<string> _thinkValues = new List<string>();
+    
+    [ObservableProperty]
+    private string? _selectedThinkValue;
     
     public ICommand ToggleToolRequest { get; }
     
@@ -179,30 +189,17 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// within the application, ensuring proper execution and state management
     /// during the operation.
     /// </summary>
-    public IAsyncRelayCommand SendMessageCommand => _sendMessageCommand ??= new AsyncRelayCommand(SendMessageAsync);
+    public ICommand SendMessageCommand { get; }
 
     /// <summary>
     /// Encapsulates the command functionality to display a file selection dialog to the user.
     /// This property is typically bound to the user interface elements that trigger file selection operations.
     /// Facilitates interaction to select and retrieve file paths for further processing.
     /// </summary>
-    public IAsyncRelayCommand ShowFileSelectionCommand =>
-        _showFileSelectionCommand ??= new AsyncRelayCommand(ShowFileSelectionAsync);
-
-    /// <summary>
-    /// Encapsulates the command logic for sending messages within the application.
-    /// Facilitates the execution of actions associated with message dispatching,
-    /// including validations and integration with underlying message handling mechanisms.
-    /// </summary>
-    private IAsyncRelayCommand? _sendMessageCommand;
-
-    /// <summary>
-    /// Represents a command that triggers the file selection process in the application.
-    /// This command is utilized to allow users to browse and select files from their system.
-    /// It is typically bound to user interface actions such as button clicks.
-    /// </summary>
-    private IAsyncRelayCommand? _showFileSelectionCommand;
-
+    public ICommand ShowFileSelectionCommand { get; }
+    
+    public ICommand SelectThinkValueCommand  { get; }
+    
     // Services
     /// <summary>
     /// A readonly field leveraging the application's centralized state management framework,
@@ -284,13 +281,20 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         ToggleNewChat = new RelayCommand(ExecuteNewChat);
         SelectAgent = new AsyncRelayCommand<AesirAgentBase>(ExecuteSelectAgentAsync);
         ShowHandsFree = new RelayCommand(ExecuteShowHandsFree);
-
+        SendMessageCommand = new AsyncRelayCommand(ExecuteSendMessageAsync);
+        ShowFileSelectionCommand = new AsyncRelayCommand(ExecuteShowFileSelectionAsync);
+        SelectThinkValueCommand = new RelayCommand<string>(ExecuteSelectThinkValue);
         ToggleToolRequest = new RelayCommand<string?>(ExecuteToggleToolRequest);
         
         SelectedFile = fileToUploadViewModel ?? throw new ArgumentNullException(nameof(fileToUploadViewModel));
         SelectedFile.IsActive = true;
 
         AvailableAgents = [];
+    }
+
+    private void ExecuteSelectThinkValue(string? thinkValue)
+    {
+        SelectedThinkValue = thinkValue;
     }
 
     private void ExecuteToggleToolRequest(string? toolName)
@@ -350,6 +354,37 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             ).ToHashSet();
             
             ToolRequests = new HashSet<ToolRequest>(ToolsAvailable);
+
+            if ((agent.AllowThinking ?? false) && 
+                agent.ThinkValue.HasValue && !agent.ThinkValue.Value.IsBoolean())
+            {
+                ThinkingToggleVisible = true;
+                var thinkValueString = (string?)agent.ThinkValue.Value;
+
+                if (thinkValueString != null)
+                {
+                    var thinkValues = thinkValueString.Split(',',  StringSplitOptions.RemoveEmptyEntries);
+                    ThinkValues.Clear();
+                    foreach (var thinkValue in thinkValues)
+                    {
+                        ThinkValues.Add(thinkValue.Trim().Transform(To.TitleCase));
+                    }
+
+                    if (thinkValues.Length < 1)
+                    {
+                        ThinkingToggleVisible = false;
+                        return;
+                    }
+                    
+                    SelectedThinkValue = ThinkValues.First();
+                }
+            }
+            else
+            {
+                ThinkingToggleVisible = false;
+                ThinkValues.Clear();
+                SelectedThinkValue = null;
+            }
         }
     }
 
@@ -619,7 +654,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// Ensures appropriate handling of network or service-related exceptions.
     /// Returns a task representing the completion of the message-sending operation.
     /// <return> A task representing the asynchronous operation of sending the message.</return>
-    private async Task SendMessageAsync()
+    private async Task ExecuteSendMessageAsync()
     {
         if (string.IsNullOrWhiteSpace(ChatMessage))
         {
@@ -688,7 +723,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     /// Displays a file selection dialog to the user asynchronously.
     /// Allows users to browse and select files from the local file system.
     /// Handles user interaction and returns the result of the file selection.
-    private async Task ShowFileSelectionAsync()
+    private async Task ExecuteShowFileSelectionAsync()
     {
         try
         {
@@ -813,8 +848,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             }
         }
     }
-
-
+    
     /// Downloads a file from a remote source and saves it to a specified local file path.
     /// <param name="fileName">The name of the file to download from the remote source.</param>
     /// <param name="localFilePath">The local file path where the downloaded file will be saved.</param>
@@ -836,7 +870,6 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             throw;
         }
     }
-    
     
     /// Asynchronously regenerates the conversation by resending a specific user message and clearing all subsequent messages.
     /// This method locates the target user message within the conversation, removes all messages following it,
