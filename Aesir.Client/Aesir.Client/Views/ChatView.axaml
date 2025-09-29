@@ -15,14 +15,14 @@
     x:DataType="vm:ChatViewViewModel">
 
     <UserControl.Styles>
-        <Style Selector="MenuFlyoutPresenter.agentMenu">
+        <Style Selector="MenuFlyoutPresenter.AesirMenu">
         </Style>
-        <Style Selector="MenuFlyoutPresenter.agentMenu MenuItem">
+        <Style Selector="MenuFlyoutPresenter.AesirMenu MenuItem">
             <Setter Property="Padding" Value="16 4,8 4" />
             <Setter Property="MinHeight" Value="32" />
             <Setter Property="Height" Value="32" />
         </Style>
-        <Style Selector="MenuFlyoutPresenter.agentMenu Button">
+        <Style Selector="MenuFlyoutPresenter.AesirMenu Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="AntiqueWhite" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -33,17 +33,17 @@
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         </Style>
-        <Style Selector="MenuFlyoutPresenter.agentMenu Button:pointerover /template/ ContentPresenter">
+        <Style Selector="MenuFlyoutPresenter.AesirMenu Button:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
         </Style>
-        <Style Selector="MenuFlyoutPresenter.agentMenu Button:pressed /template/ ContentPresenter">
+        <Style Selector="MenuFlyoutPresenter.AesirMenu Button:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
         </Style>
-        <Style Selector="MenuFlyoutPresenter.agentMenu Button:pointerover">
+        <Style Selector="MenuFlyoutPresenter.AesirMenu Button:pointerover">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
-        <Style Selector="MenuFlyoutPresenter.agentMenu Button:pressed">
+        <Style Selector="MenuFlyoutPresenter.AesirMenu Button:pressed">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
@@ -54,11 +54,13 @@
             <Setter Property="Background" Value="#2954A9FF" />
         </Style>
     </UserControl.Styles>
-    
+
     <UserControl.Resources>
         <converters:ToolRequestExistsConverter x:Key="ToolRequestExistsConverter" />
+        <converters:EqualityToBoolConverter x:Key="EqualityToBoolConverter" />
+        <converters:EqualityToBoolConverter x:Key="IsNotNullConverter" Invert="True" />
     </UserControl.Resources>
-    
+
     <DockPanel>
         <!-- Error Panel - Shows at the top when there's a configuration error -->
         <Border
@@ -70,7 +72,7 @@
             Padding="12,8"
             IsVisible="{Binding !ConfigurationReadiness.IsReady}"
             ZIndex="200">
-            
+
             <StackPanel Orientation="Vertical" Spacing="8">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <avalonia:MaterialIcon Kind="Alert"
@@ -84,7 +86,7 @@
                         Foreground="#CC0000"
                         VerticalAlignment="Center" />
                 </StackPanel>
-                
+
                 <ItemsControl ItemsSource="{Binding ConfigurationReadiness.Reasons}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -159,7 +161,7 @@
                                         IsEnabled="{Binding ConfigurationReadiness.IsReady}"
                                         Padding="10,0,0,0">
                                     <Button.Flyout>
-                                        <MenuFlyout Placement="Right" FlyoutPresenterClasses="agentMenu"
+                                        <MenuFlyout Placement="Right" FlyoutPresenterClasses="AesirMenu"
                                                     ItemsSource="{Binding AvailableAgents}">
                                             <MenuFlyout.ItemTemplate>
                                                 <DataTemplate x:DataType="common:AesirAgentBase">
@@ -261,8 +263,7 @@
                                                               Margin="0,0,0,0"
                                                               ToolTip.Tip="Toggle Web Search"
                                                               Theme="{DynamicResource OutlineButton}"
-                                                              Command="{Binding ToggleToolRequest}"
-                                                >
+                                                              Command="{Binding ToggleToolRequest}">
                                                     <ToggleButton.CommandParameter>
                                                         <x:Static Member="common:AesirTools.WebToolName" />
                                                     </ToggleButton.CommandParameter>
@@ -298,10 +299,10 @@
                                                     </Button.IsEnabled>
                                                 </ToggleButton>
                                                 <Button Classes="Primary AesirSelectButton"
-                                                              Margin="0,0,0,0"
-                                                              ToolTip.Tip="Thinking Setting"
-                                                              Theme="{DynamicResource OutlineButton}"
-                                                >
+                                                        Margin="0,0,0,0"
+                                                        ToolTip.Tip="Thinking Setting"
+                                                        Theme="{DynamicResource OutlineButton}"
+                                                        IsVisible="{Binding ThinkingToggleVisible}">
                                                     <Button.Content>
                                                         <avalonia:MaterialIcon Kind="Lightbulb" Width="20"
                                                                                Height="34" />
@@ -313,37 +314,38 @@
                                                         </MultiBinding>
                                                     </Button.IsEnabled>
                                                     <Button.Flyout>
-                                                        <MenuFlyout Placement="TopEdgeAlignedLeft">
-                                                            <MenuItem Header="Low">
-                                                                <MenuItem.Icon>
-                                                                    <avalonia:MaterialIcon Kind="Check"
-                                                                            Width="16" Height="16"
-                                                                            VerticalAlignment="Center"
-                                                                            Margin="8,0,0,0"
-                                                                            IsVisible="{Binding $parent[MenuItem].IsChecked}"
-                                                                />
-                                                                </MenuItem.Icon>
-                                                            </MenuItem>
-                                                            <MenuItem Header="Medium" IsChecked="True">
-                                                                <MenuItem.Icon>
-                                                                    <avalonia:MaterialIcon Kind="Check"
-                                                                            Width="16" Height="16"
-                                                                            VerticalAlignment="Center"
-                                                                            Margin="8,0,0,0"
-                                                                            IsVisible="{Binding $parent[MenuItem].IsChecked}"    
-                                                                />
-                                                                </MenuItem.Icon>
-                                                            </MenuItem>
-                                                            <MenuItem Header="High">
-                                                                <MenuItem.Icon>
-                                                                    <avalonia:MaterialIcon Kind="Check"
-                                                                            Width="16" Height="16"
-                                                                            VerticalAlignment="Center"
-                                                                            Margin="8,0,0,0"
-                                                                            IsVisible="{Binding $parent[MenuItem].IsChecked}"            
-                                                                />
-                                                                </MenuItem.Icon>
-                                                            </MenuItem>
+                                                        <MenuFlyout Placement="TopEdgeAlignedLeft" FlyoutPresenterClasses="AesirMenu"
+                                                                    ItemsSource="{Binding ThinkValues}">
+                                                            <MenuFlyout.ItemTemplate>
+                                                                <DataTemplate x:DataType="sys:String">
+                                                                    <Button Padding="0" Margin="0"
+                                                                            HorizontalAlignment="Stretch"
+                                                                            HorizontalContentAlignment="Stretch"
+                                                                            Background="Transparent"
+                                                                            BorderThickness="0"
+                                                                            Command="{Binding $parent[UserControl].((vm:ChatViewViewModel)DataContext).SelectThinkValueCommand}"
+                                                                            CommandParameter="{Binding }">
+                                                                        <DockPanel>
+                                                                            <avalonia:MaterialIcon Kind="Check"
+                                                                                                   Width="16" Height="16"
+                                                                                                   VerticalAlignment="Center"
+                                                                                                   DockPanel.Dock="Right"
+                                                                                                   Margin="8,0,0,0">
+                                                                                <avalonia:MaterialIcon.IsVisible>
+                                                                                    <MultiBinding
+                                                                                        Converter="{StaticResource EqualityToBoolConverter}">
+                                                                                        <Binding />
+                                                                                        <Binding
+                                                                                            Path="$parent[UserControl].((vm:ChatViewViewModel)DataContext).SelectedThinkValue" />
+                                                                                    </MultiBinding>
+                                                                                </avalonia:MaterialIcon.IsVisible>
+                                                                            </avalonia:MaterialIcon>
+                                                                            <TextBlock Text="{Binding }"
+                                                                                       VerticalAlignment="Center" />
+                                                                        </DockPanel>
+                                                                    </Button>
+                                                                </DataTemplate>
+                                                            </MenuFlyout.ItemTemplate>
                                                         </MenuFlyout>
                                                     </Button.Flyout>
                                                 </Button>
@@ -354,8 +356,13 @@
                                                         Margin="0,0,0,0"
                                                         Theme="{DynamicResource OutlineButton}"
                                                         Command="{Binding ShowHandsFree}"
-                                                        ToolTip.Tip="Hands Free Mode"
-                                                        IsEnabled="{Binding ConfigurationReadiness.IsReady}">
+                                                        ToolTip.Tip="Hands Free Mode">
+                                                    <Button.IsEnabled>
+                                                        <MultiBinding Converter="{x:Static converters:BooleanAndConverter.Instance}">
+                                                            <Binding Path="ConfigurationReadiness.IsReady" />
+                                                            <Binding Path="SelectedAgent" Converter="{StaticResource IsNotNullConverter}" ConverterParameter="{x:Null}" />
+                                                        </MultiBinding>
+                                                    </Button.IsEnabled>
                                                     <Panel>
                                                         <avalonia:MaterialIcon
                                                             HorizontalAlignment="Center"
