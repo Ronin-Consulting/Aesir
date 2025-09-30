@@ -9,6 +9,8 @@ public class ToolRequest
     [JsonPropertyName("tool_name")]
     public required string ToolName { get; set; }
     
+    public bool IsWebSearchToolRequest => ToolName == AesirTools.WebToolName;
+    
     protected bool Equals(ToolRequest other)
     {
         return ToolName == other.ToolName;
