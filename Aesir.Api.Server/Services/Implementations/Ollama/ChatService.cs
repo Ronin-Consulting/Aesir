@@ -286,8 +286,8 @@ public class ChatService : BaseChatService
     {
         var chatCompletionService = GetChatCompletionService(request.Model);
         
-        var chatHistoryReducer = new ChatHistorySummarizationReducer(
-            chatCompletionService, 4,8);
+        var chatHistoryReducer = new Ollama.ChatHistorySummarizationReducer(
+            chatCompletionService, 4,8, request.Model);
         
         var chatHistory = new ChatHistory();
         chatHistory.AddRange(request.Conversation.Messages.Select(ConvertToSemanticKernelMessage));
