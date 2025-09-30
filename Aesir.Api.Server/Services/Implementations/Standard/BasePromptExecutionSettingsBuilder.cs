@@ -42,7 +42,9 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
         var kernelPluginArgs = ConversationDocumentCollectionArgs.Default;
         
         var enableWebSearch = request.Tools.Any(t => t.IsWebSearchToolRequest);
-        var enableDocumentSearch = request.Conversation.Messages.Any(m => m.HasFile());
+        var enableDocumentSearch = 
+            request.Tools.Any(t => t.IsRagToolRequest) &&
+            request.Conversation.Messages.Any(m => m.HasFile());
         
         systemPromptVariables["webSearchtoolsEnabled"] = enableWebSearch;
         kernelPluginArgs.SetEnableWebSearch(enableWebSearch);

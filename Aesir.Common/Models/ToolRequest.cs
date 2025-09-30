@@ -11,6 +11,8 @@ public class ToolRequest
     
     public bool IsWebSearchToolRequest => ToolName == AesirTools.WebToolName;
     
+    public bool IsRagToolRequest => ToolName == AesirTools.RagToolName;
+    
     protected bool Equals(ToolRequest other)
     {
         return ToolName == other.ToolName;
