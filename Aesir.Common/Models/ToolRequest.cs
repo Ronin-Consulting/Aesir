@@ -1,9 +1,12 @@
+using System.Text.Json.Serialization;
+
 namespace Aesir.Common.Models;
 
 public class ToolRequest
 {
     public static readonly ToolRequest WebSearchToolRequest = new ToolRequest { ToolName = AesirTools.WebToolName };
 	
+    [JsonPropertyName("tool_name")]
     public required string ToolName { get; set; }
     
     protected bool Equals(ToolRequest other)

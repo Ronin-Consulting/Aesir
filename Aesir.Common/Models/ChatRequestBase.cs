@@ -54,7 +54,8 @@ public class ChatRequestBase
     [JsonPropertyName("thinking_value")]
     public ThinkValue? ThinkValue { get; set; } = null!;
 
-    public ICollection<ToolRequest> Tools { get; } = new HashSet<ToolRequest>();
+    [JsonPropertyName("tools")]
+    public ICollection<ToolRequest> Tools { get; set; } = new HashSet<ToolRequest>();
     
         /// <summary>
     /// Adds a predefined web search tool to the collection of available tools for the chat request.
