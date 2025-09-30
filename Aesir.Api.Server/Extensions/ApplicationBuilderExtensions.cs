@@ -1,4 +1,3 @@
-using Aesir.Api.Server.Services;
 using FluentMigrator.Runner;
 
 namespace Aesir.Api.Server.Extensions;

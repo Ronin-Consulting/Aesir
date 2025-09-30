@@ -5,7 +5,6 @@ using System.Reflection;
 using System.Text.Json;
 using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Models;
-using Aesir.Common.Models;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Data;

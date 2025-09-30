@@ -1,4 +1,3 @@
-using System.Collections;
 using Aesir.Api.Server.Models;
 
 namespace Aesir.Api.Server.Services;

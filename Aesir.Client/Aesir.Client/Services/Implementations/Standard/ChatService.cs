@@ -66,7 +66,7 @@ public class ChatService(
         var flurlRequest = _flurlClient.Request()
             .AppendPathSegment("agent")
             .AppendPathSegment("streamed");
-
+        
         // 2. Use SendAsync to get the response as a stream.
         // This is the key change. We manually create the JSON content and tell
         // Flurl to return as soon as the response headers are read.

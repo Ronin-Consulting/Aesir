@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Aesir.Api.Server.Models;
 using Aesir.Common.Models;
 using OllamaSharp;
 using OllamaSharp.Models;

@@ -9,7 +9,6 @@ using Aesir.Api.Server.Services.Implementations.Standard;
 using Aesir.Common.Models;
 using FluentMigrator.Runner;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.ChatCompletion;
 using Npgsql;
 using OllamaSharp;
 using OpenAI;
