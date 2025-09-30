@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -107,7 +108,7 @@ public class ChatSessionManager(
     /// <exception cref="Exception">Thrown if an error occurs during the processing of the chat request.</exception>
     public async Task<string> ProcessChatRequestAsync(Guid agentId,
         ObservableCollection<MessageViewModel?> conversationMessages,
-        params ToolRequest[] tools)
+        IEnumerable<ToolRequest>? tools)
     {
         if (conversationMessages == null)
             throw new ArgumentNullException(nameof(conversationMessages));
@@ -134,7 +135,7 @@ public class ChatSessionManager(
                 User = "Unknown" // TODO
             };
             
-            foreach(var tool in tools)
+            foreach(var tool in tools ?? [])
                 agentChatRequest.WithTool(tool);
 
             var result = _chatService.AgentChatCompletionsStreamedAsync(agentChatRequest);

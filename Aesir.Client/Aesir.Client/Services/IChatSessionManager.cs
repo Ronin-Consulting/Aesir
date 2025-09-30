@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Aesir.Client.ViewModels;
@@ -24,5 +25,5 @@ public interface IChatSessionManager
     /// <param name="tools">An optional array of tool requests to be incorporated during processing, if applicable.</param>
     /// <returns>A task that represents the asynchronous operation, returning the response as a string.</returns>
     Task<string> ProcessChatRequestAsync(Guid agentId, ObservableCollection<MessageViewModel?> conversationMessages,
-        params ToolRequest[] tools);
+        IEnumerable<ToolRequest>? tools = null);
 }
