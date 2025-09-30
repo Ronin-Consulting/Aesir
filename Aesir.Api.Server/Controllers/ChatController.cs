@@ -61,11 +61,13 @@ namespace Aesir.Api.Server.Controllers
                 Conversation = request.Conversation,
                 EnableThinking = true, // TODO should eventually be configuration on agent (it's an override of inference engine value)
                 MaxTokens = agent.ChatMaxTokens ?? 32768,
-                Model = agent.ChatModel,
+                Model = agent.ChatModel!,
                 Temperature = agent.ChatTemperature ?? 0.1,
                 Title = request.Title,
                 TopP = agent.ChatTopP ?? 0.1,
-                User = request.User
+                User = request.User,
+                Tools = request.Tools,
+                ThinkValue = request.ThinkValue
             };
 
             // Resolve the correct ChatService based on the agent's inference engine
@@ -96,11 +98,13 @@ namespace Aesir.Api.Server.Controllers
                 Conversation = request.Conversation,
                 EnableThinking = true, // TODO should eventually be configuration on agent (it's an override of inference engine value)
                 MaxTokens = agent.ChatMaxTokens ?? 32768,
-                Model = agent.ChatModel,
+                Model = agent.ChatModel!,
                 Temperature = agent.ChatTemperature ?? 0.1,
                 Title = request.Title,
                 TopP = agent.ChatTopP ?? 0.1,
-                User = request.User
+                User = request.User,
+                Tools = request.Tools,
+                ThinkValue = request.ThinkValue
             };
 
             // Resolve the correct ChatService based on the agent's inference engine
