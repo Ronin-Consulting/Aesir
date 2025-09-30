@@ -14,8 +14,8 @@ public class NoOpChatSessionManager : IChatSessionManager
         await Task.CompletedTask;
     }
 
-    public async Task<string> ProcessChatRequestAsync(Guid agentId, ObservableCollection<MessageViewModel?> conversationMessages,
-        IEnumerable<ToolRequest>? tools)
+    public async Task<string> ProcessChatRequestAsync(Guid agentId, ObservableCollection<MessageViewModel?> conversationMessages, IEnumerable<ToolRequest>? tools = null,
+        bool? enableThinking = null, ThinkValue? thinkValue = null)
     {
         return await Task.FromResult("");
     }

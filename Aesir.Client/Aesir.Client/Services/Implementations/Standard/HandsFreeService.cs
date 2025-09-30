@@ -430,7 +430,8 @@ public class HandsFreeService : IHandsFreeService
             _conversationMessages.Add(assistantMessageViewModel);
 
             // 3. Process the chat request
-            await _chatSessionManager.ProcessChatRequestAsync(_selectedAgentId.Value, _conversationMessages);
+            await _chatSessionManager.ProcessChatRequestAsync(
+                _selectedAgentId.Value, _conversationMessages);
 
             // 4. Extract the response text from the assistant message
             var responseText = assistantMessageViewModel.Content ?? "I apologize, but I couldn't generate a response.";

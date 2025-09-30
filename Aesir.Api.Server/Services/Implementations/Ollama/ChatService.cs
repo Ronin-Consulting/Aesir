@@ -105,8 +105,8 @@ public class ChatService : BaseChatService
 
         var messages = new List<Message>
         {
-            new Message(ChatRole.System, PromptProvider.GetTitleGenerationPrompt().Content),
-            new Message(ChatRole.User, request.Conversation.Messages.Last().Content)
+            new(ChatRole.System, PromptProvider.GetTitleGenerationPrompt().Content),
+            new(ChatRole.User, request.Conversation.Messages.Last().Content)
         };
 
         var ollamaRequest = new ChatRequest()
@@ -220,61 +220,15 @@ public class ChatService : BaseChatService
     {
         await Task.CompletedTask;
         
-        var systemPromptVariables = new Dictionary<string, object>
-        {
-            ["currentDateTime"] = request.ClientDateTime,
-            ["webSearchtoolsEnabled"] = false,
-            ["docSearchToolsEnabled"] = false
-        };
+        var promptExecutionSettingsBuilder = new OllamaPromptExecutionSettingsBuilder(
+            _kernel, _conversationDocumentCollectionService);
 
-        var settings = new OllamaPromptExecutionSettings
-        {
-            ModelId = request.Model,
-            NumPredict = request.MaxTokens ?? 32768,
-            ExtensionData = new Dictionary<string, object>()
-        };
+        var results = 
+            await promptExecutionSettingsBuilder.BuildAsync(request);
 
-        if (_enableThinking)
-            settings.ExtensionData.Add("think", true);
-
-        var kernelPluginArgs = ConversationDocumentCollectionArgs.Default;
-        var enableWebSearch = true; //request.EnabledWebSearch <-- One day
-        var enableDocumentSearch = request.Conversation.Messages.Any(m => m.HasFile());
-            
-        systemPromptVariables["webSearchtoolsEnabled"] = enableWebSearch;
-        kernelPluginArgs.SetEnableWebSearch(true);
+        RenderSystemPrompt(request.Conversation, results.SystemPromptVariables);
         
-        if (enableDocumentSearch)
-        {
-            systemPromptVariables["docSearchToolsEnabled"] = true;
-            kernelPluginArgs.SetEnableDocumentSearch(true);
-        }
-
-        if (enableWebSearch || enableDocumentSearch)
-        {
-            settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
-
-            var conversationId = request.Conversation.Id;
-            
-            kernelPluginArgs.SetConversationId(conversationId);
-
-            var plugin = _conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs);
-            
-            // Remove the existing plugin if it exists to avoid conflicts with conversations
-            if(_kernel.Plugins.TryGetPlugin(plugin.Name, out var existingPlugin))
-                _kernel.Plugins.Remove(existingPlugin);    
-                
-            _kernel.Plugins.Add(plugin);
-        }
-        
-        if (request.Temperature.HasValue)
-            settings.Temperature = (float?)request.Temperature;
-        else if (request.TopP.HasValue)
-            settings.TopP = (float?)request.TopP;
-
-        RenderSystemPrompt(request.Conversation, systemPromptVariables);
-        
-        return settings;
+        return results.Settings;
     }
 
     /// <summary>

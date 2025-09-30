@@ -97,18 +97,21 @@ public class ChatSessionManager(
     }
 
     /// <summary>
-    /// Asynchronously processes a chat request using the specified agent, conversation messages, and tools.
+    /// Asynchronously processes a chat request using the specified agent, conversation messages, and optional tools,
+    /// while managing supplementary operations like thinking indicators.
     /// </summary>
-    /// <param name="agentId">The unique identifier of the agent to process the chat request. Must not be null or empty.</param>
-    /// <param name="conversationMessages">The collection of conversation messages serving as context for the chat request. Must not be null.</param>
-    /// <param name="tools">Optional tools to assist in processing the chat request.</param>
-    /// <returns>A task that represents the asynchronous operation, containing the result of the chat request as a string.</returns>
+    /// <param name="agentId">The unique identifier of the agent responsible for processing the chat request.</param>
+    /// <param name="conversationMessages">The collection of conversation messages serving as input context for the chat request. Cannot be null.</param>
+    /// <param name="tools">Optional set of tools to assist in processing the chat request. Can be null if no tools are required.</param>
+    /// <param name="enableThinking">A boolean flag indicating whether thinking mode is enabled during the processing of the chat request. Can be null.</param>
+    /// <param name="thinkValue">Optional custom think value to configure the thinking behavior. Can be null.</param>
+    /// <returns>A task that represents the asynchronous operation, containing the final result of the processed chat request.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="conversationMessages"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">Thrown if the chat session is not loaded in the current application state.</exception>
-    /// <exception cref="Exception">Thrown if an error occurs during the processing of the chat request.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if no chat session is loaded in the current application state.</exception>
+    /// <exception cref="Exception">Thrown in cases of an error during processing of the chat request.</exception>
     public async Task<string> ProcessChatRequestAsync(Guid agentId,
         ObservableCollection<MessageViewModel?> conversationMessages,
-        IEnumerable<ToolRequest>? tools)
+        IEnumerable<ToolRequest>? tools = null, bool? enableThinking = null, ThinkValue? thinkValue = null)
     {
         if (conversationMessages == null)
             throw new ArgumentNullException(nameof(conversationMessages));
@@ -132,7 +135,9 @@ public class ChatSessionManager(
                 ChatSessionId = _appState.ChatSession.Id,
                 Title = _appState.ChatSession.Title,
                 ChatSessionUpdatedAt = DateTimeOffset.Now,
-                User = "Unknown" // TODO
+                User = "Unknown", // TODO
+                EnableThinking = enableThinking,
+                ThinkValue = thinkValue
             };
             
             foreach(var tool in tools ?? [])

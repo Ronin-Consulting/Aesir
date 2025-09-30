@@ -18,12 +18,14 @@ public interface IChatSessionManager
     /// <returns>A task that represents the asynchronous operation.</returns>
     Task LoadChatSessionAsync();
 
-    /// Processes a chat request asynchronously by utilizing the specified agent, the ongoing conversation messages,
-    /// and optional tool requests. Handles the orchestration of chat-related activities within the chat session.
-    /// <param name="agentId">The identifier of the agent associated with the chat session.</param>
-    /// <param name="conversationMessages">The collection of messages in the current conversation context.</param>
-    /// <param name="tools">An optional array of tool requests to be incorporated during processing, if applicable.</param>
-    /// <returns>A task that represents the asynchronous operation, returning the response as a string.</returns>
+    /// Processes a chat request asynchronously using the specified agent, conversation messages, and optional parameters.
+    /// This method coordinates interactions within a chat session, including invoking tools and managing optional thinking states.
+    /// <param name="agentId">The unique identifier of the agent associated with the chat session.</param>
+    /// <param name="conversationMessages">The collection of conversation messages defining the current session context.</param>
+    /// <param name="tools">An optional collection of tool requests to include during processing.</param>
+    /// <param name="enableThinking">An optional parameter to indicate whether the "thinking" feature should be enabled in the chat process.</param>
+    /// <param name="thinkValue">An optional parameter representing a structured value to customize the thinking behavior.</param>
+    /// <returns>A task that represents the asynchronous operation, returning the result of the processing as a string.</returns>
     Task<string> ProcessChatRequestAsync(Guid agentId, ObservableCollection<MessageViewModel?> conversationMessages,
-        IEnumerable<ToolRequest>? tools = null);
+        IEnumerable<ToolRequest>? tools = null, bool? enableThinking = null, ThinkValue? thinkValue = null);
 }

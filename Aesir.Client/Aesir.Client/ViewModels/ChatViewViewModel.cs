@@ -697,7 +697,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             ConversationMessages.Add(assistantMessageViewModel);
 
             // Process the chat request
-            await _chatSessionManager.ProcessChatRequestAsync(SelectedAgent.Id!.Value, ConversationMessages, ToolRequests);
+            await _chatSessionManager.ProcessChatRequestAsync(SelectedAgent.Id!.Value, 
+                ConversationMessages, ToolRequests, SelectedAgent.AllowThinking, SelectedThinkValue?.Transform(To.LowerCase));
         }
         catch (ArgumentException ex)
         {
@@ -967,7 +968,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
 
         ConversationMessages.Add(assistantMessageViewModel);
 
-        await _chatSessionManager.ProcessChatRequestAsync(SelectedAgent.Id!.Value, ConversationMessages, ToolRequests);
+        await _chatSessionManager.ProcessChatRequestAsync(
+            SelectedAgent.Id!.Value, ConversationMessages, ToolRequests, SelectedAgent.AllowThinking, SelectedThinkValue?.Transform(To.LowerCase));
 
         SendingChatOrProcessingFile = false;
     }
