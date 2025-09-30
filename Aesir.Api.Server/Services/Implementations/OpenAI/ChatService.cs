@@ -162,6 +162,9 @@ public class ChatService : BaseChatService
             //_logger.LogDebug("Received streaming content from Semantic Kernel: {Content}", streamResult.Content);
 
             var isComplete = streamResult is OpenAIStreamingChatMessageContent { FinishReason: ChatFinishReason.Stop };
+            
+            // NOTE: Currently, SK does not support streaming "reasoning" summary.
+            
             yield return (streamResult.Content ?? string.Empty, false, isComplete);
         }
     }
@@ -177,58 +180,16 @@ public class ChatService : BaseChatService
     private async Task<OpenAIPromptExecutionSettings> CreatePromptExecutionSettingsAsync(AesirChatRequest request)
     {
         await Task.CompletedTask;
+        
+        var promptExecutionSettingsBuilder = new OpenAiPromptExecutionSettingsBuilder(
+            _kernel, _conversationDocumentCollectionService);
 
-        var systemPromptVariables = new Dictionary<string, object>
-        {
-            ["currentDateTime"] = request.ClientDateTime,
-            ["webSearchtoolsEnabled"] = false, // TODO should come from agent's tools
-            ["docSearchToolsEnabled"] = false, // TODO should come from agent's tools
-        };
-        
-        var settings = new OpenAIPromptExecutionSettings
-        {
-            ModelId = request.Model,
-            MaxTokens = request.MaxTokens
-        };
-        
-        var kernelPluginArgs = ConversationDocumentCollectionArgs.Default;
-        var enableWebSearch = true; //request.EnabledWebSearch <-- One day
-        var enableDocumentSearch = request.Conversation.Messages.Any(m => m.HasFile());
-        
-        systemPromptVariables["webSearchtoolsEnabled"] = enableWebSearch;
-        kernelPluginArgs.SetEnableWebSearch(true);
-        
-        if (enableDocumentSearch)
-        {
-            systemPromptVariables["docSearchToolsEnabled"] = true;
-            kernelPluginArgs.SetEnableDocumentSearch(true);
-        }
-        
-        if (enableWebSearch || enableDocumentSearch)
-        {
-            settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
+        var results = 
+            await promptExecutionSettingsBuilder.BuildAsync(request);
 
-            var conversationId = request.Conversation.Id;
-            
-            kernelPluginArgs.SetConversationId(conversationId);
-            
-            var plugin = _conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs);
-            
-            // Remove the existing plugin if it exists to avoid conflicts with conversations
-            if(_kernel.Plugins.TryGetPlugin(plugin.Name, out var existingPlugin))
-                _kernel.Plugins.Remove(existingPlugin); 
-            
-            _kernel.Plugins.Add(plugin);    
-        }
+        RenderSystemPrompt(request.Conversation, results.SystemPromptVariables);
         
-        if (request.Temperature.HasValue)
-            settings.Temperature = (float?)request.Temperature;
-        else if (request.TopP.HasValue)
-            settings.TopP = (float?)request.TopP;
-
-        RenderSystemPrompt(request.Conversation, systemPromptVariables);
-        
-        return settings;
+        return results.Settings;
     }
 
     /// <summary>
