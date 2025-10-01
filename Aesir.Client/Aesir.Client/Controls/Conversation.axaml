@@ -48,7 +48,10 @@
         </Button>
         <Image Name="AesirImage" IsVisible="{Binding !ConversationStarted}" 
                RelativePanel.AlignHorizontalCenterWithPanel="True" 
-               RelativePanel.AlignVerticalCenterWithPanel="True" Margin="0" VerticalAlignment="Center">
+               RelativePanel.AlignVerticalCenterWithPanel="True" Margin="0" 
+               VerticalAlignment="Center"
+                Height="600" Width="800"       
+        >
             <Image.Source>
                 <SvgImage Source="/Assets/logo.svg" />
             </Image.Source>
