@@ -1,8 +1,10 @@
 using System;
 using Aesir.Client.Controls;
 using Aesir.Client.Messages;
+using Aesir.Client.Models;
 using Aesir.Client.ViewModels;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Messaging;
 using Ursa.Controls;
@@ -58,18 +60,9 @@ public partial class LogsView : UserControl, IDisposable, IRecipient<ShowLogDeta
     
     private void InputElement_OnCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs dataGridCellPointerPressedEventArgs)
     {
-        // sender is often the clicked UI element, like ListBoxItem
-        var control = sender as Control;
-        if (control != null)
+        if (dataGridCellPointerPressedEventArgs.Row.DataContext is AesirKernelLog log)
         {
-            var model = control.DataContext as LogsViewViewModel; // your clicked item
-            if (model?.SelectedLog!=null)
-            {
-                WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(model.SelectedLog));
-            }
+            WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(log));
         }
     }
-
-
-
 }

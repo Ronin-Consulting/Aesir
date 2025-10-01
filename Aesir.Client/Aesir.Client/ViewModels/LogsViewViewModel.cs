@@ -171,10 +171,15 @@ public class LogsViewViewModel : ObservableRecipient, IDisposable
     /// <param name="selectedLog">The Log that has been selected. If null, no action is taken.</param>
     private void OnLogSelected(AesirKernelLog? selectedLog)
     {
-        if (selectedLog != null)
-        {
-            WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(selectedLog));
-        }
+        // NO-OP ... dialog window is opened in the view code-behind
+        // ... this takes care of an issue...
+        // when the details was opened with this event, then closed...
+        // the grid row was still selected, and clicking it again would 
+        // not fire the event again... 
+        // so we now use the CellPointerPressed event to correctly 
+        // capture the interaction on every click.
+        
+        // this may be used in the future
     }
 
     /// Releases the resources used by the view model.

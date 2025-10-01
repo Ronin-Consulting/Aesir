@@ -58,10 +58,7 @@ public class LogsViewDialogViewModel :ObservableRecipient, IDisposable
     /// <param name="selectedLog">The Log that has been selected. If null, no action is taken.</param>
     private void OnLogSelected(AesirKernelLog? selectedLog)
     {
-        if (selectedLog != null)
-        {
-            WeakReferenceMessenger.Default.Send(new ShowLogDetailMessage(selectedLog));
-        }
+        // NO-OP ... dialog open is handled in the view code-behind with CellPointerPressed event
     }
 
     /// Executes the command to show the interface for re-selecting a document when the grid is clicked.

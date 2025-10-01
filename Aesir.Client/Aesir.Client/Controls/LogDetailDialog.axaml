@@ -9,19 +9,23 @@
              >
     <StackPanel Orientation="Vertical">
         
-        <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="*,*" ColumnSpacing="10" RowSpacing="10" Margin="0,20,0,0">
+        <Grid ColumnDefinitions="1*,2*,1*,2*" RowDefinitions="1*,1*" ColumnSpacing="10" 
+              RowSpacing="10" Margin="0,20,0,0"
+              HorizontalAlignment="Left">
             <Label Grid.Row="0" Grid.Column="0" Content="Message" FontWeight="Bold" Margin="0,0,10,10"></Label>
-            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Log.Message}"></TextBlock>
-            <Label Grid.Row="0" Grid.Column="2" Content="Level" FontWeight="Bold" Margin="0,0,10,10"></Label>
-            <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding Log.Level}"></TextBlock>
+            <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding Log.Message}"></TextBlock>
             
             <Label Grid.Row="1" Grid.Column="0" Content="Created" FontWeight="Bold" Margin="0,0,10,10"></Label>
             <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Log.CreatedAtDisplay}"></TextBlock>
+            
+            <Label Grid.Row="1" Grid.Column="2" Content="Level" FontWeight="Bold" Margin="0,0,10,10"></Label>
+            <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Log.Level}"></TextBlock>
+
         </Grid>
 
         <Border BorderThickness="0,1,0,0" Padding="0,10,0,0" BorderBrush="white">
             
-            <Grid ColumnDefinitions="*,*" RowDefinitions="*,*,*,*,*,*,*,*" ColumnSpacing="10" RowSpacing="10">
+            <Grid ColumnDefinitions="1*,2*" RowDefinitions="*,*,*,*,*,*,*,*" ColumnSpacing="10" RowSpacing="10">
                 
                 <Label Grid.Row="0" Grid.Column="0" Content="Chat Session Id" FontWeight="Bold"></Label>
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Log.Details.ChatSessionId}"></TextBlock>
