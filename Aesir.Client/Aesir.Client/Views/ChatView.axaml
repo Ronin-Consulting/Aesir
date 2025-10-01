@@ -152,7 +152,7 @@
                                 <TextBlock Name="TitleTextBlock" DockPanel.Dock="Top" HorizontalAlignment="Left"
                                            VerticalAlignment="Center"
                                            Theme="{StaticResource TitleTextBlock}"
-                                           Text="AESIR AI"
+                                           Text="ÆSIR"
                                            Classes="H4" />
                                 <Button Classes="Primary"
                                         Theme="{DynamicResource OutlineButton}"
