@@ -69,6 +69,7 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// </summary>
     public string Content { get; set; } = string.Empty;
 
+    public Guid? ConversationId { get; set; } = Guid.Empty;
     public ICommand ShowLogDialogCommand { get; }
     
     private readonly IKernelLogService _kernelLogService;
@@ -121,9 +122,7 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// </summary>
     private async Task ExecuteShowLogDialog()
     {
-        ChatSessionId = _appState.SelectedChatSessionId;
-        
-        var logs = await _kernelLogService.GetKernelLogsByChatSessionAsync(ChatSessionId);
+        var logs = await _kernelLogService.GetKernelLogsByConversationAsync(ConversationId);
         var model = new LogsViewDialogViewModel();
         model.Logs = new ObservableCollection<AesirKernelLog>();
         foreach (var log in logs) model.Logs.Add(log);
@@ -169,6 +168,9 @@ public abstract partial class MessageViewModel : ObservableRecipient
     public virtual async Task SetMessage(AesirChatMessage message)
     {
         ChatSessionId = _appState.SelectedChatSessionId;
+        
+        ConversationId = !string.IsNullOrEmpty(_appState.ChatSession?.Conversation.Id) ?
+            Guid.Parse(_appState.ChatSession.Conversation.Id) : Guid.Empty;
         
         Content = message.Content.TrimStart().NormalizeLineEndings();
 
@@ -218,6 +220,9 @@ public abstract partial class MessageViewModel : ObservableRecipient
                 }
 
                 //_logger.LogDebug("Received streamed message: {Result}", JsonSerializer.Serialize(result));
+
+                ConversationId = !string.IsNullOrEmpty(_appState.ChatSession?.Conversation.Id) ?
+                    Guid.Parse(_appState.ChatSession.Conversation.Id) : Guid.Empty;
 
                 // Only capture the first non-empty title we receive
                 if (!hasReceivedTitle && !string.IsNullOrWhiteSpace(result.Title) && 

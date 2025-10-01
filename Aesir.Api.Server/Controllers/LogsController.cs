@@ -18,11 +18,16 @@ public class LogsController(
         return await kernelLogService.GetLogsAsync(from, to);
     }
 
-    [HttpGet("kernel/{chatSessionId}")]
+    [HttpGet("kernel/chatsession/{chatSessionId}")]
     public async Task<IEnumerable<AesirKernelLogBase>> GetKernelLogs([FromRoute] Guid chatSessionId)
     {
         return await kernelLogService.GetLogsByChatSessionAsync(chatSessionId);
     }
 
 
+    [HttpGet("kernel/conversation/{conversationId}")]
+    public async Task<IEnumerable<AesirKernelLogBase>> GetKernelLogsByConversation([FromRoute] Guid conversationId)
+    {
+        return await kernelLogService.GetLogsByConversationAsync(conversationId);
+    }
 }

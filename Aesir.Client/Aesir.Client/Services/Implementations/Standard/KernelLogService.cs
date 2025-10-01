@@ -44,7 +44,28 @@ public class KernelLogService(
         {
             return (await _flurlClient.Request()
                 .AppendPathSegment("kernel")
+                .AppendPathSegment("chatsession")
                 .AppendPathSegment(chatSessionId)
+                .GetJsonAsync<IEnumerable<AesirKernelLog>>());
+        }
+        catch (FlurlHttpException ex)
+        {
+            await logger.LogFlurlExceptionAsync(ex);
+            throw;
+        }   
+    }
+
+    public async Task<IEnumerable<AesirKernelLog>> GetKernelLogsByConversationAsync(Guid? conversationId)
+    {
+        if (conversationId == null)
+            return [];
+        
+        try
+        {
+            return (await _flurlClient.Request()
+                .AppendPathSegment("kernel")
+                .AppendPathSegment("conversation")
+                .AppendPathSegment(conversationId)
                 .GetJsonAsync<IEnumerable<AesirKernelLog>>());
         }
         catch (FlurlHttpException ex)

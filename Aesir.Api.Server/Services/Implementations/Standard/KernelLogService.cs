@@ -51,5 +51,18 @@ public class KernelLogService(ILogger<ChatHistoryService> logger, IDbContext dbC
         return await dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryAsync<AesirKernelLog>(sql, new { ChatSessionId=chatSessionId.ToString() }));
     }
+
+    public async Task<IEnumerable<AesirKernelLog>> GetLogsByConversationAsync(Guid conversationId)
+    {
+        const string sql = @"
+            SELECT id as Id, level as Level, created_at as CreatedAt, details::jsonb as Details, 
+                message as Message
+            FROM aesir.aesir_log_kernel
+            WHERE details->>'ConversationId' =  @ConversationId
+        ";
+
+        return await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QueryAsync<AesirKernelLog>(sql, new { ConversationId=conversationId.ToString() }));
+    }
 }
 

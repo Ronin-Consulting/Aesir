@@ -11,4 +11,6 @@ public interface IKernelLogService
     Task<IEnumerable<AesirKernelLog>> GetLogsAsync(DateTimeOffset from, DateTimeOffset to);
     
     Task<IEnumerable<AesirKernelLog>> GetLogsByChatSessionAsync(Guid chatSessionId);
+    
+    Task<IEnumerable<AesirKernelLog>> GetLogsByConversationAsync(Guid conversationId);
 }
