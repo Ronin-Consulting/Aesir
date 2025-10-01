@@ -113,6 +113,9 @@ public class ChatService : BaseChatService
 
         var chatCompletionService = GetChatCompletionService(request.Model);
         
+        _kernel.Data.Add("ChatSessionId",request.ChatSessionId);
+        _kernel.Data.Add("ConversationId",request.Conversation.Id);
+
         var completionResults = await chatCompletionService.GetChatMessageContentsAsync(
             chatHistory,
             settings,
@@ -152,6 +155,9 @@ public class ChatService : BaseChatService
 
         var chatCompletionService = GetChatCompletionService(request.Model);
         
+        _kernel.Data.Add("ChatSessionId",request.ChatSessionId);
+        _kernel.Data.Add("ConversationId",request.Conversation.Id);
+
         var streamingResults = chatCompletionService.GetStreamingChatMessageContentsAsync(
             chatHistory,
             settings,

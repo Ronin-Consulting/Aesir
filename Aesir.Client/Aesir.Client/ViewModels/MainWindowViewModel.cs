@@ -77,6 +77,7 @@ public partial class MainWindowViewModel : ObservableRecipient, IRecipient<Navig
             NavigationMessage.ViewType.Agents => Ioc.Default.GetService<AgentsViewViewModel>()!,
             NavigationMessage.ViewType.InferenceEngines => Ioc.Default.GetService<InferenceEnginesViewViewModel>()!,
             NavigationMessage.ViewType.HandsFree => Ioc.Default.GetService<HandsFreeControlViewModel>()!,
+            NavigationMessage.ViewType.Logs => Ioc.Default.GetService<LogsViewViewModel>()!,
             _ => CurrentViewModel
         };
 

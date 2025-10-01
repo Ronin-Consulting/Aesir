@@ -626,6 +626,8 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             else
             {
                 await messageViewModel.SetMessage(message);
+                
+                messageViewModel.ChatSessionId = _appState.SelectedChatSessionId;
             }
         }
 

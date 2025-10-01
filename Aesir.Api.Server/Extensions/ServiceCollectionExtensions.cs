@@ -47,6 +47,12 @@ public static class ServiceCollectionExtensions
         
         var kernelBuilder = services.AddKernel();
         
+        kernelBuilder.Services.AddSingleton<InferenceLoggingService>();
+        kernelBuilder.Services.AddSingleton<IFunctionInvocationFilter, InferenceLoggingService>();
+        kernelBuilder.Services.AddSingleton<IPromptRenderFilter,InferenceLoggingService>();
+        kernelBuilder.Services.AddSingleton<IAutoFunctionInvocationFilter, InferenceLoggingService>();
+        kernelBuilder.Services.AddSingleton<IKernelLogService, KernelLogService>();
+
         // load inference engines (from file or db)
         var inferenceEngines = (await configurationService.GetInferenceEnginesAsync()).ToArray() ?? [];
         foreach (var inferenceEngine in inferenceEngines)
@@ -288,9 +294,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IGlobalDocumentCollectionService, GlobalDocumentCollectionService>();
         services.AddSingleton<IDocumentCollectionService, AutoDocumentCollectionService>();
         
-        services.AddSingleton<IFunctionInvocationFilter, InferenceLoggingService>();
-        services.AddSingleton<IPromptRenderFilter, InferenceLoggingService>();
-        services.AddSingleton<IAutoFunctionInvocationFilter, InferenceLoggingService>();
         services.AddSingleton<IConfiguredKernelFactory, ConfiguredKernelFactory>();
         
         return services;

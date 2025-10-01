@@ -116,6 +116,7 @@ public partial class App : Application
         AppServices.AddSingleton<INavigationService, NavigationService>();
         AppServices.AddSingleton<INotificationService, NotificationService>();
         AppServices.AddSingleton<IConfigurationService, ConfigurationService>();
+        AppServices.AddSingleton<IKernelLogService, KernelLogService>();
         
         AppServices.AddTransient<IHandsFreeService, HandsFreeService>();
         AppServices.AddTransient<SystemMessageViewModel>();
@@ -130,6 +131,7 @@ public partial class App : Application
         AppServices.AddTransient<AgentsViewViewModel>();
         AppServices.AddTransient<InferenceEnginesViewViewModel>();
         AppServices.AddTransient<HandsFreeControlViewModel>();
+        AppServices.AddTransient<LogsViewViewModel>();
         
         var delay = Backoff.DecorrelatedJitterBackoffV2(
             medianFirstRetryDelay: TimeSpan.FromSeconds(1), retryCount: 5, fastFirst: true);

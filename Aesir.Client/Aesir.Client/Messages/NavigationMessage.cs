@@ -43,7 +43,9 @@ public class NavigationMessage
         /// Represents a hands-free view type within the navigation system.
         /// This view type is intended for scenarios where interaction
         /// is
-        HandsFree
+        HandsFree,
+        
+        Logs
     }
 
     /// <summary>

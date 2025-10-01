@@ -1,15 +1,19 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Aesir.Client.Controls;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
 using Aesir.Common;
 using Aesir.Common.Models;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Ursa.Controls;
 
 namespace Aesir.Client.ViewModels;
 
@@ -51,6 +55,8 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// </remarks>
     [ObservableProperty] private bool _isLoaded;
 
+    [ObservableProperty] private Guid? _ChatSessionId;
+    
     /// <summary>
     /// Represents the role of a message in a conversation. Defines the specific function or identity
     /// a message assumes, such as "system", "user", or "assistant".
@@ -62,6 +68,11 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// Used to store and manage the core message data, such as user or assistant-generated text.
     /// </summary>
     public string Content { get; set; } = string.Empty;
+
+    public Guid? ConversationId { get; set; } = Guid.Empty;
+    public ICommand ShowLogDialogCommand { get; }
+    
+    private readonly IKernelLogService _kernelLogService;
 
     /// <summary>
     /// A unique identifier for the message instance.
@@ -78,20 +89,54 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// Typically used for playing audio versions of messages, if available.
     /// </summary>
     public ICommand PlayMessageCommand { get; }
+    
+    private readonly ApplicationState _appState;
 
     /// The MessageViewModel class is an abstract foundation for handling the representation and management of messages
     /// within a conversation. It provides essential properties and commands for functionalities like message content updates,
     /// playback, and regeneration. This class is intended to be extended by specific message types, enabling tailored behavior
     /// for different roles or scenarios within the application.
-    protected MessageViewModel(ILogger logger, IMarkdownService markdownService)
+    protected MessageViewModel(
+        ApplicationState appState, 
+        ILogger logger, 
+        IMarkdownService markdownService,
+        IKernelLogService kernelLogService)
     {
         _logger = logger;
         _markdownService = markdownService;
+        _kernelLogService= kernelLogService;
+        _appState = appState;
 
+        ChatSessionId = _appState.SelectedChatSessionId;
+        
         // ReSharper disable once VirtualMemberCallInConstructor
         RegenerateMessageCommand = CreateRegenerateMessageCommand();
         // ReSharper disable once VirtualMemberCallInConstructor
         PlayMessageCommand = CreatePlayMessageCommand();
+        
+        ShowLogDialogCommand = new AsyncRelayCommand(ExecuteShowLogDialog);
+    }
+
+    /// <summary>
+    /// Shows a modal dialog to display logs on the conversation.
+    /// </summary>
+    private async Task ExecuteShowLogDialog()
+    {
+        var logs = await _kernelLogService.GetKernelLogsByConversationAsync(ConversationId);
+        var model = new LogsViewDialogViewModel();
+        model.Logs = new ObservableCollection<AesirKernelLog>();
+        foreach (var log in logs) model.Logs.Add(log);
+        
+        await OverlayDialog.ShowModal<LogsViewDialog, LogsViewDialogViewModel>(
+            model,
+            options: new OverlayDialogOptions()
+            {
+                Title = "Log View",
+                Mode = DialogMode.Info,
+                Buttons = DialogButton.OK,
+                CanLightDismiss = true
+            }
+        );
     }
 
     /// Creates the command responsible for initiating the regeneration of a message in the view model context.
@@ -122,6 +167,11 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// <returns>A <c>Task</c> that represents the asynchronous operation of setting and processing the message content.</returns>
     public virtual async Task SetMessage(AesirChatMessage message)
     {
+        ChatSessionId = _appState.SelectedChatSessionId;
+        
+        ConversationId = !string.IsNullOrEmpty(_appState.ChatSession?.Conversation.Id) ?
+            Guid.Parse(_appState.ChatSession.Conversation.Id) : Guid.Empty;
+        
         Content = message.Content.TrimStart().NormalizeLineEndings();
 
         if (message.Role == "system")
@@ -155,6 +205,8 @@ public abstract partial class MessageViewModel : ObservableRecipient
     /// </returns>
     public virtual async Task<string> SetStreamedMessageAsync(IAsyncEnumerable<AesirChatStreamedResult?> message)
     {
+        ChatSessionId = _appState.SelectedChatSessionId;
+        
         return await Task.Run(async () =>
         {
             var title = string.Empty;
@@ -168,6 +220,9 @@ public abstract partial class MessageViewModel : ObservableRecipient
                 }
 
                 //_logger.LogDebug("Received streamed message: {Result}", JsonSerializer.Serialize(result));
+
+                ConversationId = !string.IsNullOrEmpty(_appState.ChatSession?.Conversation.Id) ?
+                    Guid.Parse(_appState.ChatSession.Conversation.Id) : Guid.Empty;
 
                 // Only capture the first non-empty title we receive
                 if (!hasReceivedTitle && !string.IsNullOrWhiteSpace(result.Title) && 

@@ -1,0 +1,71 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="400"
+             x:Class="Aesir.Client.Controls.LogDetailDialog"
+             x:DataType="vm:LogDetailDialogViewModel"
+             >
+    <StackPanel Orientation="Vertical">
+        
+        <Grid ColumnDefinitions="1*,2*,1*,2*" RowDefinitions="1*,1*" ColumnSpacing="10" 
+              RowSpacing="10" Margin="0,20,0,0"
+              HorizontalAlignment="Left">
+            <Label Grid.Row="0" Grid.Column="0" Content="Message" FontWeight="Bold" Margin="0,0,10,10"></Label>
+            <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding Log.Message}"></TextBlock>
+            
+            <Label Grid.Row="1" Grid.Column="0" Content="Created" FontWeight="Bold" Margin="0,0,10,10"></Label>
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Log.CreatedAtDisplay}"></TextBlock>
+            
+            <Label Grid.Row="1" Grid.Column="2" Content="Level" FontWeight="Bold" Margin="0,0,10,10"></Label>
+            <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Log.Level}"></TextBlock>
+
+        </Grid>
+
+        <Border BorderThickness="0,1,0,0" Padding="0,10,0,0" BorderBrush="white">
+            
+            <Grid ColumnDefinitions="1*,2*" RowDefinitions="*,*,*,*,*,*,*,*" ColumnSpacing="10" RowSpacing="10">
+                
+                <Label Grid.Row="0" Grid.Column="0" Content="Chat Session Id" FontWeight="Bold"></Label>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Log.Details.ChatSessionId}"></TextBlock>
+                
+                <Label Grid.Row="1" Grid.Column="0" Content="Conversation Id" FontWeight="Bold"></Label>
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Log.Details.ConversationId}"></TextBlock>
+            
+                <Label Grid.Row="2" Grid.Column="0" Content="Type" FontWeight="Bold"></Label>
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Log.Details.Type}"></TextBlock>
+           
+                <Label Grid.Row="3" Grid.Column="0" Content="FunctionName" FontWeight="Bold"></Label>
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Log.Details.FunctionName}"></TextBlock>
+            
+                <Label Grid.Row="4" Grid.Column="0" Content="FunctionDescription" FontWeight="Bold"></Label>
+                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Log.Details.FunctionDescription}"></TextBlock>
+            
+                <Label Grid.Row="5" Grid.Column="0" Content="PluginName" FontWeight="Bold"></Label>
+                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Log.Details.PluginName}"></TextBlock>
+            
+                <Label Grid.Row="6" Grid.Column="0" Content="UnderlyingMethod" FontWeight="Bold"></Label>
+                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Log.Details.UnderlyingMethod}"></TextBlock>
+            
+                <Label Grid.Row="7" Grid.Column="0" Content="Arguments" FontWeight="Bold"></Label>
+                <ItemsRepeater Grid.Row="7" Grid.Column="1" ItemsSource="{Binding Log.Details.Arguments}">
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,10,0,0"
+                                    BorderBrush="Gray" BorderThickness="0,1,0,0"
+                                    Padding="5">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Key}"/>
+                                    <TextBlock Margin="5 0" FontWeight="Bold" 
+                                               Text="{Binding Value}"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+                
+            </Grid>
+        </Border>
+    </StackPanel>
+</UserControl>

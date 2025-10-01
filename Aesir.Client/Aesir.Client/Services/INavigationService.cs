@@ -23,6 +23,8 @@ public interface INavigationService
     /// <see cref="NavigationMessage"/> with the ViewType set to MCP Servers.
     /// </summary>
     void NavigateToMcpServers();
+    
+    void NavigateToLogs();
 
     /// <summary>
     /// Navigates the application to the Documents view.

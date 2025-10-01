@@ -6,22 +6,15 @@ using System.Windows.Input;
 using Aesir.Client.Messages;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
-using Aesir.Client.Shared;
-using Aesir.Client.Views;
-using Aesir.Common.Models;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Logging;
-using Ursa.Common;
-using Ursa.Controls;
-using Ursa.Controls.Options;
 
 namespace Aesir.Client.ViewModels;
 
@@ -30,9 +23,7 @@ namespace Aesir.Client.ViewModels;
 /// </summary>
 /// <remarks>
 /// This class extends <see cref="ObservableRecipient"/> to manage state and perform
-/// operations related to tool interactions. It provides commands to display chat,
-/// tools, and to add new tools. Additionally, it manages the collection of tools
-/// and tracks the selected tool.
+/// operations related to documents interactions. 
 /// </remarks>
 public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipient<FileDownloadRequestMessage>
 {
@@ -52,12 +43,12 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipie
     public ICommand ReselectFromGrid { get; protected set; }
 
     /// <summary>
-    /// Represents a collection of tools displayed in the tools view.
+    /// Represents a collection of documents displayed in the documents view.
     /// </summary>
     public ObservableCollection<AesirDocument> Documents { get; protected set; }
 
     /// <summary>
-    /// Represents the currently selected tool from the collection of tools.
+    /// Represents the currently selected tool from the collection of documents.
     /// This property is bound to the selection within the user interface and updates whenever
     /// a new tool is chosen. Triggers logic related to tool selection changes.
     /// </summary>
@@ -75,11 +66,11 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipie
 
     /// <summary>
     /// Represents the logger instance used for capturing and recording log messages
-    /// within the context of the ToolsViewViewModel class. This includes logging
+    /// within the context of the DocumentsViewViewModel class. This includes logging
     /// errors, warnings, and informational messages related to the execution of
     /// various operations and application states in the view model.
     /// </summary>
-    private readonly ILogger<ToolsViewViewModel> _logger;
+    private readonly ILogger<DocumentsViewViewModel> _logger;
 
     /// <summary>
     /// Provides navigation functionality to transition between various views or features
@@ -89,7 +80,7 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipie
 
     /// <summary>
     /// Provides access to configuration-related operations and data
-    /// management for agents and tools within the system.
+    /// management for documents within the system.
     /// </summary>
     private readonly IDocumentCollectionService _documentCollectionService;
 
@@ -102,7 +93,7 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipie
     /// Provides commands to display the chat and tool creation interfaces.
     /// Integrates navigation and configuration services to coordinate application workflows.
     public DocumentsViewViewModel(
-        ILogger<ToolsViewViewModel> logger,
+        ILogger<DocumentsViewViewModel> logger,
         INavigationService navigationService,
         IDocumentCollectionService documentCollectionService)
     {
@@ -129,7 +120,7 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipie
     }
 
     /// <summary>
-    /// Does the initial load of the tools.
+    /// Does the initial load of the documents.
     /// </summary>
     private async Task LoadDocumentsAsync()
     {
@@ -150,7 +141,7 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipie
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error loading tools: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Error loading documents: {ex.Message}");
         }
     }
 
@@ -174,7 +165,7 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipie
         WeakReferenceMessenger.Default.Send(new ShowDocumentDetailMessage(SelectedDocument));   
     }
 
-    /// Handles logic when a Document is selected in the ToolsViewViewModel.
+    /// Handles logic when a Document is selected in the DocumentsViewViewModel.
     /// Sends a message to display detailed information about the selected tool.
     /// <param name="selectedDocument">The Document that has been selected. If null, no action is taken.</param>
     private void OnDocumentSelected(AesirDocument? selectedDocument)
@@ -197,7 +188,7 @@ public class DocumentsViewViewModel : ObservableRecipient, IDisposable, IRecipie
         }
     }
 
-    /// Disposes of the resources used by the ToolsViewViewModel.
+    /// Disposes of the resources used by the DocumentsViewViewModel.
     /// Ensures proper release of managed resources and suppresses finalization
     /// to optimize garbage collection.
     public void Dispose()

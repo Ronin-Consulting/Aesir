@@ -30,7 +30,7 @@ public class JsonTypeHandler<T> : SqlMapper.TypeHandler<T>
     {
         if (value == null || value == DBNull.Value)
             return default(T);
-
+    
         if (value is string jsonString)
         {
             if (string.IsNullOrWhiteSpace(jsonString))

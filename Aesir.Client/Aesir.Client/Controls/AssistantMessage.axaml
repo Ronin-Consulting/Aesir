@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:html="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
+             xmlns:avaloniaIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
              xmlns:controls="clr-namespace:Aesir.Client.Controls"
              mc:Ignorable="d"
@@ -91,6 +92,9 @@
                     VerticalAlignment="Center"
                     ToolTip.Tip="Play">
                 <avalonia:MaterialIcon Kind="Play" Width="20" Height="20" />
+            </Button>
+            <Button Background="Transparent" BorderThickness="0" Padding="5" Command="{Binding ShowLogDialogCommand}">
+                <avaloniaIcons:MaterialIcon Kind="ViewList" Width="20" Height="20" />
             </Button>
         </StackPanel>
     </StackPanel>

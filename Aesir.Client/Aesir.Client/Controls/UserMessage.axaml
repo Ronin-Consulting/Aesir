@@ -8,6 +8,7 @@
              xmlns:htmlRenderer="clr-namespace:TheArtOfDev.HtmlRenderer.Avalonia;assembly=Avalonia.HtmlRenderer"
              xmlns:avaloniaIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:controls="clr-namespace:Aesir.Client.Controls"
+             xmlns:u="https://irihi.tech/ursa"
              x:DataType="vm:UserMessageViewModel">
     <UserControl.Resources>
         <SolidColorBrush x:Key="AesirBackground" Opacity="0.16" Color="#54A9FF" />
@@ -100,6 +101,9 @@
                 </Button>
                 <Button Background="Transparent" BorderThickness="0" Padding="5" Click="StartEditAction_Clicked">
                     <avaloniaIcons:MaterialIcon Kind="Edit" Width="20" Height="20" />
+                </Button>
+                <Button Background="Transparent" BorderThickness="0" Padding="5" Command="{Binding ShowLogDialogCommand}">
+                    <avaloniaIcons:MaterialIcon Kind="ViewList" Width="20" Height="20" />
                 </Button>
             </StackPanel>
         </StackPanel>

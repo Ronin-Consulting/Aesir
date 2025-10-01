@@ -63,6 +63,11 @@ public partial class ChatHistoryViewModel
     public ICommand ShowDocuments { get; }
 
     /// <summary>
+    /// Represents a command that shows a logs view
+    /// </summary>
+    public ICommand ShowLogs { get; }
+
+    /// <summary>
     /// Represents a command that shows a tools view
     /// </summary>
     public ICommand ShowTools { get; }
@@ -128,6 +133,7 @@ public partial class ChatHistoryViewModel
         ShowDocuments = new RelayCommand(ExecuteShowDocuments);
         ShowTools = new RelayCommand(ExecuteShowTools);
         ShowMcpServers = new RelayCommand(ExecuteShowMcpServers);
+        ShowLogs = new RelayCommand(ExecuteShowLogs);
     }
 
     /// Handles the event when the search text is modified. This method incorporates debounce logic
@@ -311,6 +317,11 @@ public partial class ChatHistoryViewModel
     private void ExecuteShowMcpServers()
     {
         _navigationService.NavigateToMcpServers();
+    }
+
+    private void ExecuteShowLogs()
+    {
+        _navigationService.NavigateToLogs();
     }
 
     /// Releases all resources used by the ChatHistoryViewModel instance.

@@ -20,11 +20,13 @@ namespace Aesir.Client.ViewModels;
 /// to user-initiated events like link interactions. It integrates services for logging, markdown rendering, speech
 /// synthesis, and content processing to provide a dynamic and feature-rich experience tailored for assistant interactions.
 public partial class AssistantMessageViewModel(
+    ApplicationState  applicationState,
     ILogger<AssistantMessageViewModel> logger,
     IMarkdownService markdownService,
     IContentProcessingService contentProcessingService,
-    ISpeechService speechService)
-    : MessageViewModel(logger, markdownService)
+    ISpeechService speechService,
+    IKernelLogService kernelLogService)
+    : MessageViewModel(applicationState, logger, markdownService, kernelLogService)
 {
     /// <summary>
     /// A readonly instance of the <see cref="IContentProcessingService"/> used for handling
