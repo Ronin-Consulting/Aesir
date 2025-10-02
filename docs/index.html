@@ -1,464 +1,478 @@
-import React, { useState } from 'react';
-import { Shield, Cpu, FileText, Eye, Zap, Github, Star, GitFork, ChevronLeft, ChevronRight } from 'lucide-react';
+<!DOCTYPE html>
+<html>
+<head>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+    import React, { useState } from 'react';
+    import { Shield, Cpu, FileText, Eye, Zap, Github, Star, GitFork, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const ACCENT_BLUE = '#54A9FF';
-const BG_COLOR = '#16161A';
+    const ACCENT_BLUE = '#54A9FF';
+    const BG_COLOR = '#16161A';
 
-export default function AesirLanding() {
-  return (
-    <div className="min-h-screen text-white" style={{ backgroundColor: BG_COLOR }}>
-      {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0" style={{ 
-          background: `linear-gradient(to bottom, ${ACCENT_BLUE}10, transparent)` 
-        }}></div>
-        <div className="max-w-6xl mx-auto px-6 py-20 relative">
-          <div className="text-center space-y-8">
-            <div className="inline-block w-full">
-              <svg className="w-full max-w-5xl mx-auto mb-12" viewBox="0 0 395 149.5" xmlns="http://www.w3.org/2000/svg">
-                <g>
-                  <path d="M91.79,54.51L170.88,1.52l-85.44,42L0,1.52l79.09,52.99,6.35,94.99,6.35-94.99ZM85.44,50.84h0Z" style={{ fill: '#f9f9f9' }}/>
-                  <polygon points="59.78 65.35 65.48 117.96 66.36 61.41 18.13 33.05 59.78 65.35" style={{ fill: '#f9f9f9' }}/>
-                  <polygon points="110.83 65.81 153.54 34.57 104.13 62.09 103.68 118.03 110.83 65.81" style={{ fill: '#f9f9f9' }}/>
-                  <polygon points="85.7 21.37 37.29 0 85.83 29.04 134.5 1.45 85.7 21.37" style={{ fill: '#f9f9f9' }}/>
-                </g>
-                <path d="M205.81,104.63v.26c0,.3-.06.58-.18.84-.12.26-.28.49-.48.68-.2.19-.43.35-.7.46s-.55.17-.84.17h-.63c-.29,0-.57-.06-.84-.17-.27-.11-.5-.27-.7-.46-.2-.19-.36-.42-.48-.68-.12-.26-.18-.54-.18-.84h0v-.34l.78-.13v.47c0,.2.04.38.12.55.08.17.19.31.32.44.13.13.29.23.47.3.17.07.36.11.55.11h.55c.19,0,.38-.04.55-.11.18-.07.34-.17.47-.3.13-.13.24-.27.32-.44.07-.17.11-.35.11-.55h0v-.26c0-.3-.06-.55-.17-.75-.12-.19-.28-.36-.47-.5-.19-.14-.41-.26-.66-.36-.25-.1-.5-.2-.76-.29-.26-.1-.51-.21-.76-.32-.24-.12-.46-.27-.66-.45-.19-.17-.35-.39-.46-.64-.12-.26-.18-.58-.18-.95h0v-.16c0-.29.06-.57.17-.83.11-.26.26-.49.46-.69.19-.19.42-.34.68-.45.26-.11.54-.17.84-.17h.56c.29,0,.57.06.83.17.26.11.49.26.68.45.19.2.35.43.46.69s.17.54.17.83h0v.22l-.79.13v-.35c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.29-.45-.13-.12-.27-.22-.44-.29-.17-.07-.36-.11-.55-.11h-.49c-.19,0-.37.04-.54.11-.17.07-.31.17-.44.29-.13.13-.24.28-.31.45-.07.17-.11.35-.11.54h0v.16c0,.28.06.52.18.71.12.19.28.36.47.49.19.13.41.25.66.35.25.1.5.2.76.31.26.1.51.21.75.34.25.12.47.27.66.45.2.18.36.4.47.66.12.26.18.58.18.95h0ZM215.18,98.94h-2.08v7.97h-.78v-7.97h-2.09v-.75h4.95v.75ZM224.92,106.91h-.9l-2.37-3.72h-1.08v3.72h-.78v-8.72h2.77c.29,0,.57.06.83.17.26.11.49.26.68.46.19.19.35.42.46.68s.17.54.17.84h0v.7c0,.3-.06.58-.17.84s-.27.49-.46.68c-.19.2-.42.35-.68.46-.26.11-.54.17-.83.17h0l2.36,3.72ZM223.91,101.04v-.7c0-.19-.04-.38-.11-.55-.07-.17-.17-.31-.29-.44-.13-.13-.27-.23-.44-.3-.17-.07-.36-.11-.55-.11h-1.95v3.5h1.95c.19,0,.38-.04.55-.11.17-.07.31-.17.44-.3.12-.13.22-.27.29-.44.07-.17.11-.35.11-.55h0ZM233.76,106.91l-.58-2.03h-2.76l-.57,2.03h-.82l2.56-8.72h.41l2.57,8.72h-.81ZM231.78,100.11l-1.15,4.02h2.34l-1.14-4.02-.03-.32-.02.32ZM243,98.94h-2.08v7.97h-.78v-7.97h-2.08v-.75h4.94v.75ZM252.65,106.91h-4.91v-8.72h4.91v.75h-4.13v3.24h3.34v.75h-3.34v3.24h4.13v.74ZM262.42,102.33v4.58h-.25l-.46-.7c-.19.25-.42.45-.69.6-.27.15-.58.23-.91.23h-.46c-.29,0-.57-.06-.83-.17-.27-.11-.5-.27-.69-.46-.19-.19-.35-.42-.46-.68-.11-.26-.16-.54-.16-.84h0v-4.68c0-.29.05-.57.16-.83.11-.26.27-.49.46-.69.19-.19.42-.34.69-.45.26-.11.54-.17.83-.17h.62c.3,0,.58.06.84.17.26.11.49.26.68.45.19.2.35.43.46.69s.17.54.17.83h0v.35l-.79.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.3-.45-.13-.12-.27-.22-.44-.29-.17-.07-.35-.11-.54-.11h-.55c-.19,0-.37.04-.54.11-.17.07-.32.17-.45.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.28.23.45.3.17.07.35.11.54.11h.55c.19,0,.37-.04.54-.11s.31-.17.44-.3c.13-.13.23-.27.3-.44s.11-.35.11-.55h0v-1.81h-1.39v-.75h2.18ZM268.56,106.91h-.78v-8.72h.78v8.72ZM278.83,104.89h0c0,.3-.06.58-.17.84-.11.26-.27.49-.46.68-.19.19-.42.35-.68.46-.26.11-.54.17-.83.17h-.62c-.3,0-.58-.06-.84-.17s-.49-.27-.68-.46c-.2-.19-.35-.42-.46-.68-.11-.26-.17-.54-.17-.84h0v-4.68c0-.29.06-.57.17-.83.11-.26.26-.49.46-.69.19-.19.42-.34.68-.45.26-.11.54-.17.84-.17h.62c.29,0,.57.06.83.17.26.11.49.26.68.45.19.2.35.43.46.69.11.26.17.54.17.83h0v.35l-.79.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.29-.45-.13-.12-.27-.22-.44-.29-.17-.07-.36-.11-.55-.11h-.55c-.19,0-.37.04-.54.11-.17.07-.32.17-.45.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.28.23.45.3s.35.11.54.11h.55c.19,0,.38-.04.55-.11.17-.07.31-.17.44-.3.12-.13.22-.27.29-.44s.11-.35.11-.55h0v-.47l.79.13v.34ZM291.2,106.91h-.78v-8.72h.78v8.72ZM301.6,106.91h-.42l-3.64-6.35-.07-.37v6.72h-.78v-8.72h.4l3.64,6.36.08.37v-6.73h.79v8.72ZM311.28,98.94h-2.08v7.97h-.79v-7.97h-2.08v-.75h4.95v.75ZM320.92,106.91h-4.91v-8.72h4.91v.75h-4.12v3.24h3.34v.75h-3.34v3.24h4.12v.74ZM329.9,106.91h-4.12v-8.72h.78v7.98h3.34v.74ZM338.64,106.91h-4.13v-8.72h.79v7.98h3.34v.74ZM344.16,106.91h-.79v-8.72h.79v8.72ZM354.42,102.33v4.58h-.25l-.45-.7c-.19.25-.43.45-.7.6-.27.15-.57.23-.9.23h-.46c-.29,0-.57-.06-.83-.17-.27-.11-.5-.27-.69-.46-.19-.19-.35-.42-.46-.68-.11-.26-.17-.54-.17-.84h0v-4.68c0-.29.06-.57.17-.83.11-.26.27-.49.46-.69.19-.19.42-.34.69-.45.26-.11.54-.17.83-.17h.62c.3,0,.58.06.84.17.26.11.49.26.68.45.19.2.35.43.46.69.11.26.16.54.16.83h0v.35l-.78.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.3-.45-.13-.12-.27-.22-.44-.29-.17-.07-.35-.11-.54-.11h-.55c-.19,0-.38.04-.55.11-.17.07-.31.17-.44.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.27.23.44.3.17.07.36.11.55.11h.55c.19,0,.37-.04.54-.11.17-.07.31-.17.44-.3.13-.13.23-.27.3-.44s.11-.35.11-.55h0v-1.81h-1.39v-.75h2.17ZM364.7,106.91h-4.91v-8.72h4.91v.75h-4.13v3.24h3.34v.75h-3.34v3.24h4.13v.74ZM374.59,106.91h-.41l-3.64-6.35-.07-.37v6.72h-.79v-8.72h.41l3.64,6.36.08.37v-6.73h.78v8.72ZM384.86,104.89h0c0,.3-.06.58-.17.84-.11.26-.27.49-.46.68-.19.19-.42.35-.68.46-.26.11-.54.17-.84.17h-.62c-.29,0-.57-.06-.83-.17-.26-.11-.49-.27-.69-.46-.19-.19-.35-.42-.46-.68-.11-.26-.16-.54-.16-.84h0v-4.68c0-.29.05-.57.16-.83.11-.26.27-.49.46-.69.2-.19.43-.34.69-.45.26-.11.54-.17.83-.17h.62c.3,0,.58.06.84.17.26.11.49.26.68.45.19.2.35.43.46.69s.17.54.17.83h0v.35l-.79.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.3-.45-.12-.12-.27-.22-.44-.29-.17-.07-.35-.11-.54-.11h-.55c-.19,0-.37.04-.54.11-.17.07-.32.17-.45.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.28.23.45.3.17.07.35.11.54.11h.55c.19,0,.37-.04.54-.11.17-.07.32-.17.44-.3.13-.13.23-.27.3-.44.07-.17.11-.35.11-.55h0v-.47l.79.13v.34ZM395,106.91h-4.91v-8.72h4.91v.75h-4.12v3.24h3.34v.75h-3.34v3.24h4.12v.74Z" style={{ fill: '#f9f9f9' }}/>
-                <g>
-                  <path d="M296.03,87.31c-2.12,0-4.16-.3-6.12-.89-1.96-.59-3.72-1.42-5.27-2.48h0v-7.42c1.06,2.74,2.68,4.81,4.87,6.22,2.19,1.41,4.46,2.12,6.83,2.12h0c2.37,0,4.35-.79,5.94-2.36,1.59-1.57,2.39-3.52,2.39-5.85h0c0-1.55-.32-2.88-.95-3.99-.63-1.1-1.64-2.13-3.03-3.09-1.39-.96-3.35-2.03-5.88-3.22h0c-3.55-1.63-6.14-3.34-7.75-5.11-1.61-1.78-2.42-3.94-2.42-6.47h0c0-2.16.52-4.09,1.56-5.79,1.04-1.69,2.45-3,4.23-3.92,1.77-.92,3.72-1.38,5.85-1.38h0c1.84,0,3.64.26,5.39.77,1.76.51,3.39,1.24,4.9,2.18h0v6.61c-.98-2.25-2.46-3.99-4.44-5.24-1.98-1.24-3.99-1.86-6.03-1.86h0c-2.33,0-4.21.75-5.64,2.26-1.43,1.51-2.15,3.31-2.15,5.39h0c0,1.51.43,2.81,1.29,3.89.86,1.09,1.91,2,3.16,2.73s2.99,1.63,5.24,2.7h0c2.29,1.1,4.16,2.12,5.63,3.06,1.47.94,2.7,2.17,3.68,3.68.98,1.51,1.47,3.34,1.47,5.51h0c0,2.45-.58,4.58-1.75,6.37-1.16,1.8-2.71,3.18-4.65,4.14-1.94.96-4.06,1.44-6.35,1.44h0ZM322.07,86.57c0,.13.25.04.74-.27.49-.31.94-.88,1.35-1.72.41-.83.61-2.07.61-3.71h0v-30.75c0-1.63-.19-2.87-.58-3.71-.39-.84-.83-1.4-1.32-1.68-.49-.29-.73-.39-.73-.31h9.74c0-.08-.25.02-.74.31-.49.28-.94.84-1.35,1.68-.41.84-.61,2.08-.61,3.71h0v30.75c0,1.64.2,2.88.61,3.71.41.84.86,1.4,1.35,1.69.49.29.74.39.74.3h-9.81ZM358.47,65.37c1.88,0,3.51-.44,4.9-1.31,1.39-.88,2.44-2.02,3.15-3.43.72-1.41,1.08-2.9,1.08-4.45h0c0-1.59-.34-3.09-1.01-4.5-.68-1.41-1.71-2.56-3.1-3.46s-3.08-1.35-5.08-1.35h-5.21v34.07c0,1.63.2,2.87.61,3.7.41.84.86,1.39,1.35,1.66.49.27.73.36.73.27h-9.74c0,.09.25-.01.74-.3.49-.29.92-.84,1.31-1.66.39-.81.59-2.04.59-3.67h0v-30.64c0-1.67-.2-2.95-.59-3.83-.39-.88-.82-1.47-1.31-1.77-.49-.31-.74-.4-.74-.28h12.13c3.19,0,5.81.52,7.88,1.56,2.06,1.04,3.55,2.39,4.47,4.05.92,1.65,1.38,3.46,1.38,5.42h0c0,1.63-.39,3.24-1.17,4.81-.77,1.57-1.89,2.94-3.34,4.1-1.45,1.17-3.13,1.97-5.05,2.42h0l-.98.19,10.78,13.72c1.43,1.59,2.62,2.82,3.56,3.68.94.85,1.62,1.42,2.05,1.71s.68.45.76.49h-7.16l-16.67-21.2h3.68Z" style={{ fill: '#f9f9f9' }}/>
-                  <path d="M273.46,50.32c-.76-2.52-3.02-3.78-6.8-3.78h-8.76v17.89h10.84c.84,0,1.55-.14,2.14-.41.59-.27,1.03-.56,1.32-.85.29-.29.46-.48.5-.57v6.11c-.04-.08-.21-.27-.5-.57-.29-.29-.72-.57-1.29-.82-.57-.25-1.27-.38-2.11-.38h-10.9v17.89h9.83c1.89,0,3.52-.39,4.88-1.17,1.36-.78,2.34-1.77,2.93-2.99l-1.13,6.68h-23.75c0,.13.25.03.76-.28.5-.31.96-.94,1.35-1.89.4-.95.6-2.32.6-4.13v-14.11h-13.8l-9.26,14.11c-1.09,1.72-1.64,3.11-1.64,4.16,0,.63.16,1.1.47,1.42.32.31.64.51.98.6.34.08.54.13.63.13h-11.02c1.89-.17,4.03-2.06,6.43-5.67l21.48-32.26c.67-1.05,1.01-2.08,1.01-3.09s-.4-1.83-1.2-2.33h26.02v6.3ZM241.21,64.44h12.16v-18.52l-12.16,18.52Z" style={{ fill: '#fff' }}/>
-                </g>
-              </svg>
-            </div>
-            
-            <p className="text-2xl md:text-3xl text-white max-w-4xl mx-auto leading-relaxed">
-              A powerful AI agent platform engineered for <span className="font-semibold" style={{ color: ACCENT_BLUE }}>air-gapped</span> and <span className="font-semibold" style={{ color: ACCENT_BLUE }}>edge devices</span>
-            </p>
-            
-            <p className="text-lg text-gray-400 max-w-3xl mx-auto">
-              Deploy advanced AI capabilities in secure, offline environments without compromising on performance or features.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6">
-              <a 
-                href="https://github.com/Ronin-Consulting/Aesir" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="group px-8 py-4 rounded-lg font-semibold text-lg text-black transition-all shadow-lg flex items-center gap-2"
-                style={{ 
-                  backgroundColor: ACCENT_BLUE,
-                  boxShadow: `0 10px 40px ${ACCENT_BLUE}30`
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6BB8FF'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
-              >
-                <Github className="w-5 h-5" />
-                View on GitHub
-                <span className="group-hover:translate-x-1 transition-transform">→</span>
-              </a>
-              
-              <div className="flex gap-4 text-sm text-gray-400">
-                <div className="flex items-center gap-1">
-                  <Star className="w-4 h-4" />
-                  <span>Open Source</span>
+    export default function AesirLanding() {
+        return (
+            <div className="min-h-screen text-white" style={{ backgroundColor: BG_COLOR }}>
+                {/* Hero Section */}
+                <div className="relative overflow-hidden">
+                    <div className="absolute inset-0" style={{
+                        background: `linear-gradient(to bottom, ${ACCENT_BLUE}10, transparent)`
+                    }}></div>
+                    <div className="max-w-6xl mx-auto px-6 py-20 relative">
+                        <div className="text-center space-y-8">
+                            <div className="inline-block w-full">
+                                <svg className="w-full max-w-5xl mx-auto mb-12" viewBox="0 0 395 149.5" xmlns="http://www.w3.org/2000/svg">
+                                    <g>
+                                        <path d="M91.79,54.51L170.88,1.52l-85.44,42L0,1.52l79.09,52.99,6.35,94.99,6.35-94.99ZM85.44,50.84h0Z" style={{ fill: '#f9f9f9' }}/>
+                                        <polygon points="59.78 65.35 65.48 117.96 66.36 61.41 18.13 33.05 59.78 65.35" style={{ fill: '#f9f9f9' }}/>
+                                        <polygon points="110.83 65.81 153.54 34.57 104.13 62.09 103.68 118.03 110.83 65.81" style={{ fill: '#f9f9f9' }}/>
+                                        <polygon points="85.7 21.37 37.29 0 85.83 29.04 134.5 1.45 85.7 21.37" style={{ fill: '#f9f9f9' }}/>
+                                    </g>
+                                    <path d="M205.81,104.63v.26c0,.3-.06.58-.18.84-.12.26-.28.49-.48.68-.2.19-.43.35-.7.46s-.55.17-.84.17h-.63c-.29,0-.57-.06-.84-.17-.27-.11-.5-.27-.7-.46-.2-.19-.36-.42-.48-.68-.12-.26-.18-.54-.18-.84h0v-.34l.78-.13v.47c0,.2.04.38.12.55.08.17.19.31.32.44.13.13.29.23.47.3.17.07.36.11.55.11h.55c.19,0,.38-.04.55-.11.18-.07.34-.17.47-.3.13-.13.24-.27.32-.44.07-.17.11-.35.11-.55h0v-.26c0-.3-.06-.55-.17-.75-.12-.19-.28-.36-.47-.5-.19-.14-.41-.26-.66-.36-.25-.1-.5-.2-.76-.29-.26-.1-.51-.21-.76-.32-.24-.12-.46-.27-.66-.45-.19-.17-.35-.39-.46-.64-.12-.26-.18-.58-.18-.95h0v-.16c0-.29.06-.57.17-.83.11-.26.26-.49.46-.69.19-.19.42-.34.68-.45.26-.11.54-.17.84-.17h.56c.29,0,.57.06.83.17.26.11.49.26.68.45.19.2.35.43.46.69s.17.54.17.83h0v.22l-.79.13v-.35c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.29-.45-.13-.12-.27-.22-.44-.29-.17-.07-.36-.11-.55-.11h-.49c-.19,0-.37.04-.54.11-.17.07-.31.17-.44.29-.13.13-.24.28-.31.45-.07.17-.11.35-.11.54h0v.16c0,.28.06.52.18.71.12.19.28.36.47.49.19.13.41.25.66.35.25.1.5.2.76.31.26.1.51.21.75.34.25.12.47.27.66.45.2.18.36.4.47.66.12.26.18.58.18.95h0ZM215.18,98.94h-2.08v7.97h-.78v-7.97h-2.09v-.75h4.95v.75ZM224.92,106.91h-.9l-2.37-3.72h-1.08v3.72h-.78v-8.72h2.77c.29,0,.57.06.83.17.26.11.49.26.68.46.19.19.35.42.46.68s.17.54.17.84h0v.7c0,.3-.06.58-.17.84s-.27.49-.46.68c-.19.2-.42.35-.68.46-.26.11-.54.17-.83.17h0l2.36,3.72ZM223.91,101.04v-.7c0-.19-.04-.38-.11-.55-.07-.17-.17-.31-.29-.44-.13-.13-.27-.23-.44-.3-.17-.07-.36-.11-.55-.11h-1.95v3.5h1.95c.19,0,.38-.04.55-.11.17-.07.31-.17.44-.3.12-.13.22-.27.29-.44.07-.17.11-.35.11-.55h0ZM233.76,106.91l-.58-2.03h-2.76l-.57,2.03h-.82l2.56-8.72h.41l2.57,8.72h-.81ZM231.78,100.11l-1.15,4.02h2.34l-1.14-4.02-.03-.32-.02.32ZM243,98.94h-2.08v7.97h-.78v-7.97h-2.08v-.75h4.94v.75ZM252.65,106.91h-4.91v-8.72h4.91v.75h-4.13v3.24h3.34v.75h-3.34v3.24h4.13v.74ZM262.42,102.33v4.58h-.25l-.46-.7c-.19.25-.42.45-.69.6-.27.15-.58.23-.91.23h-.46c-.29,0-.57-.06-.83-.17-.27-.11-.5-.27-.69-.46-.19-.19-.35-.42-.46-.68-.11-.26-.16-.54-.16-.84h0v-4.68c0-.29.05-.57.16-.83.11-.26.27-.49.46-.69.19-.19.42-.34.69-.45.26-.11.54-.17.83-.17h.62c.3,0,.58.06.84.17.26.11.49.26.68.45.19.2.35.43.46.69s.17.54.17.83h0v.35l-.79.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.3-.45-.13-.12-.27-.22-.44-.29-.17-.07-.35-.11-.54-.11h-.55c-.19,0-.37.04-.54.11-.17.07-.32.17-.45.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.28.23.45.3.17.07.35.11.54.11h.55c.19,0,.37-.04.54-.11s.31-.17.44-.3c.13-.13.23-.27.3-.44s.11-.35.11-.55h0v-1.81h-1.39v-.75h2.18ZM268.56,106.91h-.78v-8.72h.78v8.72ZM278.83,104.89h0c0,.3-.06.58-.17.84-.11.26-.27.49-.46.68-.19.19-.42.35-.68.46-.26.11-.54.17-.83.17h-.62c-.3,0-.58-.06-.84-.17s-.49-.27-.68-.46c-.2-.19-.35-.42-.46-.68-.11-.26-.17-.54-.17-.84h0v-4.68c0-.29.06-.57.17-.83.11-.26.26-.49.46-.69.19-.19.42-.34.68-.45.26-.11.54-.17.84-.17h.62c.29,0,.57.06.83.17.26.11.49.26.68.45.19.2.35.43.46.69.11.26.17.54.17.83h0v.35l-.79.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.29-.45-.13-.12-.27-.22-.44-.29-.17-.07-.36-.11-.55-.11h-.55c-.19,0-.37.04-.54.11-.17.07-.32.17-.45.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.28.23.45.3s.35.11.54.11h.55c.19,0,.38-.04.55-.11.17-.07.31-.17.44-.3.12-.13.22-.27.29-.44s.11-.35.11-.55h0v-.47l.79.13v.34ZM291.2,106.91h-.78v-8.72h.78v8.72ZM301.6,106.91h-.42l-3.64-6.35-.07-.37v6.72h-.78v-8.72h.4l3.64,6.36.08.37v-6.73h.79v8.72ZM311.28,98.94h-2.08v7.97h-.79v-7.97h-2.08v-.75h4.95v.75ZM320.92,106.91h-4.91v-8.72h4.91v.75h-4.12v3.24h3.34v.75h-3.34v3.24h4.12v.74ZM329.9,106.91h-4.12v-8.72h.78v7.98h3.34v.74ZM338.64,106.91h-4.13v-8.72h.79v7.98h3.34v.74ZM344.16,106.91h-.79v-8.72h.79v8.72ZM354.42,102.33v4.58h-.25l-.45-.7c-.19.25-.43.45-.7.6-.27.15-.57.23-.9.23h-.46c-.29,0-.57-.06-.83-.17-.27-.11-.5-.27-.69-.46-.19-.19-.35-.42-.46-.68-.11-.26-.17-.54-.17-.84h0v-4.68c0-.29.06-.57.17-.83.11-.26.27-.49.46-.69.19-.19.42-.34.69-.45.26-.11.54-.17.83-.17h.62c.3,0,.58.06.84.17.26.11.49.26.68.45.19.2.35.43.46.69.11.26.16.54.16.83h0v.35l-.78.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.3-.45-.13-.12-.27-.22-.44-.29-.17-.07-.35-.11-.54-.11h-.55c-.19,0-.38.04-.55.11-.17.07-.31.17-.44.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.27.23.44.3.17.07.36.11.55.11h.55c.19,0,.37-.04.54-.11.17-.07.31-.17.44-.3.13-.13.23-.27.3-.44s.11-.35.11-.55h0v-1.81h-1.39v-.75h2.17ZM364.7,106.91h-4.91v-8.72h4.91v.75h-4.13v3.24h3.34v.75h-3.34v3.24h4.13v.74ZM374.59,106.91h-.41l-3.64-6.35-.07-.37v6.72h-.79v-8.72h.41l3.64,6.36.08.37v-6.73h.78v8.72ZM384.86,104.89h0c0,.3-.06.58-.17.84-.11.26-.27.49-.46.68-.19.19-.42.35-.68.46-.26.11-.54.17-.84.17h-.62c-.29,0-.57-.06-.83-.17-.26-.11-.49-.27-.69-.46-.19-.19-.35-.42-.46-.68-.11-.26-.16-.54-.16-.84h0v-4.68c0-.29.05-.57.16-.83.11-.26.27-.49.46-.69.2-.19.43-.34.69-.45.26-.11.54-.17.83-.17h.62c.3,0,.58.06.84.17.26.11.49.26.68.45.19.2.35.43.46.69s.17.54.17.83h0v.35l-.79.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.3-.45-.12-.12-.27-.22-.44-.29-.17-.07-.35-.11-.54-.11h-.55c-.19,0-.37.04-.54.11-.17.07-.32.17-.45.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.28.23.45.3.17.07.35.11.54.11h.55c.19,0,.37-.04.54-.11.17-.07.32-.17.44-.3.13-.13.23-.27.3-.44.07-.17.11-.35.11-.55h0v-.47l.79.13v.34ZM395,106.91h-4.91v-8.72h4.91v.75h-4.12v3.24h3.34v.75h-3.34v3.24h4.12v.74Z" style={{ fill: '#f9f9f9' }}/>
+                                    <g>
+                                        <path d="M296.03,87.31c-2.12,0-4.16-.3-6.12-.89-1.96-.59-3.72-1.42-5.27-2.48h0v-7.42c1.06,2.74,2.68,4.81,4.87,6.22,2.19,1.41,4.46,2.12,6.83,2.12h0c2.37,0,4.35-.79,5.94-2.36,1.59-1.57,2.39-3.52,2.39-5.85h0c0-1.55-.32-2.88-.95-3.99-.63-1.1-1.64-2.13-3.03-3.09-1.39-.96-3.35-2.03-5.88-3.22h0c-3.55-1.63-6.14-3.34-7.75-5.11-1.61-1.78-2.42-3.94-2.42-6.47h0c0-2.16.52-4.09,1.56-5.79,1.04-1.69,2.45-3,4.23-3.92,1.77-.92,3.72-1.38,5.85-1.38h0c1.84,0,3.64.26,5.39.77,1.76.51,3.39,1.24,4.9,2.18h0v6.61c-.98-2.25-2.46-3.99-4.44-5.24-1.98-1.24-3.99-1.86-6.03-1.86h0c-2.33,0-4.21.75-5.64,2.26-1.43,1.51-2.15,3.31-2.15,5.39h0c0,1.51.43,2.81,1.29,3.89.86,1.09,1.91,2,3.16,2.73s2.99,1.63,5.24,2.7h0c2.29,1.1,4.16,2.12,5.63,3.06,1.47.94,2.7,2.17,3.68,3.68.98,1.51,1.47,3.34,1.47,5.51h0c0,2.45-.58,4.58-1.75,6.37-1.16,1.8-2.71,3.18-4.65,4.14-1.94.96-4.06,1.44-6.35,1.44h0ZM322.07,86.57c0,.13.25.04.74-.27.49-.31.94-.88,1.35-1.72.41-.83.61-2.07.61-3.71h0v-30.75c0-1.63-.19-2.87-.58-3.71-.39-.84-.83-1.4-1.32-1.68-.49-.29-.73-.39-.73-.31h9.74c0-.08-.25.02-.74.31-.49.28-.94.84-1.35,1.68-.41.84-.61,2.08-.61,3.71h0v30.75c0,1.64.2,2.88.61,3.71.41.84.86,1.4,1.35,1.69.49.29.74.39.74.3h-9.81ZM358.47,65.37c1.88,0,3.51-.44,4.9-1.31,1.39-.88,2.44-2.02,3.15-3.43.72-1.41,1.08-2.9,1.08-4.45h0c0-1.59-.34-3.09-1.01-4.5-.68-1.41-1.71-2.56-3.1-3.46s-3.08-1.35-5.08-1.35h-5.21v34.07c0,1.63.2,2.87.61,3.7.41.84.86,1.39,1.35,1.66.49.27.73.36.73.27h-9.74c0,.09.25-.01.74-.3.49-.29.92-.84,1.31-1.66.39-.81.59-2.04.59-3.67h0v-30.64c0-1.67-.2-2.95-.59-3.83-.39-.88-.82-1.47-1.31-1.77-.49-.31-.74-.4-.74-.28h12.13c3.19,0,5.81.52,7.88,1.56,2.06,1.04,3.55,2.39,4.47,4.05.92,1.65,1.38,3.46,1.38,5.42h0c0,1.63-.39,3.24-1.17,4.81-.77,1.57-1.89,2.94-3.34,4.1-1.45,1.17-3.13,1.97-5.05,2.42h0l-.98.19,10.78,13.72c1.43,1.59,2.62,2.82,3.56,3.68.94.85,1.62,1.42,2.05,1.71s.68.45.76.49h-7.16l-16.67-21.2h3.68Z" style={{ fill: '#f9f9f9' }}/>
+                                        <path d="M273.46,50.32c-.76-2.52-3.02-3.78-6.8-3.78h-8.76v17.89h10.84c.84,0,1.55-.14,2.14-.41.59-.27,1.03-.56,1.32-.85.29-.29.46-.48.5-.57v6.11c-.04-.08-.21-.27-.5-.57-.29-.29-.72-.57-1.29-.82-.57-.25-1.27-.38-2.11-.38h-10.9v17.89h9.83c1.89,0,3.52-.39,4.88-1.17,1.36-.78,2.34-1.77,2.93-2.99l-1.13,6.68h-23.75c0,.13.25.03.76-.28.5-.31.96-.94,1.35-1.89.4-.95.6-2.32.6-4.13v-14.11h-13.8l-9.26,14.11c-1.09,1.72-1.64,3.11-1.64,4.16,0,.63.16,1.1.47,1.42.32.31.64.51.98.6.34.08.54.13.63.13h-11.02c1.89-.17,4.03-2.06,6.43-5.67l21.48-32.26c.67-1.05,1.01-2.08,1.01-3.09s-.4-1.83-1.2-2.33h26.02v6.3ZM241.21,64.44h12.16v-18.52l-12.16,18.52Z" style={{ fill: '#fff' }}/>
+                                    </g>
+                                </svg>
+                            </div>
+
+                            <p className="text-2xl md:text-3xl text-white max-w-4xl mx-auto leading-relaxed">
+                                A powerful AI agent platform engineered for <span className="font-semibold" style={{ color: ACCENT_BLUE }}>air-gapped</span> and <span className="font-semibold" style={{ color: ACCENT_BLUE }}>edge devices</span>
+                            </p>
+
+                            <p className="text-lg text-gray-400 max-w-3xl mx-auto">
+                                Deploy advanced AI capabilities in secure, offline environments without compromising on performance or features.
+                            </p>
+
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6">
+                                <a
+                                    href="https://github.com/Ronin-Consulting/Aesir"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group px-8 py-4 rounded-lg font-semibold text-lg text-black transition-all shadow-lg flex items-center gap-2"
+                                    style={{
+                                        backgroundColor: ACCENT_BLUE,
+                                        boxShadow: `0 10px 40px ${ACCENT_BLUE}30`
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6BB8FF'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
+                                >
+                                    <Github className="w-5 h-5" />
+                                    View on GitHub
+                                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                                </a>
+
+                                <div className="flex gap-4 text-sm text-gray-400">
+                                    <div className="flex items-center gap-1">
+                                        <Star className="w-4 h-4" />
+                                        <span>Open Source</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <GitFork className="w-4 h-4" />
+                                        <span>Apache 2.0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <GitFork className="w-4 h-4" />
-                  <span>Apache 2.0</span>
+
+                {/* Video Demos Section */}
+                <div className="border-y border-zinc-800" style={{ backgroundColor: BG_COLOR }}>
+                    <div className="max-w-6xl mx-auto px-6 py-20">
+                        <h2 className="text-4xl font-bold text-center mb-4 text-white">
+                            See AESIR in Action
+                        </h2>
+                        <p className="text-center text-gray-400 mb-16 text-lg">
+                            Watch these demos to see how AESIR handles real-world AI tasks
+                        </p>
+
+                        <VideoCarousel />
+                    </div>
                 </div>
-              </div>
+
+                {/* Key Features */}
+                <div className="max-w-6xl mx-auto px-6 py-20">
+                    <h2 className="text-4xl font-bold text-center mb-16 text-white">
+                        Built for Security and Performance
+                    </h2>
+
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <FeatureCard
+                            icon={<Shield className="w-8 h-8" />}
+                            title="Air-Gapped Ready"
+                            description="Runs completely offline with local LLMs. Perfect for classified, medical, and sensitive environments."
+                        />
+
+                        <FeatureCard
+                            icon={<Cpu className="w-8 h-8" />}
+                            title="Cross-Platform"
+                            description="Native support for x86, Apple Silicon, and ARM64 with hardware acceleration (CUDA, Metal, ONNX)."
+                        />
+
+                        <FeatureCard
+                            icon={<FileText className="w-8 h-8" />}
+                            title="RAG & Document Intelligence"
+                            description="Built-in retrieval augmented generation with smart chunking and semantic search capabilities."
+                        />
+
+                        <FeatureCard
+                            icon={<Eye className="w-8 h-8" />}
+                            title="Multi-Modal"
+                            description="Text, vision, and speech capabilities. Handle documents, images, and conversations seamlessly."
+                        />
+
+                        <FeatureCard
+                            icon={<Zap className="w-8 h-8" />}
+                            title="Flexible Backend"
+                            description="Works with Ollama by default or connect to OpenAI-compatible APIs. Your choice, your control."
+                        />
+
+                        <FeatureCard
+                            icon={<Github className="w-8 h-8" />}
+                            title="Open Source"
+                            description="Fully transparent, auditable, and customizable. Build on a foundation you can trust."
+                        />
+                    </div>
+                </div>
+
+                {/* Target Audience */}
+                <div className="border-y border-zinc-800" style={{ backgroundColor: BG_COLOR }}>
+                    <div className="max-w-6xl mx-auto px-6 py-20">
+                        <h2 className="text-4xl font-bold text-center mb-16 text-white">
+                            Who AESIR Is For
+                        </h2>
+
+                        <div className="grid md:grid-cols-2 gap-8">
+                            <div className="bg-zinc-900 rounded-xl p-8 border transition-all" style={{ borderColor: `${ACCENT_BLUE}50` }}>
+                                <h3 className="text-2xl font-bold mb-4" style={{ color: ACCENT_BLUE }}>For Developers</h3>
+                                <ul className="space-y-3 text-gray-300">
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
+                                        <span>Easy Docker-based deployment with compose files</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
+                                        <span>Extensible architecture with MCP/Tools integration</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
+                                        <span>Desktop and browser clients included</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
+                                        <span>Built with .NET and modern web technologies</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
+                                        <span>Custom-tuned llama.cpp for optimal performance</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div className="bg-zinc-900 rounded-xl p-8 border transition-all" style={{ borderColor: `${ACCENT_BLUE}50` }}>
+                                <h3 className="text-2xl font-bold mb-4" style={{ color: ACCENT_BLUE }}>For Managers</h3>
+                                <ul className="space-y-3 text-gray-300">
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
+                                        <span>Secure, compliant solution for sensitive environments</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
+                                        <span>Cost-effective with no cloud dependencies</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
+                                        <span>Full data sovereignty and privacy control</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
+                                        <span>Reduced latency with local inference</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
+                                        <span>Transparent, auditable open-source code</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Technical Highlights */}
+                <div className="max-w-6xl mx-auto px-6 py-20">
+                    <h2 className="text-4xl font-bold text-center mb-16 text-white">
+                        Technical Excellence
+                    </h2>
+
+                    <div className="grid md:grid-cols-2 gap-6 text-gray-300">
+                        <TechItem title="Optimized Inference" details="Custom-tuned llama.cpp for maximum performance" />
+                        <TechItem title="Hardware Acceleration" details="CUDA, Metal, and ONNX support out of the box" />
+                        <TechItem title="Multiple Clients" details="Desktop and browser-based interfaces" />
+                        <TechItem title="MCP Integration" details="Model Context Protocol and tools support" />
+                        <TechItem title="Document Processing" details="Handle PDFs, images, and text with OCR capabilities" />
+                        <TechItem title="Hands-Free Mode" details="Speech-to-text and text-to-speech built in" />
+                    </div>
+                </div>
+
+                {/* CTA Section */}
+                <div className="border-y" style={{
+                    background: `linear-gradient(to right, ${ACCENT_BLUE}20, ${ACCENT_BLUE}10, ${ACCENT_BLUE}20)`,
+                    borderColor: `${ACCENT_BLUE}30`
+                }}>
+                    <div className="max-w-4xl mx-auto px-6 py-20 text-center">
+                        <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
+                            Ready to Deploy Strategic Intelligence?
+                        </h2>
+                        <p className="text-xl text-gray-300 mb-10">
+                            Join the future of secure, air-gapped AI deployment
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                            <a
+                                href="https://github.com/Ronin-Consulting/Aesir"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-8 py-4 rounded-lg font-semibold text-lg text-black transition-all shadow-lg flex items-center justify-center gap-2"
+                                style={{
+                                    backgroundColor: ACCENT_BLUE,
+                                    boxShadow: `0 10px 40px ${ACCENT_BLUE}30`
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6BB8FF'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
+                            >
+                                <Github className="w-5 h-5" />
+                                Get Started on GitHub
+                            </a>
+
+                            <a
+                                href="https://github.com/Ronin-Consulting/Aesir#readme"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-8 py-4 bg-zinc-900 border rounded-lg font-semibold text-lg hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
+                                style={{ borderColor: `${ACCENT_BLUE}80` }}
+                                onMouseEnter={(e) => e.currentTarget.style.borderColor = ACCENT_BLUE}
+                                onMouseLeave={(e) => e.currentTarget.style.borderColor = `${ACCENT_BLUE}80`}
+                            >
+                                View Documentation
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <footer className="max-w-6xl mx-auto px-6 py-12 text-center text-gray-400 border-t border-zinc-800">
+                    <p className="mb-2">Built by <span className="font-semibold" style={{ color: ACCENT_BLUE }}>Ronin Consulting</span></p>
+                    <p className="text-sm">Open Source • Apache 2.0 License • Community Driven</p>
+                    <div className="mt-6">
+                        <a
+                            href="https://github.com/Ronin-Consulting/Aesir"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-gray-300 transition-colors"
+                            style={{ color: 'rgb(209 213 219)' }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = ACCENT_BLUE}
+                            onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(209 213 219)'}
+                        >
+                            <Github className="w-5 h-5" />
+                            github.com/Ronin-Consulting/Aesir
+                        </a>
+                    </div>
+                </footer>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Video Demos Section */}
-      <div className="border-y border-zinc-800" style={{ backgroundColor: BG_COLOR }}>
-        <div className="max-w-6xl mx-auto px-6 py-20">
-          <h2 className="text-4xl font-bold text-center mb-4 text-white">
-            See AESIR in Action
-          </h2>
-          <p className="text-center text-gray-400 mb-16 text-lg">
-            Watch these demos to see how AESIR handles real-world AI tasks
-          </p>
-          
-          <VideoCarousel />
-        </div>
-      </div>
-
-      {/* Key Features */}
-      <div className="max-w-6xl mx-auto px-6 py-20">
-        <h2 className="text-4xl font-bold text-center mb-16 text-white">
-          Built for Security and Performance
-        </h2>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <FeatureCard 
-            icon={<Shield className="w-8 h-8" />}
-            title="Air-Gapped Ready"
-            description="Runs completely offline with local LLMs. Perfect for classified, medical, and sensitive environments."
-          />
-          
-          <FeatureCard 
-            icon={<Cpu className="w-8 h-8" />}
-            title="Cross-Platform"
-            description="Native support for x86, Apple Silicon, and ARM64 with hardware acceleration (CUDA, Metal, ONNX)."
-          />
-          
-          <FeatureCard 
-            icon={<FileText className="w-8 h-8" />}
-            title="RAG & Document Intelligence"
-            description="Built-in retrieval augmented generation with smart chunking and semantic search capabilities."
-          />
-          
-          <FeatureCard 
-            icon={<Eye className="w-8 h-8" />}
-            title="Multi-Modal"
-            description="Text, vision, and speech capabilities. Handle documents, images, and conversations seamlessly."
-          />
-          
-          <FeatureCard 
-            icon={<Zap className="w-8 h-8" />}
-            title="Flexible Backend"
-            description="Works with Ollama by default or connect to OpenAI-compatible APIs. Your choice, your control."
-          />
-          
-          <FeatureCard 
-            icon={<Github className="w-8 h-8" />}
-            title="Open Source"
-            description="Fully transparent, auditable, and customizable. Build on a foundation you can trust."
-          />
-        </div>
-      </div>
-
-      {/* Target Audience */}
-      <div className="border-y border-zinc-800" style={{ backgroundColor: BG_COLOR }}>
-        <div className="max-w-6xl mx-auto px-6 py-20">
-          <h2 className="text-4xl font-bold text-center mb-16 text-white">
-            Who AESIR Is For
-          </h2>
-          
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-zinc-900 rounded-xl p-8 border transition-all" style={{ borderColor: `${ACCENT_BLUE}50` }}>
-              <h3 className="text-2xl font-bold mb-4" style={{ color: ACCENT_BLUE }}>For Developers</h3>
-              <ul className="space-y-3 text-gray-300">
-                <li className="flex items-start gap-3">
-                  <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
-                  <span>Easy Docker-based deployment with compose files</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
-                  <span>Extensible architecture with MCP/Tools integration</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
-                  <span>Desktop and browser clients included</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
-                  <span>Built with .NET and modern web technologies</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
-                  <span>Custom-tuned llama.cpp for optimal performance</span>
-                </li>
-              </ul>
-            </div>
-            
-            <div className="bg-zinc-900 rounded-xl p-8 border transition-all" style={{ borderColor: `${ACCENT_BLUE}50` }}>
-              <h3 className="text-2xl font-bold mb-4" style={{ color: ACCENT_BLUE }}>For Managers</h3>
-              <ul className="space-y-3 text-gray-300">
-                <li className="flex items-start gap-3">
-                  <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
-                  <span>Secure, compliant solution for sensitive environments</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
-                  <span>Cost-effective with no cloud dependencies</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
-                  <span>Full data sovereignty and privacy control</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
-                  <span>Reduced latency with local inference</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="mt-1" style={{ color: ACCENT_BLUE }}>✓</span>
-                  <span>Transparent, auditable open-source code</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Technical Highlights */}
-      <div className="max-w-6xl mx-auto px-6 py-20">
-        <h2 className="text-4xl font-bold text-center mb-16 text-white">
-          Technical Excellence
-        </h2>
-        
-        <div className="grid md:grid-cols-2 gap-6 text-gray-300">
-          <TechItem title="Optimized Inference" details="Custom-tuned llama.cpp for maximum performance" />
-          <TechItem title="Hardware Acceleration" details="CUDA, Metal, and ONNX support out of the box" />
-          <TechItem title="Multiple Clients" details="Desktop and browser-based interfaces" />
-          <TechItem title="MCP Integration" details="Model Context Protocol and tools support" />
-          <TechItem title="Document Processing" details="Handle PDFs, images, and text with OCR capabilities" />
-          <TechItem title="Hands-Free Mode" details="Speech-to-text and text-to-speech built in" />
-        </div>
-      </div>
-
-      {/* CTA Section */}
-      <div className="border-y" style={{ 
-        background: `linear-gradient(to right, ${ACCENT_BLUE}20, ${ACCENT_BLUE}10, ${ACCENT_BLUE}20)`,
-        borderColor: `${ACCENT_BLUE}30`
-      }}>
-        <div className="max-w-4xl mx-auto px-6 py-20 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
-            Ready to Deploy Strategic Intelligence?
-          </h2>
-          <p className="text-xl text-gray-300 mb-10">
-            Join the future of secure, air-gapped AI deployment
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a 
-              href="https://github.com/Ronin-Consulting/Aesir" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="px-8 py-4 rounded-lg font-semibold text-lg text-black transition-all shadow-lg flex items-center justify-center gap-2"
-              style={{ 
-                backgroundColor: ACCENT_BLUE,
-                boxShadow: `0 10px 40px ${ACCENT_BLUE}30`
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6BB8FF'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
-            >
-              <Github className="w-5 h-5" />
-              Get Started on GitHub
-            </a>
-            
-            <a 
-              href="https://github.com/Ronin-Consulting/Aesir#readme" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="px-8 py-4 bg-zinc-900 border rounded-lg font-semibold text-lg hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
-              style={{ borderColor: `${ACCENT_BLUE}80` }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = ACCENT_BLUE}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = `${ACCENT_BLUE}80`}
-            >
-              View Documentation
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="max-w-6xl mx-auto px-6 py-12 text-center text-gray-400 border-t border-zinc-800">
-        <p className="mb-2">Built by <span className="font-semibold" style={{ color: ACCENT_BLUE }}>Ronin Consulting</span></p>
-        <p className="text-sm">Open Source • Apache 2.0 License • Community Driven</p>
-        <div className="mt-6">
-          <a 
-            href="https://github.com/Ronin-Consulting/Aesir" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-gray-300 transition-colors"
-            style={{ color: 'rgb(209 213 219)' }}
-            onMouseEnter={(e) => e.currentTarget.style.color = ACCENT_BLUE}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(209 213 219)'}
-          >
-            <Github className="w-5 h-5" />
-            github.com/Ronin-Consulting/Aesir
-          </a>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-function FeatureCard({ icon, title, description }) {
-  const [isHovered, setIsHovered] = useState(false);
-  
-  return (
-    <div 
-      className="bg-zinc-900 rounded-xl p-6 border transition-all"
-      style={{ 
-        borderColor: isHovered ? ACCENT_BLUE : '#27272a',
-        boxShadow: isHovered ? `0 10px 40px ${ACCENT_BLUE}20` : 'none'
-      }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="mb-4" style={{ color: ACCENT_BLUE }}>{icon}</div>
-      <h3 className="text-xl font-bold mb-3 text-white">{title}</h3>
-      <p className="text-gray-400 leading-relaxed">{description}</p>
-    </div>
-  );
-}
-
-function TechItem({ title, details }) {
-  const [isHovered, setIsHovered] = useState(false);
-  
-  return (
-    <div 
-      className="bg-zinc-900 rounded-lg p-5 border transition-all"
-      style={{ borderColor: isHovered ? `${ACCENT_BLUE}80` : '#27272a' }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <h4 className="font-semibold text-lg text-white mb-2">{title}</h4>
-      <p className="text-gray-400 text-sm">{details}</p>
-    </div>
-  );
-}
-
-function VideoCarousel() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  
-  const videos = [
-    {
-      title: "Getting Started with AESIR",
-      description: "Quick setup and installation walkthrough",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
-    },
-    {
-      title: "Document Processing & RAG",
-      description: "See how AESIR handles document intelligence",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
-    },
-    {
-      title: "Multi-Modal Capabilities",
-      description: "Text, vision, and speech in action",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
-    },
-    {
-      title: "Air-Gapped Deployment",
-      description: "Running AESIR in offline environments",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
-    },
-    {
-      title: "Custom Model Integration",
-      description: "Connecting your own LLMs and backends",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
-    },
-    {
-      title: "Advanced Agent Workflows",
-      description: "Building complex AI agent interactions",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+        );
     }
-  ];
-  
-  const nextSlide = () => {
-    setCurrentIndex((prev) => (prev + 1) % videos.length);
-  };
-  
-  const prevSlide = () => {
-    setCurrentIndex((prev) => (prev - 1 + videos.length) % videos.length);
-  };
-  
-  const goToSlide = (index) => {
-    setCurrentIndex(index);
-  };
-  
-  return (
-    <div className="relative">
-      {/* Main Video Display */}
-      <div className="relative overflow-hidden">
-        <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
-          {videos.map((video, index) => (
-            <div key={index} className="min-w-full px-4">
-              <VideoDemo 
-                title={video.title}
-                description={video.description}
-                videoUrl={video.videoUrl}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      {/* Navigation Buttons */}
-      <button
-        onClick={prevSlide}
-        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-zinc-900 text-white p-3 rounded-full shadow-lg border transition-all hover:scale-110"
-        style={{ 
-          borderColor: `${ACCENT_BLUE}80`,
-          backgroundColor: '#18181b'
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#18181b'}
-        aria-label="Previous video"
-      >
-        <ChevronLeft className="w-6 h-6" />
-      </button>
-      
-      <button
-        onClick={nextSlide}
-        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-zinc-900 text-white p-3 rounded-full shadow-lg border transition-all hover:scale-110"
-        style={{ 
-          borderColor: `${ACCENT_BLUE}80`,
-          backgroundColor: '#18181b'
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#18181b'}
-        aria-label="Next video"
-      >
-        <ChevronRight className="w-6 h-6" />
-      </button>
-      
-      {/* Dots Indicator */}
-      <div className="flex justify-center gap-2 mt-8">
-        {videos.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => goToSlide(index)}
-            className="h-3 rounded-full transition-all"
-            style={{
-              width: index === currentIndex ? '32px' : '12px',
-              backgroundColor: index === currentIndex ? ACCENT_BLUE : '#3f3f46'
-            }}
-            onMouseEnter={(e) => {
-              if (index !== currentIndex) e.currentTarget.style.backgroundColor = '#52525b';
-            }}
-            onMouseLeave={(e) => {
-              if (index !== currentIndex) e.currentTarget.style.backgroundColor = '#3f3f46';
-            }}
-            aria-label={`Go to video ${index + 1}`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
-function VideoDemo({ title, description, videoUrl }) {
-  const [isHovered, setIsHovered] = useState(false);
-  
-  return (
-    <div 
-      className="bg-zinc-900 rounded-xl overflow-hidden border transition-all max-w-4xl mx-auto"
-      style={{ 
-        borderColor: isHovered ? ACCENT_BLUE : '#27272a',
-        boxShadow: isHovered ? `0 10px 40px ${ACCENT_BLUE}20` : 'none'
-      }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="aspect-video relative group" style={{ backgroundColor: BG_COLOR }}>
-        <iframe
-          className="w-full h-full"
-          src={videoUrl}
-          title={title}
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        ></iframe>
-      </div>
-      <div className="p-6">
-        <h3 className="text-xl font-bold mb-2 text-white">{title}</h3>
-        <p className="text-gray-400">{description}</p>
-      </div>
-    </div>
-  );
-}
+    function FeatureCard({ icon, title, description }) {
+        const [isHovered, setIsHovered] = useState(false);
+
+        return (
+            <div
+                className="bg-zinc-900 rounded-xl p-6 border transition-all"
+                style={{
+                    borderColor: isHovered ? ACCENT_BLUE : '#27272a',
+                    boxShadow: isHovered ? `0 10px 40px ${ACCENT_BLUE}20` : 'none'
+                }}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+            >
+                <div className="mb-4" style={{ color: ACCENT_BLUE }}>{icon}</div>
+                <h3 className="text-xl font-bold mb-3 text-white">{title}</h3>
+                <p className="text-gray-400 leading-relaxed">{description}</p>
+            </div>
+        );
+    }
+
+    function TechItem({ title, details }) {
+        const [isHovered, setIsHovered] = useState(false);
+
+        return (
+            <div
+                className="bg-zinc-900 rounded-lg p-5 border transition-all"
+                style={{ borderColor: isHovered ? `${ACCENT_BLUE}80` : '#27272a' }}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+            >
+                <h4 className="font-semibold text-lg text-white mb-2">{title}</h4>
+                <p className="text-gray-400 text-sm">{details}</p>
+            </div>
+        );
+    }
+
+    function VideoCarousel() {
+        const [currentIndex, setCurrentIndex] = useState(0);
+
+        const videos = [
+            {
+                title: "Getting Started with AESIR",
+                description: "Quick setup and installation walkthrough",
+                videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            },
+            {
+                title: "Document Processing & RAG",
+                description: "See how AESIR handles document intelligence",
+                videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            },
+            {
+                title: "Multi-Modal Capabilities",
+                description: "Text, vision, and speech in action",
+                videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            },
+            {
+                title: "Air-Gapped Deployment",
+                description: "Running AESIR in offline environments",
+                videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            },
+            {
+                title: "Custom Model Integration",
+                description: "Connecting your own LLMs and backends",
+                videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            },
+            {
+                title: "Advanced Agent Workflows",
+                description: "Building complex AI agent interactions",
+                videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            }
+        ];
+
+        const nextSlide = () => {
+            setCurrentIndex((prev) => (prev + 1) % videos.length);
+        };
+
+        const prevSlide = () => {
+            setCurrentIndex((prev) => (prev - 1 + videos.length) % videos.length);
+        };
+
+        const goToSlide = (index) => {
+            setCurrentIndex(index);
+        };
+
+        return (
+            <div className="relative">
+                {/* Main Video Display */}
+                <div className="relative overflow-hidden">
+                    <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
+                        {videos.map((video, index) => (
+                            <div key={index} className="min-w-full px-4">
+                                <VideoDemo
+                                    title={video.title}
+                                    description={video.description}
+                                    videoUrl={video.videoUrl}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Navigation Buttons */}
+                <button
+                    onClick={prevSlide}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-zinc-900 text-white p-3 rounded-full shadow-lg border transition-all hover:scale-110"
+                    style={{
+                        borderColor: `${ACCENT_BLUE}80`,
+                        backgroundColor: '#18181b'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#18181b'}
+                    aria-label="Previous video"
+                >
+                    <ChevronLeft className="w-6 h-6" />
+                </button>
+
+                <button
+                    onClick={nextSlide}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-zinc-900 text-white p-3 rounded-full shadow-lg border transition-all hover:scale-110"
+                    style={{
+                        borderColor: `${ACCENT_BLUE}80`,
+                        backgroundColor: '#18181b'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#18181b'}
+                    aria-label="Next video"
+                >
+                    <ChevronRight className="w-6 h-6" />
+                </button>
+
+                {/* Dots Indicator */}
+                <div className="flex justify-center gap-2 mt-8">
+                    {videos.map((_, index) => (
+                        <button
+                            key={index}
+                            onClick={() => goToSlide(index)}
+                            className="h-3 rounded-full transition-all"
+                            style={{
+                                width: index === currentIndex ? '32px' : '12px',
+                                backgroundColor: index === currentIndex ? ACCENT_BLUE : '#3f3f46'
+                            }}
+                            onMouseEnter={(e) => {
+                                if (index !== currentIndex) e.currentTarget.style.backgroundColor = '#52525b';
+                            }}
+                            onMouseLeave={(e) => {
+                                if (index !== currentIndex) e.currentTarget.style.backgroundColor = '#3f3f46';
+                            }}
+                            aria-label={`Go to video ${index + 1}`}
+                        />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    function VideoDemo({ title, description, videoUrl }) {
+        const [isHovered, setIsHovered] = useState(false);
+
+        return (
+            <div
+                className="bg-zinc-900 rounded-xl overflow-hidden border transition-all max-w-4xl mx-auto"
+                style={{
+                    borderColor: isHovered ? ACCENT_BLUE : '#27272a',
+                    boxShadow: isHovered ? `0 10px 40px ${ACCENT_BLUE}20` : 'none'
+                }}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+            >
+                <div className="aspect-video relative group" style={{ backgroundColor: BG_COLOR }}>
+                    <iframe
+                        className="w-full h-full"
+                        src={videoUrl}
+                        title={title}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                    ></iframe>
+                </div>
+                <div className="p-6">
+                    <h3 className="text-xl font-bold mb-2 text-white">{title}</h3>
+                    <p className="text-gray-400">{description}</p>
+                </div>
+            </div>
+        );
+    }
+</script>
+</body>
+</html>
