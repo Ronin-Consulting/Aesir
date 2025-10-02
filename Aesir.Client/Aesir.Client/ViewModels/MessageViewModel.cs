@@ -108,6 +108,8 @@ public abstract partial class MessageViewModel : ObservableRecipient
         _appState = appState;
 
         ChatSessionId = _appState.SelectedChatSessionId;
+        ConversationId = !string.IsNullOrEmpty(_appState.ChatSession?.Conversation.Id) ?
+            Guid.Parse(_appState.ChatSession.Conversation.Id) : Guid.Empty;
         
         // ReSharper disable once VirtualMemberCallInConstructor
         RegenerateMessageCommand = CreateRegenerateMessageCommand();
@@ -168,7 +170,6 @@ public abstract partial class MessageViewModel : ObservableRecipient
     public virtual async Task SetMessage(AesirChatMessage message)
     {
         ChatSessionId = _appState.SelectedChatSessionId;
-        
         ConversationId = !string.IsNullOrEmpty(_appState.ChatSession?.Conversation.Id) ?
             Guid.Parse(_appState.ChatSession.Conversation.Id) : Guid.Empty;
         
