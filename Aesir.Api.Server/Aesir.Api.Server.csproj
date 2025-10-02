@@ -69,9 +69,6 @@
             <Link>.dockerignore</Link>
         </Content>
         <None Remove="Aspose.PDFfor.NET.lic"/>
-        <Content Include="Aspose.PDFfor.NET.lic">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </Content>
         <None Remove="Assets\vits-piper-en_US-joe-medium\MODEL_CARD" />
         <Content Include="Assets\vits-piper-en_US-joe-medium\MODEL_CARD">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
