@@ -33,12 +33,12 @@
         <PackageReference Include="Microsoft.SemanticKernel.PromptTemplates.Handlebars" Version="1.65.0" />
         <PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.65.0-alpha" />
         <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0"/>
-        <PackageReference Include="ModelContextProtocol-SemanticKernel" Version="0.4.0" />
+        <PackageReference Include="ModelContextProtocol-SemanticKernel" Version="0.5.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Npgsql" Version="9.0.3"/>
         <PackageReference Include="OllamaSharp" Version="5.4.7" />
         <PackageReference Include="OpenAI" Version="2.5.0" />
-        <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.12.0"/>
+        <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.13.0" />
         <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.13" />
         <PackageReference Include="PdfPig" Version="0.1.11" />
         <PackageReference Include="Pgvector" Version="0.3.2"/>
@@ -48,8 +48,8 @@
         <PackageReference Include="Qdrant.Client" Version="1.15.1" />
         <PackageReference Include="ReverseMarkdown" Version="4.7.0" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.4" />
-        <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="9.0.4" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
+        <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="9.0.6" />
         <PackageReference Include="System.Linq.Async" Version="6.0.3"/>
         <PackageReference Include="Tiktoken" Version="2.2.0"/>
         <PackageReference Include="Tiktoken.Encodings.p50k" Version="2.2.0"/>
