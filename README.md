@@ -26,11 +26,11 @@
   - [X] Edit user message
   - [X] Play message
 - [X] Support "Thinking" In Chat
-- [ ] Support Showing Execution Of Tools In Chat Thoughts
+- [X] Support Showing Execution Of Tools In Chat Thoughts
 - [X] Implement RAG
-  - [ ] Implement Document Management
-  - [x] Upload - Global Documents
-  - [x] Upload - Conversation Documents
+  - [X] Implement Document Management
+  - [X] Upload - Global Documents
+  - [X] Upload - Conversation Documents
   - [ ] ~~Download (should we do this?)~~
   - [x] CRUD
   - [X] Citations
@@ -53,7 +53,7 @@
   - [x] CRUD
   - [x] Search
 - [ ] Tools/MCP Integration
-- [ ] AI Agents
+- [X] AI Agents
 - [X] Hands Free Mode
   - [X] hands free UI/UX
   - [X] speech-to-text
@@ -75,34 +75,6 @@
 
 ### Ollama (Default)
 Ollama is the default backend used by AESIR. No additional configuration is required beyond installing Ollama locally.
-
-### OpenAI
-To use OpenAI as the backend:
-1. Set `"Inference:UseOpenAICompatible": true` in appsettings.Development.json
-2. Add your API key to `"Inference:OpenAI:ApiKey"`
-3. Optionally configure organization ID and preferred models
-
-### LLM Models Tested
-1. **cogito:32b-v1-preview-qwen-q4_K_M - This one is the best non-reasoning**
-2. **gpt-oss - The best reasoning/thinking model**
-    1. This requires Ronin's patch to OllamSharp.
-
-Note: 
-1. Tried deepseek-r1:32b-qwen-distill-q4_K_M its great! But sad with tools. Looks like a bug in Ollama.
-
-### Embedding Models Tested
-1. mxbai-embed-large:latest
-2. nomic-embed-text:latest
-
-### Vision Models Tested
-1. gemma3:12b-it-q4_K_M - is this best so far
-
-### KNOW BUGS
-- [ ] When using OpenAI Compatible Models (specfically ChatGPT 4.1) the model will not auto run function tools if a document is attached to the conversation it was pre-trained on.
-- [ ] True up web and desktop fonts (Found out that there is bug in current Avalonia that prevents nicer variable fonts from loading)
-- [ ] When rendering the response of an assistant message, if a code block is present we need to foce it to "scroll" horizontally.  Need CSS tweaks. Noticed when testing JSON files.
-- [X] FIXED - When click a citation from a non-pdf or image based document you get error. Its because the citation viewer expects image.
-- [X] FIXED - The use of mime-types in the API is requiring major refactoring and centralization. It has been started.
 
 ### Random Notes
 - Test Vision Models with this repo... https://github.com/JensWalter/my-receipts
