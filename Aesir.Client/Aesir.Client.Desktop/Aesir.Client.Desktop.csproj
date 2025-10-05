@@ -55,6 +55,5 @@
       <Content Include="nlog.config">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
-      <None Remove="MissionPlan-OU812.pdf" />
     </ItemGroup>
 </Project>
