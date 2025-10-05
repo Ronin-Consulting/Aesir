@@ -1,4 +1,4 @@
-![AESIR](Transparent%20Logo.png)
+![AESIR](logo.png)
 # How to run
   
 1. #### API Server
