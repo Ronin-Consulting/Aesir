@@ -65,7 +65,7 @@
                 Margin="0,25,0,0"
                 HorizontalAlignment="Center"
                 FontSize="10"
-                Text="Ronin Consulting LLC. All rights reserved." />
+                Text="Sponsored by Ronin Consulting LLC" />
         </StackPanel>
     </Grid>
 </u:SplashWindow>
