@@ -1,12 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html style="background-color: #16161A;">
 <head>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body {
+            background-color: #16161A;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
 </head>
-<body>
+<body style="background-color: #16161A;">
 <div id="root"></div>
 <script type="text/babel">
     const { useState } = React;
@@ -319,7 +326,7 @@
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <GitFork className="w-4 h-4" />
-                                        <span>Apache 2.0</span>
+                                        <span>MIT License</span>
                                     </div>
                                 </div>
                             </div>
@@ -529,7 +536,7 @@
                         onMouseEnter={(e) => e.currentTarget.style.color = '#6BB8FF'}
                         onMouseLeave={(e) => e.currentTarget.style.color = ACCENT_BLUE}
                     >Ronin Consulting</a></p>
-                    <p className="text-sm">Open Source &bull; Apache 2.0 License &bull; Community Driven</p>
+                    <p className="text-sm">Open Source &bull; MIT License &bull; Community Driven</p>
                     <div className="mt-6">
                         <a
                             href="https://github.com/Ronin-Consulting/Aesir"
