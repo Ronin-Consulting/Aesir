@@ -1,7 +1,4 @@
-<div style="background-color: black; padding: 20px;">
-  <img src="logo.png" alt="AESIR">
-</div>
-
+![AESIR](logo.png)
 # How to run
   
 1. #### API Server
