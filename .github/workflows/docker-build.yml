@@ -1,0 +1,53 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Extract metadata
+      id: meta
+      run: |
+        echo "sha_short=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_OUTPUT
+        echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Build and push API Server image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Aesir.Api.Server/Dockerfile
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/aesir-platform-server:latest
+          ${{ secrets.DOCKER_USERNAME }}/aesir-platform-server:${{ steps.meta.outputs.sha_short }}
+          ${{ secrets.DOCKER_USERNAME }}/aesir-platform-server:${{ steps.meta.outputs.tag }}
+        platforms: linux/amd64,linux/arm64
+
+    - name: Build and push Desktop Client image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Aesir.Client/Aesir.Client.Desktop/Dockerfile
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/aesir-reference-client:latest
+          ${{ secrets.DOCKER_USERNAME }}/aesir-reference-client:${{ steps.meta.outputs.sha_short }}
+          ${{ secrets.DOCKER_USERNAME }}/aesir-reference-client:${{ steps.meta.outputs.tag }}
+        platforms: linux/amd64,linux/arm64
