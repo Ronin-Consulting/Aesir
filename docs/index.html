@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -9,75 +8,221 @@
 </head>
 <body>
 <div id="root"></div>
+<style>
+    .bordered {
+        border: 1px solid rgba(255, 255, 255, .1);
+    }
+
+    .bordered-sides {
+        border-width: 0 1px 0 1px;
+    }
+
+    .pulsating-logo {
+        transform-origin: 50% 50%; /* Ensure scaling from the center */
+        animation: pulse 2s infinite alternate; /* Apply the animation */
+    }
+
+    .pulsating-logo path, .pulsating-logo polygon {
+        fill: #54A9FF !important;
+    }
+
+    .lines {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 100%;
+        margin: auto;
+        width: 100%;
+        display: flex;
+        justify-content: space-between; /* Distribute lines evenly */
+    }
+
+    .line {
+        position: relative;
+        width: 1px;
+        height: 100%;
+        /*background: #ffffff;  /* Line color */
+        overflow: hidden;
+    }
+
+    .line::after {
+        content: '';
+        display: block;
+        position: absolute;
+        height: 15vh;
+        width: 100%;
+        top: -50%;
+        left: 0;
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #ffffff 75%, #ffffff 100%);
+        animation: drop 7s 0s infinite;
+        animation-fill-mode: forwards;
+        animation-timing-function: cubic-bezier(0.4, 0.26, 0, 0.97);
+    }
+
+    /* Different colors for each line's pseudo-element */
+    .line:nth-child(1)::after {
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #54A9FF 75%, #54A9FF 100%);
+        animation-delay: 0.5s;
+    }
+
+    .line:nth-child(2)::after {
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #54A9FF 75%, #54A9FF 100%);
+        animation-delay: 1s;
+    }
+
+    .line:nth-child(3)::after {
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #54A9FF 75%, #54A9FF 100%);
+        animation-delay: 1.5s;
+    }
+
+    .line:nth-child(4)::after {
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #54A9FF 75%, #54A9FF 100%);
+        animation-delay: 2s;
+    }
+
+    .line:nth-child(5)::after {
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #54A9FF 75%, #54A9FF 100%);
+        animation-delay: 2.5s;
+    }
+
+    .line:nth-child(6)::after {
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #54A9FF 75%, #54A9FF 100%);
+        animation-delay: 3s;
+    }
+
+    .line:nth-child(7)::after {
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #54A9FF 75%, #54A9FF 100%);
+        animation-delay: 3.5s;
+    }
+
+    .line:nth-child(8)::after {
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #54A9FF 75%, #54A9FF 100%);
+        animation-delay: 4s;
+    }
+
+    .line:nth-child(9)::after {
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #54A9FF 75%, #54A9FF 100%);
+        animation-delay: 4.5s;
+    }
+
+    .line:nth-child(10)::after {
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #54A9FF 75%, #54A9FF 100%);
+        animation-delay: 5s;
+    }
+
+    @keyframes drop {
+        0% {
+            top: -50%;
+        }
+        100% {
+            top: 110%;
+        }
+    }
+
+
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+            opacity: 1;
+        }
+        50% {
+            transform: scale(1.1); /* Scale up slightly */
+            opacity: 0.8; /* Optionally reduce opacity */
+        }
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .dot {
+        position: absolute;
+        inset: 0;
+        height: 100%;
+        width: 100%;
+        background-image: radial-gradient(#2c649f 1px, transparent 1px);
+        background-size: 16px 16px;
+    }
+
+
+</style>
 <script type="text/babel">
-    const { useState } = React;
+    const {useState} = React;
 
     const ACCENT_BLUE = '#54A9FF';
     const BG_COLOR = '#16161A';
 
     // Simple icon components using SVG
-    const Shield = ({ className }) => (
+    const Shield = ({className}) => (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
         </svg>
     );
 
-    const Cpu = ({ className }) => (
+    const Cpu = ({className}) => (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
         </svg>
     );
 
-    const FileText = ({ className }) => (
+    const FileText = ({className}) => (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
         </svg>
     );
 
-    const Eye = ({ className }) => (
+    const Eye = ({className}) => (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
         </svg>
     );
 
-    const Zap = ({ className }) => (
+    const Zap = ({className}) => (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
         </svg>
     );
 
-    const Github = ({ className }) => (
+    const Github = ({className}) => (
         <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            <path
+                d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
         </svg>
     );
 
-    const Star = ({ className }) => (
+    const Star = ({className}) => (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
         </svg>
     );
 
-    const GitFork = ({ className }) => (
+    const GitFork = ({className}) => (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
         </svg>
     );
 
-    const ChevronLeft = ({ className }) => (
+    const ChevronLeft = ({className}) => (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
         </svg>
     );
 
-    const ChevronRight = ({ className }) => (
+    const ChevronRight = ({className}) => (
         <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
         </svg>
     );
 
-    function FeatureCard({ icon, title, description }) {
+    function FeatureCard({icon, title, description}) {
         const [isHovered, setIsHovered] = useState(false);
 
         return (
@@ -90,30 +235,30 @@
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
-                <div className="mb-4" style={{ color: ACCENT_BLUE }}>{icon}</div>
+                <div className="mb-4" style={{color: ACCENT_BLUE}}>{icon}</div>
                 <h3 className="text-xl font-bold mb-3 text-white">{title}</h3>
                 <p className="text-gray-400 leading-relaxed">{description}</p>
             </div>
         );
     }
 
-    function TechItem({ title, details }) {
+    function TechItem({title, details}) {
         const [isHovered, setIsHovered] = useState(false);
 
         return (
             <div
                 className="bg-zinc-900 rounded-lg p-5 border transition-all"
-                style={{ borderColor: isHovered ? `${ACCENT_BLUE}80` : '#27272a' }}
+                style={{borderColor: isHovered ? `${ACCENT_BLUE}80` : '#27272a'}}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
-                <h4 className="font-semibold text-lg text-white mb-2">{title}</h4>
+                <h4 className="font-semibold text-lg text-white mb-2" style={{color: ACCENT_BLUE}}>{title}</h4>
                 <p className="text-gray-400 text-sm">{details}</p>
             </div>
         );
     }
 
-    function VideoDemo({ title, description, videoUrl }) {
+    function VideoDemo({title, description, videoUrl}) {
         const [isHovered, setIsHovered] = useState(false);
 
         return (
@@ -126,7 +271,7 @@
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
-                <div className="aspect-video relative group" style={{ backgroundColor: BG_COLOR }}>
+                <div className="aspect-video relative group" style={{backgroundColor: BG_COLOR}}>
                     <iframe
                         className="w-full h-full"
                         src={videoUrl}
@@ -142,6 +287,21 @@
                 </div>
             </div>
         );
+    }
+
+    function Lines() {
+        return (<div className="lines z-0">
+            <div className="line"></div>
+            <div className="line"></div>
+            <div className="line"></div>
+            <div className="line"></div>
+            <div className="line"></div>
+            <div className="line"></div>
+            <div className="line"></div>
+            <div className="line"></div>
+            <div className="line"></div>
+            <div className="line"></div>
+        </div>);
     }
 
     function VideoCarousel() {
@@ -196,7 +356,8 @@
             <div className="relative">
                 {/* Main Video Display */}
                 <div className="relative overflow-hidden">
-                    <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
+                    <div className="flex transition-transform duration-500 ease-in-out"
+                         style={{transform: `translateX(-${currentIndex * 100}%)`}}>
                         {videos.map((video, index) => (
                             <div key={index} className="min-w-full px-4">
                                 <VideoDemo
@@ -221,7 +382,7 @@
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#18181b'}
                     aria-label="Previous video"
                 >
-                    <ChevronLeft className="w-6 h-6" />
+                    <ChevronLeft className="w-6 h-6"/>
                 </button>
 
                 <button
@@ -235,7 +396,7 @@
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#18181b'}
                     aria-label="Next video"
                 >
-                    <ChevronRight className="w-6 h-6" />
+                    <ChevronRight className="w-6 h-6"/>
                 </button>
 
                 {/* Dots Indicator */}
@@ -265,44 +426,100 @@
 
     function AesirLanding() {
         return (
-            <div className="min-h-screen text-white" style={{ backgroundColor: BG_COLOR }}>
+            <div className="min-h-screen text-white" style={{backgroundColor: BG_COLOR}}>
+                <header className="w-full bordered">
+                    <div
+                        className="max-w-7xl flex flex-row justify-between mx-auto relative bordered bordered-sides p-4">
+                        <div className="w-[200px] flex">
+                            <svg className="max-w-[75px]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 158.89 43.73"
+                                 style={{width: 75}}>
+                                <g>
+                                    <g>
+                                        <path
+                                            d="M76.3,43.63c-2.12,0-4.16-.3-6.12-.89s-3.72-1.42-5.27-2.48h0v-7.42c1.06,2.74,2.68,4.81,4.87,6.22s4.46,2.12,6.83,2.12h0c2.37,0,4.35-.79,5.94-2.36s2.39-3.52,2.39-5.85h0c0-1.55-.32-2.88-.95-3.99-.63-1.1-1.64-2.13-3.03-3.09-1.39-.96-3.35-2.03-5.88-3.22h0c-3.55-1.63-6.14-3.34-7.75-5.11-1.61-1.78-2.42-3.94-2.42-6.47h0c0-2.16.52-4.09,1.56-5.79,1.04-1.69,2.45-3,4.23-3.92,1.77-.92,3.72-1.38,5.85-1.38h0c1.84,0,3.64.26,5.39.77,1.76.51,3.39,1.24,4.9,2.18h0v6.61c-.98-2.25-2.46-3.99-4.44-5.24-1.98-1.24-3.99-1.86-6.03-1.86h0c-2.33,0-4.21.75-5.64,2.26-1.43,1.51-2.15,3.31-2.15,5.39h0c0,1.51.43,2.81,1.29,3.89.86,1.09,1.91,2,3.16,2.73s2.99,1.63,5.24,2.7h0c2.29,1.1,4.16,2.12,5.63,3.06s2.7,2.17,3.68,3.68c.98,1.51,1.47,3.34,1.47,5.51h0c0,2.45-.58,4.58-1.75,6.37-1.16,1.8-2.71,3.18-4.65,4.14s-4.06,1.44-6.35,1.44h0ZM102.34,42.89c0,.13.25.04.74-.27s.94-.88,1.35-1.72c.41-.83.61-2.07.61-3.71h0V6.44c0-1.63-.19-2.87-.58-3.71-.39-.84-.83-1.4-1.32-1.68-.49-.29-.73-.39-.73-.31h9.74c0-.08-.25.02-.74.31-.49.28-.94.84-1.35,1.68s-.61,2.08-.61,3.71h0v30.75c0,1.64.2,2.88.61,3.71.41.84.86,1.4,1.35,1.69.49.29.74.39.74.3h-9.81,0ZM138.74,21.69c1.88,0,3.51-.44,4.9-1.31,1.39-.88,2.44-2.02,3.15-3.43.72-1.41,1.08-2.9,1.08-4.45h0c0-1.59-.34-3.09-1.01-4.5-.68-1.41-1.71-2.56-3.1-3.46s-3.08-1.35-5.08-1.35h-5.21v34.07c0,1.63.2,2.87.61,3.7.41.84.86,1.39,1.35,1.66.49.27.73.36.73.27h-9.74c0,.09.25-.01.74-.3s.92-.84,1.31-1.66c.39-.81.59-2.04.59-3.67h0V6.62c0-1.67-.2-2.95-.59-3.83-.39-.88-.82-1.47-1.31-1.77-.49-.31-.74-.4-.74-.28h12.13c3.19,0,5.81.52,7.88,1.56,2.06,1.04,3.55,2.39,4.47,4.05.92,1.65,1.38,3.46,1.38,5.42h0c0,1.63-.39,3.24-1.17,4.81-.77,1.57-1.89,2.94-3.34,4.1-1.45,1.17-3.13,1.97-5.05,2.42h0l-.98.19,10.78,13.72c1.43,1.59,2.62,2.82,3.56,3.68.94.85,1.62,1.42,2.05,1.71s.68.45.76.49h-7.16l-16.67-21.2h3.68Z"
+                                            style={{fill: '#f9f9f9'}}/>
+                                        <path
+                                            d="M53.73,6.64c-.76-2.52-3.02-3.78-6.8-3.78h-8.76v17.89h10.84c.84,0,1.55-.14,2.14-.41.59-.27,1.03-.56,1.32-.85.29-.29.46-.48.5-.57v6.11c-.04-.08-.21-.27-.5-.57-.29-.29-.72-.57-1.29-.82s-1.27-.38-2.11-.38h-10.9v17.89h9.83c1.89,0,3.52-.39,4.88-1.17,1.36-.78,2.34-1.77,2.93-2.99l-1.13,6.68h-23.75c0,.13.25.03.76-.28.5-.31.96-.94,1.35-1.89.4-.95.6-2.32.6-4.13v-14.11h-13.8l-9.26,14.11c-1.09,1.72-1.64,3.11-1.64,4.16,0,.63.16,1.1.47,1.42.32.31.64.51.98.6.34.08.54.13.63.13H0c1.89-.17,4.03-2.06,6.43-5.67L27.91,5.75c.67-1.05,1.01-2.08,1.01-3.09s-.4-1.83-1.2-2.33h26.02v6.3h-.01ZM21.48,20.76h12.16V2.24l-12.16,18.52Z"
+                                            style={{fill: '#f9f9f9'}}/>
+                                    </g>
+                                </g>
+                            </svg>
+                        </div>
+                        <div className="w-[200px] text-center">
+                            <svg className="max-w-[40px] mx-auto" xmlns="http://www.w3.org/2000/svg" id="Layer_2"
+                                 data-name="Layer 2" viewBox="0 0 170.88 149.5" style={{width: 40}}>
+                                <g id="nnnn_1" data-name="nnnn 1">
+                                    <g>
+                                        <path
+                                            d="M91.79,54.51L170.88,1.52l-85.44,42L0,1.52l79.09,52.99,6.35,94.99s6.35-94.99,6.35-94.99Z"
+                                            style={{fill: '#f9f9f9'}}/>
+                                        <polygon points="59.78 65.35 65.48 117.96 66.36 61.41 18.13 33.05 59.78 65.35"
+                                                 style={{fill: '#f9f9f9'}}/>
+                                        <polygon
+                                            points="110.83 65.81 153.54 34.57 104.13 62.09 103.68 118.03 110.83 65.81"
+                                            style={{fill: '#f9f9f9'}}/>
+                                        <polygon points="85.7 21.37 37.29 0 85.83 29.04 134.5 1.45 85.7 21.37"
+                                                 style={{fill: '#f9f9f9'}}/>
+                                    </g>
+                                </g>
+                            </svg>
+                        </div>
+                        <div className="w-[200px] flex">
+                            <div className="flex max-w-[200px]">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 194.22 8.97" style={{width: 200}}>
+                                    <g id="nnnn_1" data-name="nnnn 1">
+                                        <path
+                                            d="M5.03,6.56v.26c0,.3-.06.58-.18.84-.12.26-.28.49-.48.68s-.43.35-.7.46-.55.17-.84.17h-.63c-.29,0-.57-.06-.84-.17-.27-.11-.5-.27-.7-.46s-.36-.42-.48-.68-.18-.54-.18-.84h0v-.34l.78-.13v.47c0,.2.04.38.12.55.08.17.19.31.32.44.13.13.29.23.47.3.17.07.36.11.55.11h.55c.19,0,.38-.04.55-.11.18-.07.34-.17.47-.3.13-.13.24-.27.32-.44.07-.17.11-.35.11-.55h0v-.26c0-.3-.06-.55-.17-.75-.12-.19-.28-.36-.47-.5s-.41-.26-.66-.36-.5-.2-.76-.29c-.26-.1-.51-.21-.76-.32-.24-.12-.46-.27-.66-.45-.19-.17-.35-.39-.46-.64-.12-.26-.18-.58-.18-.95H.12v-.16c0-.29.06-.57.17-.83s.26-.49.46-.69c.19-.19.42-.34.68-.45S1.97,0,2.27,0h.56C3.12,0,3.4.06,3.66.17s.49.26.68.45c.19.2.35.43.46.69s.17.54.17.83h0v.22l-.79.13v-.35c0-.19-.04-.37-.11-.54s-.17-.32-.29-.45c-.13-.12-.27-.22-.44-.29s-.36-.11-.55-.11h-.49c-.19,0-.37.04-.54.11s-.31.17-.44.29c-.13.13-.24.28-.31.45-.07.17-.11.35-.11.54h0v.16c0,.28.06.52.18.71s.28.36.47.49.41.25.66.35.5.2.76.31c.26.1.51.21.75.34.25.12.47.27.66.45.2.18.36.4.47.66.12.26.18.58.18.95h0ZM14.4.87h-2.08v7.97h-.78V.87h-2.09V.12h4.95v.75ZM24.14,8.84h-.9l-2.37-3.72h-1.08v3.72h-.78V.12h2.77c.29,0,.57.06.83.17s.49.26.68.46c.19.19.35.42.46.68s.17.54.17.84h0v.7c0,.3-.06.58-.17.84s-.27.49-.46.68c-.19.2-.42.35-.68.46s-.54.17-.83.17h0l2.36,3.72h0ZM23.13,2.97v-.7c0-.19-.04-.38-.11-.55-.07-.17-.17-.31-.29-.44-.13-.13-.27-.23-.44-.3s-.36-.11-.55-.11h-1.95v3.5h1.95c.19,0,.38-.04.55-.11s.31-.17.44-.3c.12-.13.22-.27.29-.44.07-.17.11-.35.11-.55h0ZM32.98,8.84l-.58-2.03h-2.76l-.57,2.03h-.82L30.81.12h.41l2.57,8.72h-.81ZM31,2.04l-1.15,4.02h2.34l-1.14-4.02-.03-.32-.02.32ZM42.22.87h-2.08v7.97h-.78V.87h-2.08V.12h4.94v.75ZM51.87,8.84h-4.91V.12h4.91v.75h-4.13v3.24h3.34v.75h-3.34v3.24h4.13v.74ZM61.64,4.26v4.58h-.25l-.46-.7c-.19.25-.42.45-.69.6s-.58.23-.91.23h-.46c-.29,0-.57-.06-.83-.17-.27-.11-.5-.27-.69-.46s-.35-.42-.46-.68-.16-.54-.16-.84h0V2.14c0-.29.05-.57.16-.83.11-.26.27-.49.46-.69.19-.19.42-.34.69-.45C58.3.06,58.58,0,58.87,0h.62c.3,0,.58.06.84.17s.49.26.68.45c.19.2.35.43.46.69s.17.54.17.83h0v.35l-.79.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.3-.45-.13-.12-.27-.22-.44-.29s-.35-.11-.54-.11h-.55c-.19,0-.37.04-.54.11s-.32.17-.45.29c-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.28.23.45.3s.35.11.54.11h.55c.19,0,.37-.04.54-.11s.31-.17.44-.3c.13-.13.23-.27.3-.44s.11-.35.11-.55h0v-1.81h-1.39v-.75h2.18ZM67.78,8.84h-.78V.12h.78v8.72ZM78.05,6.82h0c0,.3-.06.58-.17.84-.11.26-.27.49-.46.68s-.42.35-.68.46c-.26.11-.54.17-.83.17h-.62c-.3,0-.58-.06-.84-.17s-.49-.27-.68-.46c-.2-.19-.35-.42-.46-.68s-.17-.54-.17-.84h0V2.14c0-.29.06-.57.17-.83.11-.26.26-.49.46-.69.19-.19.42-.34.68-.45.26-.11.54-.17.84-.17h.62c.29,0,.57.06.83.17.26.11.49.26.68.45.19.2.35.43.46.69s.17.54.17.83h0v.35l-.79.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.29-.45-.13-.12-.27-.22-.44-.29s-.36-.11-.55-.11h-.55c-.19,0-.37.04-.54.11s-.32.17-.45.29c-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.28.23.45.3s.35.11.54.11h.55c.19,0,.38-.04.55-.11.17-.07.31-.17.44-.3.12-.13.22-.27.29-.44s.11-.35.11-.55h0v-.47l.79.13v.34ZM90.42,8.84h-.78V.12h.78v8.72ZM100.82,8.84h-.42l-3.64-6.35-.07-.37v6.72h-.78V.12h.4l3.64,6.36.08.37V.12h.79v8.72h0ZM110.5.87h-2.08v7.97h-.79V.87h-2.08V.12h4.95v.75h0ZM120.14,8.84h-4.91V.12h4.91v.75h-4.12v3.24h3.34v.75h-3.34v3.24h4.12v.74ZM129.12,8.84h-4.12V.12h.78v7.98h3.34v.74ZM137.86,8.84h-4.13V.12h.79v7.98h3.34v.74ZM143.38,8.84h-.79V.12h.79v8.72ZM153.64,4.26v4.58h-.25l-.45-.7c-.19.25-.43.45-.7.6-.27.15-.57.23-.9.23h-.46c-.29,0-.57-.06-.83-.17-.27-.11-.5-.27-.69-.46s-.35-.42-.46-.68-.17-.54-.17-.84h0V2.14c0-.29.06-.57.17-.83.11-.26.27-.49.46-.69.19-.19.42-.34.69-.45C150.31.06,150.59,0,150.88,0h.62c.3,0,.58.06.84.17s.49.26.68.45c.19.2.35.43.46.69s.16.54.16.83h0v.35l-.78.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.3-.45-.13-.12-.27-.22-.44-.29s-.35-.11-.54-.11h-.55c-.19,0-.38.04-.55.11-.17.07-.31.17-.44.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.27.23.44.3s.36.11.55.11h.55c.19,0,.37-.04.54-.11s.31-.17.44-.3c.13-.13.23-.27.3-.44s.11-.35.11-.55h0v-1.81h-1.39v-.75h2.17ZM163.92,8.84h-4.91V.12h4.91v.75h-4.13v3.24h3.34v.75h-3.34v3.24h4.13v.74ZM173.81,8.84h-.41l-3.64-6.35-.07-.37v6.72h-.79V.12h.41l3.64,6.36.08.37V.12h.78v8.72h0ZM184.08,6.82h0c0,.3-.06.58-.17.84-.11.26-.27.49-.46.68s-.42.35-.68.46c-.26.11-.54.17-.84.17h-.62c-.29,0-.57-.06-.83-.17-.26-.11-.49-.27-.69-.46-.19-.19-.35-.42-.46-.68s-.16-.54-.16-.84h0V2.14c0-.29.05-.57.16-.83.11-.26.27-.49.46-.69.2-.19.43-.34.69-.45s.54-.17.83-.17h.62c.3,0,.58.06.84.17s.49.26.68.45c.19.2.35.43.46.69s.17.54.17.83h0v.35l-.79.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.3-.45-.12-.12-.27-.22-.44-.29s-.35-.11-.54-.11h-.55c-.19,0-.37.04-.54.11s-.32.17-.45.29c-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.28.23.45.3s.35.11.54.11h.55c.19,0,.37-.04.54-.11s.32-.17.44-.3c.13-.13.23-.27.3-.44.07-.17.11-.35.11-.55h0v-.47l.79.13v.34ZM194.22,8.84h-4.91V.12h4.91v.75h-4.12v3.24h3.34v.75h-3.34v3.24h4.12v.74Z"
+                                            style={{fill: '#f9f9f9'}}/>
+                                    </g>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                </header>
                 {/* Hero Section */}
                 <div className="relative overflow-hidden">
                     <div className="absolute inset-0" style={{
                         background: `linear-gradient(to bottom, ${ACCENT_BLUE}10, transparent)`
                     }}></div>
-                    <div className="max-w-6xl mx-auto px-6 py-20 relative">
-                        <div className="text-center space-y-8">
-                            <div className="inline-block w-full">
-                                <svg className="w-full max-w-5xl mx-auto mb-12" viewBox="0 0 395 149.5" xmlns="http://www.w3.org/2000/svg">
+                    <div className="max-w-7xl mx-auto px-6 py-20 relative bordered bordered-sides">
+                        {Lines()}
+                        <div className="text-center space-y-8 z-[1] relative">
+                            <svg className="max-w-[140px] mx-auto pulsating-logo" xmlns="http://www.w3.org/2000/svg"
+                                 id="Layer_2" data-name="Layer 2" viewBox="0 0 170.88 149.5" style={{width: 140}}>
+                                <g id="nnnn_1" data-name="nnnn 1">
                                     <g>
-                                        <path d="M91.79,54.51L170.88,1.52l-85.44,42L0,1.52l79.09,52.99,6.35,94.99,6.35-94.99ZM85.44,50.84h0Z" style={{ fill: '#f9f9f9' }}/>
-                                        <polygon points="59.78 65.35 65.48 117.96 66.36 61.41 18.13 33.05 59.78 65.35" style={{ fill: '#f9f9f9' }}/>
-                                        <polygon points="110.83 65.81 153.54 34.57 104.13 62.09 103.68 118.03 110.83 65.81" style={{ fill: '#f9f9f9' }}/>
-                                        <polygon points="85.7 21.37 37.29 0 85.83 29.04 134.5 1.45 85.7 21.37" style={{ fill: '#f9f9f9' }}/>
+                                        <path
+                                            d="M91.79,54.51L170.88,1.52l-85.44,42L0,1.52l79.09,52.99,6.35,94.99s6.35-94.99,6.35-94.99Z"
+                                            style={{fill: '#f9f9f9'}}/>
+                                        <polygon points="59.78 65.35 65.48 117.96 66.36 61.41 18.13 33.05 59.78 65.35"
+                                                 style={{fill: '#f9f9f9'}}/>
+                                        <polygon
+                                            points="110.83 65.81 153.54 34.57 104.13 62.09 103.68 118.03 110.83 65.81"
+                                            style={{fill: '#f9f9f9'}}/>
+                                        <polygon points="85.7 21.37 37.29 0 85.83 29.04 134.5 1.45 85.7 21.37"
+                                                 style={{fill: '#f9f9f9'}}/>
                                     </g>
-                                    <path d="M205.81,104.63v.26c0,.3-.06.58-.18.84-.12.26-.28.49-.48.68-.2.19-.43.35-.7.46s-.55.17-.84.17h-.63c-.29,0-.57-.06-.84-.17-.27-.11-.5-.27-.7-.46-.2-.19-.36-.42-.48-.68-.12-.26-.18-.54-.18-.84h0v-.34l.78-.13v.47c0,.2.04.38.12.55.08.17.19.31.32.44.13.13.29.23.47.3.17.07.36.11.55.11h.55c.19,0,.38-.04.55-.11.18-.07.34-.17.47-.3.13-.13.24-.27.32-.44.07-.17.11-.35.11-.55h0v-.26c0-.3-.06-.55-.17-.75-.12-.19-.28-.36-.47-.5-.19-.14-.41-.26-.66-.36-.25-.1-.5-.2-.76-.29-.26-.1-.51-.21-.76-.32-.24-.12-.46-.27-.66-.45-.19-.17-.35-.39-.46-.64-.12-.26-.18-.58-.18-.95h0v-.16c0-.29.06-.57.17-.83.11-.26.26-.49.46-.69.19-.19.42-.34.68-.45.26-.11.54-.17.84-.17h.56c.29,0,.57.06.83.17.26.11.49.26.68.45.19.2.35.43.46.69s.17.54.17.83h0v.22l-.79.13v-.35c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.29-.45-.13-.12-.27-.22-.44-.29-.17-.07-.36-.11-.55-.11h-.49c-.19,0-.37.04-.54.11-.17.07-.31.17-.44.29-.13.13-.24.28-.31.45-.07.17-.11.35-.11.54h0v.16c0,.28.06.52.18.71.12.19.28.36.47.49.19.13.41.25.66.35.25.1.5.2.76.31.26.1.51.21.75.34.25.12.47.27.66.45.2.18.36.4.47.66.12.26.18.58.18.95h0ZM215.18,98.94h-2.08v7.97h-.78v-7.97h-2.09v-.75h4.95v.75ZM224.92,106.91h-.9l-2.37-3.72h-1.08v3.72h-.78v-8.72h2.77c.29,0,.57.06.83.17.26.11.49.26.68.46.19.19.35.42.46.68s.17.54.17.84h0v.7c0,.3-.06.58-.17.84s-.27.49-.46.68c-.19.2-.42.35-.68.46-.26.11-.54.17-.83.17h0l2.36,3.72ZM223.91,101.04v-.7c0-.19-.04-.38-.11-.55-.07-.17-.17-.31-.29-.44-.13-.13-.27-.23-.44-.3-.17-.07-.36-.11-.55-.11h-1.95v3.5h1.95c.19,0,.38-.04.55-.11.17-.07.31-.17.44-.3.12-.13.22-.27.29-.44.07-.17.11-.35.11-.55h0ZM233.76,106.91l-.58-2.03h-2.76l-.57,2.03h-.82l2.56-8.72h.41l2.57,8.72h-.81ZM231.78,100.11l-1.15,4.02h2.34l-1.14-4.02-.03-.32-.02.32ZM243,98.94h-2.08v7.97h-.78v-7.97h-2.08v-.75h4.94v.75ZM252.65,106.91h-4.91v-8.72h4.91v.75h-4.13v3.24h3.34v.75h-3.34v3.24h4.13v.74ZM262.42,102.33v4.58h-.25l-.46-.7c-.19.25-.42.45-.69.6-.27.15-.58.23-.91.23h-.46c-.29,0-.57-.06-.83-.17-.27-.11-.5-.27-.69-.46-.19-.19-.35-.42-.46-.68-.11-.26-.16-.54-.16-.84h0v-4.68c0-.29.05-.57.16-.83.11-.26.27-.49.46-.69.19-.19.42-.34.69-.45.26-.11.54-.17.83-.17h.62c.3,0,.58.06.84.17.26.11.49.26.68.45.19.2.35.43.46.69s.17.54.17.83h0v.35l-.79.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.3-.45-.13-.12-.27-.22-.44-.29-.17-.07-.35-.11-.54-.11h-.55c-.19,0-.37.04-.54.11-.17.07-.32.17-.45.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.28.23.45.3.17.07.35.11.54.11h.55c.19,0,.37-.04.54-.11s.31-.17.44-.3c.13-.13.23-.27.3-.44s.11-.35.11-.55h0v-1.81h-1.39v-.75h2.18ZM268.56,106.91h-.78v-8.72h.78v8.72ZM278.83,104.89h0c0,.3-.06.58-.17.84-.11.26-.27.49-.46.68-.19.19-.42.35-.68.46-.26.11-.54.17-.83.17h-.62c-.3,0-.58-.06-.84-.17s-.49-.27-.68-.46c-.2-.19-.35-.42-.46-.68-.11-.26-.17-.54-.17-.84h0v-4.68c0-.29.06-.57.17-.83.11-.26.26-.49.46-.69.19-.19.42-.34.68-.45.26-.11.54-.17.84-.17h.62c.29,0,.57.06.83.17.26.11.49.26.68.45.19.2.35.43.46.69.11.26.17.54.17.83h0v.35l-.79.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.29-.45-.13-.12-.27-.22-.44-.29-.17-.07-.36-.11-.55-.11h-.55c-.19,0-.37.04-.54.11-.17.07-.32.17-.45.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.28.23.45.3s.35.11.54.11h.55c.19,0,.38-.04.55-.11.17-.07.31-.17.44-.3.12-.13.22-.27.29-.44s.11-.35.11-.55h0v-.47l.79.13v.34ZM291.2,106.91h-.78v-8.72h.78v8.72ZM301.6,106.91h-.42l-3.64-6.35-.07-.37v6.72h-.78v-8.72h.4l3.64,6.36.08.37v-6.73h.79v8.72ZM311.28,98.94h-2.08v7.97h-.79v-7.97h-2.08v-.75h4.95v.75ZM320.92,106.91h-4.91v-8.72h4.91v.75h-4.12v3.24h3.34v.75h-3.34v3.24h4.12v.74ZM329.9,106.91h-4.12v-8.72h.78v7.98h3.34v.74ZM338.64,106.91h-4.13v-8.72h.79v7.98h3.34v.74ZM344.16,106.91h-.79v-8.72h.79v8.72ZM354.42,102.33v4.58h-.25l-.45-.7c-.19.25-.43.45-.7.6-.27.15-.57.23-.9.23h-.46c-.29,0-.57-.06-.83-.17-.27-.11-.5-.27-.69-.46-.19-.19-.35-.42-.46-.68-.11-.26-.17-.54-.17-.84h0v-4.68c0-.29.06-.57.17-.83.11-.26.27-.49.46-.69.19-.19.42-.34.69-.45.26-.11.54-.17.83-.17h.62c.3,0,.58.06.84.17.26.11.49.26.68.45.19.2.35.43.46.69.11.26.16.54.16.83h0v.35l-.78.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.3-.45-.13-.12-.27-.22-.44-.29-.17-.07-.35-.11-.54-.11h-.55c-.19,0-.38.04-.55.11-.17.07-.31.17-.44.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.27.23.44.3.17.07.36.11.55.11h.55c.19,0,.37-.04.54-.11.17-.07.31-.17.44-.3.13-.13.23-.27.3-.44s.11-.35.11-.55h0v-1.81h-1.39v-.75h2.17ZM364.7,106.91h-4.91v-8.72h4.91v.75h-4.13v3.24h3.34v.75h-3.34v3.24h4.13v.74ZM374.59,106.91h-.41l-3.64-6.35-.07-.37v6.72h-.79v-8.72h.41l3.64,6.36.08.37v-6.73h.78v8.72ZM384.86,104.89h0c0,.3-.06.58-.17.84-.11.26-.27.49-.46.68-.19.19-.42.35-.68.46-.26.11-.54.17-.84.17h-.62c-.29,0-.57-.06-.83-.17-.26-.11-.49-.27-.69-.46-.19-.19-.35-.42-.46-.68-.11-.26-.16-.54-.16-.84h0v-4.68c0-.29.05-.57.16-.83.11-.26.27-.49.46-.69.2-.19.43-.34.69-.45.26-.11.54-.17.83-.17h.62c.3,0,.58.06.84.17.26.11.49.26.68.45.19.2.35.43.46.69s.17.54.17.83h0v.35l-.79.12v-.47c0-.19-.04-.37-.11-.54-.07-.17-.17-.32-.3-.45-.12-.12-.27-.22-.44-.29-.17-.07-.35-.11-.54-.11h-.55c-.19,0-.37.04-.54.11-.17.07-.32.17-.45.29-.13.13-.23.28-.3.45-.07.17-.11.35-.11.54h0v4.68c0,.2.04.38.11.55s.17.31.3.44c.13.13.28.23.45.3.17.07.35.11.54.11h.55c.19,0,.37-.04.54-.11.17-.07.32-.17.44-.3.13-.13.23-.27.3-.44.07-.17.11-.35.11-.55h0v-.47l.79.13v.34ZM395,106.91h-4.91v-8.72h4.91v.75h-4.12v3.24h3.34v.75h-3.34v3.24h4.12v.74Z" style={{ fill: '#f9f9f9' }}/>
-                                    <g>
-                                        <path d="M296.03,87.31c-2.12,0-4.16-.3-6.12-.89-1.96-.59-3.72-1.42-5.27-2.48h0v-7.42c1.06,2.74,2.68,4.81,4.87,6.22,2.19,1.41,4.46,2.12,6.83,2.12h0c2.37,0,4.35-.79,5.94-2.36,1.59-1.57,2.39-3.52,2.39-5.85h0c0-1.55-.32-2.88-.95-3.99-.63-1.1-1.64-2.13-3.03-3.09-1.39-.96-3.35-2.03-5.88-3.22h0c-3.55-1.63-6.14-3.34-7.75-5.11-1.61-1.78-2.42-3.94-2.42-6.47h0c0-2.16.52-4.09,1.56-5.79,1.04-1.69,2.45-3,4.23-3.92,1.77-.92,3.72-1.38,5.85-1.38h0c1.84,0,3.64.26,5.39.77,1.76.51,3.39,1.24,4.9,2.18h0v6.61c-.98-2.25-2.46-3.99-4.44-5.24-1.98-1.24-3.99-1.86-6.03-1.86h0c-2.33,0-4.21.75-5.64,2.26-1.43,1.51-2.15,3.31-2.15,5.39h0c0,1.51.43,2.81,1.29,3.89.86,1.09,1.91,2,3.16,2.73s2.99,1.63,5.24,2.7h0c2.29,1.1,4.16,2.12,5.63,3.06,1.47.94,2.7,2.17,3.68,3.68.98,1.51,1.47,3.34,1.47,5.51h0c0,2.45-.58,4.58-1.75,6.37-1.16,1.8-2.71,3.18-4.65,4.14-1.94.96-4.06,1.44-6.35,1.44h0ZM322.07,86.57c0,.13.25.04.74-.27.49-.31.94-.88,1.35-1.72.41-.83.61-2.07.61-3.71h0v-30.75c0-1.63-.19-2.87-.58-3.71-.39-.84-.83-1.4-1.32-1.68-.49-.29-.73-.39-.73-.31h9.74c0-.08-.25.02-.74.31-.49.28-.94.84-1.35,1.68-.41.84-.61,2.08-.61,3.71h0v30.75c0,1.64.2,2.88.61,3.71.41.84.86,1.4,1.35,1.69.49.29.74.39.74.3h-9.81ZM358.47,65.37c1.88,0,3.51-.44,4.9-1.31,1.39-.88,2.44-2.02,3.15-3.43.72-1.41,1.08-2.9,1.08-4.45h0c0-1.59-.34-3.09-1.01-4.5-.68-1.41-1.71-2.56-3.1-3.46s-3.08-1.35-5.08-1.35h-5.21v34.07c0,1.63.2,2.87.61,3.7.41.84.86,1.39,1.35,1.66.49.27.73.36.73.27h-9.74c0,.09.25-.01.74-.3.49-.29.92-.84,1.31-1.66.39-.81.59-2.04.59-3.67h0v-30.64c0-1.67-.2-2.95-.59-3.83-.39-.88-.82-1.47-1.31-1.77-.49-.31-.74-.4-.74-.28h12.13c3.19,0,5.81.52,7.88,1.56,2.06,1.04,3.55,2.39,4.47,4.05.92,1.65,1.38,3.46,1.38,5.42h0c0,1.63-.39,3.24-1.17,4.81-.77,1.57-1.89,2.94-3.34,4.10-1.45,1.17-3.13,1.97-5.05,2.42h0l-.98.19,10.78,13.72c1.43,1.59,2.62,2.82,3.56,3.68.94.85,1.62,1.42,2.05,1.71s.68.45.76.49h-7.16l-16.67-21.20h3.68Z" style={{ fill: '#f9f9f9' }}/>
-                                        <path d="M273.46,50.32c-.76-2.52-3.02-3.78-6.8-3.78h-8.76v17.89h10.84c.84,0,1.55-.14,2.14-.41.59-.27,1.03-.56,1.32-.85.29-.29.46-.48.5-.57v6.11c-.04-.08-.21-.27-.5-.57-.29-.29-.72-.57-1.29-.82-.57-.25-1.27-.38-2.11-.38h-10.9v17.89h9.83c1.89,0,3.52-.39,4.88-1.17,1.36-.78,2.34-1.77,2.93-2.99l-1.13,6.68h-23.75c0,.13.25.03.76-.28.5-.31.96-.94,1.35-1.89.4-.95.6-2.32.6-4.13v-14.11h-13.8l-9.26,14.11c-1.09,1.72-1.64,3.11-1.64,4.16,0,.63.16,1.10.47,1.42.32.31.64.51.98.6.34.08.54.13.63.13h-11.02c1.89-.17,4.03-2.06,6.43-5.67l21.48-32.26c.67-1.05,1.01-2.08,1.01-3.09s-.4-1.83-1.2-2.33h26.02v6.3ZM241.21,64.44h12.16v-18.52l-12.16,18.52Z" style={{ fill: '#fff' }}/>
-                                    </g>
-                                </svg>
-                            </div>
-
-                            <p className="text-2xl md:text-3xl text-white max-w-4xl mx-auto leading-relaxed">
-                                A powerful AI agent platform engineered for <span className="font-semibold" style={{ color: ACCENT_BLUE }}>air-gapped</span> and <span className="font-semibold" style={{ color: ACCENT_BLUE }}>edge devices</span>
+                                </g>
+                            </svg>
+                            <p className="text-4xl md:text-6xl text-white max-w-5xl mx-auto font-extralight">
+                                A powerful AI agent platform engineered for <span className="font-semibold"
+                                                                                  style={{color: ACCENT_BLUE}}>air-gapped</span> and <span
+                                className="font-semibold" style={{color: ACCENT_BLUE}}>edge devices</span>
                             </p>
 
-                            <p className="text-lg text-gray-400 max-w-3xl mx-auto">
-                                Deploy advanced AI capabilities in secure, offline environments without compromising on performance or features.
+                            <p className="text-xl text-gray-400 max-w-3xl mx-auto font-extralight">
+                                Deploy advanced AI capabilities in secure, offline environments without compromising on
+                                performance or features.
                             </p>
 
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6">
+                            <div className="flex flex-col items-center gap-4">
                                 <a
                                     href="https://github.com/Ronin-Consulting/Aesir"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="group px-8 py-4 rounded-lg font-semibold text-lg text-black transition-all shadow-lg flex items-center gap-2"
+                                    className="group px-8 py-4 rounded-lg font-semibold text-lg text-black transition-all shadow-lg flex items-center gap-2 max-w-md"
                                     style={{
                                         backgroundColor: ACCENT_BLUE,
                                         boxShadow: `0 10px 40px ${ACCENT_BLUE}30`
@@ -310,18 +527,18 @@
                                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6BB8FF'}
                                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
                                 >
-                                    <Github className="w-5 h-5" />
+                                    <Github className="w-5 h-5"/>
                                     View on GitHub
                                     <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                                 </a>
 
                                 <div className="flex gap-4 text-sm text-gray-400">
                                     <div className="flex items-center gap-1">
-                                        <Star className="w-4 h-4" />
+                                        <Star className="w-4 h-4"/>
                                         <span>Open Source</span>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <GitFork className="w-4 h-4" />
+                                        <GitFork className="w-4 h-4"/>
                                         <span>Apache 2.0</span>
                                     </div>
                                 </div>
@@ -330,192 +547,220 @@
                     </div>
                 </div>
 
-                {/* Video Demos Section */}
-                <div className="border-y border-zinc-800" style={{ backgroundColor: BG_COLOR }}>
-                    <div className="max-w-6xl mx-auto px-6 py-20">
-                        <h2 className="text-4xl font-bold text-center mb-4 text-white">
-                            See AESIR in Action
-                        </h2>
-                        <p className="text-center text-gray-400 mb-16 text-lg">
-                            Watch these demos to see how AESIR handles real-world AI tasks
-                        </p>
+                <div className="relative overflow-hidden">
+                    {/* Video Demos Section */}
+                    <div className="max-w-7xl mx-auto px-6 py-20 bordered" style={{backgroundColor: 'rgb(22 22 26)'}}>
+                        <div className="max-w-6xl mx-auto px-6 py-20">
+                            <h2 className="text-4xl font-extralight text-center mb-4 text-white">
+                                See AESIR in Action
+                            </h2>
+                            <p className="text-center text-gray-400 mb-16 text-lg font-extralight">
+                                Watch these demos to see how AESIR handles real-world AI tasks
+                            </p>
 
-                        <VideoCarousel />
-                    </div>
-                </div>
-
-                {/* Key Features */}
-                <div className="max-w-6xl mx-auto px-6 py-20">
-                    <h2 className="text-4xl font-bold text-center mb-16 text-white">
-                        Built for Security and Performance
-                    </h2>
-
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        <FeatureCard
-                            icon={<Shield className="w-8 h-8" />}
-                            title="Air-Gapped Ready"
-                            description="Runs completely offline with local LLMs. Perfect for classified, medical, and sensitive environments."
-                        />
-
-                        <FeatureCard
-                            icon={<Cpu className="w-8 h-8" />}
-                            title="Cross-Platform"
-                            description="Native support for x86, Apple Silicon, and ARM64 with hardware acceleration (CUDA, Metal, ONNX)."
-                        />
-
-                        <FeatureCard
-                            icon={<FileText className="w-8 h-8" />}
-                            title="RAG & Document Intelligence"
-                            description="Built-in retrieval augmented generation with smart chunking and semantic search capabilities."
-                        />
-
-                        <FeatureCard
-                            icon={<Eye className="w-8 h-8" />}
-                            title="Multi-Modal"
-                            description="Text, vision, and speech capabilities. Handle documents, images, and conversations seamlessly."
-                        />
-
-                        <FeatureCard
-                            icon={<Zap className="w-8 h-8" />}
-                            title="Flexible Backend"
-                            description="Works with Ollama by default or connect to OpenAI-compatible APIs. Your choice, your control."
-                        />
-
-                        <FeatureCard
-                            icon={<Github className="w-8 h-8" />}
-                            title="Open Source"
-                            description="Fully transparent, auditable, and customizable. Build on a foundation you can trust."
-                        />
-                    </div>
-                </div>
-
-                {/* Target Audience */}
-                <div className="border-y border-zinc-800" style={{ backgroundColor: BG_COLOR }}>
-                    <div className="max-w-6xl mx-auto px-6 py-20">
-                        <h2 className="text-4xl font-bold text-center mb-16 text-white">
-                            Who AESIR Is For
-                        </h2>
-
-                        <div className="grid md:grid-cols-2 gap-8">
-                            <div className="bg-zinc-900 rounded-xl p-8 border transition-all" style={{ borderColor: `${ACCENT_BLUE}50` }}>
-                                <h3 className="text-2xl font-bold mb-4" style={{ color: ACCENT_BLUE }}>For Developers</h3>
-                                <ul className="space-y-3 text-gray-300">
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
-                                        <span>Easy Docker-based deployment with compose files</span>
-                                    </li>
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
-                                        <span>Extensible architecture with MCP/Tools integration</span>
-                                    </li>
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
-                                        <span>Desktop and browser clients included</span>
-                                    </li>
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
-                                        <span>Built with .NET and modern web technologies</span>
-                                    </li>
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
-                                        <span>Custom-tuned llama.cpp for optimal performance</span>
-                                    </li>
-                                </ul>
-                            </div>
-
-                            <div className="bg-zinc-900 rounded-xl p-8 border transition-all" style={{ borderColor: `${ACCENT_BLUE}50` }}>
-                                <h3 className="text-2xl font-bold mb-4" style={{ color: ACCENT_BLUE }}>For Managers</h3>
-                                <ul className="space-y-3 text-gray-300">
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
-                                        <span>Secure, compliant solution for sensitive environments</span>
-                                    </li>
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
-                                        <span>Cost-effective with no cloud dependencies</span>
-                                    </li>
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
-                                        <span>Full data sovereignty and privacy control</span>
-                                    </li>
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
-                                        <span>Reduced latency with local inference</span>
-                                    </li>
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
-                                        <span>Transparent, auditable open-source code</span>
-                                    </li>
-                                </ul>
-                            </div>
+                            <VideoCarousel/>
                         </div>
                     </div>
                 </div>
 
-                {/* Technical Highlights */}
-                <div className="max-w-6xl mx-auto px-6 py-20">
-                    <h2 className="text-4xl font-bold text-center mb-16 text-white">
-                        Technical Excellence
-                    </h2>
+                {/* Key Features */}
+                <div className="relative overflow-hidden">
+                    <div className="max-w-7xl mx-auto px-6 py-20 bordered bordered-sides">
+                        <h2 className="text-4xl font-extralight text-center mb-16 text-white">
+                            Built for Security and Performance
+                        </h2>
 
-                    <div className="grid md:grid-cols-2 gap-6 text-gray-300">
-                        <TechItem title="Optimized Inference" details="Custom-tuned llama.cpp for maximum performance" />
-                        <TechItem title="Hardware Acceleration" details="CUDA, Metal, and ONNX support out of the box" />
-                        <TechItem title="Multiple Clients" details="Desktop and browser-based interfaces" />
-                        <TechItem title="MCP Integration" details="Model Context Protocol and tools support" />
-                        <TechItem title="Document Processing" details="Handle PDFs, images, and text with OCR capabilities" />
-                        <TechItem title="Hands-Free Mode" details="Speech-to-text and text-to-speech built in" />
+                        <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-8 px-8">
+                            <FeatureCard
+                                icon={<Shield className="w-8 h-8"/>}
+                                title="Air-Gapped Ready"
+                                description="Runs completely offline with local LLMs. Perfect for classified, medical, and sensitive environments."
+                            />
+
+                            <FeatureCard
+                                icon={<Cpu className="w-8 h-8"/>}
+                                title="Cross-Platform"
+                                description="Native support for x86, Apple Silicon, and ARM64 with hardware acceleration (CUDA, Metal, ONNX)."
+                            />
+
+                            <FeatureCard
+                                icon={<FileText className="w-8 h-8"/>}
+                                title="RAG & Document Intelligence"
+                                description="Built-in retrieval augmented generation with smart chunking and semantic search capabilities."
+                            />
+
+                            <FeatureCard
+                                icon={<Eye className="w-8 h-8"/>}
+                                title="Multi-Modal"
+                                description="Text, vision, and speech capabilities. Handle documents, images, and conversations seamlessly."
+                            />
+
+                            <FeatureCard
+                                icon={<Zap className="w-8 h-8"/>}
+                                title="Flexible Backend"
+                                description="Works with Ollama by default or connect to OpenAI-compatible APIs. Your choice, your control."
+                            />
+
+                            <FeatureCard
+                                icon={<Github className="w-8 h-8"/>}
+                                title="Open Source"
+                                description="Fully transparent, auditable, and customizable. Build on a foundation you can trust."
+                            />
+                        </div>
+                    </div>
+                </div>
+                {/* Target Audience */}
+                <div className="relative overflow-hidden">
+                    <div className="max-w-7xl mx-auto px-6 py-20 bordered" style={{
+                        borderColor: `${ACCENT_BLUE}30`,
+                        borderWidht: '1px 0 '
+                    }}>
+                        <div
+                            className="max-w-7xl mx-auto z-0 absolute inset-0 h-full w-full bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"
+                        ></div>
+                        <div className="max-w-6xl mx-auto  py-20">
+                            <h2 className="text-4xl font-extralight text-center mb-16 text-white">
+                                Who AESIR Is For
+                            </h2>
+
+                            <div className="grid md:grid-cols-2 gap-8">
+                                <div className="bg-zinc-900 rounded-xl p-8 border transition-all z-[1]"
+                                     style={{
+                                         borderColor: `${ACCENT_BLUE}50`,
+                                         backgroundColor: BG_COLOR
+                                     }}>
+                                    <h3 className="text-2xl font-bold mb-4" style={{color: ACCENT_BLUE}}>For
+                                        Developers</h3>
+                                    <ul className="space-y-3 text-gray-300">
+                                        <li className="flex items-start gap-3">
+                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
+                                            <span>Easy Docker-based deployment with compose files</span>
+                                        </li>
+                                        <li className="flex items-start gap-3">
+                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
+                                            <span>Extensible architecture with MCP/Tools integration</span>
+                                        </li>
+                                        <li className="flex items-start gap-3">
+                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
+                                            <span>Desktop and browser clients included</span>
+                                        </li>
+                                        <li className="flex items-start gap-3">
+                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
+                                            <span>Built with .NET and modern web technologies</span>
+                                        </li>
+                                        <li className="flex items-start gap-3">
+                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
+                                            <span>Custom-tuned llama.cpp for optimal performance</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div className="bg-zinc-900 rounded-xl p-8 border transition-all z-[1]"
+                                     style={{borderColor: `${ACCENT_BLUE}50`}}>
+                                    <h3 className="text-2xl font-bold mb-4" style={{color: ACCENT_BLUE}}>For
+                                        Managers</h3>
+                                    <ul className="space-y-3 text-gray-300">
+                                        <li className="flex items-start gap-3">
+                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
+                                            <span>Secure, compliant solution for sensitive environments</span>
+                                        </li>
+                                        <li className="flex items-start gap-3">
+                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
+                                            <span>Cost-effective with no cloud dependencies</span>
+                                        </li>
+                                        <li className="flex items-start gap-3">
+                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
+                                            <span>Full data sovereignty and privacy control</span>
+                                        </li>
+                                        <li className="flex items-start gap-3">
+                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
+                                            <span>Reduced latency with local inference</span>
+                                        </li>
+                                        <li className="flex items-start gap-3">
+                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
+                                            <span>Transparent, auditable open-source code</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {/* Technical Highlights */}
+                <div className="relative overflow-hidden">
+                    <div className="max-w-7xl mx-auto px-6 py-20 bordered bordered-sides">
+                        <h2 className="text-4xl font-extralight text-center mb-16 text-white">
+                            Technical Excellence
+                        </h2>
+
+                        <div className="grid md:grid-cols-2 gap-6 text-gray-300 px-8">
+                            <TechItem title="Optimized Inference"
+                                      details="Custom-tuned llama.cpp for maximum performance"/>
+                            <TechItem title="Hardware Acceleration"
+                                      details="CUDA, Metal, and ONNX support out of the box"/>
+                            <TechItem title="Multiple Clients" details="Desktop and browser-based interfaces"/>
+                            <TechItem title="MCP Integration" details="Model Context Protocol and tools support"/>
+                            <TechItem title="Document Processing"
+                                      details="Handle PDFs, images, and text with OCR capabilities"/>
+                            <TechItem title="Hands-Free Mode" details="Speech-to-text and text-to-speech built in"/>
+                        </div>
                     </div>
                 </div>
 
                 {/* CTA Section */}
-                <div className="border-y" style={{
-                    background: `linear-gradient(to right, ${ACCENT_BLUE}20, ${ACCENT_BLUE}10, ${ACCENT_BLUE}20)`,
-                    borderColor: `${ACCENT_BLUE}30`
-                }}>
-                    <div className="max-w-4xl mx-auto px-6 py-20 text-center">
-                        <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
-                            Ready to Deploy Strategic Intelligence?
-                        </h2>
-                        <p className="text-xl text-gray-300 mb-10">
-                            Join the future of secure, air-gapped AI deployment
-                        </p>
 
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <a
-                                href="https://github.com/Ronin-Consulting/Aesir"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-8 py-4 rounded-lg font-semibold text-lg text-black transition-all shadow-lg flex items-center justify-center gap-2"
-                                style={{
-                                    backgroundColor: ACCENT_BLUE,
-                                    boxShadow: `0 10px 40px ${ACCENT_BLUE}30`
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6BB8FF'}
-                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
-                            >
-                                <Github className="w-5 h-5" />
-                                Get Started on GitHub
-                            </a>
+                <div className="relative overflow-hidden ">
+                    <div className="max-w-7xl mx-auto px-6 py-5 bordered" style={{
+                        background: BG_COLOR
+                    }}>
+                        <div
+                            className="max-w-7xl mx-auto z-0 absolute inset-0 h-full w-full bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"
+                        ></div>
+                        <div className="max-w-4xl mx-auto px-6 py-20 text-center relative">
+                            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white" style={{color: ACCENT_BLUE}}>
+                                Ready to Deploy Strategic Intelligence?
+                            </h2>
+                            <p className="text-xl text-gray-300 mb-10 font-extralight" style={{color: 'white'}}>
+                                Join the future of secure, air-gapped AI deployment
+                            </p>
 
-                            <a
-                                href="https://github.com/Ronin-Consulting/Aesir#readme"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-8 py-4 bg-zinc-900 border rounded-lg font-semibold text-lg hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
-                                style={{ borderColor: `${ACCENT_BLUE}80` }}
-                                onMouseEnter={(e) => e.currentTarget.style.borderColor = ACCENT_BLUE}
-                                onMouseLeave={(e) => e.currentTarget.style.borderColor = `${ACCENT_BLUE}80`}
-                            >
-                                View Documentation
-                            </a>
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                <a
+                                    href="https://github.com/Ronin-Consulting/Aesir"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-8 py-4 rounded-lg font-semibold text-lg text-black transition-all shadow-lg flex items-center justify-center gap-2"
+                                    style={{
+                                        backgroundColor: ACCENT_BLUE,
+                                        boxShadow: `0 10px 40px ${ACCENT_BLUE}30`
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6BB8FF'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
+                                >
+                                    <Github className="w-5 h-5"/>
+                                    Get Started on GitHub
+                                </a>
+
+                                <a
+                                    href="https://github.com/Ronin-Consulting/Aesir#readme"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-8 py-4 bg-zinc-900 border rounded-lg font-semibold text-lg hover:bg-zinc-900 transition-all flex items-center justify-center gap-2"
+                                    style={{borderColor: `${ACCENT_BLUE}80`}}
+                                    onMouseEnter={(e) => e.currentTarget.style.borderColor = ACCENT_BLUE}
+                                    onMouseLeave={(e) => e.currentTarget.style.borderColor = `${ACCENT_BLUE}80`}
+                                >
+                                    View Documentation
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Footer */}
-                <footer className="max-w-6xl mx-auto px-6 py-12 text-center text-gray-400 border-t border-zinc-800">
-                    <p className="mb-2">Built by <span className="font-semibold" style={{ color: ACCENT_BLUE }}>Ronin Consulting</span></p>
+                <footer className="max-w-7xl mx-auto px-6 py-12 text-center text-gray-400 bordered bordered-sides">
+                    <p className="mb-2">Built by <span className="font-semibold" style={{color: ACCENT_BLUE}}>Ronin Consulting</span>
+                    </p>
                     <p className="text-sm">Open Source &bull; Apache 2.0 License &bull; Community Driven</p>
                     <div className="mt-6">
                         <a
@@ -523,11 +768,11 @@
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-2 text-gray-300 transition-colors"
-                            style={{ color: 'rgb(209 213 219)' }}
+                            style={{color: 'rgb(209 213 219)'}}
                             onMouseEnter={(e) => e.currentTarget.style.color = ACCENT_BLUE}
                             onMouseLeave={(e) => e.currentTarget.style.color = 'rgb(209 213 219)'}
                         >
-                            <Github className="w-5 h-5" />
+                            <Github className="w-5 h-5"/>
                             github.com/Ronin-Consulting/Aesir
                         </a>
                     </div>
@@ -538,7 +783,7 @@
 
     // Render the app
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<AesirLanding />);
+    root.render(<AesirLanding/>);
 </script>
 </body>
 </html>
