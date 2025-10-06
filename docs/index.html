@@ -1,12 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html style="background-color: #16161A;">
 <head>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body {
+            background-color: #16161A;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
 </head>
-<body>
+<body style="background-color: #16161A;">
 <div id="root"></div>
 <style>
     .bordered {
@@ -504,16 +511,9 @@
                                 </g>
                             </svg>
                             <p className="text-4xl md:text-6xl text-white max-w-5xl mx-auto font-extralight">
-                                A powerful AI agent platform engineered for <span className="font-semibold"
-                                                                                  style={{color: ACCENT_BLUE}}>air-gapped</span> and <span
-                                className="font-semibold" style={{color: ACCENT_BLUE}}>edge devices</span>
+                                A pragmatic AI agent platform designed for <span className="font-semibold" style={{ color: ACCENT_BLUE }}>air-gapped</span> and <span className="font-semibold" style={{ color: ACCENT_BLUE }}>edge devices</span>
                             </p>
-
-                            <p className="text-xl text-gray-400 max-w-3xl mx-auto font-extralight">
-                                Deploy advanced AI capabilities in secure, offline environments without compromising on
-                                performance or features.
-                            </p>
-
+                            
                             <div className="flex flex-col items-center gap-4">
                                 <a
                                     href="https://github.com/Ronin-Consulting/Aesir"
@@ -538,8 +538,8 @@
                                         <span>Open Source</span>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <GitFork className="w-4 h-4"/>
-                                        <span>Apache 2.0</span>
+                                        <GitFork className="w-4 h-4" />
+                                        <span>MIT License</span>
                                     </div>
                                 </div>
                             </div>
@@ -623,65 +623,66 @@
                                 Who AESIR Is For
                             </h2>
 
-                            <div className="grid md:grid-cols-2 gap-8">
-                                <div className="bg-zinc-900 rounded-xl p-8 border transition-all z-[1]"
-                                     style={{
-                                         borderColor: `${ACCENT_BLUE}50`,
-                                         backgroundColor: BG_COLOR
-                                     }}>
-                                    <h3 className="text-2xl font-bold mb-4" style={{color: ACCENT_BLUE}}>For
-                                        Developers</h3>
-                                    <ul className="space-y-3 text-gray-300">
-                                        <li className="flex items-start gap-3">
-                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
-                                            <span>Easy Docker-based deployment with compose files</span>
-                                        </li>
-                                        <li className="flex items-start gap-3">
-                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
-                                            <span>Extensible architecture with MCP/Tools integration</span>
-                                        </li>
-                                        <li className="flex items-start gap-3">
-                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
-                                            <span>Desktop and browser clients included</span>
-                                        </li>
-                                        <li className="flex items-start gap-3">
-                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
-                                            <span>Built with .NET and modern web technologies</span>
-                                        </li>
-                                        <li className="flex items-start gap-3">
-                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
-                                            <span>Custom-tuned llama.cpp for optimal performance</span>
-                                        </li>
-                                    </ul>
-                                </div>
+                           
+                        <div className="grid md:grid-cols-2 gap-8">
+                            <div className="bg-zinc-900 rounded-xl p-8 border transition-all z-[1]" style={{ borderColor: `${ACCENT_BLUE}50` }}>
+                                <h3 className="text-2xl font-bold mb-4" style={{ color: ACCENT_BLUE }}>Hardware Companies</h3>
+                                <ul className="space-y-3 text-gray-300">
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
+                                        <span>Easy C# based AI platform for embedded devices</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
+                                        <span>Seamless integration with existing hardware products</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
+                                        <span>SDKs and libraries for device manufacturers</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
+                                        <span>Cross-architecture support (ARM, x86, Apple Silicon)</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
+                                        <span>Optimized for edge deployment and resource constraints</span>
+                                    </li>
+                                </ul>
+                            </div>
 
-                                <div className="bg-zinc-900 rounded-xl p-8 border transition-all z-[1]"
-                                     style={{borderColor: `${ACCENT_BLUE}50`}}>
-                                    <h3 className="text-2xl font-bold mb-4" style={{color: ACCENT_BLUE}}>For
-                                        Managers</h3>
-                                    <ul className="space-y-3 text-gray-300">
-                                        <li className="flex items-start gap-3">
-                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
-                                            <span>Secure, compliant solution for sensitive environments</span>
-                                        </li>
-                                        <li className="flex items-start gap-3">
-                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
-                                            <span>Cost-effective with no cloud dependencies</span>
-                                        </li>
-                                        <li className="flex items-start gap-3">
-                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
-                                            <span>Full data sovereignty and privacy control</span>
-                                        </li>
-                                        <li className="flex items-start gap-3">
-                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
-                                            <span>Reduced latency with local inference</span>
-                                        </li>
-                                        <li className="flex items-start gap-3">
-                                            <span className="mt-1" style={{color: ACCENT_BLUE}}>&#x2713;</span>
-                                            <span>Transparent, auditable open-source code</span>
-                                        </li>
-                                    </ul>
-                                </div>
+                            <div className="bg-zinc-900 rounded-xl p-8 border transition-all z-[1]" style={{ borderColor: `${ACCENT_BLUE}50` }}>
+                                <h3 className="text-2xl font-bold mb-4" style={{ color: ACCENT_BLUE }}>Developers</h3>
+                                <ul className="space-y-3 text-gray-300">
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
+                                        <span>Accelerate time-to-market for AI applications</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
+                                        <span>Pre-built components, APIs, and scaffolding</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
+                                        <span>Easy Docker-based deployment with compose files</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
+                                        <span>Extensible architecture with MCP/Tools integration</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
+                                        <span>Desktop and browser clients included</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
+                                        <span>Built with .NET and modern web technologies</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-1" style={{ color: ACCENT_BLUE }}>&#x2713;</span>
+                                        <span>Custom-tuned llama.cpp for optimal performance</span>
+                                    </li>
+                                </ul>
                             </div>
                         </div>
                     </div>
@@ -741,27 +742,33 @@
                                     Get Started on GitHub
                                 </a>
 
-                                <a
-                                    href="https://github.com/Ronin-Consulting/Aesir#readme"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="px-8 py-4 bg-zinc-900 border rounded-lg font-semibold text-lg hover:bg-zinc-900 transition-all flex items-center justify-center gap-2"
-                                    style={{borderColor: `${ACCENT_BLUE}80`}}
-                                    onMouseEnter={(e) => e.currentTarget.style.borderColor = ACCENT_BLUE}
-                                    onMouseLeave={(e) => e.currentTarget.style.borderColor = `${ACCENT_BLUE}80`}
-                                >
-                                    View Documentation
-                                </a>
-                            </div>
+                            <a
+                                href="https://deepwiki.com/Ronin-Consulting/Aesir"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-8 py-4 bg-zinc-900 border rounded-lg font-semibold text-lg hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
+                                style={{ borderColor: `${ACCENT_BLUE}80` }}
+                                onMouseEnter={(e) => e.currentTarget.style.borderColor = ACCENT_BLUE}
+                                onMouseLeave={(e) => e.currentTarget.style.borderColor = `${ACCENT_BLUE}80`}
+                            >
+                                View Documentation
+                            </a>
                         </div>
                     </div>
                 </div>
 
                 {/* Footer */}
                 <footer className="max-w-7xl mx-auto px-6 py-12 text-center text-gray-400 bordered bordered-sides">
-                    <p className="mb-2">Built by <span className="font-semibold" style={{color: ACCENT_BLUE}}>Ronin Consulting</span>
-                    </p>
-                    <p className="text-sm">Open Source &bull; Apache 2.0 License &bull; Community Driven</p>
+                    <p className="mb-2">Sponsored by <a
+                        href="https://ronin.consulting"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold transition-colors"
+                        style={{ color: ACCENT_BLUE }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#6BB8FF'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = ACCENT_BLUE}
+                    >Ronin Consulting</a></p>
+                    <p className="text-sm">Open Source &bull; MIT License &bull; Community Driven</p>
                     <div className="mt-6">
                         <a
                             href="https://github.com/Ronin-Consulting/Aesir"

@@ -401,7 +401,7 @@ public class ConfigurationService(
             UPDATE aesir.aesir_inference_engine
             SET name = @Name,
                 description = @Description,
-                location = @Type,
+                type = @Type,
                 configuration = @Configuration::jsonb
             WHERE id = @Id
         ";

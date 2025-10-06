@@ -114,7 +114,7 @@ public class McpServerService(ILogger<McpServerService> logger) : IMcpServerServ
                     Arguments = mcpServer.Arguments,
                     EnvironmentVariables = mcpServer.EnvironmentVariables
                 });
-                await using var mcp = await McpClientFactory.CreateAsync(transport);
+                await using var mcp = await McpClient.CreateAsync(transport);
 
                 return await AddTools(mcpServer, mcp);
             }
@@ -123,12 +123,12 @@ public class McpServerService(ILogger<McpServerService> logger) : IMcpServerServ
                 var endpoint = new Uri(mcpServer.Url);
 
                 // Create the MCP client
-                var transport = new SseClientTransport(new SseClientTransportOptions
+                var transport = new HttpClientTransport(new HttpClientTransportOptions()
                 {
                     Endpoint = endpoint,
                     TransportMode = HttpTransportMode.AutoDetect
                 });
-                await using var mcp = await McpClientFactory.CreateAsync(transport);
+                await using var mcp = await McpClient.CreateAsync(transport);
 
                 return await AddTools(mcpServer, mcp);
             }
