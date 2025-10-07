@@ -204,7 +204,7 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
             FormModel.PropertyChanged += OnFormModelPropertyChanged;
             
             // get available models if available
-            await LoadChatModels();
+            await LoadChatModelsAsync();
 
             // get available tools
             var availableTools = await _configurationService.GetToolsAsync();
@@ -231,7 +231,7 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     /// <summary>
     /// Loads chat models
     /// </summary>
-    private async Task LoadChatModels()
+    private async Task LoadChatModelsAsync()
     {
         AvailableChatModels.Clear();
         
@@ -263,6 +263,16 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
             // re-load the chat model from the collection because it can have full details and not just id.
             FormModel.ChatModel = AvailableChatModels.First(m => m.Id == currentChatModel.Id);
 
+        await SetThinkSettingsAsync();
+    }
+
+    private async Task SetThinkSettingsAsync()
+    {
+        await Task.CompletedTask;
+        
+        if (FormModel.ChatInferenceEngine == null)
+            return;
+        
         if ((FormModel.ChatModel != null && (FormModel.ChatModel.Details?.Capabilities ?? []).Contains("thinking")) ||
             FormModel.ChatInferenceEngine.Type == InferenceEngineType.OpenAICompatible)
         {
@@ -292,7 +302,12 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
     {       
         if (e.PropertyName == nameof(AgentFormDataModel.ChatInferenceEngine))
         {
-            _ = LoadChatModels();
+            _ = LoadChatModelsAsync();
+        }
+        
+        if (e.PropertyName == nameof(AgentFormDataModel.ChatModel))
+        {
+            _ = SetThinkSettingsAsync();
         }
     }
 
