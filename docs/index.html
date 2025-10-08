@@ -264,10 +264,9 @@
             </div>
         );
     }
-
-    function VideoDemo({title, description, videoUrl}) {
+    
+    function VideoDemoCard({title, description, videoUrl}){
         const [isHovered, setIsHovered] = useState(false);
-
         return (
             <div
                 className="bg-zinc-900 rounded-xl overflow-hidden border transition-all max-w-4xl mx-auto"
@@ -295,6 +294,7 @@
             </div>
         );
     }
+    
 
     function Lines() {
         return (<div className="lines z-0">
@@ -325,54 +325,41 @@
                 description: "Showing multiple agents in action",
                 videoUrl: "https://www.youtube.com/embed/ujtE4N8RML0"
             },
-            {
-                title: "Document Processing & RAG",
-                description: "See how AESIR handles document intelligence",
-                videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
-            },
-            {
-                title: "Multi-Modal Capabilities",
-                description: "Text, vision, and speech in action",
-                videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
-            },
-            {
-                title: "Air-Gapped Deployment",
-                description: "Running AESIR in offline environments",
-                videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
-            },
-            {
-                title: "Custom Model Integration",
-                description: "Connecting your own LLMs and backends",
-                videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
-            },
-            {
-                title: "Advanced Agent Workflows",
-                description: "Building complex AI agent interactions",
-                videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
-            }
+            // {
+            //     title: "Document Processing & RAG",
+            //     description: "See how AESIR handles document intelligence",
+            //     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            // },
+            // {
+            //     title: "Multi-Modal Capabilities",
+            //     description: "Text, vision, and speech in action",
+            //     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            // },
+            // {
+            //     title: "Air-Gapped Deployment",
+            //     description: "Running AESIR in offline environments",
+            //     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            // },
+            // {
+            //     title: "Custom Model Integration",
+            //     description: "Connecting your own LLMs and backends",
+            //     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            // },
+            // {
+            //     title: "Advanced Agent Workflows",
+            //     description: "Building complex AI agent interactions",
+            //     videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            // }
         ];
-
-        const nextSlide = () => {
-            setCurrentIndex((prev) => (prev + 1) % videos.length);
-        };
-
-        const prevSlide = () => {
-            setCurrentIndex((prev) => (prev - 1 + videos.length) % videos.length);
-        };
-
-        const goToSlide = (index) => {
-            setCurrentIndex(index);
-        };
-
+        
         return (
             <div className="relative">
                 {/* Main Video Display */}
                 <div className="relative overflow-hidden">
-                    <div className="flex transition-transform duration-500 ease-in-out"
-                         style={{transform: `translateX(-${currentIndex * 100}%)`}}>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-8 px-8">
                         {videos.map((video, index) => (
-                            <div key={index} className="min-w-full px-4">
-                                <VideoDemo
+                            <div key={index} className=" px-4">
+                                <VideoDemoCard
                                     title={video.title}
                                     description={video.description}
                                     videoUrl={video.videoUrl}
@@ -380,57 +367,6 @@
                             </div>
                         ))}
                     </div>
-                </div>
-
-                {/* Navigation Buttons */}
-                <button
-                    onClick={prevSlide}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-zinc-900 text-white p-3 rounded-full shadow-lg border transition-all hover:scale-110"
-                    style={{
-                        borderColor: `${ACCENT_BLUE}80`,
-                        backgroundColor: '#18181b'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#18181b'}
-                    aria-label="Previous video"
-                >
-                    <ChevronLeft className="w-6 h-6"/>
-                </button>
-
-                <button
-                    onClick={nextSlide}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-zinc-900 text-white p-3 rounded-full shadow-lg border transition-all hover:scale-110"
-                    style={{
-                        borderColor: `${ACCENT_BLUE}80`,
-                        backgroundColor: '#18181b'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = ACCENT_BLUE}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#18181b'}
-                    aria-label="Next video"
-                >
-                    <ChevronRight className="w-6 h-6"/>
-                </button>
-
-                {/* Dots Indicator */}
-                <div className="flex justify-center gap-2 mt-8">
-                    {videos.map((_, index) => (
-                        <button
-                            key={index}
-                            onClick={() => goToSlide(index)}
-                            className="h-3 rounded-full transition-all"
-                            style={{
-                                width: index === currentIndex ? '32px' : '12px',
-                                backgroundColor: index === currentIndex ? ACCENT_BLUE : '#3f3f46'
-                            }}
-                            onMouseEnter={(e) => {
-                                if (index !== currentIndex) e.currentTarget.style.backgroundColor = '#52525b';
-                            }}
-                            onMouseLeave={(e) => {
-                                if (index !== currentIndex) e.currentTarget.style.backgroundColor = '#3f3f46';
-                            }}
-                            aria-label={`Go to video ${index + 1}`}
-                        />
-                    ))}
                 </div>
             </div>
         );
@@ -555,7 +491,7 @@
                 <div className="relative overflow-hidden">
                     {/* Video Demos Section */}
                     <div className="max-w-7xl mx-auto px-6 py-20 bordered" style={{backgroundColor: 'rgb(22 22 26)'}}>
-                        <div className="max-w-6xl mx-auto px-6 py-20">
+                        <div className="max-w-6xl mx-auto px-6">
                             <h2 className="text-4xl font-extralight text-center mb-4 text-white">
                                 See AESIR in Action
                             </h2>
@@ -623,7 +559,7 @@
                         <div
                             className="max-w-7xl mx-auto z-0 absolute inset-0 h-full w-full bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"
                         ></div>
-                        <div className="max-w-6xl mx-auto  py-20">
+                        <div className="max-w-6xl mx-auto  ">
                             <h2 className="text-4xl font-extralight text-center mb-16 text-white">
                                 Who AESIR Is For
                             </h2>
