@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 3 - Detection Overlay
 **Priority**: High
-**Estimate**: 6 hours
 
 ## Description
 Create a custom Avalonia control that renders bounding boxes, labels, and tracking data over video streams using the Avalonia `DrawingContext` API.

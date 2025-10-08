@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 7 - Testing & Polish
 **Priority**: High
-**Estimate**: 8 hours
 
 ## Description
 Verify visual agent functionality works correctly across Windows, macOS, and Linux platforms with platform-specific testing and issue resolution.

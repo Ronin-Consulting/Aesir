@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 4 - Visual Agent Integration
 **Priority**: High
-**Estimate**: 6 hours
 
 ## Description
 Create the client service for communicating with the AESIR API Server's visual agent endpoints, including HTTP requests and real-time streaming.

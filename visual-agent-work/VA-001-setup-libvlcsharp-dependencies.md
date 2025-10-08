@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 1 - Foundation
 **Priority**: High
-**Estimate**: 2 hours
 
 ## Description
 Add LibVLCSharp NuGet packages and platform-specific native libraries to the Aesir.Client.Desktop project to enable video playback capabilities.

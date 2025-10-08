@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 2 - Multi-Stream Support
 **Priority**: Medium
-**Estimate**: 3 hours
 
 ## Description
 Add UI controls for users to manually select grid layouts and configure stream positioning within the grid.

@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 5 - Configuration & Management
 **Priority**: Medium
-**Estimate**: 4 hours
 
 ## Description
 Create UI for selecting and configuring DeepStream models (detector, classifier, tracker) with parameter tuning options.

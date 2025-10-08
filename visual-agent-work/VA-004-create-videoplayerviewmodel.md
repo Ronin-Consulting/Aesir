@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 1 - Foundation
 **Priority**: High
-**Estimate**: 4 hours
 
 ## Description
 Create a ViewModel to manage the state and behavior of a single video player instance, including playback controls, status monitoring, and property bindings for the UI.

@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 1 - Foundation
 **Priority**: High
-**Estimate**: 8 hours
 
 ## Description
 Implement platform-specific native window handle creation for Windows (HWND), macOS (NSView), and Linux (XID) to enable LibVLC video rendering on each platform.

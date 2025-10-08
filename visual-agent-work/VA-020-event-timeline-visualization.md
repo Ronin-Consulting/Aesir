@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 6 - Analytics Dashboard
 **Priority**: Medium
-**Estimate**: 5 hours
 
 ## Description
 Create an interactive timeline control for visualizing analytics events over time, with filtering, search, and drill-down capabilities.

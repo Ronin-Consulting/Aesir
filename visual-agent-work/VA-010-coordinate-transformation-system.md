@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 3 - Detection Overlay
 **Priority**: High
-**Estimate**: 4 hours
 
 ## Description
 Implement coordinate transformation to accurately map detection coordinates from video space (e.g., 1920x1080) to screen space (actual control dimensions).

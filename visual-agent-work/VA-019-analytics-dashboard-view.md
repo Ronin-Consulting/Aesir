@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 6 - Analytics Dashboard
 **Priority**: Medium
-**Estimate**: 7 hours
 
 ## Description
 Create a comprehensive analytics dashboard showing real-time metrics, detection statistics, event history, and performance indicators.

@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 5 - Configuration & Management
 **Priority**: Medium
-**Estimate**: 8 hours
 
 ## Description
 Create an interactive tool for drawing Regions of Interest (ROI) on video streams, including polygon/rectangle drawing, editing, and zone configuration.

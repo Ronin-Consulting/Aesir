@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 1 - Foundation
 **Priority**: High
-**Estimate**: 6 hours
 
 ## Description
 Create the core `NativeVideoPlayerControl` class that inherits from Avalonia's `NativeControlHost` to embed platform-native video players with LibVLC integration.

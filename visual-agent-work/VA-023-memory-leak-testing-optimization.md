@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 7 - Testing & Polish
 **Priority**: High
-**Estimate**: 6 hours
 
 ## Description
 Conduct memory leak testing and optimization to ensure stable long-term operation (24+ hours) without memory growth or degradation.

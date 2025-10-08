@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 6 - Analytics Dashboard
 **Priority**: Medium
-**Estimate**: 4 hours
 
 ## Description
 Create real-time performance monitoring displays showing FPS, latency, resource usage, and system health metrics.

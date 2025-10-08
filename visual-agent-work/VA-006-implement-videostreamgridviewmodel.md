@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 2 - Multi-Stream Support
 **Priority**: High
-**Estimate**: 4 hours
 
 ## Description
 Create a ViewModel to manage the collection of video streams, grid layout configuration, and coordination of multiple `VideoPlayerViewModel` instances.

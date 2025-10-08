@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 3 - Detection Overlay
 **Priority**: High
-**Estimate**: 5 hours
 
 ## Description
 Implement rendering logic for various detection types including bounding boxes, track trajectories, zone overlays, and confidence scores.

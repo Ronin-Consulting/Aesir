@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 7 - Testing & Polish
 **Priority**: High
-**Estimate**: 6 hours
 
 ## Description
 Conduct comprehensive performance testing to validate system can handle 4-9 concurrent video streams at 30 FPS with real-time detection overlays.

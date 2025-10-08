@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 4 - Visual Agent Integration
 **Priority**: High
-**Estimate**: 3 hours
 
 ## Description
 Connect the client UI to the mock visual agent service (from DEEPSTREAM_VISUAL_AGENT.md) to enable end-to-end testing without physical hardware.

@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 5 - Configuration & Management
 **Priority**: Medium
-**Estimate**: 6 hours
 
 ## Description
 Create interface for configuring alert rules based on detection events, including zone intrusion, object counting, loitering detection, and custom conditions.

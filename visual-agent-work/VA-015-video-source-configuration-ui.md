@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 5 - Configuration & Management
 **Priority**: Medium
-**Estimate**: 5 hours
 
 ## Description
 Create user interface for adding, editing, and managing video sources (RTSP streams, video files) with validation and testing capabilities.

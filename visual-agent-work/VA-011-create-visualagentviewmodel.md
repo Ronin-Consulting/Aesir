@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 4 - Visual Agent Integration
 **Priority**: High
-**Estimate**: 5 hours
 
 ## Description
 Create the main orchestrating ViewModel that integrates video streaming, detection overlays, and API communication for visual agent functionality.

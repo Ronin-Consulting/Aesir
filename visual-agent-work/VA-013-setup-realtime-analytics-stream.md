@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 4 - Visual Agent Integration
 **Priority**: High
-**Estimate**: 7 hours
 
 ## Description
 Implement SignalR/WebSocket connection for receiving real-time analytics updates from the DeepStream backend, including detections, tracks, and events.

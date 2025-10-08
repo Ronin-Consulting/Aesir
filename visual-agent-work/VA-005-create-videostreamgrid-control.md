@@ -3,7 +3,6 @@
 **Epic**: VISUAL_AGENT_UX
 **Phase**: 2 - Multi-Stream Support
 **Priority**: High
-**Estimate**: 5 hours
 
 ## Description
 Create a grid container control that can host multiple `NativeVideoPlayerControl` instances with configurable layouts (1x1, 2x2, 3x3, etc.) for simultaneous multi-stream video display.
