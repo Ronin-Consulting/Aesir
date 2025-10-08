@@ -4,18 +4,23 @@ namespace Aesir.Common.Models;
 
 public class ToolRequest
 {
-    public static readonly ToolRequest WebSearchToolRequest = new ToolRequest { ToolName = AesirTools.WebToolName };
+    public static readonly ToolRequest WebSearchToolRequest = new ToolRequest { ToolName = AesirTools.WebToolName, McpServerName = null };
 	
     [JsonPropertyName("tool_name")]
     public required string ToolName { get; set; }
+    
+    [JsonPropertyName("msp_server_name")]
+    public required string? McpServerName { get; set; }
     
     public bool IsWebSearchToolRequest => ToolName == AesirTools.WebToolName;
     
     public bool IsRagToolRequest => ToolName == AesirTools.RagToolName;
     
+    public bool IsMcpServerToolRequest => !string.IsNullOrWhiteSpace(McpServerName);
+    
     protected bool Equals(ToolRequest other)
     {
-        return ToolName == other.ToolName;
+        return ToolName == other.ToolName && McpServerName == other.McpServerName;
     }
 
     public override bool Equals(object? obj)
@@ -28,6 +33,6 @@ public class ToolRequest
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(ToolName);
+        return HashCode.Combine(ToolName, McpServerName);
     }
 }

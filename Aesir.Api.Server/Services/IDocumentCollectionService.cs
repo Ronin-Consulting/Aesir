@@ -35,11 +35,11 @@ public interface IDocumentCollectionService
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task DeleteDocumentsAsync(IDictionary<string, object>? args, CancellationToken cancellationToken = default);
-    
+
     /// <summary>
-    /// Gets a kernel plugin for document operations.
+    /// Gets kernel plugin functions for document operations.
     /// </summary>
     /// <param name="kernelPluginArguments">Optional arguments for the kernel plugin.</param>
-    /// <returns>A kernel plugin configured for document operations.</returns>
-    KernelPlugin GetKernelPlugin(IDictionary<string, object>? kernelPluginArguments = null);
+    /// <returns>A list of KernelFunctions needed for the plugin for operations.</returns>
+    public IList<KernelFunction> GetKernelPluginFunctions(IDictionary<string, object>? kernelPluginArguments = null);
 }

@@ -303,7 +303,7 @@ public static class ServiceCollectionExtensions
 
 public interface IConfiguredKernelFactory
 {
-    Kernel CreateKernel();
+    Task<Kernel> CreateKernelAsync();
 }
 
 internal class ConfiguredKernelFactory(
@@ -315,13 +315,13 @@ internal class ConfiguredKernelFactory(
     private readonly GlobalDocumentCollection[] _collections = 
         configuration.GetSection("GlobalDocumentCollections").Get<GlobalDocumentCollection[]>() ?? [];
 
-    public Kernel CreateKernel()
+    public async Task<Kernel> CreateKernelAsync()
     {
         // Get a fresh kernel from DI
         var kernel = serviceProvider.GetRequiredService<Kernel>();
         
         // Add global document collection plugins
-        var globalDocumentService = serviceProvider.GetRequiredService<IGlobalDocumentCollectionService>();
+        var kernalPluginService = serviceProvider.GetRequiredService<IKernelPluginService>();
         
         foreach (var collection in _collections.Where(c => c.IsEnabled))
         {
@@ -332,7 +332,7 @@ internal class ConfiguredKernelFactory(
                 args["PluginName"] = collection.PluginName;
                 args["PluginDescription"] = collection.PluginDescription;
 
-                var plugin = globalDocumentService.GetKernelPlugin(args);
+                var plugin = await kernalPluginService.GetKernelPluginAsync(args);
                 kernel.Plugins.Add(plugin);
                 
                 logger.LogDebug("Added plugin {PluginName} to kernel", collection.PluginName);

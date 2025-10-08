@@ -3,7 +3,7 @@ namespace Aesir.Api.Server.Services.Implementations.Standard;
 /// <summary>
 /// Provides arguments for global document collection operations.
 /// </summary>
-public class GlobalDocumentCollectionArgs : Dictionary<string, object>
+public class GlobalDocumentCollectionArgs : BaseKernelPluginArgs
 {
     /// <summary>
     /// Gets the default instance of global document collection arguments.

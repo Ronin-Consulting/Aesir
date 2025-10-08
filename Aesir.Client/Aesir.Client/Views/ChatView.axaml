@@ -57,6 +57,7 @@
 
     <UserControl.Resources>
         <converters:ToolRequestExistsConverter x:Key="ToolRequestExistsConverter" />
+        <converters:ToolRequestParameterConverter x:Key="ToolRequestParameterConverter" />
         <converters:EqualityToBoolConverter x:Key="EqualityToBoolConverter" />
         <converters:EqualityToBoolConverter x:Key="IsNotNullConverter" Invert="True" />
     </UserControl.Resources>
@@ -238,6 +239,7 @@
                                         </controls:CustomTextBox>
                                         <Panel DockPanel.Dock="Bottom" HorizontalAlignment="Stretch">
                                             <StackPanel HorizontalAlignment="Left" Orientation="Horizontal" Spacing="6">
+                                                <!-- RAG Tool -->
                                                 <Button Classes="Primary"
                                                         Margin="0,0,0,0"
                                                         Command="{Binding ShowFileSelectionCommand}"
@@ -248,33 +250,31 @@
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
                                                             <Binding Path="SelectedFileEnabled" />
                                                             <Binding Path="ConfigurationReadiness.IsReady" />
-                                                            <Binding Path="ToolsAvailable"
-                                                                     Mode="OneWay"
-                                                                     Converter="{StaticResource ToolRequestExistsConverter}">
-                                                                <Binding.ConverterParameter>
-                                                                    <x:Static Member="common:AesirTools.WebToolName" />
-                                                                </Binding.ConverterParameter>
-                                                            </Binding>
+                                                            <MultiBinding Converter="{StaticResource ToolRequestExistsConverter}">
+                                                                <Binding Path="AllToolsAvailable" />
+                                                                <Binding Source="{x:Static Member=common:AesirTools.RagToolName}" />
+                                                            </MultiBinding>
                                                         </MultiBinding>
                                                     </Button.IsEnabled>
                                                     <avalonia:MaterialIcon Kind="Paperclip" Width="20" Height="34" />
                                                 </Button>
+                                                
+                                                <!-- Web Search Tool -->
                                                 <ToggleButton Classes="Primary AesirToggleButton"
                                                               Margin="0,0,0,0"
                                                               ToolTip.Tip="Toggle Web Search"
                                                               Theme="{DynamicResource OutlineButton}"
                                                               Command="{Binding ToggleToolRequest}">
                                                     <ToggleButton.CommandParameter>
-                                                        <x:Static Member="common:AesirTools.WebToolName" />
+                                                        <MultiBinding Converter="{StaticResource ToolRequestParameterConverter}">
+                                                            <Binding Source="{x:Static Member=common:AesirTools.WebToolName}" />
+                                                        </MultiBinding>
                                                     </ToggleButton.CommandParameter>
                                                     <ToggleButton.IsChecked>
-                                                        <Binding Path="ToolRequests"
-                                                                 Mode="OneWay"
-                                                                 Converter="{StaticResource ToolRequestExistsConverter}">
-                                                            <Binding.ConverterParameter>
-                                                                <x:Static Member="common:AesirTools.WebToolName" />
-                                                            </Binding.ConverterParameter>
-                                                        </Binding>
+                                                        <MultiBinding Converter="{StaticResource ToolRequestExistsConverter}">
+                                                            <Binding Path="ToolRequests" />
+                                                            <Binding Source="{x:Static Member=common:AesirTools.WebToolName}" />
+                                                        </MultiBinding>
                                                     </ToggleButton.IsChecked>
                                                     <Panel>
                                                         <avalonia:MaterialIcon Kind="Web" Width="20"
@@ -288,16 +288,51 @@
                                                         <MultiBinding
                                                             Converter="{x:Static converters:BooleanAndConverter.Instance}">
                                                             <Binding Path="ConfigurationReadiness.IsReady" />
-                                                            <Binding Path="ToolsAvailable"
-                                                                     Mode="OneWay"
-                                                                     Converter="{StaticResource ToolRequestExistsConverter}">
-                                                                <Binding.ConverterParameter>
-                                                                    <x:Static Member="common:AesirTools.WebToolName" />
-                                                                </Binding.ConverterParameter>
-                                                            </Binding>
+                                                            <MultiBinding Converter="{StaticResource ToolRequestExistsConverter}">
+                                                                <Binding Path="AllToolsAvailable" />
+                                                                <Binding Source="{x:Static Member=common:AesirTools.WebToolName}" />
+                                                            </MultiBinding>
                                                         </MultiBinding>
                                                     </Button.IsEnabled>
                                                 </ToggleButton>
+                                                
+                                                <!-- MCP Tools -->
+                                                <ItemsControl ItemsSource="{Binding McpToolsAvailable}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal" Spacing="6" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="common:ToolRequest">
+                                                            <ToggleButton Classes="Primary AesirToggleButton"
+                                                                          Margin="0,0,0,0"
+                                                                          ToolTip.Tip="{Binding ToolName, StringFormat='Toggle {0}'}"
+                                                                          Theme="{DynamicResource OutlineButton}"
+                                                                          Command="{Binding $parent[UserControl].((vm:ChatViewViewModel)DataContext).ToggleToolRequest}"
+                                                                          CommandParameter="{Binding .}"
+                                                                          IsEnabled="{Binding $parent[UserControl].((vm:ChatViewViewModel)DataContext).ConfigurationReadiness.IsReady}">
+                                                                <ToggleButton.IsChecked>
+                                                                    <MultiBinding Converter="{StaticResource ToolRequestExistsConverter}">
+                                                                        <Binding Path="$parent[UserControl].((vm:ChatViewViewModel)DataContext).ToolRequests" />
+                                                                        <Binding Path="ToolName" />
+                                                                        <Binding Path="McpServerName" />
+                                                                    </MultiBinding>
+                                                                </ToggleButton.IsChecked>
+                                                                <Panel>
+                                                                    <avalonia:MaterialIcon Kind="Server" Width="20"
+                                                                            Height="34"
+                                                                            IsVisible="{Binding $parent[ToggleButton].IsChecked}" />
+                                                                    <avalonia:MaterialIcon Kind="ServerOff" Width="20"
+                                                                            Height="34"
+                                                                            IsVisible="{Binding !$parent[ToggleButton].IsChecked}" />
+                                                                </Panel>
+                                                            </ToggleButton>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                
+                                                <!-- Thinking -->
                                                 <Button Classes="Primary AesirSelectButton"
                                                         Margin="0,0,0,0"
                                                         ToolTip.Tip="Thinking Setting"

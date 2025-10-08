@@ -5,8 +5,8 @@ using Microsoft.SemanticKernel.Connectors.Ollama;
 
 namespace Aesir.Api.Server.Services.Implementations.Ollama;
 
-public class OllamaPromptExecutionSettingsBuilder(Kernel kernel, IConversationDocumentCollectionService conversationDocumentCollectionService) : 
-    BasePromptExecutionSettingsBuilder<OllamaPromptExecutionSettings>(kernel, conversationDocumentCollectionService)
+public class OllamaPromptExecutionSettingsBuilder(Kernel kernel, IConversationDocumentCollectionService conversationDocumentCollectionService, IKernelPluginService kernelPluginService) : 
+    BasePromptExecutionSettingsBuilder<OllamaPromptExecutionSettings>(kernel, conversationDocumentCollectionService, kernelPluginService)
 {
     protected override OllamaPromptExecutionSettings CreatePromptExecutionSettings(AesirChatRequest request)
     {

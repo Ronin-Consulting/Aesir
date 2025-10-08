@@ -5,13 +5,16 @@ namespace Aesir.Api.Server.Services.Implementations.Standard;
 
 public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSettings>(
     Kernel kernel,
-    IConversationDocumentCollectionService conversationDocumentCollectionService)
+    IConversationDocumentCollectionService conversationDocumentCollectionService,
+    IKernelPluginService kernelPluginService)
     where TPromptExecutionSettings : PromptExecutionSettings
 {
     // ReSharper disable once MemberCanBePrivate.Global
     protected readonly Kernel Kernel = kernel;
     // ReSharper disable once MemberCanBePrivate.Global
     protected readonly IConversationDocumentCollectionService ConversationDocumentCollectionService = conversationDocumentCollectionService;
+    
+    protected readonly IKernelPluginService KernelPluginService = kernelPluginService;
 
     public async Task<PromptExecutionSettingsResult<TPromptExecutionSettings>> BuildAsync(AesirChatRequest request)
     {
@@ -27,7 +30,7 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
         if(request.EnableThinking ?? false)
             ConfigureForThinking(settings, request);
         
-        ConfigureBuiltInTools(settings, request, systemPromptVariables);
+        await ConfigureBuiltInTools(settings, request, systemPromptVariables);
         await ConfigureExternalToolsAsync(settings, request, systemPromptVariables);
         
         return new PromptExecutionSettingsResult<TPromptExecutionSettings>()
@@ -37,14 +40,17 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
         };
     }
 
-    private void ConfigureBuiltInTools(TPromptExecutionSettings settings, AesirChatRequest request, Dictionary<string, object> systemPromptVariables)
-    {
+    private async Task ConfigureBuiltInTools(TPromptExecutionSettings settings, AesirChatRequest request, Dictionary<string, object> systemPromptVariables)
+    {   
         var kernelPluginArgs = ConversationDocumentCollectionArgs.Default;
         
         var enableWebSearch = request.Tools.Any(t => t.IsWebSearchToolRequest);
         var enableDocumentSearch = 
             request.Tools.Any(t => t.IsRagToolRequest) &&
             request.Conversation.Messages.Any(m => m.HasFile());
+        var enableMcpTools = request.Tools.Any(t => t.IsMcpServerToolRequest);
+        
+        kernelPluginArgs["PluginName"] = "ChatTools";
         
         systemPromptVariables["webSearchtoolsEnabled"] = enableWebSearch;
         kernelPluginArgs.SetEnableWebSearch(enableWebSearch);
@@ -54,23 +60,34 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
             systemPromptVariables["docSearchToolsEnabled"] = true;
             kernelPluginArgs.SetEnableDocumentSearch(true);
         }
-        
+
         if (enableWebSearch || enableDocumentSearch)
         {
-            settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
-
             var conversationId = request.Conversation.Id;
-            
             kernelPluginArgs.SetConversationId(conversationId);
-
-            var plugin = ConversationDocumentCollectionService.GetKernelPlugin(kernelPluginArgs);
-            
-            // Remove the existing plugin if it exists to avoid conflicts with conversations
-            if(Kernel.Plugins.TryGetPlugin(plugin.Name, out var existingPlugin))
-                Kernel.Plugins.Remove(existingPlugin);    
-                
-            Kernel.Plugins.Add(plugin);
         }
+
+        if (enableMcpTools)
+        {
+            var mcpTools = request.Tools
+                .Where(t => t.IsMcpServerToolRequest)
+                .Select(at => new ConversationDocumentCollectionArgs.McpServerToolArg(at.McpServerName!, at.ToolName))
+                .ToArray();
+            kernelPluginArgs.SetMcpTools(mcpTools);
+        }
+
+        if (enableWebSearch || enableDocumentSearch || enableMcpTools)
+        {
+            settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
+        }
+
+        var plugin = await KernelPluginService.GetKernelPluginAsync(kernelPluginArgs);
+            
+        // Remove the existing plugin if it exists to avoid conflicts with conversations
+        if (Kernel.Plugins.TryGetPlugin(plugin.Name, out var existingPlugin))
+            Kernel.Plugins.Remove(existingPlugin);    
+                
+        Kernel.Plugins.Add(plugin);
     }
 
     protected virtual void ConfigureForThinking(TPromptExecutionSettings settings, AesirChatRequest request)

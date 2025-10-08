@@ -186,21 +186,16 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
     /// <exception cref="ArgumentNullException">
     /// Thrown when the value for "CategoryId" is null or empty.
     /// </exception>
-    public KernelPlugin GetKernelPlugin(IDictionary<string, object>? kernelPluginArguments = null)
+    public IList<KernelFunction> GetKernelPluginFunctions(IDictionary<string, object>? kernelPluginArguments = null)
     {
         if (kernelPluginArguments == null)
             throw new ArgumentException("Kernel plugin args must contain a ConversationId");
-
-        if (!kernelPluginArguments.TryGetValue("PluginName", out var pluginNameValue))
-            throw new ArgumentException("Kernel plugin args must contain a PluginName");
 
         var kernelFunctionLibrary = new KernelFunctionLibrary<Guid, AesirGlobalDocumentTextData<Guid>>(
             _globalDocumentVectorSearch, _globalDocumentHybridSearch, _vectorStoreRecordCollection
         );
 
         var kernelFunctions = new List<KernelFunction>();
-
-        var pluginName = (string)pluginNameValue;
         
         if (!kernelPluginArguments.TryGetValue("CategoryId", out var metaValue))
             throw new ArgumentException("Kernel plugin args must contain a CategoryId");
@@ -225,9 +220,6 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
             kernelFunctions.Add(kernelFunctionLibrary.GetSemanticDocumentSearchFunction(semanticSearchFilter, MaxTopResults));;
         }
         
-        return KernelPluginFactory.CreateFromFunctions(
-            pluginName,
-            kernelFunctions
-        );
+        return kernelFunctions;
     }
 }

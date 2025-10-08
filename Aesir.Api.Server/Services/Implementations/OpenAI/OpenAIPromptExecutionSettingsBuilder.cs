@@ -5,8 +5,8 @@ using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace Aesir.Api.Server.Services.Implementations.OpenAI;
 
-public class OpenAiPromptExecutionSettingsBuilder(Kernel kernel, IConversationDocumentCollectionService conversationDocumentCollectionService) : 
-    BasePromptExecutionSettingsBuilder<OpenAIPromptExecutionSettings>(kernel, conversationDocumentCollectionService)
+public class OpenAiPromptExecutionSettingsBuilder(Kernel kernel, IConversationDocumentCollectionService conversationDocumentCollectionService, IKernelPluginService kernelPluginService) : 
+    BasePromptExecutionSettingsBuilder<OpenAIPromptExecutionSettings>(kernel, conversationDocumentCollectionService, kernelPluginService)
 {
     protected override OpenAIPromptExecutionSettings CreatePromptExecutionSettings(AesirChatRequest request)
     {

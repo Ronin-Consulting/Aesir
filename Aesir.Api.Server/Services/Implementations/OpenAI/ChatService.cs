@@ -30,6 +30,12 @@ public class ChatService : BaseChatService
     private readonly IConversationDocumentCollectionService _conversationDocumentCollectionService;
 
     /// <summary>
+    /// Service responsible for managing and orchestrating plugins within the kernel, enabling the
+    /// integration of additional functionalities or extensions into the core behavior of the system.
+    /// </summary>
+    private readonly IKernelPluginService _kernelPluginService;
+
+    /// <summary>
     /// Provides an implementation of prompt generation functionalities used for constructing
     /// and accessing prompts essential to AI-driven workflows, such as chat completion and
     /// other conversational AI operations.
@@ -47,6 +53,7 @@ public class ChatService : BaseChatService
     public ChatService(
         ILogger<ChatService> logger,
         Kernel kernel,
+        IKernelPluginService kernelPluginService,
         IServiceProvider serviceProvider,
         string inferenceEngineIdKey,
         IChatHistoryService chatHistoryService,
@@ -54,6 +61,7 @@ public class ChatService : BaseChatService
         : base(logger, chatHistoryService, kernel, serviceProvider, inferenceEngineIdKey)
     {
         _conversationDocumentCollectionService = conversationDocumentCollectionService;
+        _kernelPluginService = kernelPluginService;
     }
 
     /// <summary>
@@ -188,7 +196,7 @@ public class ChatService : BaseChatService
         await Task.CompletedTask;
         
         var promptExecutionSettingsBuilder = new OpenAiPromptExecutionSettingsBuilder(
-            _kernel, _conversationDocumentCollectionService);
+            _kernel, _conversationDocumentCollectionService, _kernelPluginService);
 
         var results = 
             await promptExecutionSettingsBuilder.BuildAsync(request);

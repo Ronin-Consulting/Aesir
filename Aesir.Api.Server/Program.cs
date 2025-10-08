@@ -86,6 +86,7 @@ public class Program
                         // only one of these
                         var logger = serviceProvider.GetRequiredService<ILogger<AesirOllama.ChatService>>();
                         var kernel = serviceProvider.GetRequiredService<Kernel>();
+                        var kernelPluginService = serviceProvider.GetRequiredService<IKernelPluginService>();
                         var chatHistoryService = serviceProvider.GetRequiredService<IChatHistoryService>();
                         var conversationDocumentCollectionService =
                             serviceProvider.GetRequiredService<IConversationDocumentCollectionService>();
@@ -99,6 +100,7 @@ public class Program
                             logger,
                             ollamApiClient,
                             kernel,
+                            kernelPluginService,
                             serviceProvider,
                             inferenceEngineIdKey,
                             chatHistoryService,
@@ -152,6 +154,7 @@ public class Program
                         // only one of these
                         var logger = serviceProvider.GetRequiredService<ILogger<AesirOpenAI.ChatService>>();
                         var kernel = serviceProvider.GetRequiredService<Kernel>();
+                        var kernelPluginService = serviceProvider.GetRequiredService<IKernelPluginService>();
                         var chatHistoryService = serviceProvider.GetRequiredService<IChatHistoryService>();
                         var conversationDocumentCollectionService =
                             serviceProvider.GetRequiredService<IConversationDocumentCollectionService>();
@@ -159,6 +162,7 @@ public class Program
                         return new AesirOpenAI.ChatService(
                             logger,
                             kernel,
+                            kernelPluginService,
                             serviceProvider,
                             inferenceEngineIdKey,
                             chatHistoryService,
@@ -229,6 +233,7 @@ public class Program
         builder.Services.AddSingleton<IMcpServerService, McpServerService>();
         builder.Services.AddSingleton<IChatHistoryService, ChatHistoryService>();
         builder.Services.AddSingleton<IFileStorageService, FileStorageService>();
+        builder.Services.AddSingleton<IKernelPluginService, KernelPluginService>();
 
         await builder.Services.SetupSemanticKernelAsync(configurationService, configurationReadinessService);
 

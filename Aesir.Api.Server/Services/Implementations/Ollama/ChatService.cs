@@ -39,6 +39,12 @@ public class ChatService : BaseChatService
     private readonly IConversationDocumentCollectionService _conversationDocumentCollectionService;
 
     /// <summary>
+    /// An instance of the IKernelPluginService interface, providing access to kernel plugin-related
+    /// functionalities used within the chat service for managing extensions or additional behaviors.
+    /// </summary>
+    private readonly IKernelPluginService _kernelPluginService;
+
+    /// <summary>
     /// Indicates whether the "thinking" mode is enabled for chat interactions.
     /// When set to true, the service utilizes an extended processing mode to deliver
     /// intermediate responses or signal ongoing operations in chat sessions.
@@ -73,6 +79,7 @@ public class ChatService : BaseChatService
         ILogger<ChatService> logger,
         OllamaApiClient api,
         Kernel kernel,
+        IKernelPluginService kernelPluginService,
         IServiceProvider serviceProvider,
         string inferenceEngineId,
         IChatHistoryService chatHistoryService,
@@ -83,6 +90,7 @@ public class ChatService : BaseChatService
         _enableThinking = enableThinking;
         _api = api;
         _conversationDocumentCollectionService = conversationDocumentCollectionService;
+        _kernelPluginService = kernelPluginService;
         _enableThinking = enableThinking;
     }
 
@@ -227,7 +235,7 @@ public class ChatService : BaseChatService
         await Task.CompletedTask;
         
         var promptExecutionSettingsBuilder = new OllamaPromptExecutionSettingsBuilder(
-            _kernel, _conversationDocumentCollectionService);
+            _kernel, _conversationDocumentCollectionService, _kernelPluginService);
 
         var results = 
             await promptExecutionSettingsBuilder.BuildAsync(request);

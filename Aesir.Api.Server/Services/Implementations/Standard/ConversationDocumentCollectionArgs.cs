@@ -3,7 +3,7 @@ namespace Aesir.Api.Server.Services.Implementations.Standard;
 /// <summary>
 /// Provides arguments for conversation-specific document collection operations.
 /// </summary>
-public class ConversationDocumentCollectionArgs : Dictionary<string, object>
+public class ConversationDocumentCollectionArgs : BaseKernelPluginArgs
 {
     /// <summary>
     /// Gets the default instance of conversation document collection arguments.

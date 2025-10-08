@@ -297,12 +297,10 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// <exception cref="ArgumentNullException">
     /// Thrown if the value associated with the "ConversationId" key is null or empty.
     /// </exception>
-    public KernelPlugin GetKernelPlugin(IDictionary<string, object>? kernelPluginArguments = null)
+    public IList<KernelFunction> GetKernelPluginFunctions(IDictionary<string, object>? kernelPluginArguments = null)
     {
         if (kernelPluginArguments == null)
             throw new ArgumentException("Kernel plugin args must contain a ConversationId");
-
-        const string pluginName = "ChatTools";
 
         var kernelFunctionLibrary = new KernelFunctionLibrary<Guid, AesirConversationDocumentTextData<Guid>>(
             _conversationDocumentVectorSearch, _conversationDocumentHybridSearch, _vectorStoreRecordCollection
@@ -317,7 +315,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             if (enableWebSearch)
             {
                 // add web search functions
-                // TODO: we meed to get the searchEnginId and apiKey from somewhere else not hard coded when it makes sense
+// TODO: we meed to get the searchEnginId and apiKey from somewhere else not hard coded when it makes sense
                 var googleConnector = new GoogleConnector(
                     searchEngineId: "64cf6ca85e9454a44", //Environment.GetEnvironmentVariable("CSE_ID"),
                     apiKey: "AIzaSyByEQBfXtNjdxIGlpeLRz0C1isORMnsHNU"); //Environment.GetEnvironmentVariable("GOOGLE_KEY"))
@@ -369,10 +367,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
                 }
             }
         }
-        
-        return KernelPluginFactory.CreateFromFunctions(
-            pluginName,
-            kernelFunctions.ToArray()
-        ); 
+
+        return kernelFunctions;
     }
 }

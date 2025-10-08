@@ -5,10 +5,12 @@ using System.Reflection;
 using System.Text.Json;
 using Aesir.Api.Server.Extensions;
 using Aesir.Api.Server.Models;
+using Aesir.Common.Models;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Data;
 using Microsoft.SemanticKernel.Plugins.Web;
+using ModelContextProtocol.Client;
 
 namespace Aesir.Api.Server.Services.Implementations.Standard;
 
@@ -301,6 +303,79 @@ public class KernelFunctionLibrary<TKey, TRecord>(
             );
 
         return KernelFunctionFactory.CreateFromMethod(plugin.GetChunksAsync);
+    }
+
+
+    /// Retrieves a specific tool from an MCP server and converts it into a kernel function.
+    /// The server may either be local or remote, and the function adapts the communication
+    /// method accordingly based on the server's location.
+    /// <param name="mcpServer">
+    /// The MCP server configuration object containing details such as the server location,
+    /// command, arguments, environment variables, or remote URL.
+    /// </param>
+    /// <param name="toolName">
+    /// The name of the desired tool to retrieve from the MCP server.
+    /// </param>
+    /// <returns>
+    /// A kernel function representing the tool retrieved from the specified MCP server.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the server location is not recognized or any unexpected error occurs during the process.
+    /// </exception>
+    public async Task<KernelFunction> GetMcpServerToolFunctionAsync(AesirMcpServer mcpServer, string toolName)
+    {
+        switch (mcpServer.Location)
+        {
+            case ServerLocation.Local:
+            {
+                // Std IO transport
+                var transport = new StdioClientTransport(new StdioClientTransportOptions
+                {
+                    Name = "OpenWeatherMCP",
+                    Command = mcpServer.Command,
+                    Arguments = mcpServer.Arguments,
+                    EnvironmentVariables = mcpServer.EnvironmentVariables
+                });
+        
+                // Create the MCP client
+                await using var mcp = await McpClient.CreateAsync(transport);
+            
+                // Discover tools from the MCP server
+                var toolsResponse = await mcp.ListToolsAsync().ConfigureAwait(false);
+                var clientTool = toolsResponse.FirstOrDefault(t => t.Name == toolName);
+                return clientTool.AsKernelFunction();
+            }
+            case ServerLocation.Remote:
+            {
+                // SSE transport
+                var transport = new HttpClientTransport(new HttpClientTransportOptions()
+                {
+                    Endpoint = new Uri(mcpServer.Url),
+                    TransportMode = HttpTransportMode.AutoDetect,
+                    AdditionalHeaders = mcpServer.HttpHeaders
+                });
+
+                // Create the MCP client - don't dispose immediately, let it live with the function
+//                await using 
+                var mcp = await McpClient.CreateAsync(transport);
+
+                try
+                {
+                    // Discover tools from the MCP server
+                    var toolsResponse = await mcp.ListToolsAsync().ConfigureAwait(false);
+                    var clientTool = toolsResponse.FirstOrDefault(t => t.Name == toolName);
+                    return clientTool.AsKernelFunction();
+                }    
+                catch
+                {
+                    // Only dispose on error
+                    await mcp.DisposeAsync();
+                    throw;
+                }
+            }
+            default:
+                throw new InvalidOperationException("Unexpected ServerLocation type");
+        }
     }
 }
 

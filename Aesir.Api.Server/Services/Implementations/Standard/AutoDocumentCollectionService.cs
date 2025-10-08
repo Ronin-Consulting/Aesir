@@ -124,12 +124,12 @@ public class AutoDocumentCollectionService : IDocumentCollectionService
     }
 
     /// <summary>
-    /// Retrieves a Kernel plugin instance based on the specified document collection type.
+    /// Retrieves Kernel plugin functions based on the specified document collection type.
     /// </summary>
     /// <param name="kernelPluginArguments">An optional dictionary of arguments, which must include a "DocumentCollectionType" key to determine the document collection type (e.g., Conversation or Global).</param>
-    /// <returns>A Kernel plugin corresponding to the specified document collection type.</returns>
+    /// <returns>A list of KernelFunctions needed for the plugin corresponding to the specified document collection type.</returns>
     /// <exception cref="ArgumentException">Thrown if kernelPluginArguments is null, does not contain the "DocumentCollectionType" key, or contains an invalid document collection type.</exception>
-    public KernelPlugin GetKernelPlugin(IDictionary<string, object>? kernelPluginArguments = null)
+    public IList<KernelFunction> GetKernelPluginFunctions(IDictionary<string, object>? kernelPluginArguments = null)
     {
         if(kernelPluginArguments == null || !kernelPluginArguments.TryGetValue("DocumentCollectionType", out var metaValue))
             throw new ArgumentException("Kernel arguments must contain a DocumentCollectionType property");
@@ -138,8 +138,8 @@ public class AutoDocumentCollectionService : IDocumentCollectionService
         
         return documentCollectionType switch
         {
-            DocumentCollectionType.Conversation => _conversationDocumentCollectionService.GetKernelPlugin(kernelPluginArguments),
-            DocumentCollectionType.Global => _globalDocumentCollectionService.GetKernelPlugin(kernelPluginArguments),
+            DocumentCollectionType.Conversation => _conversationDocumentCollectionService.GetKernelPluginFunctions(kernelPluginArguments),
+            DocumentCollectionType.Global => _globalDocumentCollectionService.GetKernelPluginFunctions(kernelPluginArguments),
             _ => throw new ArgumentException("Invalid DocumentCollectionType")
         };
     }

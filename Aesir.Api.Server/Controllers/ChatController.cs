@@ -52,21 +52,30 @@ namespace Aesir.Api.Server.Controllers
         public async Task<AesirChatResult> AgentChatCompletionsAsync([FromBody] AesirAgentChatRequestBase request)
         {
             var agent = await configurationService.GetAgentAsync(request.AgentId.Value);
-
+            var tools = await configurationService.GetToolsUsedByAgentAsync(request.AgentId.Value);
+            var mcpServers = await configurationService.GetMcpServersAsync();
+            
+            var filteredTools = request.Tools.Where(tr => 
+                tools.Any(t => 
+                    t.Name == tr.ToolName &&
+                    (!tr.IsMcpServerToolRequest || 
+                     (mcpServers.Any(mcp => mcp.Id == t.McpServerId && mcp.Name == tr.McpServerName)))
+                )).ToList();
+            
             var chatRequest = new AesirChatRequest()
             {
                 ChatSessionId = request.ChatSessionId,
                 ChatSessionUpdatedAt = request.ChatSessionUpdatedAt,
                 ClientDateTime = request.ClientDateTime,
                 Conversation = request.Conversation,
-                EnableThinking = true, // TODO should eventually be configuration on agent (it's an override of inference engine value)
+                EnableThinking = request.EnableThinking,
                 MaxTokens = agent.ChatMaxTokens ?? 32768,
                 Model = agent.ChatModel!,
                 Temperature = agent.ChatTemperature ?? 0.1,
                 Title = request.Title,
                 TopP = agent.ChatTopP ?? 0.1,
                 User = request.User,
-                Tools = request.Tools,
+                Tools = filteredTools,
                 ThinkValue = request.ThinkValue
             };
 
@@ -89,6 +98,15 @@ namespace Aesir.Api.Server.Controllers
         public async Task<IAsyncEnumerable<AesirChatStreamedResult>> AgentChatCompletionsStreamedAsync([FromBody] AesirAgentChatRequestBase request)
         {
             var agent = await configurationService.GetAgentAsync(request.AgentId.Value);
+            var tools = await configurationService.GetToolsUsedByAgentAsync(request.AgentId.Value);
+            var mcpServers = await configurationService.GetMcpServersAsync();
+            
+            var filteredTools = request.Tools.Where(tr => 
+                tools.Any(t => 
+                    t.ToolName == tr.ToolName &&
+                    (!tr.IsMcpServerToolRequest || 
+                     (mcpServers.Any(mcp => mcp.Id == t.McpServerId && mcp.Name == tr.McpServerName)))
+                )).ToList();
             
             var chatRequest = new AesirChatRequest()
             {
@@ -96,14 +114,14 @@ namespace Aesir.Api.Server.Controllers
                 ChatSessionUpdatedAt = request.ChatSessionUpdatedAt,
                 ClientDateTime = request.ClientDateTime,
                 Conversation = request.Conversation,
-                EnableThinking = true, // TODO should eventually be configuration on agent (it's an override of inference engine value)
+                EnableThinking = request.EnableThinking,
                 MaxTokens = agent.ChatMaxTokens ?? 32768,
                 Model = agent.ChatModel!,
                 Temperature = agent.ChatTemperature ?? 0.1,
                 Title = request.Title,
                 TopP = agent.ChatTopP ?? 0.1,
                 User = request.User,
-                Tools = request.Tools,
+                Tools = filteredTools,
                 ThinkValue = request.ThinkValue
             };
 

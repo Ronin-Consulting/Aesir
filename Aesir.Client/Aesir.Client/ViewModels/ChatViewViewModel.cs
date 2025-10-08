@@ -142,7 +142,10 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     private ICollection<ToolRequest> _toolRequests = new HashSet<ToolRequest>();
     
     [ObservableProperty]
-    private ICollection<ToolRequest> _toolsAvailable = new HashSet<ToolRequest>();
+    private ICollection<ToolRequest> _allToolsAvailable = new HashSet<ToolRequest>();
+    
+    [ObservableProperty]
+    public ICollection<ToolRequest> _mcpToolsAvailable= new HashSet<ToolRequest>();
 
     [ObservableProperty]
     private bool _thinkingToggleVisible;
@@ -284,7 +287,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         SendMessageCommand = new AsyncRelayCommand(ExecuteSendMessageAsync);
         ShowFileSelectionCommand = new AsyncRelayCommand(ExecuteShowFileSelectionAsync);
         SelectThinkValueCommand = new RelayCommand<string>(ExecuteSelectThinkValue);
-        ToggleToolRequest = new RelayCommand<string?>(ExecuteToggleToolRequest);
+        ToggleToolRequest = new RelayCommand<ToolRequest>(ExecuteToggleToolRequest);
         
         SelectedFile = fileToUploadViewModel ?? throw new ArgumentNullException(nameof(fileToUploadViewModel));
         SelectedFile.IsActive = true;
@@ -297,23 +300,20 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         SelectedThinkValue = thinkValue;
     }
 
-    private void ExecuteToggleToolRequest(string? toolName)
+    private void ExecuteToggleToolRequest(ToolRequest? toolRequest)
     {
-        if (string.IsNullOrWhiteSpace(toolName)) return;
+        if (string.IsNullOrWhiteSpace(toolRequest?.ToolName)) return;
         
         // does ToolRequests contain the tool with the same name?
-        if (ToolRequests.Any(x => x.ToolName == toolName))
+        if (ToolRequests.Contains(toolRequest))
         {
             // yes, remove it
-            ToolRequests.Remove(ToolRequests.First(x => x.ToolName == toolName));
+            ToolRequests.Remove(toolRequest);
         }
         else
         {
             // no, add it
-            ToolRequests.Add(new ToolRequest
-            {
-                ToolName = toolName
-            });
+            ToolRequests.Add(toolRequest);
         }
         
         ToolRequests = new HashSet<ToolRequest>(ToolRequests);
@@ -345,16 +345,27 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             SelectedAgentName = agent.Name;
             _appState.SelectedAgent = agent;
 
-            ToolsAvailable =
-                (await _configurationService.GetToolsForAgentAsync(agent.Id!.Value)).Select(t =>
+            // load agent tools and mcp servers from backend
+            var toolsTask = _configurationService.GetToolsForAgentAsync(agent.Id!.Value);
+            var mcpServersTask = _configurationService.GetMcpServersAsync();
+            await Task.WhenAll(toolsTask, mcpServersTask);
+            
+            var tools = await toolsTask;
+            var mcpServers = await mcpServersTask;
+                
+            // normalize them into tool requests
+            AllToolsAvailable = tools.Select(t =>
                 new ToolRequest()
                     {
-                        ToolName = t.ToolName!
+                        ToolName = t.ToolName!,
+                        McpServerName = t.McpServerId is null ? null : mcpServers.First(s => s.Id == t.McpServerId).Name
                     }
             ).ToHashSet();
+            McpToolsAvailable = AllToolsAvailable.Where(t => t.IsMcpServerToolRequest).ToHashSet();
             
-            ToolRequests = new HashSet<ToolRequest>(ToolsAvailable);
+            ToolRequests = new HashSet<ToolRequest>(AllToolsAvailable);
 
+            // set up thinking
             if ((agent.AllowThinking ?? false) && 
                 agent.ThinkValue.HasValue && !agent.ThinkValue.Value.IsBoolean())
             {
