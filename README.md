@@ -18,59 +18,6 @@
    2. **IF** Rider IDE from the run menu edit the run configuration and set Open Browser to Chrome.
    3. **THEN** from the menu "Debug ..." or "Run..." the Aesir.Client.Browser project.
 
-## OUTSTANDING FEATURES
-
-- [X] Add message controls like chatgpt
-  - [x] Copy message
-  - [X] Regenerate assistant message
-  - [X] Edit user message
-  - [X] Play message
-- [X] Support "Thinking" In Chat
-- [X] Support Showing Execution Of Tools In Chat Thoughts
-- [X] Implement RAG
-  - [X] Implement Document Management
-  - [X] Upload - Global Documents
-  - [X] Upload - Conversation Documents
-  - [ ] ~~Download (should we do this?)~~
-  - [x] CRUD
-  - [X] Citations
-  - [X] Citation Viewer
-  - [X] Handle image based PDFs
-    - [X] Vison Model Backended OCR
-    - [ ] ~~Tesseract .NET? Is it cross platformed?~~
-    - [X] Other - ASPOSE?
-    - [X] Other - Handle pages with images and text.
-  - [ ] RBAC RAG
-  - [X] Other?
-    - [X] Smarter Chunking - Use Semantic Kernel Chunker (we could make this configurable?)
-    - [ ] ~~Re-ranker~~
-    - [X] Lexical and Semantic Search
-  - [X] Implement Computer Vision
-    - [X] Support for Local Vision Models
-    - [X] Support for Hosted Vision Models
-- [X] Implement Image Chat (using computer vision)
-- [x] Implement Chat History
-  - [x] CRUD
-  - [x] Search
-- [ ] Tools/MCP Integration
-- [X] AI Agents
-- [X] Hands Free Mode
-  - [X] hands free UI/UX
-  - [X] speech-to-text
-  - [X] text-to-speech
-- [ ] Implement User Settings
-  - [ ] Change name
-  - [ ] Change profile picture
-  - [ ] Change theme
-- [ ] Implement User Authentication
-  - [ ] Login
-  - [ ] Register
-  - [ ] Logout
-- [X] Works in web browser (ish)
-- [ ] Optimize Backend
-  - [ ] Custom tuned llama.cpp 
-    - X86,Apple Silicon and ARM64
-    - CUDA, Metal and Onnx
 ## Supported AI Backends
 
 ### Ollama (Default)
