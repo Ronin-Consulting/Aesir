@@ -607,7 +607,7 @@ public class ConfigurationService(
         if (DatabaseMode)
         {
             const string sql = @"
-            SELECT id, name, type, description, mcp_server_id AS McpServerId, tool_name AS ToolName
+            SELECT id, name, type, description, mcp_server_id AS McpServerId, tool_name AS ToolName, icon_name AS IconName
             FROM aesir.aesir_tool
         ";
 
@@ -633,7 +633,7 @@ public class ConfigurationService(
         if (DatabaseMode)
         {
             const string sql = @"
-                SELECT t.id, t.name, t.type, t.description, mcp_server_id AS McpServerId, tool_name AS ToolName
+                SELECT t.id, t.name, t.type, t.description, mcp_server_id AS McpServerId, tool_name AS ToolName, icon_name AS IconName
                 FROM aesir.aesir_tool t 
                     INNER JOIN aesir.aesir_agent_tool at ON t.id = at.tool_id
                 WHERE at.agent_id = @AgentId::uuid
@@ -727,7 +727,7 @@ public class ConfigurationService(
         if (DatabaseMode)
         {
             const string sql = @"
-                SELECT id, name, type, description, mcp_server_id AS McpServerId, tool_name AS ToolName
+                SELECT id, name, type, description, mcp_server_id AS McpServerId, tool_name AS ToolName, icon_name AS IconName
                 FROM aesir.aesir_tool
                 WHERE id = @Id::uuid
             ";
@@ -755,9 +755,9 @@ public class ConfigurationService(
 
         const string sql = @"
             INSERT INTO aesir.aesir_tool 
-            (name, description, type, mcp_server_id, tool_name)
+            (name, description, type, mcp_server_id, tool_name, icon_name)
             VALUES 
-            (@Name, @Description, @Type, @McpServerId, @ToolName)
+            (@Name, @Description, @Type, @McpServerId, @ToolName, @IconName)
             RETURNING id;
         ";
 
@@ -782,7 +782,8 @@ public class ConfigurationService(
                 description = @Description,
                 type = @Type,
                 mcp_server_id = @McpServerId,
-                tool_name = @ToolName
+                tool_name = @ToolName,
+                icon_name = @IconName
             WHERE id = @Id
         ";
 

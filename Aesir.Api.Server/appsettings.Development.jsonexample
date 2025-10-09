@@ -79,19 +79,24 @@
     {
       "Name": "Web",
       "Description": "Provides the ability to search the web using Google",
-      "Type": "Internal"
+      "Type": "Internal",
+      "ToolName": "WebTool",
+      "IconName": "World"
     },
     {
       "Name": "RAG",
       "Description": "Supports searching documents with Retrieval Augmented Generation",
-      "Type": "Internal"
+      "Type": "Internal",
+      "ToolName": "RagTool",
+      "IconName": "Paperclip"
     },
     {
       "Name": "Pet Finder",
       "Description": "Finds pets by status",
       "Type": "McpServer",
       "McpServerName": "petstore",
-      "McpServerTool": "findsPetsByStatus"
+      "McpServerTool": "findsPetsByStatus",
+      "IconName": "Server"
     }
   ],
   "Agents": [

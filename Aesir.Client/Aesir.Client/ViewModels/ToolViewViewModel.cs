@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -12,6 +13,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Irihi.Avalonia.Shared.Contracts;
+using Material.Icons;
 
 namespace Aesir.Client.ViewModels;
 
@@ -75,6 +77,8 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     /// Collection of available MCP Server Tools that can be selected or used within the application.
     /// </summary>
     public ObservableCollection<string> AvailableMcpServerTools { get; set; }
+    
+    public IEnumerable<MaterialIconKind> AvailableIcons { get; }
 
     /// <summary>
     /// Indicates whether the view model has unsaved changes.
@@ -113,13 +117,21 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
 
         _initialMcpServerId = tool.McpServerId;
         
+        AvailableIcons = GetIconsWithOffVariants();
+        
+        // Convert string IconName from database to MaterialIconKind for the form
+        MaterialIconKind? iconKind = null;
+        if (!string.IsNullOrEmpty(tool.IconName) && Enum.TryParse<MaterialIconKind>(tool.IconName, out var parsedIcon))
+            iconKind = parsedIcon;
+        
         FormModel = new()
         {
             IsExisting = tool.Id.HasValue,
             Name = tool.Name,
             Type = tool.Type,
             Description = tool.Description,
-            McpServerTool = tool.ToolName
+            McpServerTool = tool.ToolName,
+            Icon = iconKind
         };
         IsDirty = false;
         SaveCommand = new AsyncRelayCommand(ExecuteSaveCommand);
@@ -130,6 +142,30 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
         AvailableMcpServerTools = new ObservableCollection<string>();
     
         FormModel.PropertyChanged += OnFormModelPropertyChanged;
+    }
+    
+    private static IEnumerable<MaterialIconKind> GetIconsWithOffVariants()
+    {
+        var allIcons = Enum.GetValues<MaterialIconKind>().ToHashSet();
+        var iconsWithOffVariants = new List<MaterialIconKind>();
+    
+        foreach (var icon in allIcons)
+        {
+            var iconName = icon.ToString();
+        
+            // Skip if this is already an "Off" icon
+            if (iconName.EndsWith("Off"))
+                continue;
+            
+            // Check if the corresponding "Off" version exists
+            var offIconName = iconName + "Off";
+            if (Enum.TryParse<MaterialIconKind>(offIconName, out var offIcon) && allIcons.Contains(offIcon))
+            {
+                iconsWithOffVariants.Add(icon);
+            }
+        }
+    
+        return iconsWithOffVariants.OrderBy(icon => icon.ToString());
     }
 
     /// <summary>
@@ -238,7 +274,8 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
                 Description = FormModel.Description,
                 Type = FormModel.Type,
                 McpServerId = FormModel.McpServer?.Id,
-                ToolName = FormModel.McpServerTool
+                ToolName = FormModel.McpServerTool,
+                IconName = FormModel.Icon?.ToString()
             };
 
             var closeResult = CloseResult.Errored;
@@ -385,7 +422,12 @@ public partial class ToolFormDataModel : ObservableValidator
     /// Represents the specific MCP server tool selected
     /// </summary>
     [ObservableProperty] [NotifyDataErrorInfo] [ConditionalRequired(nameof(Type), ToolType.McpServer, ErrorMessage = "Server Tool is required")] private string? _mcpServerTool;
-
+    
+    /// <summary>
+    /// Represents the specific MCP server tool selected
+    /// </summary>
+    [ObservableProperty] [NotifyDataErrorInfo] [Required (ErrorMessage = "Icon is required")] private MaterialIconKind? _icon;
+    
     /// <summary>
     /// Validates all properties of the current object and checks if any validation errors exist.
     /// </summary>

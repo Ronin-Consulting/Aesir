@@ -35,12 +35,17 @@ public class AesirToolBase
     [JsonPropertyName("mcp_server_id")]
     public Guid? McpServerId { get; set; }
 
-
     /// <summary>
     /// Gets or sets the name of the tool.
     /// </summary>
     [JsonPropertyName("tool_name")]
     public string? ToolName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name of the icon used for the tool.
+    /// </summary>
+    [JsonPropertyName("icon_name")]
+    public string? IconName { get; set; }
 }
 
 public enum ToolType
