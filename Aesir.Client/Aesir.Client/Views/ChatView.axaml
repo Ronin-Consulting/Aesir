@@ -60,6 +60,7 @@
         <converters:ToolRequestParameterConverter x:Key="ToolRequestParameterConverter" />
         <converters:EqualityToBoolConverter x:Key="EqualityToBoolConverter" />
         <converters:EqualityToBoolConverter x:Key="IsNotNullConverter" Invert="True" />
+        <converters:ToolRequestIconConverter x:Key="ToolRequestIconConverter" />
     </UserControl.Resources>
 
     <DockPanel>
@@ -304,7 +305,7 @@
                                                         </ItemsPanelTemplate>
                                                     </ItemsControl.ItemsPanel>
                                                     <ItemsControl.ItemTemplate>
-                                                        <DataTemplate x:DataType="common:ToolRequest">
+                                                        <DataTemplate x:DataType="vm:ToolRequestWithIcon">
                                                             <ToggleButton Classes="Primary AesirToggleButton"
                                                                           Margin="0,0,0,0"
                                                                           ToolTip.Tip="{Binding ToolName, StringFormat='Toggle {0}'}"
@@ -319,14 +320,14 @@
                                                                         <Binding Path="McpServerName" />
                                                                     </MultiBinding>
                                                                 </ToggleButton.IsChecked>
-                                                                <Panel>
-                                                                    <avalonia:MaterialIcon Kind="Server" Width="20"
-                                                                            Height="34"
-                                                                            IsVisible="{Binding $parent[ToggleButton].IsChecked}" />
-                                                                    <avalonia:MaterialIcon Kind="ServerOff" Width="20"
-                                                                            Height="34"
-                                                                            IsVisible="{Binding !$parent[ToggleButton].IsChecked}" />
-                                                                </Panel>
+                                                                <avalonia:MaterialIcon Width="20" Height="34">
+                                                                    <avalonia:MaterialIcon.Kind>
+                                                                        <MultiBinding Converter="{StaticResource ToolRequestIconConverter}">
+                                                                            <Binding Path="." />
+                                                                            <Binding Path="$parent[UserControl].((vm:ChatViewViewModel)DataContext).ToolRequests" />
+                                                                        </MultiBinding>
+                                                                    </avalonia:MaterialIcon.Kind>
+                                                                </avalonia:MaterialIcon>
                                                             </ToggleButton>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>

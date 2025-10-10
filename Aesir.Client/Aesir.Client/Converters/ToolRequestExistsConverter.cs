@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Aesir.Client.ViewModels;
 using Aesir.Common.Models;
 using Avalonia.Data;
 using Avalonia.Data.Converters;
@@ -15,7 +16,7 @@ public class ToolRequestExistsConverter : IMultiValueConverter
         if (values?.Count != 2 && values?.Count != 3)
             return BindingOperations.DoNothing;
 
-        var requests = values[0] as IEnumerable<ToolRequest>;
+        var requests = values[0] as IEnumerable<ToolRequestWithIcon>;
         var toolName = values[1] as string;
 
         if (requests == null || string.IsNullOrEmpty(toolName))

@@ -5,6 +5,7 @@ using System.Linq;
 using Aesir.Client.ViewModels;
 using Aesir.Common.Models;
 using Avalonia.Data.Converters;
+using Material.Icons;
 
 namespace Aesir.Client.Converters;
 
@@ -17,9 +18,9 @@ public class ToolRequestIconConverter : IMultiValueConverter
     {
         if (values.Count < 2 || 
             values[0] is not ToolRequestWithIcon toolRequestWithIcon ||
-            values[1] is not ICollection<ToolRequest> selectedToolRequests)
+            values[1] is not ICollection<ToolRequestWithIcon> selectedToolRequests)
         {
-            return "Help"; // Default icon
+            return MaterialIconKind.Help; // Default icon
         }
 
         try
@@ -29,12 +30,20 @@ public class ToolRequestIconConverter : IMultiValueConverter
                 string.Equals(t.ToolName, toolRequestWithIcon.ToolName, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(t.McpServerName, toolRequestWithIcon.McpServerName, StringComparison.OrdinalIgnoreCase));
 
-            // Return appropriate icon based on selection state
-            return isSelected ? toolRequestWithIcon.IconName : toolRequestWithIcon.IconName + "Off";
+            // Get appropriate icon name based on selection state
+            var iconName = isSelected ? toolRequestWithIcon.IconName : toolRequestWithIcon.IconName + "Off";
+
+            MaterialIconKind result = MaterialIconKind.Help;
+            if (Enum.TryParse<MaterialIconKind>(iconName, true, out var parsedIcon))
+            {
+                result = parsedIcon;
+            }
+
+            return result;
         }
         catch (Exception)
         {
-            return "Help"; // Default icon on error
+            return MaterialIconKind.Help; // Default icon on error
         }
     }
 

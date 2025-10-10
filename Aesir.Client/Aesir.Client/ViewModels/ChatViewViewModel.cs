@@ -139,13 +139,13 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     public ObservableCollection<MessageViewModel?> ConversationMessages { get; } = [];
     
     [ObservableProperty]
-    private ICollection<ToolRequest> _toolRequests = new HashSet<ToolRequest>();
+    private ICollection<ToolRequestWithIcon> _toolRequests = new HashSet<ToolRequestWithIcon>();
     
     [ObservableProperty]
-    private ICollection<ToolRequest> _allToolsAvailable = new HashSet<ToolRequest>();
+    private ICollection<ToolRequestWithIcon> _allToolsAvailable = new HashSet<ToolRequestWithIcon>();
     
     [ObservableProperty]
-    public ICollection<ToolRequest> _mcpToolsAvailable= new HashSet<ToolRequest>();
+    public ICollection<ToolRequestWithIcon> _mcpToolsAvailable= new HashSet<ToolRequestWithIcon>();
 
     [ObservableProperty]
     private bool _thinkingToggleVisible;
@@ -287,7 +287,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         SendMessageCommand = new AsyncRelayCommand(ExecuteSendMessageAsync);
         ShowFileSelectionCommand = new AsyncRelayCommand(ExecuteShowFileSelectionAsync);
         SelectThinkValueCommand = new RelayCommand<string>(ExecuteSelectThinkValue);
-        ToggleToolRequest = new RelayCommand<ToolRequest>(ExecuteToggleToolRequest);
+        ToggleToolRequest = new RelayCommand<ToolRequestWithIcon>(ExecuteToggleToolRequest);
         
         SelectedFile = fileToUploadViewModel ?? throw new ArgumentNullException(nameof(fileToUploadViewModel));
         SelectedFile.IsActive = true;
@@ -300,7 +300,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
         SelectedThinkValue = thinkValue;
     }
 
-    private void ExecuteToggleToolRequest(ToolRequest? toolRequest)
+    private void ExecuteToggleToolRequest(ToolRequestWithIcon? toolRequest)
     {
         if (string.IsNullOrWhiteSpace(toolRequest?.ToolName)) return;
         
@@ -316,7 +316,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             ToolRequests.Add(toolRequest);
         }
         
-        ToolRequests = new HashSet<ToolRequest>(ToolRequests);
+        ToolRequests = new HashSet<ToolRequestWithIcon>(ToolRequests);
     }
 
     /// Executes the command to start a new chat session.
@@ -355,15 +355,16 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
                 
             // normalize them into tool requests
             AllToolsAvailable = tools.Select(t =>
-                new ToolRequest()
+                new ToolRequestWithIcon()
                     {
                         ToolName = t.ToolName!,
-                        McpServerName = t.McpServerId is null ? null : mcpServers.First(s => s.Id == t.McpServerId).Name
+                        McpServerName = t.McpServerId is null ? null : mcpServers.First(s => s.Id == t.McpServerId).Name,
+                        IconName = t.IconName
                     }
             ).ToHashSet();
             McpToolsAvailable = AllToolsAvailable.Where(t => t.IsMcpServerToolRequest).ToHashSet();
             
-            ToolRequests = new HashSet<ToolRequest>(AllToolsAvailable);
+            ToolRequests = new HashSet<ToolRequestWithIcon>(AllToolsAvailable);
 
             // set up thinking
             if ((agent.AllowThinking ?? false) && 
@@ -1091,4 +1092,17 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             }
         ];
     }
+}
+
+/// <summary>
+/// Represents a tool request with an associated icon, extending the base functionality provided by the ToolRequest class.
+/// </summary>
+/// <remarks>
+/// This class adds an additional property, IconName, to represent the icon associated with the specific tool request.
+/// It builds upon the ToolRequest class by maintaining compatibility with the existing tool request structure while
+/// introducing the ability to associate a visual representation.
+/// </remarks>
+public class ToolRequestWithIcon : ToolRequest
+{
+    public string IconName { get; set; } = "Help";
 }
