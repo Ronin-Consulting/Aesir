@@ -805,13 +805,21 @@ public class ConfigurationService(
     {
         VerifyIsDatabaseMode();
 
-        const string sql = @"
+        const string deleteToolRecordSql = @"
             DELETE FROM aesir.aesir_tool
             WHERE id = @Id::uuid
         ";
 
+        const string deleteAgentToolRecord = @"
+            DELETE FROM aesir.aesir_agent_tool
+            WHERE tool_id = @Id::uuid
+        ";
+        
         var rows = await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, new { Id = id }));
+        {
+            await connection.ExecuteAsync(deleteAgentToolRecord, new { Id = id });
+            return await connection.ExecuteAsync(deleteToolRecordSql, new { Id = id });
+        });
 
         if (rows == 0)
             throw new Exception("No rows deleted");
