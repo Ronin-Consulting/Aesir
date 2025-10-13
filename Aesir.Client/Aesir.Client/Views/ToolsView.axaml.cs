@@ -18,7 +18,7 @@ public partial class ToolsView : UserControl, IRecipient<ShowToolDetailMessage>,
     public ToolsView()
     {
         InitializeComponent();
-        
+
         WeakReferenceMessenger.Default.Register<ShowToolDetailMessage>(this);
     }
 
@@ -29,11 +29,14 @@ public partial class ToolsView : UserControl, IRecipient<ShowToolDetailMessage>,
             try
             {
                 var notificationService = Ioc.Default.GetService<INotificationService>()!;
+                var dialogService = Ioc.Default.GetService<IDialogService>()!;
                 var configurationService = Ioc.Default.GetService<IConfigurationService>()!;
-                var viewModel = new ToolViewViewModel(detailMessage.Tool, notificationService, configurationService)
-                    {
-                        IsActive = true
-                    };
+                
+                var viewModel = new ToolViewViewModel(detailMessage.Tool, notificationService, dialogService,
+                    configurationService)
+                {
+                    IsActive = true
+                };
 
                 var options = new DrawerOptions()
                 {
@@ -52,7 +55,7 @@ public partial class ToolsView : UserControl, IRecipient<ShowToolDetailMessage>,
                 if (DataContext is ToolsViewViewModel toolsViewModel)
                 {
                     toolsViewModel.SelectedTool = null;
-                    
+
                     if (result is CloseResult closeResult && closeResult != CloseResult.Cancelled)
                     {
                         await toolsViewModel.RefreshToolsAsync();

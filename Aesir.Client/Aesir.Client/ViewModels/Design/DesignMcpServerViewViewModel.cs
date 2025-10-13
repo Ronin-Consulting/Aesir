@@ -40,7 +40,7 @@ public class DesignMcpServerViewViewModel : McpServerViewViewModel
         },
         Url = null,
         HttpHeaders = new Dictionary<string, string?>()
-    }, new NoOpNotificationService(), new NoOpConfigurationService())
+    }, new NoOpNotificationService(), new NoOpDialogService(),  new NoOpConfigurationService())
     {
         IsDirty = false;
         SaveCommand = new RelayCommand(() => { });

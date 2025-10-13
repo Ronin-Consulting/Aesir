@@ -26,6 +26,8 @@ public class ToolRequestExistsConverter : IMultiValueConverter
         if (values.Count == 3)
             mcpServerName = values[2] as string;
 
-        return requests.Any(r => r.ToolName == toolName && r.McpServerName == mcpServerName);
+        return requests.Any(r => 
+            r.ToolName == toolName && r.McpServerName == mcpServerName
+        );
     }
 }

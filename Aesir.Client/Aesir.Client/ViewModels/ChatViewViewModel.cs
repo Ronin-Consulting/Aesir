@@ -145,7 +145,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
     private ICollection<ToolRequestWithIcon> _allToolsAvailable = new HashSet<ToolRequestWithIcon>();
     
     [ObservableProperty]
-    public ICollection<ToolRequestWithIcon> _mcpToolsAvailable= new HashSet<ToolRequestWithIcon>();
+    private ICollection<ToolRequestWithIcon> _mcpToolsAvailable= new HashSet<ToolRequestWithIcon>();
 
     [ObservableProperty]
     private bool _thinkingToggleVisible;
@@ -357,7 +357,7 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
             AllToolsAvailable = tools.Select(t =>
                 new ToolRequestWithIcon()
                     {
-                        ToolName = t.ToolName!,
+                        ToolName = t.Type == ToolType.McpServer ? t.Name! : t.ToolName,
                         McpServerName = t.McpServerId is null ? null : mcpServers.First(s => s.Id == t.McpServerId).Name,
                         IconName = t.IconName
                     }

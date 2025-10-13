@@ -39,12 +39,14 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     /// <summary>
     /// Represents the underlying tool configuration and details used by the view model, including properties such as ID, name, and type.
     /// </summary>
-    private AesirToolBase _tool;
+    private readonly AesirToolBase _tool;
 
     /// <summary>
     /// Notification service responsible for displaying various types of user notifications.
     /// </summary>
-    private INotificationService _notificationService;
+    private readonly INotificationService _notificationService;
+    
+    private readonly IDialogService _dialogService;
 
     /// <summary>
     /// Service for accessing and managing configuration data, including tools
@@ -55,7 +57,7 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     /// <summary>
     /// Represents the initially selected McpServerId
     /// </summary>
-    private Guid? _initialMcpServerId;
+    private readonly Guid? _initialMcpServerId;
 
     /// <summary>
     /// Represents the form data model for the tool view, used to handle data
@@ -109,10 +111,12 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
     /// and communication between the user interface and underlying services.
     public ToolViewViewModel(AesirToolBase tool, 
             INotificationService notificationService,
+            IDialogService dialogService,
             IConfigurationService configurationService)
     {
         _tool = tool;
         _notificationService = notificationService;
+        _dialogService = dialogService;
         _configurationService = configurationService;
 
         _initialMcpServerId = tool.McpServerId;
@@ -339,10 +343,16 @@ public partial class ToolViewViewModel : ObservableRecipient, IDialogContext
         {
             if (_tool.Id != null)
             {
-                await _configurationService.DeleteToolAsync(_tool.Id.Value);
+                var yesDelete = await _dialogService.ShowConfirmationDialogAsync(
+                    "Delete Tool", "Deleting this tool will permanently remove it, preventing all associated agents from using it. Continue?");
 
-                _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' deleted");
+                if (yesDelete)
+                {
+                    await _configurationService.DeleteToolAsync(_tool.Id.Value);
 
+                    _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' deleted");    
+                }
+                
                 closeResult = CloseResult.Deleted;
             }
         }

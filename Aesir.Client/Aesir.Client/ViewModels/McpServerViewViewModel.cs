@@ -37,12 +37,18 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
     /// <summary>
     /// Represents the underlying MCP Server configuration and details used by the view model, including properties such as ID, name, and type.
     /// </summary>
-    private AesirMcpServerBase _mcpServer;
+    private readonly AesirMcpServerBase _mcpServer;
 
     /// <summary>
     /// Notification service responsible for displaying various types of user notifications.
     /// </summary>
-    private INotificationService _notificationService;
+    private readonly INotificationService _notificationService;
+
+    /// <summary>
+    /// Provides an instance of the dialog service used to encapsulate and manage dialog-related interactions
+    /// within the view model, such as opening, closing, and configuring dialogs.
+    /// </summary>
+    private readonly IDialogService _dialogService;
 
     /// <summary>
     /// Service for accessing and managing configuration data, including MCP Servers
@@ -120,13 +126,15 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
     /// and communication between the user interface and underlying services.
     public McpServerViewViewModel(AesirMcpServerBase mcpServer, 
             INotificationService notificationService,
+            IDialogService dialogService,
             IConfigurationService configurationService)
     {
         _mcpServer = mcpServer;
         _notificationService = notificationService;
+        _dialogService = dialogService;
         _configurationService = configurationService;
         
-        FormModel = new()
+        FormModel = new McpServerFormDataModel
         {
             IsExisting = mcpServer.Id.HasValue,
             Name = mcpServer.Name,
@@ -135,20 +143,30 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
             Command = mcpServer.Command,
             Url = mcpServer.Url
         };
-        if (mcpServer.Location == ServerLocation.Local)
+        switch (mcpServer.Location)
         {
-            foreach (var argument in mcpServer.Arguments)
-                FormModel.Arguments.Add(new ArgumentItem { Value = argument });
-            foreach (var environmentVariable in mcpServer.EnvironmentVariables)
-                FormModel.EnvironmentVariables.Add(new EnvironmentVariableItem()
-                    { Name = environmentVariable.Key, Value = environmentVariable.Value ?? "" });
+            case ServerLocation.Local:
+            {
+                foreach (var argument in mcpServer.Arguments)
+                    FormModel.Arguments.Add(new ArgumentItem { Value = argument });
+                foreach (var environmentVariable in mcpServer.EnvironmentVariables)
+                    FormModel.EnvironmentVariables.Add(new EnvironmentVariableItem()
+                        { Name = environmentVariable.Key, Value = environmentVariable.Value ?? "" });
+                break;
+            }
+            case ServerLocation.Remote:
+            {
+                foreach (var httpHeader in mcpServer.HttpHeaders)
+                    FormModel.HttpHeaders.Add(
+                        new HttpHeaderItem() { Name = httpHeader.Key, Value = httpHeader.Value ?? "" });
+                break;
+            }
+            case null:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
         }
-        if (mcpServer.Location == ServerLocation.Remote)
-        {
-            foreach (var httpHeader in mcpServer.HttpHeaders)
-                FormModel.HttpHeaders.Add(
-                    new HttpHeaderItem() { Name = httpHeader.Key, Value = httpHeader.Value ?? "" });
-        }
+
         IsDirty = false;
         SaveCommand = new AsyncRelayCommand(ExecuteSaveCommandAsync);
         CancelCommand = new RelayCommand(ExecuteCancelCommand);
@@ -326,10 +344,16 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
         {
             if (_mcpServer.Id != null)
             {
-                await _configurationService.DeleteMcpServerAsync(_mcpServer.Id.Value);
+                var yesDelete = await _dialogService.ShowConfirmationDialogAsync(
+                    "Delete MCP Server", "This will also remove all tools associated with this MCP Server. Continue?");
 
-                _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' deleted");
+                if (yesDelete)
+                {
+                    await _configurationService.DeleteMcpServerAsync(_mcpServer.Id.Value);
 
+                    _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' deleted");    
+                }
+                
                 closeResult = CloseResult.Deleted;
             }
         }

@@ -32,7 +32,7 @@ public class DesignToolViewViewModel : ToolViewViewModel
         Description = "This is a test of a very long description. There could be a lot more words here to show. Just depends on how many lines of text you'd like to see pop-up in the description. At minimum I'd like to see maybe 5 lines or so.",
         Type = ToolType.Internal,
         IconName = "World"
-    }, new NoOpNotificationService(), new NoOpConfigurationService())
+    }, new NoOpNotificationService(), new NoOpDialogService(), new NoOpConfigurationService())
     {
         IsDirty = false;
         SaveCommand = new RelayCommand(() => { });
