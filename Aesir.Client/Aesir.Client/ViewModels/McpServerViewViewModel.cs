@@ -5,12 +5,14 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Aesir.Client.Messages;
 using Aesir.Client.Services;
 using Aesir.Client.Shared;
 using Aesir.Client.Validators;
 using Aesir.Common.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Irihi.Avalonia.Shared.Contracts;
 using Ursa.Controls;
 
@@ -304,6 +306,11 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
                     
                     closeResult = CloseResult.Updated;
                 }
+                
+                WeakReferenceMessenger.Default.Send(new SettingsHaveChangedMessage()
+                {
+                    SettingsType = SettingsType.McpServer
+                });
             }
             catch (Exception e)
             {   
@@ -351,7 +358,12 @@ public partial class McpServerViewViewModel : ObservableRecipient, IDialogContex
                 {
                     await _configurationService.DeleteMcpServerAsync(_mcpServer.Id.Value);
 
-                    _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' deleted");    
+                    _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' deleted");
+                    
+                    WeakReferenceMessenger.Default.Send(new SettingsHaveChangedMessage()
+                    {
+                        SettingsType = SettingsType.McpServer
+                    });
                 }
                 
                 closeResult = CloseResult.Deleted;

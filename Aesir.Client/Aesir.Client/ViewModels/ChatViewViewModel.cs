@@ -35,7 +35,9 @@ namespace Aesir.Client.ViewModels;
 /// speech processing, and chat session management. It also handles lifecycle and resource management.
 /// </remarks>
 public partial class ChatViewViewModel : ObservableRecipient, IRecipient<PropertyChangedMessage<Guid?>>,
-    IRecipient<FileUploadStatusMessage>, IRecipient<RegenerateMessageMessage>, IRecipient<FileDownloadRequestMessage>,IDisposable
+    IRecipient<FileUploadStatusMessage>, IRecipient<RegenerateMessageMessage>, IRecipient<FileDownloadRequestMessage>, 
+    IRecipient<SettingsHaveChangedMessage>,
+    IDisposable
 {
     /// <summary>s
     /// The predefined constant value representing the default display name for an agent in the selection process.
@@ -466,6 +468,16 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
                 break;
         }
     }
+    
+    public void Receive(SettingsHaveChangedMessage message)
+    {
+        if(message.SettingsType is SettingsType.Agent or
+           SettingsType.McpServer or 
+           SettingsType.Tools)
+        {
+            _ = LoadSelectedAgentAsync();
+        }
+    }
 
     /// Asynchronously loads the application state, ensuring necessary configurations,
     /// session data, and related resources are prepared for application functionality.
@@ -517,6 +529,18 @@ public partial class ChatViewViewModel : ObservableRecipient, IRecipient<Propert
                 SelectedAgentName = "No agent available";
             else if (AvailableAgents.Count == 1)
                 await ExecuteSelectAgentAsync(AvailableAgents.First());
+            else
+            {
+                if (SelectedAgent != null)
+                {
+                    if(AvailableAgents.Contains(SelectedAgent))
+                        await ExecuteSelectAgentAsync(AvailableAgents.First(a => a.Id == SelectedAgent.Id));
+                    else
+                    {
+                        await ExecuteSelectAgentAsync(AvailableAgents.First());
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
