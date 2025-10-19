@@ -29,7 +29,7 @@ public class KernelPluginService(
             throw new ArgumentException("Kernel plugin args must contain a PluginName");
         var pluginName = (string)pluginNameValue;
         
-        var pluginFunctions = documentCollectionService.GetKernelPluginFunctions(kernelPluginArguments);
+        var pluginFunctions = await documentCollectionService.GetKernelPluginFunctionsAsync(kernelPluginArguments);
 
         if (kernelPluginArguments.TryGetValue("McpTools", out var mcpTools))
         {

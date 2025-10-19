@@ -111,6 +111,11 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     private readonly ILogger<ConversationDocumentCollectionService> _logger;
 
     /// <summary>
+    /// Service for accessing configuration data, including general settings.
+    /// </summary>
+    private readonly IConfigurationService _configurationService;
+
+    /// <summary>
     /// Service responsible for managing conversation document collections, providing capabilities for vector-based search, optional keyword-based hybrid search,
     /// and managing data loading from diverse file formats, including PDF, image, and text files.
     /// </summary>
@@ -121,7 +126,8 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         IPdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> pdfDataLoader,
         IImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> imageDataLoader,
         ITextFileLoaderService<Guid, AesirConversationDocumentTextData<Guid>> textFileLoader,
-        ILogger<ConversationDocumentCollectionService> logger
+        ILogger<ConversationDocumentCollectionService> logger,
+        IConfigurationService configurationService
     )
     {
         _conversationDocumentVectorSearch = conversationDocumentVectorSearch;
@@ -131,6 +137,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         _imageDataLoader = imageDataLoader;
         _textFileLoader = textFileLoader;
         _logger = logger;
+        _configurationService = configurationService;
     }
 
     /// <summary>
@@ -297,7 +304,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// <exception cref="ArgumentNullException">
     /// Thrown if the value associated with the "ConversationId" key is null or empty.
     /// </exception>
-    public IList<KernelFunction> GetKernelPluginFunctions(IDictionary<string, object>? kernelPluginArguments = null)
+    public async Task<IList<KernelFunction>> GetKernelPluginFunctionsAsync(IDictionary<string, object>? kernelPluginArguments = null)
     {
         if (kernelPluginArguments == null)
             throw new ArgumentException("Kernel plugin args must contain a ConversationId");
@@ -314,15 +321,23 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
 
             if (enableWebSearch)
             {
-                // add web search functions
-// TODO: we meed to get the searchEnginId and apiKey from somewhere else not hard coded when it makes sense
-                var googleConnector = new GoogleConnector(
-                    searchEngineId: "64cf6ca85e9454a44", //Environment.GetEnvironmentVariable("CSE_ID"),
-                    apiKey: "AIzaSyByEQBfXtNjdxIGlpeLRz0C1isORMnsHNU"); //Environment.GetEnvironmentVariable("GOOGLE_KEY"))
-        
-                kernelFunctions.Add(
-                    kernelFunctionLibrary.GetWebSearchFunction(googleConnector)
-                );    
+                // add web search functions - get credentials from GeneralSettings
+                var generalSettings = await _configurationService.GetGeneralSettingsAsync();
+
+                if (!string.IsNullOrEmpty(generalSettings.GoogleSearchEngineId) && !string.IsNullOrEmpty(generalSettings.GoogleApiKey))
+                {
+                    var googleConnector = new GoogleConnector(
+                        searchEngineId: generalSettings.GoogleSearchEngineId,
+                        apiKey: generalSettings.GoogleApiKey);
+
+                    kernelFunctions.Add(
+                        kernelFunctionLibrary.GetWebSearchFunction(googleConnector)
+                    );
+                }
+                else
+                {
+                    _logger.LogError("Web search enabled but Google credentials not configured in GeneralSettings");
+                }
             }
         }
 

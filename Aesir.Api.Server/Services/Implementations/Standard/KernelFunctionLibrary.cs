@@ -255,10 +255,6 @@ public class KernelFunctionLibrary<TKey, TRecord>(
     /// </exception>
     public KernelFunction GetWebSearchFunction(IWebSearchEngineConnector webSearchEngineConnector)
     {
-        // var googleConnector = new GoogleConnector(
-        //     searchEngineId: "64cf6ca85e9454a44", //Environment.GetEnvironmentVariable("CSE_ID"),
-        //     apiKey: "AIzaSyByEQBfXtNjdxIGlpeLRz0C1isORMnsHNU"); //Environment.GetEnvironmentVariable("GOOGLE_KEY"))
-
         var webSearchPlugin = new WebSearchEnginePlugin(webSearchEngineConnector);
 
         var methods = webSearchPlugin.GetType().GetMethods(
@@ -356,7 +352,6 @@ public class KernelFunctionLibrary<TKey, TRecord>(
                 });
 
                 // Create the MCP client - don't dispose immediately, let it live with the function
-//                await using 
                 var mcp = await McpClient.CreateAsync(transport);
 
                 try

@@ -45,4 +45,16 @@ public class AesirGeneralSettingsBase
     /// </summary>
     [JsonPropertyName("vad_model_path")]
     public string? VadModelPath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Google Custom Search Engine ID for web search functionality
+    /// </summary>
+    [JsonPropertyName("google_search_engine_id")]
+    public string? GoogleSearchEngineId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Google API Key for web search functionality
+    /// </summary>
+    [JsonPropertyName("google_api_key")]
+    public string? GoogleApiKey { get; set; }
 }

@@ -40,6 +40,6 @@ public interface IDocumentCollectionService
     /// Gets kernel plugin functions for document operations.
     /// </summary>
     /// <param name="kernelPluginArguments">Optional arguments for the kernel plugin.</param>
-    /// <returns>A list of KernelFunctions needed for the plugin for operations.</returns>
-    public IList<KernelFunction> GetKernelPluginFunctions(IDictionary<string, object>? kernelPluginArguments = null);
+    /// <returns>A task representing the asynchronous operation that returns a list of KernelFunctions needed for the plugin for operations.</returns>
+    Task<IList<KernelFunction>> GetKernelPluginFunctionsAsync(IDictionary<string, object>? kernelPluginArguments = null);
 }

@@ -241,13 +241,15 @@ public class ConfigurationService(
         if (DatabaseMode)
         {
             const string sql = @"
-                SELECT rag_emb_inf_eng_id as RagEmbeddingInferenceEngineId, 
-                       rag_emb_model as RagEmbeddingModel, 
+                SELECT rag_emb_inf_eng_id as RagEmbeddingInferenceEngineId,
+                       rag_emb_model as RagEmbeddingModel,
                        rag_vis_inf_eng_id as RagVisionInferenceEngineId,
                        rag_vis_model as RagVisionModel,
-                       tts_model_path as TtsModelPath, 
-                       stt_model_path as SttModelPath, 
-                       vad_model_path as VadModelPath
+                       tts_model_path as TtsModelPath,
+                       stt_model_path as SttModelPath,
+                       vad_model_path as VadModelPath,
+                       google_search_engine_id as GoogleSearchEngineId,
+                       google_api_key as GoogleApiKey
                 FROM aesir.aesir_general_settings
             ";
 
@@ -267,7 +269,9 @@ public class ConfigurationService(
                 RagVisionModel = generalSettingsDictionary["RagVisionModel"],
                 TtsModelPath = generalSettingsDictionary["TtsModelPath"],
                 SttModelPath = generalSettingsDictionary["SttModelPath"],
-                VadModelPath = generalSettingsDictionary["VadModelPath"]
+                VadModelPath = generalSettingsDictionary["VadModelPath"],
+                GoogleSearchEngineId = generalSettingsDictionary.TryGetValue("GoogleSearchEngineId", out var searchEngineId) ? searchEngineId : null,
+                GoogleApiKey = generalSettingsDictionary.TryGetValue("GoogleApiKey", out var apiKey) ? apiKey : null
             };
 
             return await Task.FromResult(generalSettings);
@@ -288,13 +292,15 @@ public class ConfigurationService(
 
         const string sql = @"
             UPDATE aesir.aesir_general_settings
-            SET rag_emb_inf_eng_id = @RagEmbeddingInferenceEngineId, 
-                rag_emb_model = @RagEmbeddingModel, 
+            SET rag_emb_inf_eng_id = @RagEmbeddingInferenceEngineId,
+                rag_emb_model = @RagEmbeddingModel,
                 rag_vis_inf_eng_id = @RagVisionInferenceEngineId,
-                rag_vis_model = @RagVisionModel, 
-                tts_model_path = @TtsModelPath, 
-                stt_model_path = @SttModelPath, 
-                vad_model_path = @VadModelPath
+                rag_vis_model = @RagVisionModel,
+                tts_model_path = @TtsModelPath,
+                stt_model_path = @SttModelPath,
+                vad_model_path = @VadModelPath,
+                google_search_engine_id = @GoogleSearchEngineId,
+                google_api_key = @GoogleApiKey
         ";
 
         var rows =  await dbContext.UnitOfWorkAsync(async connection =>

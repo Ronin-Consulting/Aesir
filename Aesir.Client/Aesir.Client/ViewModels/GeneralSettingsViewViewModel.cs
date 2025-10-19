@@ -166,6 +166,8 @@ public partial class GeneralSettingsViewViewModel : ObservableRecipient, IDialog
             FormModel.TtsModelPath = generalSettings.TtsModelPath ?? "";
             FormModel.SttModelPath = generalSettings.SttModelPath ?? "";
             FormModel.VadModelPath = generalSettings.VadModelPath ?? "";
+            FormModel.GoogleSearchEngineId = generalSettings.GoogleSearchEngineId ?? "";
+            FormModel.GoogleApiKey = generalSettings.GoogleApiKey ?? "";
 
             // re-enable property change
             FormModel.PropertyChanged += OnFormModelPropertyChanged;
@@ -292,7 +294,9 @@ public partial class GeneralSettingsViewViewModel : ObservableRecipient, IDialog
                 RagVisionModel = FormModel.RagVisionModel,
                 TtsModelPath = FormModel.TtsModelPath,
                 SttModelPath = FormModel.SttModelPath,
-                VadModelPath = FormModel.VadModelPath
+                VadModelPath = FormModel.VadModelPath,
+                GoogleSearchEngineId = FormModel.GoogleSearchEngineId,
+                GoogleApiKey = FormModel.GoogleApiKey
             };
 
             var closeResult = CloseResult.Errored;
@@ -418,10 +422,22 @@ public partial class GeneralSettingsFormDataModel : ObservableValidator
     /// <summary>
     /// Represents the VAD model path, required for validation and user input.
     /// </summary>
-    [ObservableProperty] 
-    [NotifyDataErrorInfo] 
-    [Required (ErrorMessage = "Voice Activity Detection Model is required")] 
+    [ObservableProperty]
+    [NotifyDataErrorInfo]
+    [Required (ErrorMessage = "Voice Activity Detection Model is required")]
     private string? _vadModelPath;
+
+    /// <summary>
+    /// Represents the Google Search Engine ID for web search functionality.
+    /// </summary>
+    [ObservableProperty]
+    private string? _googleSearchEngineId;
+
+    /// <summary>
+    /// Represents the Google API Key for web search functionality.
+    /// </summary>
+    [ObservableProperty]
+    private string? _googleApiKey;
 
     /// <summary>
     /// Validates all properties of the current object and checks if any validation errors exist.

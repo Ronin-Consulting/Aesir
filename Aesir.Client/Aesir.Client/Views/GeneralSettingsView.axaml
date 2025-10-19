@@ -20,16 +20,16 @@
         MinWidth="400"
         Margin="8"
         RowDefinitions="*, Auto">
-        
-        <!-- Form Body -->
-        <u:Form
-            Grid.Row="0"
-            Margin="8"
-            HorizontalAlignment="Stretch"
-            LabelPosition="Top">
+
+        <!-- Form Body with ScrollViewer -->
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <u:Form
+                Margin="8"
+                HorizontalAlignment="Stretch"
+                LabelPosition="Top">
             <u:Form.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <Grid ColumnDefinitions="*" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="*" RowDefinitions="Auto, Auto, Auto, Auto, Auto, Auto, Auto, Auto, *" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </u:Form.ItemsPanel>
             <u:FormItem 
@@ -95,8 +95,15 @@
             <u:FormItem Label="Voice Activity Detection Model" Grid.Row="6">
                 <TextBox Text="{Binding FormModel.VadModelPath}" IsEnabled="False" />
             </u:FormItem>
+            <u:FormItem Label="Google Search Engine ID" Grid.Row="7">
+                <TextBox Text="{Binding FormModel.GoogleSearchEngineId}" Watermark="Enter Google Custom Search Engine ID" />
+            </u:FormItem>
+            <u:FormItem Label="Google API Key" Grid.Row="8">
+                <TextBox Text="{Binding FormModel.GoogleApiKey}" PasswordChar="*" Watermark="Enter Google API Key" />
+            </u:FormItem>
         </u:Form>
-        
+        </ScrollViewer>
+
         <!-- Buttons -->
         <DockPanel
             Grid.Row="1"

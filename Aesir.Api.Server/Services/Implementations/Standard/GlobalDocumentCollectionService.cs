@@ -186,7 +186,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
     /// <exception cref="ArgumentNullException">
     /// Thrown when the value for "CategoryId" is null or empty.
     /// </exception>
-    public IList<KernelFunction> GetKernelPluginFunctions(IDictionary<string, object>? kernelPluginArguments = null)
+    public async Task<IList<KernelFunction>> GetKernelPluginFunctionsAsync(IDictionary<string, object>? kernelPluginArguments = null)
     {
         if (kernelPluginArguments == null)
             throw new ArgumentException("Kernel plugin args must contain a ConversationId");
@@ -219,7 +219,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
             
             kernelFunctions.Add(kernelFunctionLibrary.GetSemanticDocumentSearchFunction(semanticSearchFilter, MaxTopResults));;
         }
-        
-        return kernelFunctions;
+
+        return await Task.FromResult<IList<KernelFunction>>(kernelFunctions);
     }
 }
