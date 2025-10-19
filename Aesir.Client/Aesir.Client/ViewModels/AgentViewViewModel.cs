@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Aesir.Client.Messages;
 using Aesir.Client.Services;
 using Aesir.Client.Shared;
 using Aesir.Client.Validators;
@@ -13,6 +14,7 @@ using Aesir.Common.Prompts;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using Irihi.Avalonia.Shared.Contracts;
 using Ursa.Controls;
 
@@ -370,6 +372,11 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
 
                     _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' updated");
                     
+                    WeakReferenceMessenger.Default.Send(new SettingsHaveChangedMessage()
+                    {
+                        SettingsType = SettingsType.Agent
+                    });
+                    
                     closeResult = CloseResult.Updated;
                 }
             }
@@ -416,6 +423,11 @@ public partial class AgentViewViewModel : ObservableRecipient, IDialogContext
 
                 _notificationService.ShowSuccessNotification("Success", $"'{FormModel.Name}' deleted");
 
+                WeakReferenceMessenger.Default.Send(new SettingsHaveChangedMessage()
+                {
+                    SettingsType = SettingsType.Agent
+                });
+                
                 closeResult = CloseResult.Deleted;
             }
         }

@@ -151,11 +151,12 @@
                     <DockPanel Margin="0 10 0 ,0">
                         <Panel DockPanel.Dock="Top">
                             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0 0,0 ,12">
-                                <TextBlock Name="TitleTextBlock" DockPanel.Dock="Top" HorizontalAlignment="Left"
+                                <TextBlock Name="TitleTextBlock" DockPanel.Dock="Top" 
+                                           HorizontalAlignment="Left"
                                            VerticalAlignment="Center"
                                            Theme="{StaticResource TitleTextBlock}"
                                            Text="ÆSIR"
-                                           Classes="H4" />
+                                           Classes="H5" />
                                 <Button Classes="Primary"
                                         Theme="{DynamicResource OutlineButton}"
                                         HorizontalAlignment="Stretch"

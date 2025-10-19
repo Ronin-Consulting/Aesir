@@ -305,11 +305,6 @@ public class ConfigurationService(
 
         var rows =  await dbContext.UnitOfWorkAsync(async connection =>
             await connection.ExecuteAsync(sql, generalSettings));
-        
-        if (rows == 0)
-            throw new Exception("No rows updated");
-        if (rows > 1)
-            throw new Exception("Multiple rows updated");
     }
 
     /// <summary>
@@ -412,13 +407,8 @@ public class ConfigurationService(
             WHERE id = @Id
         ";
 
-        var rows =  await dbContext.UnitOfWorkAsync(async connection =>
+        await dbContext.UnitOfWorkAsync(async connection =>
             await connection.ExecuteAsync(sql, inferenceEngine));
-        
-        if (rows == 0)
-            throw new Exception("No rows updated");
-        if (rows > 1)
-            throw new Exception("Multiple rows updated");
     }
 
     /// <summary>
@@ -435,13 +425,8 @@ public class ConfigurationService(
             WHERE id = @Id::uuid
         ";
 
-        var rows = await dbContext.UnitOfWorkAsync(async connection =>
+        await dbContext.UnitOfWorkAsync(async connection =>
             await connection.ExecuteAsync(sql, new { Id = id }));
-
-        if (rows == 0)
-            throw new Exception("No rows deleted");
-        if (rows > 1)
-            throw new Exception("Multiple rows deleted");
     }
 
     /// <summary>
@@ -561,13 +546,8 @@ public class ConfigurationService(
             WHERE id = @Id
         ";
 
-        var rows =  await dbContext.UnitOfWorkAsync(async connection =>
+        await dbContext.UnitOfWorkAsync(async connection =>
             await connection.ExecuteAsync(sql, agent));
-        
-        if (rows == 0)
-            throw new Exception("No rows updated");
-        if (rows > 1)
-            throw new Exception("Multiple rows updated");
     }
 
     /// <summary>
@@ -588,12 +568,8 @@ public class ConfigurationService(
             WHERE id = @Id::uuid
         ";
 
-        var rows = await dbContext.UnitOfWorkAsync(async connection =>
+        await dbContext.UnitOfWorkAsync(async connection =>
             await connection.ExecuteAsync(sql, new { Id = id }));
-
-        if (rows == 0)
-            throw new Exception("No rows deleted");
-
     }
 
     /// <summary>
@@ -713,11 +689,13 @@ public class ConfigurationService(
             ";
             parameters = new { AgentId = id, ToolIds = toolIds };
         
-            var rows = await dbContext.UnitOfWorkAsync(async connection =>
-                await connection.ExecuteAsync(sql, parameters));
-        
-            if (toolIds.Length != rows)
-                throw new Exception("Incorrect number of rows updated");
+            await dbContext.UnitOfWorkAsync(async connection =>
+            {
+                var rows = await connection.ExecuteAsync(sql, parameters);
+                
+                if (toolIds.Length != rows)
+                    throw new Exception("Incorrect number of rows updated");
+            });
         }
 
     }
@@ -793,13 +771,8 @@ public class ConfigurationService(
             WHERE id = @Id
         ";
 
-        var rows =  await dbContext.UnitOfWorkAsync(async connection =>
+        await dbContext.UnitOfWorkAsync(async connection =>
             await connection.ExecuteAsync(sql, tool));
-        
-        if (rows == 0)
-            throw new Exception("No rows updated");
-        if (rows > 1)
-            throw new Exception("Multiple rows updated");
     }
 
     /// <summary>
@@ -811,18 +784,18 @@ public class ConfigurationService(
     {
         VerifyIsDatabaseMode();
 
-        const string sql = @"
+        const string deleteToolRecordCascadeSql = @"
+            DELETE FROM aesir.aesir_agent_tool
+            WHERE tool_id = @Id::uuid;
+
             DELETE FROM aesir.aesir_tool
-            WHERE id = @Id::uuid
+            WHERE id = @Id::uuid;
         ";
-
-        var rows = await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, new { Id = id }));
-
-        if (rows == 0)
-            throw new Exception("No rows deleted");
-        if (rows > 1)
-            throw new Exception("Multiple rows deleted");
+        
+        await dbContext.UnitOfWorkAsync(async connection =>
+        {
+            return await connection.ExecuteAsync(deleteToolRecordCascadeSql, new { Id = id });
+        });
     }
 
     /// <summary>
@@ -933,13 +906,8 @@ public class ConfigurationService(
             WHERE id = @Id
         ";
 
-        var rows =  await dbContext.UnitOfWorkAsync(async connection =>
+        await dbContext.UnitOfWorkAsync(async connection =>
             await connection.ExecuteAsync(sql, mcpServer));
-        
-        if (rows == 0)
-            throw new Exception("No rows updated");
-        if (rows > 1)
-            throw new Exception("Multiple rows updated");
     }
 
     /// <summary>
@@ -951,16 +919,28 @@ public class ConfigurationService(
     {
         VerifyIsDatabaseMode();
 
-        const string sql = @"
-        DELETE FROM aesir.aesir_mcp_server
-        WHERE id = @Id::uuid";
+        const string deleteMcpServerCascadeSql = """
 
-        var rows = await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, new { Id = id }));
+         -- Delete in order of dependencies (child to parent)
 
-        if (rows == 0)
-            throw new Exception("No rows deleted");
-        if (rows > 1)
-            throw new Exception("Multiple rows deleted");
+         -- 1. Delete aesir_agent_tool records that reference tools linked to this MCP server
+         DELETE FROM aesir.aesir_agent_tool 
+         WHERE tool_id IN (
+             SELECT id FROM aesir.aesir_tool 
+             WHERE mcp_server_id = @Id::uuid
+         );
+
+         -- 2. Delete aesir_tool records that reference this MCP server
+         DELETE FROM aesir.aesir_tool 
+         WHERE mcp_server_id = @Id::uuid;
+
+         -- 3. Delete the aesir_mcp_server record itself
+         DELETE FROM aesir.aesir_mcp_server 
+         WHERE id = @Id::uuid;
+         
+        """;
+        
+        await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(deleteMcpServerCascadeSql, new { Id = id }));
     }
 }

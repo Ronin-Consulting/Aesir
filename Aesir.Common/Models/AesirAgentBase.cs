@@ -76,4 +76,22 @@ public class AesirAgentBase
     /// </summary>
     [JsonPropertyName("think_value")]
     public ThinkValue? ThinkValue { get; set; }
+    
+    protected bool Equals(AesirAgentBase other)
+    {
+        return Nullable.Equals(Id, other.Id);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is null) return false;
+        if (ReferenceEquals(this, obj)) return true;
+        if (obj.GetType() != GetType()) return false;
+        return Equals((AesirAgentBase)obj);
+    }
+
+    public override int GetHashCode()
+    {
+        return Id.GetHashCode();
+    }
 }

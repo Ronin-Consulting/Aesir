@@ -31,6 +31,7 @@ public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetai
             try
             {
                 var notificationService = Ioc.Default.GetService<INotificationService>()!;
+                var dialogService = Ioc.Default.GetService<IDialogService>()!;
                 var configurationService = Ioc.Default.GetService<IConfigurationService>()!;
                 
                 if (detailMessage.Import)
@@ -55,12 +56,12 @@ public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetai
                     
                     if (dialogResult == DialogResult.OK)
                     {
-                        await ShowMcpServerView(mcpServerImportViewModel.GeneratedMcpServer, notificationService, configurationService);
+                        await ShowMcpServerView(mcpServerImportViewModel.GeneratedMcpServer, notificationService, dialogService, configurationService);
                     }
                 }
                 else
                 {
-                    await ShowMcpServerView(detailMessage.McpServer, notificationService, configurationService);   
+                    await ShowMcpServerView(detailMessage.McpServer, notificationService, dialogService, configurationService);   
                 }
             }
             catch (Exception e)
@@ -70,9 +71,9 @@ public partial class McpServersView : UserControl, IRecipient<ShowMcpServerDetai
         });
     }
 
-    private async Task ShowMcpServerView(AesirMcpServerBase mcpServer, INotificationService notificationService, IConfigurationService configurationService)
+    private async Task ShowMcpServerView(AesirMcpServerBase mcpServer, INotificationService notificationService, IDialogService dialogService, IConfigurationService configurationService)
     {
-        var mcpServerViewModel = new McpServerViewViewModel(mcpServer, notificationService, configurationService)
+        var mcpServerViewModel = new McpServerViewViewModel(mcpServer, notificationService, dialogService, configurationService)
             {
                 IsActive = true
             };
