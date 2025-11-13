@@ -1,0 +1,56 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+    <PropertyGroup>
+        <TargetFramework>net10.0-browser</TargetFramework>
+        <OutputType>Exe</OutputType>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia.Browser" Version="11.3.8" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.8" />
+        <PackageReference Include="Flurl" Version="4.0.0" />
+        <PackageReference Include="Material.Icons.Avalonia" Version="2.4.1" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="10.0.0" />
+        <PackageReference Include="Semi.Avalonia" Version="11.3.7" />
+        <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.3.7" />
+        <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.3.7" />
+        <PackageReference Include="Semi.Avalonia.TreeDataGrid" Version="11.2.0" />
+        <PackageReference Include="System.Net.Http.Json" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
+        <PackageReference Include="Flurl.Http" Version="4.0.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Aesir.Client\Aesir.Client.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="wwwroot\bower_components\polymer\bower.json" />
+      <Content Include="wwwroot\bower_components\polymer\LICENSE.txt" />
+      <Content Include="wwwroot\bower_components\polymer\polymer-micro.html" />
+      <Content Include="wwwroot\bower_components\polymer\polymer-mini.html" />
+      <Content Include="wwwroot\bower_components\polymer\polymer.html" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\bower.json" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\CustomElements.js" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\CustomElements.min.js" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\HTMLImports.js" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\HTMLImports.min.js" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\MutationObserver.js" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\MutationObserver.min.js" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\package.json" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\README.md" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\ShadowDOM.js" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\ShadowDOM.min.js" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\webcomponents-lite.js" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\webcomponents-lite.min.js" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\webcomponents.js" />
+      <Content Include="wwwroot\bower_components\webcomponentsjs\webcomponents.min.js" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AvaloniaResource Include="wwwroot\logo.ico" />
+    </ItemGroup>
+</Project>

@@ -7,7 +7,7 @@ services:
   aesir-client-desktop:
     build:
       context: .
-      dockerfile: Aesir.Client/Aesir.Client.Desktop/Dockerfile
+      dockerfile: Client/Aesir.Client.Desktop/Dockerfile
     container_name: aesir-client-desktop
     environment:
       - DISPLAY=${DISPLAY:-:0}
@@ -38,7 +38,7 @@ services:
     image: aesir.api.server
     build:
       context: .
-      dockerfile: Aesir.Api.Server/Dockerfile
+      dockerfile: Server/Aesir.Api.Server/Dockerfile
     restart: on-failure
     depends_on:
       pgdb:

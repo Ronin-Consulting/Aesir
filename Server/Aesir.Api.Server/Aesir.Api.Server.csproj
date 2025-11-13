@@ -1,0 +1,129 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RuntimeIdentifiers>linux-arm64;linux-x64;win-x64;osx-arm64</RuntimeIdentifiers>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+        <LangVersion>default</LangVersion>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <EnableSystemDrawingCommon>true</EnableSystemDrawingCommon>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.0" />
+        <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <PackageReference Include="NLog.Extensions.Logging" Version="6.1.0" />
+        <PackageReference Include="NLog.Web.AspNetCore" Version="5.3.14" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
+        <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="10.0.1" />
+        <PackageReference Include="System.Linq.Async" Version="6.0.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="..\.dockerignore">
+            <Link>.dockerignore</Link>
+        </Content>
+        <None Remove="Aspose.PDFfor.NET.lic" />
+        <None Remove="Assets\vits-piper-en_US-joe-medium\MODEL_CARD" />
+        <Content Include="Assets\vits-piper-en_US-joe-medium\MODEL_CARD">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <None Remove="Assets\vits-piper-en_US-joe-medium\tokens.txt" />
+        <Content Include="Assets\vits-piper-en_US-joe-medium\tokens.txt">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <None Remove="Assets\vits-piper-en_US-joe-medium\en_US-joe-medium.onnx" />
+        <Content Include="Assets\vits-piper-en_US-joe-medium\en_US-joe-medium.onnx">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <None Remove="Assets\vits-piper-en_US-joe-medium\espeak-ng-data\**" />
+        <Content Include="Assets\vits-piper-en_US-joe-medium\espeak-ng-data\**">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <None Remove="Assets\vad\silero_vad.onnx" />
+        <Content Include="Assets\vad\silero_vad.onnx">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <None Remove="Assets\whisper\ggml-base.bin" />
+        <Content Include="Assets\whisper\ggml-base.bin">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Content Update="appsettings.Development.jsonexample">
+          <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+          <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        </Content>
+        <None Include="appsettings.Development.json" Condition="Exists('appsettings.Development.json')" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Aesir.Infrastructure\Aesir.Infrastructure.csproj" />
+        <ProjectReference Include="..\Aesir.Orchestration\Aesir.Orchestration.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Assets\whisper\" />
+      <Folder Include="Extensions\" />
+    </ItemGroup>
+
+    <!--
+        Automatically discover and build all module projects before building Api.Server.
+        This ensures module DLLs are available for the CopyModuleToApiServer targets in each module.
+        Modules are discovered dynamically at runtime, so they're not project references.
+
+        Pattern: Modules/Aesir.Modules.*/*.csproj
+        Examples: Modules/Aesir.Modules.Documents/Aesir.Modules.Documents.csproj
+                  Modules/Aesir.Modules.Storage/Aesir.Modules.Storage.csproj
+    -->
+    <Target Name="BuildAllModules" BeforeTargets="Build">
+        <Message Text="[Api.Server] Discovering module projects..." Importance="high" />
+
+        <!-- Find all module projects matching the pattern -->
+        <ItemGroup>
+            <ModuleProjects Include="Modules/Aesir.Modules.*/*.csproj" />
+        </ItemGroup>
+
+        <!-- Build each discovered module -->
+        <MSBuild Projects="@(ModuleProjects)" Properties="Configuration=$(Configuration)" />
+
+        <Message Text="[Api.Server] Successfully built @(ModuleProjects-&gt;Count()) module(s)" Importance="high" />
+    </Target>
+
+    <!--
+        Publish all modules and copy to publish output directory.
+        Modules are not project references (by design for dynamic loading), so they won't be
+        automatically included in the publish output. This target publishes them with the same
+        configuration and runtime identifier, then copies their DLLs to the publish directory.
+    -->
+    <Target Name="PublishAllModules" AfterTargets="Publish">
+        <Message Text="[Api.Server] Publishing modules for $(RuntimeIdentifier)..." Importance="high" />
+
+        <!-- Find all module projects -->
+        <ItemGroup>
+            <ModuleProjectsForPublish Include="Modules/Aesir.Modules.*/*.csproj" />
+        </ItemGroup>
+
+        <!-- Publish each module with the same configuration and RID -->
+        <MSBuild Projects="@(ModuleProjectsForPublish)" Targets="Publish" Properties="Configuration=$(Configuration);RuntimeIdentifier=$(RuntimeIdentifier);PublishDir=$(MSBuildProjectDirectory)/obj/ModulesPublish/%(ModuleProjectsForPublish.Filename)/" />
+
+        <!-- Find all published module DLLs -->
+        <ItemGroup>
+            <PublishedModuleDlls Include="$(MSBuildProjectDirectory)/obj/ModulesPublish/*/Aesir.Modules.*.dll" />
+        </ItemGroup>
+
+        <!-- Copy module DLLs to the main publish directory -->
+        <Copy SourceFiles="@(PublishedModuleDlls)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+
+        <Message Text="[Api.Server] Published and copied @(PublishedModuleDlls-&gt;Count()) module(s)" Importance="high" />
+    </Target>
+
+</Project>

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RuntimeIdentifiers>linux-arm64;linux-x64;win-x64;osx-arm64</RuntimeIdentifiers>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>default</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.67.1" />
+        <PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.67.1-alpha" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.67.1-alpha" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.67.1" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Qdrant" Version="1.67.1-preview" />
+        <PackageReference Include="ModelContextProtocol-SemanticKernel" Version="0.5.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <PackageReference Include="System.Text.Json" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Aesir.Infrastructure\Aesir.Infrastructure.csproj" />
+    </ItemGroup>
+
+</Project>

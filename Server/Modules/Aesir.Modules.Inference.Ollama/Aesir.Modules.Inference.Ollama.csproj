@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RuntimeIdentifiers>linux-arm64;linux-x64;win-x64;osx-arm64</RuntimeIdentifiers>
+        <LangVersion>default</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Aesir.Modules.Inference\Aesir.Modules.Inference.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+        <PackageReference Include="Microsoft.SemanticKernel" Version="1.67.1" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.67.1-alpha" />
+        <PackageReference Include="OllamaSharp" Version="5.4.10" />
+        <PackageReference Include="Polly" Version="8.6.4" />
+        <PackageReference Include="Polly.Contrib.WaitAndRetry" Version="1.1.1" />
+        <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+    </ItemGroup>
+
+    <!-- Auto-copy to Api.Server on build -->
+    <Target Name="CopyToApiServer" AfterTargets="Build">
+        <ItemGroup>
+            <DllFiles Include="$(OutDir)$(AssemblyName).dll" />
+            <PdbFiles Include="$(OutDir)$(AssemblyName).pdb" />
+        </ItemGroup>
+        <Copy SourceFiles="@(DllFiles)" DestinationFolder="$(SolutionDir)Aesir.Api.Server\bin\$(Configuration)\net9.0\" SkipUnchangedFiles="true" />
+        <Copy SourceFiles="@(PdbFiles)" DestinationFolder="$(SolutionDir)Aesir.Api.Server\bin\$(Configuration)\net9.0\" SkipUnchangedFiles="true" />
+        <Message Text="Copied Aesir.Modules.Inference.Ollama to Api.Server output" Importance="high" />
+    </Target>
+
+</Project>
