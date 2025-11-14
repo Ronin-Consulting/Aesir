@@ -23,7 +23,7 @@ namespace Aesir.Modules.Documents;
 [Experimental("SKEXP0001")]
 public class DocumentsModule : ModuleBase
 {
-    public DocumentsModule(ILogger<DocumentsModule> logger) : base(logger)
+    public DocumentsModule(ILogger logger) : base(logger)
     {
     }
 
@@ -36,6 +36,11 @@ public class DocumentsModule : ModuleBase
     public override async Task RegisterServicesAsync(IServiceCollection services)
     {
         await Task.CompletedTask;
+        
+        // registering any of these things is pointless if we are not fully ready with inference engines and embedding
+        // setup, and causes more weirdo dependency errors
+        if (!ConfigurationReadinessService!.IsReadyAtBoot)
+            return;
         
         Log("Registering document services...");
 

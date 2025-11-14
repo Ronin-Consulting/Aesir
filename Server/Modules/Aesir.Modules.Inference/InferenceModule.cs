@@ -12,7 +12,7 @@ namespace Aesir.Modules.Inference;
 /// </summary>
 public class InferenceModule : ModuleBase
 {
-    public InferenceModule(ILogger<InferenceModule> logger) : base(logger)
+    public InferenceModule(ILogger logger) : base(logger)
     {
     }
 

@@ -23,6 +23,11 @@ public static class OrchestrationBootstrapExtensions
     // ReSharper disable once InconsistentNaming
     public static IServiceCollection AddAesirAIOrchestrationServices(this IServiceCollection services)
     {
+        var configurationReadinessService = ConfigurationServiceFactory.Instance()!.CreateConfigurationReadinessService();
+        
+        if(!configurationReadinessService.IsReadyAtBoot)
+            return services;
+        
         services.AddSingleton<IKernelPluginService, KernelPluginService>();
         
         return services;

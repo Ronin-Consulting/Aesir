@@ -1,5 +1,5 @@
 ﻿# Global args if needed, but we'll scope per stage
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libgdiplus \
@@ -11,17 +11,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     libopenblas0 \
     libatlas3-base \
+    software-properties-common \
     && ln -s /usr/lib/libgdiplus.so /usr/lib/gdiplus.dll \
-    && sed -i 's/Components: main/Components: main contrib/' /etc/apt/sources.list.d/debian.sources \
+    # Enable multiverse repository for ttf-mscorefonts-installer (Ubuntu-specific)
+    && add-apt-repository multiverse \
     && apt-get update \
     && echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections \
     && apt-get install -y --no-install-recommends \
     ttf-mscorefonts-installer \
     fontconfig \
     && fc-cache -fv \
-    # Install Docker CLI in case of optional use of MCP Docker Toolkit
-    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list \
+    # Install Docker CLI for optional MCP Docker Toolkit support (Ubuntu Noble)
+    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu noble stable" > /etc/apt/sources.list.d/docker.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends docker-ce-cli \
     # Cleanup
@@ -31,7 +33,7 @@ USER $APP_UID
 WORKDIR /app
 EXPOSE 80
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 # Default RID; override with --build-arg RID=linux-x64
 ARG RID=linux-arm64

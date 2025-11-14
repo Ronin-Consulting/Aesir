@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using NLog.Extensions.Logging;
 using Npgsql;
 
 namespace Aesir.Infrastructure.Extensions;
@@ -101,14 +102,21 @@ public static class ConfigurationBootstrapExtensions
     private static void EnsureDatabaseMigrations(IConfiguration configuration)
     {
         // Create a logger for migration discovery
-        using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        using var loggerFactory = LoggerFactory.Create(builder => {
+        {
+            //builder.ClearProviders(); // Clear default providers like Console
+            //builder.SetMinimumLevel(LogLevel.Trace); // Set desired minimum logging level
+            builder.AddNLog();
+        } });
         var migrationDiscoveryLogger = loggerFactory.CreateLogger("MigrationDiscovery");
 
         // Create a temporary service collection just for migrations
         var migrationServices = new ServiceCollection();
-
+        
         migrationServices.RegisterMigratorServices(configuration, migrationDiscoveryLogger);
 
+        migrationServices.AddLogging(lb => lb.AddNLog());
+        
         using var migrationServiceProvider = migrationServices.BuildServiceProvider(false);
         using var scope = migrationServiceProvider.CreateScope();
 
@@ -194,7 +202,7 @@ public static class ConfigurationBootstrapExtensions
                     runner.ScanIn(assembly).For.Migrations();
                 }
             })
-            .AddLogging(lb => lb.AddConsole().SetMinimumLevel(LogLevel.Information));
+            .AddLogging(lb => lb.AddNLog().SetMinimumLevel(LogLevel.Information));
     }
 
     /// Creates an instance of NpgsqlDataSource using the provided configuration settings.

@@ -6,6 +6,8 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <LangVersion>default</LangVersion>
+        <!-- Force all NuGet dependencies to be copied to output directory -->
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
 
     <ItemGroup>
@@ -36,10 +38,12 @@
       <ProjectReference Include="..\Aesir.Modules.Inference\Aesir.Modules.Inference.csproj" />
     </ItemGroup>
 
-    <!-- Copy module DLL to Api.Server output directory for dynamic discovery -->
+    <!-- Copy all module files including dependencies, native binaries, and runtime assets -->
     <Target Name="CopyModuleToApiServer" AfterTargets="Build">
-        <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ProjectDir)../Aesir.Api.Server/bin/$(Configuration)/$(TargetFramework)/" />
-        <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="$(ProjectDir)../Aesir.Api.Server/bin/$(Configuration)/$(TargetFramework)/" Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
+        <ItemGroup>
+            <ModuleOutputFiles Include="$(TargetDir)**/*.*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(ModuleOutputFiles)" DestinationFolder="$(ProjectDir)../../Aesir.Api.Server/bin/$(Configuration)/$(TargetFramework)/%(RecursiveDir)" SkipUnchangedFiles="true" />
     </Target>
 
 </Project>

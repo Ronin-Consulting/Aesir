@@ -22,7 +22,7 @@
         <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="NLog.Extensions.Logging" Version="6.1.0" />
-        <PackageReference Include="NLog.Web.AspNetCore" Version="5.3.14" />
+        <PackageReference Include="NLog.Web.AspNetCore" Version="6.1.0" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
         <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="10.0.1" />
         <PackageReference Include="System.Linq.Async" Version="6.0.3" />
@@ -80,16 +80,16 @@
         This ensures module DLLs are available for the CopyModuleToApiServer targets in each module.
         Modules are discovered dynamically at runtime, so they're not project references.
 
-        Pattern: Modules/Aesir.Modules.*/*.csproj
-        Examples: Modules/Aesir.Modules.Documents/Aesir.Modules.Documents.csproj
-                  Modules/Aesir.Modules.Storage/Aesir.Modules.Storage.csproj
+        Pattern: ../Modules/Aesir.Modules.*/*.csproj
+        Examples: ../Modules/Aesir.Modules.Documents/Aesir.Modules.Documents.csproj
+                  ../Modules/Aesir.Modules.Storage/Aesir.Modules.Storage.csproj
     -->
     <Target Name="BuildAllModules" BeforeTargets="Build">
         <Message Text="[Api.Server] Discovering module projects..." Importance="high" />
 
         <!-- Find all module projects matching the pattern -->
         <ItemGroup>
-            <ModuleProjects Include="Modules/Aesir.Modules.*/*.csproj" />
+            <ModuleProjects Include="../Modules/Aesir.Modules.*/*.csproj" />
         </ItemGroup>
 
         <!-- Build each discovered module -->
@@ -109,21 +109,21 @@
 
         <!-- Find all module projects -->
         <ItemGroup>
-            <ModuleProjectsForPublish Include="Modules/Aesir.Modules.*/*.csproj" />
+            <ModuleProjectsForPublish Include="../Modules/Aesir.Modules.*/*.csproj" />
         </ItemGroup>
 
         <!-- Publish each module with the same configuration and RID -->
         <MSBuild Projects="@(ModuleProjectsForPublish)" Targets="Publish" Properties="Configuration=$(Configuration);RuntimeIdentifier=$(RuntimeIdentifier);PublishDir=$(MSBuildProjectDirectory)/obj/ModulesPublish/%(ModuleProjectsForPublish.Filename)/" />
 
-        <!-- Find all published module DLLs -->
+        <!-- Find all published module files including native binaries and runtime assets -->
         <ItemGroup>
-            <PublishedModuleDlls Include="$(MSBuildProjectDirectory)/obj/ModulesPublish/*/Aesir.Modules.*.dll" />
+            <PublishedModuleFiles Include="$(MSBuildProjectDirectory)/obj/ModulesPublish/**/*.*" />
         </ItemGroup>
 
-        <!-- Copy module DLLs to the main publish directory -->
-        <Copy SourceFiles="@(PublishedModuleDlls)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+        <!-- Copy all module files to main publish directory preserving subdirectory structure -->
+        <Copy SourceFiles="@(PublishedModuleFiles)" DestinationFolder="$(PublishDir)/%(RecursiveDir)" SkipUnchangedFiles="true" />
 
-        <Message Text="[Api.Server] Published and copied @(PublishedModuleDlls-&gt;Count()) module(s)" Importance="high" />
+        <Message Text="[Api.Server] Published and copied @(PublishedModuleFiles-&gt;Count()) module file(s) including all runtime assets" Importance="high" />
     </Target>
 
 </Project>

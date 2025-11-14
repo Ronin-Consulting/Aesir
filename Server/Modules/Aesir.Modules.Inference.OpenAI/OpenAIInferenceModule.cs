@@ -23,7 +23,7 @@ namespace Aesir.Modules.Inference.OpenAI;
 // ReSharper disable once InconsistentNaming
 public class OpenAIInferenceModule : ModuleBase
 {
-    public OpenAIInferenceModule(ILogger<OpenAIInferenceModule> logger) : base(logger)
+    public OpenAIInferenceModule(ILogger logger) : base(logger)
     {
     }
 

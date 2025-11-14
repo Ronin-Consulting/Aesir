@@ -15,7 +15,7 @@ namespace Aesir.Modules.Configuration;
 /// </summary>
 public class ConfigurationModule : ModuleBase
 {
-    public ConfigurationModule(ILogger<ConfigurationModule> logger) : base(logger)
+    public ConfigurationModule(ILogger logger) : base(logger)
     {
     }
 
@@ -35,9 +35,11 @@ public class ConfigurationModule : ModuleBase
             (Func<ILoggerFactory, IDbContext, IConfiguration, ConfigurationService>?)
             ConfigurationServiceFactory;
         
-        factoryInstance!.DefaultConfigurationReadinessServiceFactory =
-            (Func<ILoggerFactory, IDbContext, IConfiguration, ConfigurationReadinessService>?)
-            ConfigurationReadinessServiceFactory;
+        // singleton readiness service
+        var configurationReadinessService = new ConfigurationReadinessService();
+        
+        factoryInstance!.DefaultConfigurationReadinessServiceFactory = 
+            (_, d, i) => configurationReadinessService;
         
         // Register configuration readiness service as singleton (maintains boot-time state)
         services.AddSingleton<IConfigurationReadinessService>((sp) => factoryInstance.CreateConfigurationReadinessService());
@@ -46,9 +48,7 @@ public class ConfigurationModule : ModuleBase
         services.AddSingleton<IConfigurationService>((sp) => factoryInstance.CreateConfigurationService());
         
         return;
-
-        ConfigurationReadinessService ConfigurationReadinessServiceFactory(ILoggerFactory f, IDbContext d, IConfiguration i) => new();
-
+        
         ConfigurationService ConfigurationServiceFactory(ILoggerFactory f, IDbContext d, IConfiguration i)
         {
             var logger = f.CreateLogger<ConfigurationService>();

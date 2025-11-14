@@ -12,7 +12,7 @@ namespace Aesir.Modules.Storage;
 /// </summary>
 public class StorageModule : ModuleBase
 {
-    public StorageModule(ILogger<StorageModule> logger) : base(logger)
+    public StorageModule(ILogger logger) : base(logger)
     {
     }
 

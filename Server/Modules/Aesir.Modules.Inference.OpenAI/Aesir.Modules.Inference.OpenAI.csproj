@@ -6,6 +6,8 @@
         <Nullable>enable</Nullable>
         <RuntimeIdentifiers>linux-arm64;linux-x64;win-x64;osx-arm64</RuntimeIdentifiers>
         <LangVersion>default</LangVersion>
+        <!-- Force all NuGet dependencies to be copied to output directory -->
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
 
     <ItemGroup>
@@ -16,15 +18,12 @@
         <PackageReference Include="OpenAI" Version="2.6.0" />
     </ItemGroup>
 
-    <!-- Auto-copy to Api.Server on build -->
-    <Target Name="CopyToApiServer" AfterTargets="Build">
+    <!-- Copy all module files including dependencies, native binaries, and runtime assets -->
+    <Target Name="CopyModuleToApiServer" AfterTargets="Build">
         <ItemGroup>
-            <DllFiles Include="$(OutDir)$(AssemblyName).dll" />
-            <PdbFiles Include="$(OutDir)$(AssemblyName).pdb" />
+            <ModuleOutputFiles Include="$(TargetDir)**/*.*" />
         </ItemGroup>
-        <Copy SourceFiles="@(DllFiles)" DestinationFolder="$(SolutionDir)Aesir.Api.Server\bin\$(Configuration)\net9.0\" SkipUnchangedFiles="true" />
-        <Copy SourceFiles="@(PdbFiles)" DestinationFolder="$(SolutionDir)Aesir.Api.Server\bin\$(Configuration)\net9.0\" SkipUnchangedFiles="true" />
-        <Message Text="Copied Aesir.Modules.Inference.OpenAI to Api.Server output" Importance="high" />
+        <Copy SourceFiles="@(ModuleOutputFiles)" DestinationFolder="$(ProjectDir)../../Aesir.Api.Server/bin/$(Configuration)/$(TargetFramework)/%(RecursiveDir)" SkipUnchangedFiles="true" />
     </Target>
 
 </Project>

@@ -15,7 +15,6 @@
         <PackageReference Include="Semi.Avalonia" Version="11.3.7" />
         <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.3.7" />
         <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.3.7" />
-        <PackageReference Include="Semi.Avalonia.TreeDataGrid" Version="11.2.0" />
         <PackageReference Include="System.Net.Http.Json" Version="10.0.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0" />

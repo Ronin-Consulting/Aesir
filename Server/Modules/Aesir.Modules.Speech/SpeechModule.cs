@@ -12,7 +12,7 @@ namespace Aesir.Modules.Speech;
 /// </summary>
 public class SpeechModule : ModuleBase
 {
-    public SpeechModule(ILogger<SpeechModule> logger) : base(logger)
+    public SpeechModule(ILogger logger) : base(logger)
     {
     }
 

@@ -12,7 +12,7 @@ namespace Aesir.Modules.Logging;
 /// </summary>
 public class LoggingModule : ModuleBase
 {
-    public LoggingModule(ILogger<LoggingModule> logger) : base(logger)
+    public LoggingModule(ILogger logger) : base(logger)
     {
     }
 

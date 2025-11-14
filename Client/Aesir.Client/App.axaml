@@ -19,7 +19,7 @@
         <semi:SemiPopupAnimations />
         <semi:ColorPickerSemiTheme />
         <semi:DataGridSemiTheme />
-        <semi:TreeDataGridSemiTheme />
+        <!-- <semi:TreeDataGridSemiTheme /> -->
         <material:MaterialIconStyles />
         <Style Selector="Border">
             <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBlack}"></Setter>

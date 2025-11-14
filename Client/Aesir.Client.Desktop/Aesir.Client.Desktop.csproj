@@ -26,7 +26,6 @@
         <PackageReference Include="Semi.Avalonia" Version="11.3.7" />
         <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.3.7" />
         <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.3.7" />
-        <PackageReference Include="Semi.Avalonia.TreeDataGrid" Version="11.2.0" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
         <PackageReference Include="SoundFlow" Version="1.2.1" />
         <PackageReference Include="System.Linq.Async" Version="6.0.3"/>

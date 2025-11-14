@@ -8,7 +8,7 @@ namespace Aesir.Modules.Mcp;
 
 public class McpModule : ModuleBase
 {
-    public McpModule(ILogger<McpModule> logger) : base(logger)
+    public McpModule(ILogger logger) : base(logger)
     {
     }
 

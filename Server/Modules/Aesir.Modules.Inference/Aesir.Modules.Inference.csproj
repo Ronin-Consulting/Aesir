@@ -5,11 +5,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>default</LangVersion>
+    <!-- Force all NuGet dependencies to be copied to output directory -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.67.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.0" />
     <PackageReference Include="FluentMigrator" Version="7.1.0" />
   </ItemGroup>
@@ -19,16 +21,15 @@
     <ProjectReference Include="..\..\Aesir.Infrastructure\Aesir.Infrastructure.csproj" />
   </ItemGroup>
 
-  <!-- Copy module DLL to Api.Server output directory for dynamic discovery -->
+  <!-- Copy all module files including dependencies, native binaries, and runtime assets -->
   <Target Name="CopyModuleToApiServer" AfterTargets="Build">
-    <Message Text="[$(MSBuildProjectName)] Copying module to Api.Server..." Importance="high" />
-    <Copy SourceFiles="$(TargetPath)"
-          DestinationFolder="$(ProjectDir)../Aesir.Api.Server/bin/$(Configuration)/$(TargetFramework)/"
+    <Message Text="[$(MSBuildProjectName)] Copying module with all runtime assets to Api.Server..." Importance="high" />
+    <ItemGroup>
+      <ModuleOutputFiles Include="$(TargetDir)**/*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ModuleOutputFiles)"
+          DestinationFolder="$(ProjectDir)../../Aesir.Api.Server/bin/$(Configuration)/$(TargetFramework)/%(RecursiveDir)"
           SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb"
-          DestinationFolder="$(ProjectDir)../Aesir.Api.Server/bin/$(Configuration)/$(TargetFramework)/"
-          Condition="Exists('$(TargetDir)$(TargetName).pdb')"
-          SkipUnchangedFiles="true" />
-    <Message Text="[$(MSBuildProjectName)] Module copied successfully" Importance="high" />
+    <Message Text="[$(MSBuildProjectName)] Module and all runtime assets copied successfully" Importance="high" />
   </Target>
 </Project>

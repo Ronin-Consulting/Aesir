@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NLog;
+using NLog.Extensions.Logging;
 
 namespace Aesir.Infrastructure.Extensions;
 
@@ -132,7 +134,12 @@ public static class ModuleExtensions
     public static IEnumerable<System.Reflection.Assembly> GetModuleAssemblies()
     {
         // Create a logger factory for module discovery
-        using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        using var loggerFactory = LoggerFactory.Create(builder => {
+        {
+            //builder.ClearProviders(); // Clear default providers like Console
+            //builder.SetMinimumLevel(LogLevel.Trace); // Set desired minimum logging level
+            builder.AddNLog();
+        } });
         return ModuleDiscovery.DiscoverModuleAssemblies(loggerFactory);
     }
 

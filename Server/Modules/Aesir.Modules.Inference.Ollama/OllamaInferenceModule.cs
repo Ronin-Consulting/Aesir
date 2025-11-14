@@ -25,7 +25,7 @@ namespace Aesir.Modules.Inference.Ollama;
 [Experimental("SKEXP0070")]
 public class OllamaInferenceModule : ModuleBase
 {
-    public OllamaInferenceModule(ILogger<OllamaInferenceModule> logger) : base(logger)
+    public OllamaInferenceModule(ILogger logger) : base(logger)
     {
     }
 

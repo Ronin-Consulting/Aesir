@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>default</LangVersion>
+    <!-- Force all NuGet dependencies to be copied to output directory -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,14 +16,16 @@
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.1.66" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
     <PackageReference Include="FluentMigrator" Version="7.1.0" />
   </ItemGroup>
 
-  <!-- Copy module DLL to Api.Server output directory for dynamic discovery -->
+  <!-- Copy all module files including dependencies, native binaries, and runtime assets -->
   <Target Name="CopyModuleToApiServer" AfterTargets="Build">
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ProjectDir)../Aesir.Api.Server/bin/$(Configuration)/$(TargetFramework)/" />
-    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="$(ProjectDir)../Aesir.Api.Server/bin/$(Configuration)/$(TargetFramework)/" Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
+    <ItemGroup>
+      <ModuleOutputFiles Include="$(TargetDir)**/*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ModuleOutputFiles)" DestinationFolder="$(ProjectDir)../../Aesir.Api.Server/bin/$(Configuration)/$(TargetFramework)/%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>
