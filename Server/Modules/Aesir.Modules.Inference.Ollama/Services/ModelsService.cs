@@ -91,7 +91,8 @@ public class ModelsService(
                     ParameterSize = m.Details.ParameterSize,
                     QuantizationLevel = m.Details.QuantizationLevel,
                     License = modelDetail?.License,
-                    ExtraInfo = modelDetail?.Info.ExtraInfo
+                    ExtraInfo = modelDetail?.Info.ExtraInfo,
+                    Capabilities = modelDetail?.Capabilities
                 }
             };
 

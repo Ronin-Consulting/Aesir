@@ -3,8 +3,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:Aesir.Client.ViewModels"
-             xmlns:dvm="clr-namespace:Aesir.Client.ViewModels.Design"
-             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="300"
              x:Class="Aesir.Client.Controls.LogsViewDialog"
              x:DataType="vm:LogsViewDialogViewModel"
@@ -16,7 +14,7 @@
                 Margin="20,0,20,15">
                 <TextBlock
                     DockPanel.Dock="Left"
-                    Text="{Binding Logs.Count, StringFormat='Displaying {0} documents'}" />
+                    Text="{Binding Logs.Count, StringFormat='Displaying {0} items'}" />
             </DockPanel>
             <DataGrid Margin="20 20 20 10" ItemsSource="{Binding Logs}" 
                       IsReadOnly="True" 

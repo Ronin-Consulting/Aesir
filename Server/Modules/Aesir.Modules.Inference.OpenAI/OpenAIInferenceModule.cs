@@ -58,11 +58,6 @@ public class OpenAIInferenceModule : ModuleBase
     /// <return>A <see cref="Task"/> representing the asynchronous operation.</return>
     public override async Task RegisterServicesAsync(IServiceCollection services)
     {
-        // registering any of these things is pointless if we are not fully ready with inference engines and embedding
-        // setup, and causes more weirdo dependency errors
-        if (!ConfigurationReadinessService!.IsReadyAtBoot)
-            return;
-        
         var inferenceEngines = await ConfigurationService!.GetInferenceEnginesAsync();
         var generalSettings = await ConfigurationService!.GetGeneralSettingsAsync();
         

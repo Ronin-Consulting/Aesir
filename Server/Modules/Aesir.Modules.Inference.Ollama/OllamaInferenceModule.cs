@@ -63,11 +63,6 @@ public class OllamaInferenceModule : ModuleBase
     /// <returns>A task representing the asynchronous operation.</returns>
     public override async Task RegisterServicesAsync(IServiceCollection services)
     {
-        // registering any of these things is pointless if we are not fully ready with inference engines and embedding
-        // setup, and causes more weirdo dependency errors
-        if (!ConfigurationReadinessService!.IsReadyAtBoot)
-            return;
-
         var inferenceEngines = await ConfigurationService!.GetInferenceEnginesAsync();
         var generalSettings = await ConfigurationService!.GetGeneralSettingsAsync();
 

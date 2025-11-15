@@ -37,11 +37,6 @@ public class DocumentsModule : ModuleBase
     {
         await Task.CompletedTask;
         
-        // registering any of these things is pointless if we are not fully ready with inference engines and embedding
-        // setup, and causes more weirdo dependency errors
-        if (!ConfigurationReadinessService!.IsReadyAtBoot)
-            return;
-        
         Log("Registering document services...");
 
         // Set up Qdrant vector store

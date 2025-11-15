@@ -207,9 +207,14 @@ public class ChatService : BaseChatService
 
             var isComplete = completion.InnerContent is ChatDoneResponseStream { Done: true };
 
-            // Note: OllamaSharp 5.0+ no longer supports the "thinking" mode
             var isThinking = false;
-            string? content = completion.Content;
+            var content = completion.Content;
+            if (completion.InnerContent is ChatResponseStream chatResponseStream)
+            {
+                isThinking = chatResponseStream.Message.Thinking != null;
+
+                if (isThinking) content = chatResponseStream.Message.Thinking;
+            }
 
             yield return (content ?? string.Empty, isThinking, isComplete);
         }

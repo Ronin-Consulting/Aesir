@@ -23,11 +23,6 @@ public class ChatModule : ModuleBase
 
     public override Task RegisterServicesAsync(IServiceCollection services)
     {
-        // registering any of these things is pointless if we are not fully ready with inference engines and embedding
-        // setup, and causes more weirdo dependency errors
-        if (!ConfigurationReadinessService!.IsReadyAtBoot)
-            return Task.CompletedTask;
-        
         Log("Registering chat services...");
 
         // Register chat history service

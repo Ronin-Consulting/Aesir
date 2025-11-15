@@ -87,8 +87,12 @@ public static class ModuleExtensions
     public static IServiceCollection AddAesirFeatureModules(this IServiceCollection services, IConfiguration configuration)
     {
         // Get or create ILoggerFactory from services
-        var serviceProvider = services.BuildServiceProvider();
-        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        using var loggerFactory = LoggerFactory.Create(builder => {
+        {
+            //builder.ClearProviders(); // Clear default providers like Console
+            //builder.SetMinimumLevel(LogLevel.Trace); // Set desired minimum logging level
+            builder.AddNLog();
+        } });
         var logger = loggerFactory.CreateLogger("ModuleExtensions");
 
         EnsureModulesDiscovered(loggerFactory);
@@ -99,6 +103,8 @@ public static class ModuleExtensions
         var configurationService = configurationServiceFactory!.CreateConfigurationService();
         var configurationReadinessService = configurationServiceFactory.CreateConfigurationReadinessService();
 
+        var kernelBuilder = services.AddKernel();
+        
         // Register each module's services NOT configuration because it should have been configured first
         foreach (var module in DiscoveredModules.Where(m => m.Name != "Configuration"))
         {
@@ -108,7 +114,9 @@ public static class ModuleExtensions
                 module.ConfigurationReadinessService = configurationReadinessService;
 
                 module.Configuration = configuration;
-
+                
+                module.KernelBuilder = kernelBuilder;
+                
                 logger.LogInformation("Registering services for module: {ModuleName} v{Version}",
                     module.Name, module.Version);
                 module.RegisterServicesAsync(services);
