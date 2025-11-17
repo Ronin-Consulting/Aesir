@@ -23,15 +23,14 @@ internal sealed partial class Program
     private static string _baseUrl = null!;
     
     // Entry point for the application.  See main.js for the browser entry point.
-    private static Task Main(string[] args)
+    private static async Task Main(string[] args)
     {
         // The first argument is the base URL of the API
         _baseUrl = args.Length > 0 ? args[0] : throw new ArgumentException("Base URL is required");
         // The second argument is the environment name
         _environmentName = args.Length == 2 ? args[1] : string.Empty;
-
-        // Load the app settings.  These are platform specific and are loaded from the server.
-        LoadAppSettings();
+        
+        await LoadAppSettings();
         
         // register services that are platform specific
         App.AddService(services =>
@@ -42,37 +41,44 @@ internal sealed partial class Program
             }
         );
         
-        return AppBuilder.Configure<App>()
+        await AppBuilder.Configure<App>()
             .UseBrowser()
             .WithInterFont()
             .LogToTrace(LogEventLevel.Error)
             .StartBrowserAppAsync("out");
     }
     
-    private static async void LoadAppSettings()
+    private static async Task LoadAppSettings()
     {
-        var environmentNameNormalized = 
-            !string.IsNullOrWhiteSpace(_environmentName) ? $".{_environmentName}" : string.Empty;
+        try
+        {
+            var environmentNameNormalized = 
+                !string.IsNullOrWhiteSpace(_environmentName) ? $".{_environmentName}" : string.Empty;
         
-        var settingsJsonString = await _baseUrl
-            .AppendPathSegment($"appsettings{environmentNameNormalized}.json")
-            .GetStringAsync();
+            var settingsJsonString = await _baseUrl
+                .AppendPathSegment($"appsettings{environmentNameNormalized}.json")
+                .GetStringAsync();
         
-        using var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(settingsJsonString));
-        var configuration = 
-            new ConfigurationBuilder()
-                .AddJsonStream(memoryStream)
-                .AddEnvironmentVariables()
-                .Build();
+            using var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(settingsJsonString));
+            var configuration = 
+                new ConfigurationBuilder()
+                    .AddJsonStream(memoryStream)
+                    .AddEnvironmentVariables()
+                    .Build();
         
-        // Add the configuration to the service collection of the app
-        App.AddService(services => 
-            services.AddSingleton<IConfiguration>(configuration)
-                .AddLogging(builder => builder
-                    .SetMinimumLevel(LogLevel.Error)
-                )
-        );
+            // Add the configuration to the service collection of the app
+            App.AddService(services => 
+                services.AddSingleton<IConfiguration>(configuration)
+                    .AddLogging(builder => builder
+                        .SetMinimumLevel(LogLevel.Error)
+                    )
+            );
         
-        Console.WriteLine(settingsJsonString);
+            Console.WriteLine(settingsJsonString);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
     }
 }

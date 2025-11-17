@@ -3,6 +3,9 @@
         <TargetFramework>net10.0-browser</TargetFramework>
         <OutputType>Exe</OutputType>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <!-- Exclude non-WASM SkiaSharp natives -->
+        <SkipSkiaSharp>false</SkipSkiaSharp>
+        <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,9 +15,10 @@
         <PackageReference Include="Material.Icons.Avalonia" Version="2.4.1" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="10.0.0" />
-        <PackageReference Include="Semi.Avalonia" Version="11.3.7" />
-        <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.3.7" />
-        <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.3.7" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
+        <PackageReference Include="Semi.Avalonia" Version="11.3.7.1" />
+        <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.3.7.1" />
+        <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.3.7.1" />
         <PackageReference Include="System.Net.Http.Json" Version="10.0.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0" />
@@ -25,6 +29,21 @@
     <ItemGroup>
         <ProjectReference Include="..\Aesir.Client\Aesir.Client.csproj"/>
     </ItemGroup>
+
+    <!-- Exclude non-WASM SkiaSharp native assets -->
+    <ItemGroup>
+        <PackageReference Include="SkiaSharp.NativeAssets.WebAssembly" Version="3.119.1" />
+    </ItemGroup>
+    
+    <Target Name="RemoveNonWasmNativeAssets" BeforeTargets="_WasmCalculateInitialHeapSize">
+        <ItemGroup>
+            <!-- Remove all non-WASM SkiaSharp native assets -->
+            <NativeFileReference Remove="@(NativeFileReference)" Condition="'%(Filename)' == 'libSkiaSharp' And '%(Extension)' != '.a'" />
+            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$(ResolvedFileToPublish.Contains('SkiaSharp.NativeAssets.Linux'))" />
+            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$(ResolvedFileToPublish.Contains('SkiaSharp.NativeAssets.Win32'))" />
+            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$(ResolvedFileToPublish.Contains('SkiaSharp.NativeAssets.macOS'))" />
+        </ItemGroup>
+    </Target>
 
     <ItemGroup>
       <Content Include="wwwroot\bower_components\polymer\bower.json" />

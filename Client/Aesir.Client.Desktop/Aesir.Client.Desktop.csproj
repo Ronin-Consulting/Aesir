@@ -22,10 +22,10 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="10.0.0" />
         <PackageReference Include="NLog.Extensions.Logging" Version="6.1.0" />
-        <PackageReference Include="PDFtoImage" Version="5.1.1" />
-        <PackageReference Include="Semi.Avalonia" Version="11.3.7" />
-        <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.3.7" />
-        <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.3.7" />
+        <PackageReference Include="PDFtoImage" Version="5.2.0" />
+        <PackageReference Include="Semi.Avalonia" Version="11.3.7.1" />
+        <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.3.7.1" />
+        <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.3.7.1" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
         <PackageReference Include="SoundFlow" Version="1.2.1" />
         <PackageReference Include="System.Linq.Async" Version="6.0.3"/>

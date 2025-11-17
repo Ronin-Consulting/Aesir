@@ -16,15 +16,15 @@
         <!-- Core dependencies -->
 
         <!-- Speech processing dependencies -->
-        <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.15" />
-        <PackageReference Include="Whisper.net" Version="1.8.1" />
-        <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
-        <PackageReference Include="Whisper.net.Runtime.CoreML" Version="1.8.1" />
-        <PackageReference Include="Whisper.net.Runtime.Cuda" Version="1.8.1" />
-        <PackageReference Include="Whisper.net.Runtime.Cuda.Linux" Version="1.8.1" />
-        <PackageReference Include="Whisper.net.Runtime.Cuda.Windows" Version="1.8.1" />
-        <PackageReference Include="Whisper.net.Runtime.NoAvx" Version="1.8.1" />
-        <PackageReference Include="Whisper.net.Runtime.OpenVino" Version="1.8.1" />
+        <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.12.17" />
+        <PackageReference Include="Whisper.net" Version="1.9.0" />
+        <PackageReference Include="Whisper.net.Runtime" Version="1.9.0" />
+        <PackageReference Include="Whisper.net.Runtime.CoreML" Version="1.9.0" />
+        <PackageReference Include="Whisper.net.Runtime.Cuda" Version="1.9.0" />
+        <PackageReference Include="Whisper.net.Runtime.Cuda.Linux" Version="1.9.0" />
+        <PackageReference Include="Whisper.net.Runtime.Cuda.Windows" Version="1.9.0" />
+        <PackageReference Include="Whisper.net.Runtime.NoAvx" Version="1.9.0" />
+        <PackageReference Include="Whisper.net.Runtime.OpenVino" Version="1.9.0" />
 
         <!-- SignalR for hubs -->
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.0" />
