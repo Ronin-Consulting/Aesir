@@ -1,0 +1,216 @@
+@namespace Aesir.Client.Web.Modules.Wizard.Components
+@inject IInferenceEngineService EngineService
+@inject IGeneralSettingsService SettingsService
+@inject IAgentService AgentService
+
+<MudStack Spacing="4" Class="pa-4" AlignItems="AlignItems.Center">
+    @* Success Icon with Animation *@
+    <div class="success-icon-container">
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                 Color="Color.Success"
+                 Style="font-size: 5rem;" />
+    </div>
+
+    <MudText Typo="Typo.h4" Align="Align.Center" Color="Color.Success" Style="font-weight: 600;">
+        Setup Complete!
+    </MudText>
+
+    <MudText Typo="Typo.body1" Align="Align.Center" Style="max-width: 450px;">
+        Congratulations! AESIR is now configured and ready to use.
+        Start chatting with your AI assistant!
+    </MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Size="Size.Medium" />
+    }
+    else
+    {
+        @* Configuration Summary Card *@
+        <MudPaper Elevation="0" Class="pa-4 mt-2" Style="border: 1px solid var(--mud-palette-lines-default); border-radius: 12px; width: 100%; max-width: 500px;">
+            <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mb-3" Style="font-weight: 600;">
+                Configuration Summary
+            </MudText>
+
+            <MudStack Spacing="3">
+                @* Inference Engines *@
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Memory" Color="Color.Primary" Size="Size.Small" />
+                        <MudText Typo="Typo.body2">Inference Engines</MudText>
+                    </MudStack>
+                    <MudChip T="string" Size="Size.Small" Color="@(_inferenceEngineCount > 0 ? Color.Success : Color.Default)" Variant="Variant.Filled">
+                        @_inferenceEngineCount
+                    </MudChip>
+                </MudStack>
+
+                @if (_inferenceEngines.Any())
+                {
+                    <MudStack Class="ml-7" Spacing="1">
+                        @foreach (var engine in _inferenceEngines.Take(2))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @engine.Name (@GetEngineTypeDisplayName(engine.Type))
+                            </MudText>
+                        }
+                        @if (_inferenceEngines.Count > 2)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                +@(_inferenceEngines.Count - 2) more
+                            </MudText>
+                        }
+                    </MudStack>
+                }
+
+                <MudDivider />
+
+                @* RAG Settings *@
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.TextFields" Color="Color.Secondary" Size="Size.Small" />
+                        <MudText Typo="Typo.body2">RAG Embedding</MudText>
+                    </MudStack>
+                    @if (!string.IsNullOrEmpty(_settings?.RagEmbeddingModel))
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Optional</MudText>
+                    }
+                </MudStack>
+
+                @if (!string.IsNullOrEmpty(_settings?.RagEmbeddingModel))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-7">
+                        @_settings.RagEmbeddingModel
+                    </MudText>
+                }
+
+                <MudDivider />
+
+                @* Agents *@
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.SmartToy" Color="Color.Tertiary" Size="Size.Small" />
+                        <MudText Typo="Typo.body2">AI Agents</MudText>
+                    </MudStack>
+                    <MudChip T="string" Size="Size.Small" Color="@(_agentCount > 0 ? Color.Success : Color.Default)" Variant="Variant.Filled">
+                        @_agentCount
+                    </MudChip>
+                </MudStack>
+
+                @if (_agents.Any())
+                {
+                    <MudStack Class="ml-7" Spacing="1">
+                        @foreach (var agent in _agents.Take(2))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @agent.Name
+                                @if (!string.IsNullOrEmpty(agent.ChatModel))
+                                {
+                                    <span> - @agent.ChatModel</span>
+                                }
+                            </MudText>
+                        }
+                        @if (_agents.Count > 2)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                +@(_agents.Count - 2) more
+                            </MudText>
+                        }
+                    </MudStack>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mt-4" Style="width: 100%; max-width: 500px;">
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@OnBack">
+            Back
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Success"
+                   Size="Size.Large"
+                   EndIcon="@Icons.Material.Filled.RocketLaunch"
+                   OnClick="@OnFinish"
+                   Style="padding: 12px 32px; font-weight: 600;">
+            Launch AESIR
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+<style>
+    .success-icon-container {
+        animation: scale-bounce 0.5s ease-out;
+    }
+
+    @@keyframes scale-bounce {
+        0% { transform: scale(0); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
+    }
+</style>
+
+@code {
+    private List<AesirInferenceEngineBase> _inferenceEngines = [];
+    private List<AesirAgentBase> _agents = [];
+    private AesirGeneralSettingsBase? _settings;
+    private bool _isLoading = true;
+
+    private int _inferenceEngineCount => _inferenceEngines.Count;
+    private int _agentCount => _agents.Count;
+
+    [Parameter]
+    public EventCallback OnFinish { get; set; }
+
+    [Parameter]
+    public EventCallback OnBack { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSummaryAsync();
+    }
+
+    private async Task LoadSummaryAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            // Load inference engines
+            var enginesResult = await EngineService.GetAllAsync();
+            if (enginesResult.IsSuccess && enginesResult.Value != null)
+            {
+                _inferenceEngines = enginesResult.Value.ToList();
+            }
+
+            // Load settings
+            var settingsResult = await SettingsService.GetSettingsAsync();
+            if (settingsResult.IsSuccess && settingsResult.Value != null)
+            {
+                _settings = settingsResult.Value;
+            }
+
+            // Load agents
+            var agentsResult = await AgentService.GetAllAsync();
+            if (agentsResult.IsSuccess && agentsResult.Value != null)
+            {
+                _agents = agentsResult.Value.ToList();
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string GetEngineTypeDisplayName(InferenceEngineType? type) => type switch
+    {
+        InferenceEngineType.Ollama => "Ollama",
+        InferenceEngineType.OpenAICompatible => "OpenAI",
+        _ => "Unknown"
+    };
+}

@@ -1,0 +1,262 @@
+@namespace Aesir.Client.Web.Modules.Wizard.Components
+@inject IGeneralSettingsService SettingsService
+@inject IInferenceEngineService EngineService
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="4" Class="pa-4">
+    <MudText Typo="Typo.h5" Align="Align.Center">
+        General Settings
+    </MudText>
+
+    <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-4">
+        Configure RAG (Retrieval-Augmented Generation) models for document processing.
+    </MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mx-auto" />
+    }
+    else
+    {
+        @* RAG Embedding Configuration *@
+        <MudCard Elevation="1">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.TextFields" Color="Color.Primary" Size="Size.Small" />
+                        <MudText Typo="Typo.subtitle1">RAG Embedding</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">
+                            Required
+                        </MudChip>
+                    </MudStack>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        The embedding model converts text into vectors for document search and retrieval.
+                    </MudText>
+
+                    <MudSelect T="Guid?"
+                               Value="_settings.RagEmbeddingInferenceEngineId"
+                               Label="Inference Engine"
+                               Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter"
+                               Disabled="@_isSaving"
+                               ValueChanged="OnEmbeddingEngineChanged">
+                        <MudSelectItem Value="@((Guid?)null)">-- Select an engine --</MudSelectItem>
+                        @foreach (var engine in _inferenceEngines)
+                        {
+                            <MudSelectItem Value="@engine.Id">@engine.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <ModelSelector @bind-SelectedModel="_settings.RagEmbeddingModel"
+                                   InferenceEngineId="_settings.RagEmbeddingInferenceEngineId"
+                                   Category="ModelCategory.Embedding"
+                                   Label="Embedding Model"
+                                   Required="true"
+                                   RequiredError="Embedding model is required for RAG" />
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+
+        @* RAG Vision Configuration *@
+        <MudCard Elevation="1">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Image" Color="Color.Primary" Size="Size.Small" />
+                        <MudText Typo="Typo.subtitle1">RAG Vision</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
+                            Optional
+                        </MudChip>
+                    </MudStack>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        The vision model processes images in documents for understanding visual content.
+                    </MudText>
+
+                    <MudSelect T="Guid?"
+                               Value="_settings.RagVisionInferenceEngineId"
+                               Label="Inference Engine"
+                               Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter"
+                               Disabled="@_isSaving"
+                               ValueChanged="OnVisionEngineChanged">
+                        <MudSelectItem Value="@((Guid?)null)">-- None (Skip vision) --</MudSelectItem>
+                        @foreach (var engine in _inferenceEngines)
+                        {
+                            <MudSelectItem Value="@engine.Id">@engine.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    @if (_settings.RagVisionInferenceEngineId.HasValue)
+                    {
+                        <ModelSelector @bind-SelectedModel="_settings.RagVisionModel"
+                                       InferenceEngineId="_settings.RagVisionInferenceEngineId"
+                                       Category="ModelCategory.Vision"
+                                       Label="Vision Model" />
+                    }
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+
+        @if (_hasChanges)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">
+                Settings will be saved when you proceed to the next step.
+            </MudAlert>
+        }
+    }
+
+    <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-4">
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@OnBack"
+                   Disabled="@_isSaving">
+            Back
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                   OnClick="@HandleNext"
+                   Disabled="@(!IsValid || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Next
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    private AesirGeneralSettingsBase _settings = new();
+    private AesirGeneralSettingsBase _originalSettings = new();
+    private List<AesirInferenceEngineBase> _inferenceEngines = [];
+    private bool _isLoading = true;
+    private bool _isSaving;
+
+    private bool IsValid =>
+        _settings.RagEmbeddingInferenceEngineId.HasValue &&
+        !string.IsNullOrWhiteSpace(_settings.RagEmbeddingModel);
+
+    private bool _hasChanges =>
+        _settings.RagEmbeddingInferenceEngineId != _originalSettings.RagEmbeddingInferenceEngineId ||
+        _settings.RagEmbeddingModel != _originalSettings.RagEmbeddingModel ||
+        _settings.RagVisionInferenceEngineId != _originalSettings.RagVisionInferenceEngineId ||
+        _settings.RagVisionModel != _originalSettings.RagVisionModel;
+
+    [Parameter]
+    public EventCallback OnNext { get; set; }
+
+    [Parameter]
+    public EventCallback OnBack { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            // Load inference engines
+            var enginesResult = await EngineService.GetAllAsync();
+            if (enginesResult.IsSuccess && enginesResult.Value != null)
+            {
+                _inferenceEngines = enginesResult.Value.ToList();
+            }
+
+            // Load current settings
+            var settingsResult = await SettingsService.GetSettingsAsync();
+            if (settingsResult.IsSuccess && settingsResult.Value != null)
+            {
+                _settings = settingsResult.Value;
+                _originalSettings = CloneSettings(_settings);
+            }
+
+            // If no embedding engine is set but we have engines, auto-select the first one
+            if (!_settings.RagEmbeddingInferenceEngineId.HasValue && _inferenceEngines.Count > 0)
+            {
+                _settings.RagEmbeddingInferenceEngineId = _inferenceEngines[0].Id;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnEmbeddingEngineChanged(Guid? engineId)
+    {
+        _settings.RagEmbeddingInferenceEngineId = engineId;
+        _settings.RagEmbeddingModel = null;
+    }
+
+    private void OnVisionEngineChanged(Guid? engineId)
+    {
+        _settings.RagVisionInferenceEngineId = engineId;
+        _settings.RagVisionModel = null;
+    }
+
+    private async Task HandleNext()
+    {
+        if (!IsValid)
+        {
+            Snackbar.Add("Please configure the RAG embedding model.", Severity.Warning);
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            // Save settings and reload configuration
+            var result = await SettingsService.UpdateSettingsAndReloadAsync(_settings);
+            if (result.IsSuccess)
+            {
+                _originalSettings = CloneSettings(_settings);
+                await OnNext.InvokeAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to save settings: {result.Error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private static AesirGeneralSettingsBase CloneSettings(AesirGeneralSettingsBase source)
+    {
+        return new AesirGeneralSettingsBase
+        {
+            RagEmbeddingInferenceEngineId = source.RagEmbeddingInferenceEngineId,
+            RagEmbeddingModel = source.RagEmbeddingModel,
+            RagVisionInferenceEngineId = source.RagVisionInferenceEngineId,
+            RagVisionModel = source.RagVisionModel,
+            TtsModelPath = source.TtsModelPath,
+            SttModelPath = source.SttModelPath,
+            VadModelPath = source.VadModelPath,
+            GoogleSearchEngineId = source.GoogleSearchEngineId,
+            GoogleApiKey = source.GoogleApiKey
+        };
+    }
+}

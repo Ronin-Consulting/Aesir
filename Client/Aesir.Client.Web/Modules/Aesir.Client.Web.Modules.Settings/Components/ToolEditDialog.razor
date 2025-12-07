@@ -1,0 +1,173 @@
+@using System.ComponentModel.DataAnnotations
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Build" Class="mr-2" />
+            @(IsNew ? "Create" : "Edit") Internal Tool
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" Model="@_model" @bind-IsValid="@_isValid">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_model.Name"
+                              Label="Name"
+                              Required="true"
+                              RequiredError="Name is required"
+                              HelperText="A unique identifier for the tool"
+                              Variant="Variant.Outlined" />
+
+                <MudTextField @bind-Value="_model.Description"
+                              Label="Description"
+                              Lines="3"
+                              HelperText="A description of what this tool does"
+                              Variant="Variant.Outlined" />
+
+                <MudTextField @bind-Value="_model.ToolName"
+                              Label="Tool Name"
+                              Placeholder="@(_model.Name)"
+                              HelperText="The internal name used to invoke this tool (defaults to Name if empty)"
+                              Variant="Variant.Outlined" />
+
+                <MudSelect @bind-Value="_model.IconName"
+                           Label="Icon"
+                           Variant="Variant.Outlined"
+                           AnchorOrigin="Origin.BottomCenter"
+                           AdornmentIcon="@GetIconForName(_model.IconName)"
+                           Adornment="Adornment.Start">
+                    @foreach (var icon in _availableIcons)
+                    {
+                        <MudSelectItem T="string" Value="@icon.Key">
+                            <MudStack Row="true" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@icon.Value" Size="Size.Small" Class="mr-2" />
+                                @icon.Key
+                            </MudStack>
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="SubmitAsync"
+                   Disabled="@(!_isValid || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsNew ? "Create" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Inject] private IToolService ToolService { get; set; } = null!;
+
+    [Parameter] public AesirToolBase Tool { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+
+    private MudForm _form = null!;
+    private AesirToolBase _model = new();
+    private bool _isValid;
+    private bool _isSaving;
+
+    private static readonly Dictionary<string, string> _availableIcons = new()
+    {
+        { "Build", Icons.Material.Filled.Build },
+        { "Search", Icons.Material.Filled.Search },
+        { "Web", Icons.Material.Filled.Language },
+        { "Storage", Icons.Material.Filled.Storage },
+        { "Code", Icons.Material.Filled.Code },
+        { "Terminal", Icons.Material.Filled.Terminal },
+        { "Analytics", Icons.Material.Filled.Analytics },
+        { "Calculate", Icons.Material.Filled.Calculate },
+        { "Description", Icons.Material.Filled.Description },
+        { "Folder", Icons.Material.Filled.Folder },
+        { "Api", Icons.Material.Filled.Api },
+        { "Settings", Icons.Material.Filled.Settings },
+        { "Extension", Icons.Material.Filled.Extension },
+        { "Memory", Icons.Material.Filled.Memory }
+    };
+
+    protected override void OnInitialized()
+    {
+        // Clone the tool to avoid modifying the original
+        _model = new AesirToolBase
+        {
+            Id = Tool.Id,
+            Name = Tool.Name,
+            Type = ToolType.Internal, // Force Internal type
+            Description = Tool.Description,
+            ToolName = Tool.ToolName,
+            IconName = Tool.IconName
+        };
+    }
+
+    private static string GetIconForName(string? iconName)
+    {
+        if (string.IsNullOrEmpty(iconName) || !_availableIcons.TryGetValue(iconName, out var icon))
+        {
+            return Icons.Material.Filled.Build;
+        }
+        return icon;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task SubmitAsync()
+    {
+        await _form.Validate();
+        if (!_isValid)
+            return;
+
+        _isSaving = true;
+
+        // Ensure type is Internal
+        _model.Type = ToolType.Internal;
+
+        // Use Name as ToolName if not provided
+        if (string.IsNullOrWhiteSpace(_model.ToolName))
+        {
+            _model.ToolName = _model.Name;
+        }
+
+        try
+        {
+            if (IsNew)
+            {
+                var result = await ToolService.CreateAsync(_model);
+                if (result.IsSuccess)
+                {
+                    MudDialog.Close(DialogResult.Ok(_model));
+                }
+                else
+                {
+                    _isSaving = false;
+                }
+            }
+            else
+            {
+                var result = await ToolService.UpdateAsync(_model);
+                if (result.IsSuccess)
+                {
+                    MudDialog.Close(DialogResult.Ok(_model));
+                }
+                else
+                {
+                    _isSaving = false;
+                }
+            }
+        }
+        catch
+        {
+            _isSaving = false;
+        }
+    }
+}

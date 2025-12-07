@@ -1,0 +1,24 @@
+@inherits LayoutComponentBase
+@namespace Aesir.Client.Web.Modules.Wizard.Layout
+
+@* Full-screen wizard layout without navigation chrome *@
+<MudLayout Class="wizard-layout">
+    <MudMainContent Class="wizard-main-content">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+<style>
+    .wizard-layout {
+        min-height: 100vh;
+        background: linear-gradient(135deg, var(--mud-palette-primary-darken) 0%, var(--mud-palette-dark) 100%);
+    }
+
+    .wizard-main-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 16px;
+    }
+</style>

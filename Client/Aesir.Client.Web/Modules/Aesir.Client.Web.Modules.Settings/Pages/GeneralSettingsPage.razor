@@ -1,0 +1,433 @@
+@page "/settings/general"
+@layout Aesir.Client.Web.Modules.Chat.Layout.ChatLayout
+
+<PageTitle>General Settings - AESIR</PageTitle>
+
+<div class="settings-page-container">
+    @* Fixed Header Section *@
+    <div class="settings-header">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <MudBreadcrumbs Items="_breadcrumbs" Class="mb-2 px-0" />
+
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <div>
+                    <MudText Typo="Typo.h4">General Settings</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Configure RAG (Retrieval-Augmented Generation), Speech, and Search settings.
+                    </MudText>
+                </div>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               OnClick="CancelChanges"
+                               Disabled="@(!_hasChanges || _isSaving)">
+                        Cancel
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Save"
+                               OnClick="SaveSettings"
+                               Disabled="@(!_hasChanges || _isSaving)">
+                        @if (_isSaving)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>Save Changes</span>
+                        }
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+
+            @if (_isLoading)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-2" />
+            }
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-2" ShowCloseIcon="true" CloseIconClicked="() => _errorMessage = null">
+                    @_errorMessage
+                </MudAlert>
+            }
+
+            @if (_hasChanges)
+            {
+                <MudAlert Severity="Severity.Info" Class="mt-2" Dense="true">
+                    You have unsaved changes. Click "Save Changes" to apply them.
+                </MudAlert>
+            }
+        </MudContainer>
+    </div>
+
+    @* Scrollable Content Section *@
+    <div class="settings-content">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <MudStack Spacing="4">
+        @* RAG Embedding Configuration Section *@
+        <MudCard Elevation="0" Outlined="true">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.TextFields" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">RAG Embedding</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Configure the embedding model used for document retrieval and semantic search.
+                    </MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudStack Spacing="3">
+                    <MudSelect T="Guid?"
+                               Value="_settings.RagEmbeddingInferenceEngineId"
+                               Label="Inference Engine"
+                               Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter"
+                               Disabled="@_isLoading"
+                               ValueChanged="OnEmbeddingEngineChanged">
+                        <MudSelectItem Value="@((Guid?)null)">-- Select an engine --</MudSelectItem>
+                        @foreach (var engine in _inferenceEngines)
+                        {
+                            <MudSelectItem Value="@engine.Id">@engine.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <ModelSelector @bind-SelectedModel="_settings.RagEmbeddingModel"
+                                   InferenceEngineId="_settings.RagEmbeddingInferenceEngineId"
+                                   Category="ModelCategory.Embedding"
+                                   Label="Embedding Model"
+                                   OnModelSelected="OnEmbeddingModelSelected" />
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+
+        @* RAG Vision Configuration Section *@
+        <MudCard Elevation="0" Outlined="true">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Image" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">RAG Vision</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Configure the vision model used for image understanding in document retrieval.
+                    </MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudStack Spacing="3">
+                    <MudSelect T="Guid?"
+                               Value="_settings.RagVisionInferenceEngineId"
+                               Label="Inference Engine"
+                               Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter"
+                               Disabled="@_isLoading"
+                               ValueChanged="OnVisionEngineChanged">
+                        <MudSelectItem Value="@((Guid?)null)">-- Select an engine --</MudSelectItem>
+                        @foreach (var engine in _inferenceEngines)
+                        {
+                            <MudSelectItem Value="@engine.Id">@engine.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <ModelSelector @bind-SelectedModel="_settings.RagVisionModel"
+                                   InferenceEngineId="_settings.RagVisionInferenceEngineId"
+                                   Category="ModelCategory.Vision"
+                                   Label="Vision Model"
+                                   OnModelSelected="OnVisionModelSelected" />
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+
+        @* Speech Configuration Section (Read-only) *@
+        <MudCard Elevation="0" Outlined="true">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.RecordVoiceOver" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Speech Models</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
+                            Server Configured
+                        </MudChip>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Speech models are configured on the server. These settings are read-only.
+                    </MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudStack Spacing="3">
+                    <MudTextField @bind-Value="_settings.TtsModelPath"
+                                  Label="Text-to-Speech Model Path"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  Disabled="true"
+                                  HelperText="Path to the TTS model on the server" />
+
+                    <MudTextField @bind-Value="_settings.SttModelPath"
+                                  Label="Speech-to-Text Model Path"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  Disabled="true"
+                                  HelperText="Path to the STT model on the server" />
+
+                    <MudTextField @bind-Value="_settings.VadModelPath"
+                                  Label="Voice Activity Detection Model Path"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  Disabled="true"
+                                  HelperText="Path to the VAD model on the server" />
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+
+        @* Google Search Configuration Section *@
+        <MudCard Elevation="0" Outlined="true">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Search" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Google Search</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Configure Google Custom Search for web search functionality in agents.
+                    </MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudStack Spacing="3">
+                    <MudTextField @bind-Value="_settings.GoogleSearchEngineId"
+                                  Label="Search Engine ID"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="Enter your Google Custom Search Engine ID"
+                                  HelperText="Create a search engine at programmablesearchengine.google.com"
+                                  Immediate="true"
+                                  TextChanged="OnSettingsChanged" />
+
+                    <MudTextField @bind-Value="_settings.GoogleApiKey"
+                                  Label="API Key"
+                                  Variant="Variant.Outlined"
+                                  InputType="@(_showApiKey ? InputType.Text : InputType.Password)"
+                                  Placeholder="Enter your Google API Key"
+                                  HelperText="Get your API key from console.cloud.google.com"
+                                  Immediate="true"
+                                  TextChanged="OnSettingsChanged"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_showApiKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="ToggleApiKeyVisibility" />
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+            </MudStack>
+        </MudContainer>
+    </div>
+</div>
+
+<style>
+    .settings-page-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .settings-header {
+        flex-shrink: 0;
+        padding-top: 16px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+        background-color: var(--mud-palette-surface);
+    }
+
+    .settings-content {
+        flex: 1;
+        overflow-y: auto;
+        padding-top: 16px;
+        padding-bottom: 100px;
+    }
+</style>
+
+@code {
+    [Inject] private IGeneralSettingsService SettingsService { get; set; } = null!;
+    [Inject] private IInferenceEngineService EngineService { get; set; } = null!;
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+    [Inject] private IDialogService DialogService { get; set; } = null!;
+
+    private readonly List<BreadcrumbItem> _breadcrumbs =
+    [
+        new BreadcrumbItem("Settings", href: "/settings", icon: Icons.Material.Filled.Settings),
+        new BreadcrumbItem("General Settings", href: null, disabled: true)
+    ];
+
+    private AesirGeneralSettingsBase _settings = new();
+    private AesirGeneralSettingsBase _originalSettings = new();
+    private List<AesirInferenceEngineBase> _inferenceEngines = [];
+
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _hasChanges;
+    private string? _errorMessage;
+    private bool _showApiKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            // Load inference engines for dropdowns
+            var enginesResult = await EngineService.GetAllAsync();
+            if (enginesResult.IsSuccess && enginesResult.Value != null)
+            {
+                _inferenceEngines = enginesResult.Value.ToList();
+            }
+
+            // Load current settings
+            var settingsResult = await SettingsService.GetSettingsAsync();
+            if (settingsResult.IsSuccess && settingsResult.Value != null)
+            {
+                _settings = settingsResult.Value;
+                _originalSettings = CloneSettings(_settings);
+                _hasChanges = false;
+            }
+            else
+            {
+                _errorMessage = settingsResult.Error ?? "Failed to load settings";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading settings: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnEmbeddingEngineChanged(Guid? engineId)
+    {
+        _settings.RagEmbeddingInferenceEngineId = engineId;
+        // Clear model when engine changes (ModelSelector will auto-select)
+        _settings.RagEmbeddingModel = null;
+        CheckForChanges();
+    }
+
+    private void OnVisionEngineChanged(Guid? engineId)
+    {
+        _settings.RagVisionInferenceEngineId = engineId;
+        // Clear model when engine changes (ModelSelector will auto-select)
+        _settings.RagVisionModel = null;
+        CheckForChanges();
+    }
+
+    private void OnEmbeddingModelSelected(AesirModelInfo? model)
+    {
+        _settings.RagEmbeddingModel = model?.Id;
+        CheckForChanges();
+    }
+
+    private void OnVisionModelSelected(AesirModelInfo? model)
+    {
+        _settings.RagVisionModel = model?.Id;
+        CheckForChanges();
+    }
+
+    private void OnSettingsChanged(string _)
+    {
+        CheckForChanges();
+    }
+
+    private void CheckForChanges()
+    {
+        _hasChanges =
+            _settings.RagEmbeddingInferenceEngineId != _originalSettings.RagEmbeddingInferenceEngineId ||
+            _settings.RagEmbeddingModel != _originalSettings.RagEmbeddingModel ||
+            _settings.RagVisionInferenceEngineId != _originalSettings.RagVisionInferenceEngineId ||
+            _settings.RagVisionModel != _originalSettings.RagVisionModel ||
+            _settings.GoogleSearchEngineId != _originalSettings.GoogleSearchEngineId ||
+            _settings.GoogleApiKey != _originalSettings.GoogleApiKey;
+
+        StateHasChanged();
+    }
+
+    private async Task SaveSettings()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await SettingsService.UpdateSettingsAndReloadAsync(_settings);
+
+            if (result.IsSuccess)
+            {
+                _originalSettings = CloneSettings(_settings);
+                _hasChanges = false;
+                Snackbar.Add("Settings saved successfully. Configuration has been reloaded.", Severity.Success);
+            }
+            else
+            {
+                _errorMessage = result.Error ?? "Failed to save settings";
+                Snackbar.Add(_errorMessage, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error saving settings: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task CancelChanges()
+    {
+        if (_hasChanges)
+        {
+            var result = await DialogService.ShowMessageBox(
+                "Discard Changes?",
+                "You have unsaved changes. Are you sure you want to discard them?",
+                yesText: "Discard",
+                cancelText: "Keep Editing");
+
+            if (result == true)
+            {
+                _settings = CloneSettings(_originalSettings);
+                _hasChanges = false;
+            }
+        }
+    }
+
+    private void ToggleApiKeyVisibility()
+    {
+        _showApiKey = !_showApiKey;
+    }
+
+    private static AesirGeneralSettingsBase CloneSettings(AesirGeneralSettingsBase source)
+    {
+        return new AesirGeneralSettingsBase
+        {
+            RagEmbeddingInferenceEngineId = source.RagEmbeddingInferenceEngineId,
+            RagEmbeddingModel = source.RagEmbeddingModel,
+            RagVisionInferenceEngineId = source.RagVisionInferenceEngineId,
+            RagVisionModel = source.RagVisionModel,
+            TtsModelPath = source.TtsModelPath,
+            SttModelPath = source.SttModelPath,
+            VadModelPath = source.VadModelPath,
+            GoogleSearchEngineId = source.GoogleSearchEngineId,
+            GoogleApiKey = source.GoogleApiKey
+        };
+    }
+}

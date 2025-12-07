@@ -1,0 +1,155 @@
+@* Chat Title Bar - Shows dropdown menu for chat actions (title is displayed in ChatLayout) *@
+@using Aesir.Client.Web.Modules.Chat.Services
+@inject IChatStateService ChatState
+@inject IChatHistoryService HistoryService
+@inject IDialogService DialogService
+
+<div class="chat-title-bar">
+    @if (ChatState.CurrentSessionId.HasValue)
+    {
+        <MudMenu AnchorOrigin="Origin.BottomCenter"
+                 TransformOrigin="Origin.TopCenter"
+                 Class="title-menu">
+            <ActivatorContent>
+                <MudIconButton Icon="@Icons.Material.Filled.MoreVert"
+                               Size="Size.Small"
+                               Color="Color.Default"
+                               Title="Chat options"
+                               Class="options-button" />
+            </ActivatorContent>
+            <ChildContent>
+                <MudMenuItem OnClick="ToggleStar" Class="menu-item">
+                    <div class="menu-item-content">
+                        <MudIcon Icon="@(IsStarred ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
+                                 Size="Size.Small"
+                                 Color="@(IsStarred ? Color.Warning : Color.Default)" />
+                        <span>@(IsStarred ? "Unstar" : "Star")</span>
+                    </div>
+                </MudMenuItem>
+                <MudMenuItem OnClick="ShowRenameDialog" Class="menu-item">
+                    <div class="menu-item-content">
+                        <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" />
+                        <span>Rename</span>
+                    </div>
+                </MudMenuItem>
+                <MudDivider Class="my-1" />
+                <MudMenuItem OnClick="ShowDeleteConfirmation" Class="menu-item delete-item">
+                    <div class="menu-item-content">
+                        <MudIcon Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" />
+                        <span class="delete-text">Delete</span>
+                    </div>
+                </MudMenuItem>
+            </ChildContent>
+        </MudMenu>
+    }
+</div>
+
+<style>
+    .chat-title-bar {
+        display: flex;
+        align-items: center;
+        position: absolute;
+        top: 8px;
+        right: 56px;
+        z-index: 10;
+    }
+
+    .options-button {
+        opacity: 0.6;
+        transition: opacity 0.2s ease;
+    }
+
+    .options-button:hover {
+        opacity: 1;
+    }
+
+    .menu-item-content {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 4px 0;
+    }
+
+    .delete-text {
+        color: var(--mud-palette-error);
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public bool IsStarred { get; set; }
+
+    [Parameter]
+    public EventCallback OnDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnRename { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OnStarChanged { get; set; }
+
+    private async Task ToggleStar()
+    {
+        var newValue = !IsStarred;
+        if (OnStarChanged.HasDelegate)
+        {
+            await OnStarChanged.InvokeAsync(newValue);
+        }
+    }
+
+    private async Task ShowRenameDialog()
+    {
+        var parameters = new DialogParameters<RenameDialog>
+        {
+            { x => x.CurrentTitle, Title ?? "" }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<RenameDialog>("Rename Chat", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: string newTitle } && !string.IsNullOrWhiteSpace(newTitle))
+        {
+            if (OnRename.HasDelegate)
+            {
+                await OnRename.InvokeAsync(newTitle);
+            }
+        }
+    }
+
+    private async Task ShowDeleteConfirmation()
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, "Are you sure you want to delete this chat? This action cannot be undone." },
+            { x => x.ConfirmButtonText, "Delete" },
+            { x => x.ConfirmButtonColor, Color.Error }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Chat", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            if (OnDelete.HasDelegate)
+            {
+                await OnDelete.InvokeAsync();
+            }
+        }
+    }
+}

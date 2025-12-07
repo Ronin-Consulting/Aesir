@@ -1,0 +1,279 @@
+@using Aesir.Common.Models
+@inject IDialogService DialogService
+
+<div class="chat-history-item @(_isHovered ? "hovered" : "") @(IsSelected ? "selected" : "")"
+     @onmouseenter="() => _isHovered = true"
+     @onmouseleave="() => _isHovered = false"
+     @onclick="HandleClick">
+    <div class="item-content">
+        <MudIcon Icon="@Icons.Material.Filled.ChatBubbleOutline"
+                 Size="Size.Small"
+                 Class="item-icon" />
+        <div class="item-text">
+            @if (_isRenaming)
+            {
+                <MudTextField @bind-Value="_editTitle"
+                              Variant="Variant.Text"
+                              Margin="Margin.Dense"
+                              Immediate="true"
+                              AutoFocus="true"
+                              OnKeyDown="HandleRenameKeyDown"
+                              OnBlur="CancelRename"
+                              Class="rename-input" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Class="item-title">
+                    @DisplayTitle
+                </MudText>
+                @if (ShowTimestamp)
+                {
+                    <MudText Typo="Typo.caption" Class="item-timestamp mud-text-secondary">
+                        @Session.UpdatedAtDisplay
+                    </MudText>
+                }
+            }
+        </div>
+    </div>
+    <div class="item-actions @((_isHovered || _isMenuOpen || IsSelected) && !_isRenaming ? "visible" : "")" @onclick:stopPropagation="true">
+        <MudMenu Icon="@Icons.Material.Filled.MoreHoriz"
+                 Size="Size.Small"
+                 AnchorOrigin="Origin.BottomRight"
+                 TransformOrigin="Origin.TopRight"
+                 Dense="true"
+                 Class="actions-menu"
+                 OpenChanged="@(open => _isMenuOpen = open)">
+            <MudMenuItem OnClick="StartRename" Class="menu-item">
+                <div class="menu-item-content">
+                    <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" />
+                    <span>Rename</span>
+                </div>
+            </MudMenuItem>
+            <MudMenuItem OnClick="ToggleStar" Class="menu-item">
+                <div class="menu-item-content">
+                    <MudIcon Icon="@(IsStarred ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
+                             Size="Size.Small"
+                             Color="@(IsStarred ? Color.Warning : Color.Default)" />
+                    <span>@(IsStarred ? "Unstar" : "Star")</span>
+                </div>
+            </MudMenuItem>
+            <MudDivider Class="my-1" />
+            <MudMenuItem OnClick="ConfirmDelete" Class="menu-item delete-item">
+                <div class="menu-item-content">
+                    <MudIcon Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" />
+                    <span class="delete-text">Delete</span>
+                </div>
+            </MudMenuItem>
+        </MudMenu>
+    </div>
+</div>
+
+<style>
+    .chat-history-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        margin: 2px 0;
+        position: relative;
+    }
+
+    .chat-history-item:hover,
+    .chat-history-item.hovered {
+        background-color: var(--mud-palette-action-default-hover);
+    }
+
+    .chat-history-item.selected {
+        background-color: var(--mud-palette-action-default-hover);
+    }
+
+    .chat-history-item.selected::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 60%;
+        background-color: var(--mud-palette-primary);
+        border-radius: 0 2px 2px 0;
+    }
+
+    .item-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .item-icon {
+        flex-shrink: 0;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .item-text {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .item-title {
+        overflow: hidden;
+        white-space: nowrap;
+        position: relative;
+        -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+        mask-image: linear-gradient(to right, black 80%, transparent 100%);
+    }
+
+    .item-timestamp {
+        font-size: 0.7rem;
+    }
+
+    .item-actions {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        width: 28px;
+        min-width: 28px;
+        visibility: hidden;
+    }
+
+    .item-actions.visible {
+        visibility: visible;
+    }
+
+    .actions-menu {
+        opacity: 0.7;
+    }
+
+    .actions-menu:hover {
+        opacity: 1;
+    }
+
+    .menu-item-content {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 2px 0;
+    }
+
+    .delete-text {
+        color: var(--mud-palette-error);
+    }
+
+    .rename-input {
+        font-size: 0.875rem;
+    }
+
+    .rename-input .mud-input-root {
+        padding: 0 !important;
+    }
+</style>
+
+@code {
+    private bool _isHovered;
+    private bool _isMenuOpen;
+    private bool _isRenaming;
+    private string _editTitle = "";
+
+    [Parameter, EditorRequired]
+    public AesirChatSessionItem Session { get; set; } = null!;
+
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    [Parameter]
+    public bool IsStarred { get; set; }
+
+    [Parameter]
+    public bool ShowTimestamp { get; set; } = true;
+
+    [Parameter]
+    public EventCallback<AesirChatSessionItem> OnClick { get; set; }
+
+    [Parameter]
+    public EventCallback<AesirChatSessionItem> OnDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<(AesirChatSessionItem Session, string NewTitle)> OnRename { get; set; }
+
+    [Parameter]
+    public EventCallback<(AesirChatSessionItem Session, bool IsStarred)> OnStarChanged { get; set; }
+
+    private string DisplayTitle => string.IsNullOrWhiteSpace(Session.Title) ? "New Chat" : Session.Title;
+
+    private async Task HandleClick()
+    {
+        if (!_isRenaming)
+        {
+            await OnClick.InvokeAsync(Session);
+        }
+    }
+
+    private void StartRename()
+    {
+        _editTitle = Session.Title ?? "";
+        _isRenaming = true;
+        StateHasChanged();
+    }
+
+    private void CancelRename()
+    {
+        _isRenaming = false;
+        _editTitle = "";
+    }
+
+    private async Task HandleRenameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_editTitle))
+        {
+            await SubmitRename();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelRename();
+        }
+    }
+
+    private async Task SubmitRename()
+    {
+        if (!string.IsNullOrWhiteSpace(_editTitle) && _editTitle != Session.Title)
+        {
+            await OnRename.InvokeAsync((Session, _editTitle.Trim()));
+        }
+        _isRenaming = false;
+        _editTitle = "";
+    }
+
+    private async Task ToggleStar()
+    {
+        await OnStarChanged.InvokeAsync((Session, !IsStarred));
+    }
+
+    private async Task ConfirmDelete()
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, "Are you sure you want to delete this chat? This action cannot be undone." },
+            { x => x.ConfirmButtonText, "Delete" },
+            { x => x.ConfirmButtonColor, Color.Error }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Chat", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await OnDelete.InvokeAsync(Session);
+        }
+    }
+}

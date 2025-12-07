@@ -1,0 +1,181 @@
+@* Compact Agent Selector for Input Area (Claude-style model selector) *@
+@using Aesir.Client.Web.Infrastructure.Services
+@using Aesir.Client.Web.Modules.Chat.Services
+@inject IConfigurationApiService ConfigurationApi
+@inject IChatStateService ChatState
+
+<MudMenu AnchorOrigin="Origin.TopCenter"
+         TransformOrigin="Origin.BottomCenter"
+         Class="agent-selector-compact">
+    <ActivatorContent>
+        <div class="selector-button">
+            @if (ChatState.SelectedAgent != null)
+            {
+                <span class="agent-name">@ChatState.SelectedAgent.Name</span>
+            }
+            else if (_isLoading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" StrokeWidth="2" />
+            }
+            else
+            {
+                <span class="agent-name placeholder">Select Agent</span>
+            }
+            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown"
+                     Size="Size.Small"
+                     Class="dropdown-icon" />
+        </div>
+    </ActivatorContent>
+    <ChildContent>
+        @if (_agents.Any())
+        {
+            @foreach (var agent in _agents)
+            {
+                <MudMenuItem OnClick="@(() => SelectAgent(agent))" Class="agent-menu-item">
+                    <div class="agent-item @(ChatState.SelectedAgentId == agent.Id ? "selected" : "")">
+                        <div class="agent-info">
+                            <span class="agent-item-name">@agent.Name</span>
+                            @if (!string.IsNullOrWhiteSpace(agent.ChatModel))
+                            {
+                                <span class="agent-model">@agent.ChatModel</span>
+                            }
+                        </div>
+                        @if (ChatState.SelectedAgentId == agent.Id)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Check"
+                                     Size="Size.Small"
+                                     Class="check-icon" />
+                        }
+                    </div>
+                </MudMenuItem>
+            }
+        }
+        else if (!_isLoading)
+        {
+            <MudMenuItem Disabled="true">
+                <span class="no-agents">No agents configured</span>
+            </MudMenuItem>
+        }
+    </ChildContent>
+</MudMenu>
+
+<style>
+    .agent-selector-compact .selector-button {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        background-color: transparent;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        border: none;
+    }
+
+    .agent-selector-compact .selector-button:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .agent-selector-compact .agent-name {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .agent-selector-compact .agent-name.placeholder {
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .agent-selector-compact .dropdown-icon {
+        color: var(--mud-palette-text-secondary);
+        transition: transform 0.2s ease;
+    }
+
+    /* Menu styling */
+    .agent-menu-item {
+        padding: 0 !important;
+    }
+
+    .agent-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 16px;
+        min-width: 200px;
+        transition: background-color 0.15s ease;
+    }
+
+    .agent-item:hover {
+        background-color: rgba(74, 144, 217, 0.1);
+    }
+
+    .agent-item.selected {
+        background-color: rgba(74, 144, 217, 0.15);
+    }
+
+    .agent-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .agent-item-name {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .agent-model {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .check-icon {
+        color: #4A90D9;
+    }
+
+    .no-agents {
+        font-size: 0.875rem;
+        color: var(--mud-palette-text-secondary);
+        font-style: italic;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public EventCallback<AesirAgentBase> OnAgentSelected { get; set; }
+
+    private List<AesirAgentBase> _agents = [];
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAgentsAsync();
+    }
+
+    private async Task LoadAgentsAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        var result = await ConfigurationApi.GetAgentsAsync();
+        result.OnSuccess(agents =>
+        {
+            _agents = agents.ToList();
+
+            // Auto-select first agent if none selected
+            if (ChatState.SelectedAgent == null && _agents.Any())
+            {
+                ChatState.SelectAgent(_agents.First());
+            }
+        });
+
+        _isLoading = false;
+    }
+
+    private async Task SelectAgent(AesirAgentBase agent)
+    {
+        ChatState.SelectAgent(agent);
+        await OnAgentSelected.InvokeAsync(agent);
+    }
+}

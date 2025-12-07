@@ -1,0 +1,58 @@
+@* Rename Dialog for Chat Sessions *@
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_newTitle"
+                      Label="Chat Title"
+                      Variant="Variant.Outlined"
+                      FullWidth="true"
+                      AutoFocus="true"
+                      OnKeyDown="HandleKeyDown"
+                      Class="mt-2" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default">Cancel</MudButton>
+        <MudButton OnClick="Submit"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="@string.IsNullOrWhiteSpace(_newTitle)">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public string CurrentTitle { get; set; } = "";
+
+    private string _newTitle = "";
+
+    protected override void OnInitialized()
+    {
+        _newTitle = CurrentTitle;
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newTitle))
+        {
+            Submit();
+        }
+    }
+
+    private void Submit()
+    {
+        if (!string.IsNullOrWhiteSpace(_newTitle))
+        {
+            MudDialog?.Close(DialogResult.Ok(_newTitle.Trim()));
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+}

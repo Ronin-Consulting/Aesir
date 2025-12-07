@@ -1,0 +1,867 @@
+@page "/chat"
+@layout ChatLayout
+@using System.IO
+@using Aesir.Client.Web.Modules.Chat.Services
+@using Aesir.Client.Web.Modules.Chat.Models
+@using Aesir.Client.Web.Modules.Chat.Components
+@using Aesir.Client.Web.Infrastructure.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IChatStateService ChatState
+@inject IChatApiService ChatApiService
+@inject IChatHistoryService HistoryService
+@inject IDocumentApiService DocumentService
+@inject IAgentToolsService AgentToolsService
+@inject IConfigurationApiService ConfigurationService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>@(_sessionTitle ?? "Chat") - AESIR</PageTitle>
+
+<div class="chat-page" id="chat-page-container"
+     @ondragenter="HandleDragEnter"
+     @ondragenter:preventDefault
+     @ondragleave="HandleDragLeave"
+     @ondragleave:preventDefault
+     @ondragover="HandleDragOver"
+     @ondragover:preventDefault
+     @ondrop="HandleDrop"
+     @ondrop:preventDefault>
+    @if (_isLoadingSession)
+    {
+        <div class="d-flex justify-center align-center" style="height: 100%;">
+            <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+        </div>
+    }
+    else if (!_hasMessages)
+    {
+        @* Welcome View - Claude Style with integrated input *@
+        <ChatWelcome @ref="_chatWelcome"
+                     OnAgentSelected="@HandleAgentSelected"
+                     OnSend="@SendMessageAsync"
+                     OnSendWithFiles="@SendMessageWithFilesAsync"
+                     GetConversationId="@GetOrCreateConversationId" />
+    }
+    else
+    {
+        @* Conversation View *@
+        <div class="chat-messages" id="chat-messages-container" @ref="_messagesContainer">
+            @{
+                var nonSystemMessages = _conversation.Messages.Where(m => m.Role != "system").ToList();
+                var lastAssistantMessage = nonSystemMessages.LastOrDefault(m => m.Role == "assistant");
+                var isCurrentlyStreaming = _isWaitingForResponse || _isThinking || _isStreaming;
+            }
+            @foreach (var message in nonSystemMessages)
+            {
+                @if (message.Role == "user")
+                {
+                    <UserMessage Message="message"
+                                 ConversationId="@ChatState.CurrentSessionId"
+                                 ExistingFiles="@ConversationFileNames" />
+                }
+                else if (message.Role == "assistant")
+                {
+                    <AssistantMessage Message="message"
+                                      AgentName="@ChatState.SelectedAgent?.Name"
+                                      ShowThinking="@(ChatState.SelectedAgent?.AllowThinking ?? false)"
+                                      IsLatestMessage="@(message == lastAssistantMessage && !isCurrentlyStreaming)" />
+                }
+            }
+            @if (_isWaitingForResponse || _isThinking || _isStreaming)
+            {
+                @if ((_isWaitingForResponse || _isThinking) && string.IsNullOrEmpty(_streamingContent))
+                {
+                    @* Show processing animation immediately after sending, and while thinking *@
+                    <AesirProcessingIndicator IsProcessing="true" />
+                }
+                @if (!string.IsNullOrEmpty(_streamingContent))
+                {
+                    <div class="streaming-message">
+                        <AssistantMessage Message="@_streamingMessage"
+                                          AgentName="@ChatState.SelectedAgent?.Name"
+                                          ShowThinking="@(ChatState.SelectedAgent?.AllowThinking ?? false)"
+                                          IsLatestMessage="true" />
+                        <div class="streaming-cursor"></div>
+                    </div>
+                }
+            }
+        </div>
+    }
+
+    @* Error Display *@
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="ma-2" ShowCloseIcon="true" CloseIconClicked="ClearError">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    @* Message Input - Only show when in conversation view *@
+    @if (_hasMessages)
+    {
+        <MessageInput @ref="_messageInput"
+                      OnSend="@SendMessageAsync"
+                      OnSendWithFiles="@SendMessageWithFilesAsync"
+                      IsDisabled="@(_isStreaming || _isThinking || ChatState.SelectedAgent == null || _isLoadingSession || _isUploadingFiles)"
+                      IsLoading="@(_isStreaming || _isThinking || _isUploadingFiles)"
+                      GetConversationId="@GetOrCreateConversationId" />
+    }
+
+    @* Drop Zone Overlay *@
+    <DropZoneOverlay IsVisible="@_isDragging"
+                     IsHovering="@_isDragOver"
+                     OnFileDropped="@HandleFileDropped" />
+
+    @* Hidden file input for drop zone - JS redirects drops here *@
+    <InputFile id="@_dropZoneInputId"
+               OnChange="HandleDroppedFiles"
+               multiple
+               style="display: none;"
+               accept=".pdf,.txt,.md,.csv,.json,.xml,.html,.htm,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp" />
+</div>
+
+<style>
+    .chat-page {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        scroll-behavior: smooth;
+        max-width: 900px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .streaming-message {
+        position: relative;
+    }
+
+    .streaming-cursor::after {
+        content: '';
+        display: inline-block;
+        width: 8px;
+        height: 16px;
+        background-color: var(--mud-palette-primary);
+        animation: blink 1s infinite;
+        vertical-align: text-bottom;
+        margin-left: 2px;
+    }
+</style>
+
+@code {
+    private const string UserId = "blangford@gmail.com"; // Hardcoded user ID per spec
+
+    [SupplyParameterFromQuery(Name = "session")]
+    public string? SessionId { get; set; }
+
+    /// <summary>
+    /// Current file names in the conversation, cascaded from ChatLayout.
+    /// Used to determine if file attachments in messages have been deleted.
+    /// </summary>
+    [CascadingParameter(Name = "ConversationFileNames")]
+    private IReadOnlyList<string> ConversationFileNames { get; set; } = [];
+
+    private ElementReference _messagesContainer;
+    private MessageInput? _messageInput;
+    private ChatWelcome? _chatWelcome;
+    private AesirConversation _conversation = new() { Id = Guid.NewGuid().ToString() };
+    private bool _isStreaming;
+    private bool _isThinking;
+    private bool _isWaitingForResponse;
+    private bool _hasMessages;
+    private bool _isLoadingSession;
+    private bool _isUploadingFiles;
+    private string _streamingContent = string.Empty;
+    private string? _currentThinkingContent;
+    private string? _errorMessage;
+    private CancellationTokenSource? _streamingCts;
+    private Guid? _previousSessionId;
+
+    // Title bar state
+    private string? _sessionTitle;
+    private bool _isStarred;
+
+    // Drag-and-drop state
+    private bool _isDragging;
+    private bool _isDragOver;
+    private int _dragCounter;
+    private readonly string _dropZoneInputId = $"drop-zone-input-{Guid.NewGuid():N}";
+    private bool _jsDropZoneInitialized;
+
+    // Agent tools state - tools are converted to ToolRequest for use in chat requests
+    private HashSet<ToolRequest> _agentToolRequests = new();
+    private IReadOnlyList<AesirMcpServerBase>? _mcpServers;
+
+    // Property to create the streaming message object
+    private AesirChatMessage _streamingMessage => new AesirChatMessage
+    {
+        Role = "assistant",
+        Content = _streamingContent,
+        ThoughtsContent = _currentThinkingContent
+    };
+
+    protected override void OnInitialized()
+    {
+        ChatState.OnAgentChanged += HandleAgentChanged;
+        ChatState.OnNewChat += HandleNewChat;
+        HistoryService.OnSessionSelected += HandleSessionSelected;
+
+        // Initialize with empty conversation (with ID for API validation)
+        _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Handle session ID from query parameter
+        if (Guid.TryParse(SessionId, out var sessionId) && sessionId != _previousSessionId)
+        {
+            _previousSessionId = sessionId;
+            await LoadSessionAsync(sessionId);
+        }
+        else if (string.IsNullOrEmpty(SessionId) && _previousSessionId.HasValue)
+        {
+            // Query param was cleared, start new chat
+            _previousSessionId = null;
+            HandleNewChat();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_jsDropZoneInitialized)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("initializeDropZone", "chat-page-container", _dropZoneInputId);
+                _jsDropZoneInitialized = true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to initialize drop zone: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task LoadSessionAsync(Guid sessionId)
+    {
+        _isLoadingSession = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await HistoryService.GetSessionAsync(sessionId);
+
+            if (result.IsSuccess && result.Value != null)
+            {
+                var session = result.Value;
+                _conversation = session.Conversation ?? new AesirConversation { Id = Guid.NewGuid().ToString() };
+                _hasMessages = _conversation.Messages.Any(m => m.Role != "system");
+                _sessionTitle = session.Title;
+                ChatState.SetCurrentSession(sessionId, _sessionTitle);
+
+                await ScrollToBottomAsync();
+            }
+            else
+            {
+                _errorMessage = "Failed to load chat session.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading session: {ex.Message}";
+        }
+        finally
+        {
+            _isLoadingSession = false;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleSessionSelected(Guid sessionId)
+    {
+        // Navigation is handled by ChatLayout, this is just for direct calls
+    }
+
+    private async void HandleAgentChanged()
+    {
+        // Update system prompt when agent changes
+        UpdateSystemPrompt();
+
+        // Load agent tools for use in chat requests
+        await LoadAgentToolsAsync();
+
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Loads the tools assigned to the selected agent and converts them to ToolRequest objects.
+    /// These are sent with each chat request to enable RAG, web search, and MCP tools.
+    /// </summary>
+    private async Task LoadAgentToolsAsync()
+    {
+        _agentToolRequests.Clear();
+
+        if (ChatState.SelectedAgent?.Id == null)
+            return;
+
+        try
+        {
+            // Load agent tools and MCP servers in parallel (like the Avalonia client)
+            var toolsTask = AgentToolsService.GetAgentToolsAsync(ChatState.SelectedAgent.Id.Value);
+            var mcpServersTask = ConfigurationService.GetMcpServersAsync();
+
+            await Task.WhenAll(toolsTask, mcpServersTask);
+
+            var tools = await toolsTask;
+            var mcpServersResult = await mcpServersTask;
+            _mcpServers = mcpServersResult.IsSuccess ? mcpServersResult.Value : null;
+
+            // Convert AesirToolBase to ToolRequest (same logic as Avalonia client)
+            foreach (var tool in tools)
+            {
+                string? mcpServerName = null;
+
+                // For MCP server tools, look up the server name
+                if (tool.Type == ToolType.McpServer && tool.McpServerId.HasValue && _mcpServers != null)
+                {
+                    var mcpServer = _mcpServers.FirstOrDefault(s => s.Id == tool.McpServerId);
+                    mcpServerName = mcpServer?.Name;
+                }
+
+                var toolRequest = new ToolRequest
+                {
+                    // For MCP tools, use Name; for internal tools, use ToolName
+                    ToolName = tool.Type == ToolType.McpServer ? tool.Name! : tool.ToolName!,
+                    McpServerName = mcpServerName
+                };
+
+                _agentToolRequests.Add(toolRequest);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't block chat - tools will just be empty
+            Console.WriteLine($"Failed to load agent tools: {ex.Message}");
+        }
+    }
+
+    private void HandleNewChat()
+    {
+        _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
+        _hasMessages = false;
+        _streamingContent = string.Empty;
+        _currentThinkingContent = null;
+        _errorMessage = null;
+        _previousSessionId = null;
+        _sessionTitle = null;
+        _isStarred = false;
+        ChatState.SetCurrentSession(null);
+        UpdateSystemPrompt();
+        StateHasChanged();
+    }
+
+    private void UpdateSystemPrompt()
+    {
+        // Remove existing system messages
+        var systemMessages = _conversation.Messages.Where(m => m.Role == "system").ToList();
+        foreach (var msg in systemMessages)
+        {
+            _conversation.Messages.Remove(msg);
+        }
+
+        if (ChatState.SelectedAgent != null)
+        {
+            // Use the proper persona system like the old Avalonia client
+            var persona = ChatState.SelectedAgent.ChatPromptPersona;
+            var customContent = ChatState.SelectedAgent.ChatCustomPromptContent;
+
+            var systemMessage = AesirChatMessage.NewSystemMessage(persona, customContent);
+            _conversation.Messages.Insert(0, systemMessage);
+        }
+    }
+
+    private async Task HandleAgentSelected(AesirAgentBase agent)
+    {
+        ChatState.SelectAgent(agent);
+        // Load tools for the newly selected agent
+        await LoadAgentToolsAsync();
+    }
+
+    private async Task HandleSuggestion(string suggestion)
+    {
+        await SendMessageAsync(suggestion);
+    }
+
+    private async Task SendMessageAsync(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message) || ChatState.SelectedAgent == null) return;
+
+        var userMessage = AesirChatMessage.NewUserMessage(message);
+        await SendMessageWithFileAsync(userMessage);
+    }
+
+    private async Task SendMessageWithFileAsync(AesirChatMessage userMessage)
+    {
+        if (ChatState.SelectedAgent == null) return;
+
+        _errorMessage = null;
+        _isWaitingForResponse = true;
+        _isStreaming = false;
+        _isThinking = false;
+        _hasMessages = true;
+        _streamingContent = string.Empty;
+        _currentThinkingContent = null;
+
+        try
+        {
+            // Add user message (which may already have file reference via AddFile())
+            _conversation.Messages.Add(userMessage);
+
+            StateHasChanged();
+            await ScrollToBottomAsync();
+
+            // Create the chat request
+            // Use the client's conversation ID - server will honor it (??= only assigns if null)
+            var conversationGuid = Guid.TryParse(_conversation.Id, out var convId) ? convId : (Guid?)null;
+            var request = new AesirAgentChatRequestBase
+            {
+                AgentId = ChatState.SelectedAgent.Id,
+                ChatSessionId = conversationGuid ?? ChatState.CurrentSessionId,
+                User = UserId,
+                Conversation = _conversation,
+                EnableThinking = ChatState.SelectedAgent.AllowThinking,
+                ThinkValue = ChatState.SelectedAgent.ThinkValue,
+                Title = _sessionTitle ?? string.Empty
+            };
+
+            // Add all agent tools to the request (enables RAG, web search, MCP tools)
+            // The backend checks request.Tools for RagTool to enable document search
+            foreach (var toolRequest in _agentToolRequests)
+            {
+                request.WithTool(toolRequest);
+            }
+
+            // Create cancellation token for streaming
+            _streamingCts?.Cancel();
+            _streamingCts = new CancellationTokenSource();
+
+            // Stream the response
+            await foreach (var chunk in ChatApiService.StreamChatAsync(request, _streamingCts.Token))
+            {
+                if (_streamingCts.IsCancellationRequested) break;
+
+                // First chunk received - no longer waiting
+                _isWaitingForResponse = false;
+
+                // Update session ID if this is a new session
+                if (chunk.ChatSessionId.HasValue && !ChatState.CurrentSessionId.HasValue)
+                {
+                    // Store the old conversation ID before updating (for file migration)
+                    var oldConversationId = _conversation.Id;
+
+                    ChatState.SetCurrentSession(chunk.ChatSessionId.Value);
+                    _previousSessionId = chunk.ChatSessionId.Value;
+
+                    // CRITICAL: Sync _conversation.Id with the new session ID
+                    // This ensures all future file uploads use the same ID as the session
+                    _conversation.Id = chunk.ChatSessionId.Value.ToString();
+
+                    // If files were uploaded with the old conversation ID, migrate them
+                    if (oldConversationId != _conversation.Id && Guid.TryParse(oldConversationId, out var oldId))
+                    {
+                        await MigrateFilesAsync(oldId, chunk.ChatSessionId.Value);
+                    }
+
+                    // Update URL with new session ID without forcing navigation
+                    var newUrl = NavigationManager.GetUriWithQueryParameter("session", chunk.ChatSessionId.Value.ToString());
+                    NavigationManager.NavigateTo(newUrl, forceLoad: false, replace: true);
+
+                    // Notify history service that a new session was created
+                    await HistoryService.NotifySessionCreatedAsync(chunk.ChatSessionId.Value);
+                }
+
+                // Update title if it comes back in the stream
+                if (!string.IsNullOrEmpty(chunk.Title) && chunk.Title != _sessionTitle)
+                {
+                    _sessionTitle = chunk.Title;
+                    ChatState.SetCurrentSessionTitle(_sessionTitle);
+                    // Notify history service that the session was updated
+                    if (ChatState.CurrentSessionId.HasValue)
+                    {
+                        await HistoryService.NotifySessionUpdatedAsync(ChatState.CurrentSessionId.Value);
+                    }
+                }
+
+                // Handle thinking state
+                if (chunk.IsThinking)
+                {
+                    _isThinking = true;
+                    _isStreaming = false;
+                    // Thinking content is in ThoughtsContent, not Content
+                    if (!string.IsNullOrEmpty(chunk.Delta?.ThoughtsContent))
+                    {
+                        _currentThinkingContent = (_currentThinkingContent ?? string.Empty) + chunk.Delta.ThoughtsContent;
+                    }
+                }
+                else
+                {
+                    _isThinking = false;
+                    _isStreaming = true;
+                    if (!string.IsNullOrEmpty(chunk.Delta?.Content))
+                    {
+                        _streamingContent += chunk.Delta.Content;
+                    }
+                }
+
+                StateHasChanged();
+                await ScrollToBottomAsync();
+            }
+
+            // Add the completed assistant message
+            if (!string.IsNullOrEmpty(_streamingContent))
+            {
+                var assistantMessage = AesirChatMessage.NewAssistantMessage(_streamingContent);
+                if (!string.IsNullOrEmpty(_currentThinkingContent))
+                {
+                    assistantMessage.ThoughtsContent = _currentThinkingContent;
+                }
+                _conversation.Messages.Add(assistantMessage);
+            }
+
+            ChatState.NotifyConversationChanged();
+        }
+        catch (OperationCanceledException)
+        {
+            // User cancelled the stream - this is expected
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Connection error: {ex.Message}. Please check your network connection.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            _isWaitingForResponse = false;
+            _isStreaming = false;
+            _isThinking = false;
+            _streamingContent = string.Empty;
+            StateHasChanged();
+            await ScrollToBottomAsync();
+        }
+    }
+
+    private async Task SendMessageWithFilesAsync((string Message, List<PendingFileUpload> Files) data)
+    {
+        var (message, files) = data;
+
+        if (ChatState.SelectedAgent == null || string.IsNullOrWhiteSpace(message)) return;
+
+        // Get conversation ID (may already exist from immediate upload)
+        var conversationId = GetOrCreateConversationId();
+
+        // Upload any files that haven't been uploaded yet (immediate upload may have already uploaded them)
+        var filesToUpload = files.Where(f => f.Status == UploadStatus.Pending).ToList();
+        if (filesToUpload.Count > 0)
+        {
+            _isUploadingFiles = true;
+            StateHasChanged();
+
+            var uploadedCount = 0;
+
+            try
+            {
+                foreach (var file in filesToUpload)
+                {
+                    try
+                    {
+                        file.Status = UploadStatus.Uploading;
+                        StateHasChanged();
+
+                        var progress = new Progress<int>(p =>
+                        {
+                            file.Progress = p;
+                            InvokeAsync(StateHasChanged);
+                        });
+
+                        await DocumentService.UploadFileAsync(
+                            conversationId,
+                            file.File,
+                            progress,
+                            file.CancellationTokenSource.Token);
+
+                        file.Status = UploadStatus.Completed;
+                        uploadedCount++;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        file.Status = UploadStatus.Cancelled;
+                    }
+                    catch (Exception ex)
+                    {
+                        file.Status = UploadStatus.Failed;
+                        file.ErrorMessage = ex.Message;
+                        Snackbar.Add($"Failed to upload '{file.FileName}': {ex.Message}", Severity.Error);
+                    }
+                }
+
+                if (uploadedCount > 0)
+                {
+                    Snackbar.Add($"Uploaded {uploadedCount} file(s) successfully.", Severity.Success);
+                }
+            }
+            finally
+            {
+                _isUploadingFiles = false;
+                StateHasChanged();
+            }
+        }
+
+        // Create user message and add file reference using the existing AddFile method
+        // This matches how the desktop client handles file attachments
+        var userMessage = AesirChatMessage.NewUserMessage(message);
+
+        // Add file references for all successfully uploaded files
+        var successfullyUploadedFiles = files.Where(f => f.Status == UploadStatus.Completed).ToList();
+        foreach (var uploadedFile in successfullyUploadedFiles)
+        {
+            userMessage.AddFile(uploadedFile.FileName);
+        }
+
+        await SendMessageWithFileAsync(userMessage);
+    }
+
+    /// <summary>
+    /// Gets the current conversation ID or creates a new one if none exists.
+    /// Used by MessageInput for immediate file upload on selection.
+    /// </summary>
+    private Guid GetOrCreateConversationId()
+    {
+        if (ChatState.CurrentSessionId.HasValue)
+        {
+            return ChatState.CurrentSessionId.Value;
+        }
+
+        // For new conversations, use the conversation ID from _conversation
+        // This will be associated with the session when created
+        if (Guid.TryParse(_conversation.Id, out var conversationId))
+        {
+            return conversationId;
+        }
+
+        // Generate a new conversation ID
+        conversationId = Guid.NewGuid();
+        _conversation.Id = conversationId.ToString();
+        return conversationId;
+    }
+
+    /// <summary>
+    /// Migrates files from an old conversation ID to a new session ID.
+    /// This ensures files uploaded before the session was created are accessible.
+    /// </summary>
+    private async Task MigrateFilesAsync(Guid oldConversationId, Guid newSessionId)
+    {
+        try
+        {
+            // Check if there are any files in the old conversation
+            var oldFiles = await DocumentService.GetFilesAsync(oldConversationId);
+            if (!oldFiles.Any())
+            {
+                return; // No files to migrate
+            }
+
+            // Call the server API to move files from old conversation to new session
+            var success = await DocumentService.MoveFilesAsync(oldConversationId, newSessionId);
+            if (success)
+            {
+                Console.WriteLine($"Migrated {oldFiles.Count} files from {oldConversationId} to {newSessionId}");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to migrate files from {oldConversationId} to {newSessionId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't block the chat flow
+            Console.WriteLine($"Error migrating files: {ex.Message}");
+        }
+    }
+
+    private async Task ScrollToBottomAsync()
+    {
+        try
+        {
+            await Task.Delay(10); // Small delay to allow DOM update
+            await JSRuntime.InvokeVoidAsync("scrollToBottom", "chat-messages-container");
+        }
+        catch
+        {
+            // Ignore scroll errors
+        }
+    }
+
+    private void ClearError()
+    {
+        _errorMessage = null;
+    }
+
+    // Title bar handlers
+    private async Task HandleRename(string newTitle)
+    {
+        if (ChatState.CurrentSessionId.HasValue)
+        {
+            var result = await HistoryService.UpdateSessionTitleAsync(ChatState.CurrentSessionId.Value, newTitle);
+            if (result.IsSuccess)
+            {
+                _sessionTitle = newTitle;
+                ChatState.SetCurrentSessionTitle(newTitle);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task HandleDeleteSession()
+    {
+        if (ChatState.CurrentSessionId.HasValue)
+        {
+            var result = await HistoryService.DeleteSessionAsync(ChatState.CurrentSessionId.Value);
+            if (result.IsSuccess)
+            {
+                HandleNewChat();
+                NavigationManager.NavigateTo("/chat", forceLoad: false);
+            }
+        }
+    }
+
+    private Task HandleStarChanged(bool isStarred)
+    {
+        _isStarred = isStarred;
+        // TODO: Implement star persistence when API supports it
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    // Drag-and-drop handlers
+    private void HandleDragEnter(DragEventArgs e)
+    {
+        _dragCounter++;
+        if (HasFiles(e))
+        {
+            _isDragging = true;
+            _isDragOver = true;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleDragLeave(DragEventArgs e)
+    {
+        _dragCounter--;
+        if (_dragCounter <= 0)
+        {
+            _dragCounter = 0;
+            _isDragging = false;
+            _isDragOver = false;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleDragOver(DragEventArgs e)
+    {
+        if (HasFiles(e))
+        {
+            _isDragOver = true;
+        }
+    }
+
+    private void HandleDrop(DragEventArgs e)
+    {
+        // Reset drag state - the JS interop handles the actual file capture
+        _isDragging = false;
+        _isDragOver = false;
+        _dragCounter = 0;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Handles files dropped via the hidden InputFile (populated by JS interop).
+    /// </summary>
+    private async Task HandleDroppedFiles(InputFileChangeEventArgs e)
+    {
+        // Reset drag state
+        _isDragging = false;
+        _isDragOver = false;
+        _dragCounter = 0;
+
+        foreach (var file in e.GetMultipleFiles())
+        {
+            await HandleFileDropped(file);
+        }
+    }
+
+    private async Task HandleFileDropped(IBrowserFile file)
+    {
+        // Hide the overlay (drop handling is now done by InputFile in DropZoneOverlay)
+        _isDragging = false;
+        _isDragOver = false;
+        _dragCounter = 0;
+        StateHasChanged();
+
+        // Determine which view is active and check RAG status
+        var isRagEnabled = _hasMessages
+            ? _messageInput?.IsRagEnabled ?? false
+            : _chatWelcome?.IsRagEnabled ?? false;
+
+        if (!isRagEnabled)
+        {
+            Snackbar.Add("File uploads are not enabled for this agent. Assign the RAG tool to enable file uploads.", Severity.Warning);
+            return;
+        }
+
+        // Validate file type
+        if (!DocumentService.IsFileTypeSupported(file.Name))
+        {
+            Snackbar.Add($"File type not supported: {Path.GetExtension(file.Name)}", Severity.Warning);
+            return;
+        }
+
+        // Add the file to the appropriate component's pending files based on view state
+        if (_hasMessages && _messageInput != null)
+        {
+            await _messageInput.AddFileAsync(file);
+        }
+        else if (!_hasMessages && _chatWelcome != null)
+        {
+            await _chatWelcome.AddFileAsync(file);
+        }
+    }
+
+    private static bool HasFiles(DragEventArgs e)
+    {
+        // Check for "Files" (case-insensitive) as different browsers may report differently
+        return e.DataTransfer?.Types?.Any(t => t.Equals("Files", StringComparison.OrdinalIgnoreCase)) == true;
+    }
+
+    public void Dispose()
+    {
+        ChatState.OnAgentChanged -= HandleAgentChanged;
+        ChatState.OnNewChat -= HandleNewChat;
+        HistoryService.OnSessionSelected -= HandleSessionSelected;
+        _streamingCts?.Cancel();
+        _streamingCts?.Dispose();
+    }
+}

@@ -1,0 +1,85 @@
+@using Aesir.Client.Web.Modules.Chat.Services
+@inject IMarkdownService MarkdownService
+
+<div class="thinking-indicator">
+    <div class="thinking-bubble">
+        <div class="thinking-header">
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body2" Color="Color.Primary">
+                @AgentName is thinking...
+            </MudText>
+        </div>
+        @if (!string.IsNullOrEmpty(ThinkingContent))
+        {
+            <MudCollapse Expanded="_showContent">
+                <div class="thinking-content">
+                    @((MarkupString)MarkdownService.ToHtml(ThinkingContent))
+                </div>
+            </MudCollapse>
+            <MudButton Variant="Variant.Text"
+                       Size="Size.Small"
+                       StartIcon="@(_showContent ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                       OnClick="ToggleContent"
+                       Class="mt-1">
+                @(_showContent ? "Hide" : "Show") thinking
+            </MudButton>
+        }
+    </div>
+</div>
+
+<style>
+    .thinking-indicator {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 8px;
+    }
+
+    .thinking-indicator .thinking-bubble {
+        max-width: 80%;
+        background-color: var(--mud-palette-background-gray);
+        border: 1px dashed var(--mud-palette-primary);
+        border-radius: 12px;
+        padding: 12px 16px;
+    }
+
+    .thinking-indicator .thinking-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .thinking-indicator .thinking-content {
+        margin-top: 12px;
+        padding: 12px;
+        background-color: var(--mud-palette-surface);
+        border-radius: 8px;
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-secondary);
+        font-style: italic;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .thinking-indicator .thinking-content p {
+        margin: 0 0 0.5em 0;
+    }
+
+    .thinking-indicator .thinking-content p:last-child {
+        margin-bottom: 0;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string AgentName { get; set; } = "Agent";
+
+    [Parameter]
+    public string? ThinkingContent { get; set; }
+
+    private bool _showContent;
+
+    private void ToggleContent()
+    {
+        _showContent = !_showContent;
+    }
+}

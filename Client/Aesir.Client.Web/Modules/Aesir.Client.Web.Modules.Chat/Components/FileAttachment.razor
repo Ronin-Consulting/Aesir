@@ -1,0 +1,402 @@
+@* Unified file attachment display component with consistent styling across all views *@
+@using Aesir.Client.Web.Modules.Chat.Models
+
+<MudTooltip Text="@TooltipText" Placement="Placement.Top" Delay="300">
+<div class="file-attachment @ModeClass @(HasError ? "error" : "") @(IsClickable ? "clickable" : "") @(IsDeleted ? "deleted" : "")"
+     @onclick="HandleClick"
+     role="@(IsClickable ? "button" : null)"
+     tabindex="@(IsClickable ? 0 : -1)">
+    <div class="file-icon-container">
+        <MudIcon Icon="@GetFileIcon()"
+                 Size="@IconSize"
+                 Class="@($"file-icon {(IsProcessing ? "processing" : "")}")" />
+        @if (IsProcessing)
+        {
+            <div class="spinner-overlay">
+                @if (Progress > 0 && Progress < 100)
+                {
+                    @* Show determinate progress when we have a value *@
+                    <MudProgressCircular Size="@SpinnerSize"
+                                         Value="@Progress"
+                                         Color="Color.Primary"
+                                         Class="progress-spinner" />
+                }
+                else
+                {
+                    @* Indeterminate spinner for unknown progress (e.g., indexing) *@
+                    <MudProgressCircular Size="@SpinnerSize"
+                                         Indeterminate="true"
+                                         Color="Color.Primary"
+                                         Class="progress-spinner" />
+                }
+            </div>
+        }
+        @if (HasError)
+        {
+            <div class="error-overlay">
+                <MudIcon Icon="@Icons.Material.Filled.Error"
+                         Size="Size.Small"
+                         Color="Color.Error" />
+            </div>
+        }
+    </div>
+    <div class="file-info">
+        <span class="file-name">@TruncatedName</span>
+        @if (ShowSize && FileSize > 0)
+        {
+            <span class="file-size">@FormattedSize</span>
+        }
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <span class="error-message">@ErrorMessage</span>
+        }
+    </div>
+    @if (Mode == FileAttachmentMode.Pending && OnRemove.HasDelegate)
+    {
+        <MudIconButton Icon="@Icons.Material.Filled.Close"
+                       Size="Size.Small"
+                       OnClick="HandleRemove"
+                       Class="remove-button"
+                       Title="Remove file" />
+    }
+</div>
+</MudTooltip>
+
+<style>
+    .file-attachment {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 12px;
+        background-color: var(--mud-palette-background-gray);
+        border: 1px solid var(--mud-palette-lines-default);
+        max-width: 280px;
+        transition: all 0.2s ease;
+    }
+
+    .file-attachment:hover {
+        background-color: var(--mud-palette-action-default-hover);
+        border-color: var(--mud-palette-lines-inputs);
+    }
+
+    .file-attachment.clickable {
+        cursor: pointer;
+    }
+
+    .file-attachment.clickable:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .file-attachment.clickable:active {
+        transform: translateY(0);
+    }
+
+    .file-attachment.error {
+        border-color: var(--mud-palette-error);
+        background-color: color-mix(in srgb, var(--mud-palette-error) 10%, transparent);
+    }
+
+    /* Deleted state - grayed out with strikethrough */
+    .file-attachment.deleted {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .file-attachment.deleted .file-name {
+        text-decoration: line-through;
+        color: var(--mud-palette-text-disabled);
+    }
+
+    .file-attachment.deleted .file-icon {
+        color: var(--mud-palette-text-disabled) !important;
+    }
+
+    .file-attachment.deleted:hover {
+        transform: none;
+        box-shadow: none;
+        background-color: var(--mud-palette-background-gray);
+        border-color: var(--mud-palette-lines-default);
+    }
+
+    /* Pending mode - chip-like appearance */
+    .file-attachment.mode-pending {
+        padding: 6px 10px;
+        border-radius: 16px;
+    }
+
+    /* Attached mode - more prominent in conversation */
+    .file-attachment.mode-attached {
+        padding: 10px 14px;
+        border-radius: 12px;
+    }
+
+    /* User message context - file attachment inside dark theme bubble */
+    .user-message.theme-dark .file-attachment {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .user-message.theme-dark .file-attachment:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .user-message.theme-dark .file-attachment .file-icon {
+        color: var(--mud-palette-primary) !important;
+    }
+
+    .user-message.theme-dark .file-attachment .file-name {
+        color: var(--mud-palette-primary-lighten);
+    }
+
+    .user-message.theme-dark .file-attachment .file-size {
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    /* User message context - file attachment inside light theme bubble */
+    .user-message.theme-light .file-attachment {
+        background-color: rgba(0, 0, 0, 0.06);
+        border-color: rgba(0, 0, 0, 0.12);
+    }
+
+    .user-message.theme-light .file-attachment:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+        border-color: rgba(0, 0, 0, 0.18);
+    }
+
+    .user-message.theme-light .file-attachment .file-icon {
+        color: var(--mud-palette-primary) !important;
+    }
+
+    .user-message.theme-light .file-attachment .file-name {
+        color: var(--mud-palette-primary-darken);
+    }
+
+    .user-message.theme-light .file-attachment .file-size {
+        color: rgba(0, 0, 0, 0.6);
+    }
+
+    .file-icon-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* Icon sizes based on mode */
+    .mode-pending .file-icon-container {
+        width: 28px;
+        height: 28px;
+    }
+
+    .mode-attached .file-icon-container {
+        width: 36px;
+        height: 36px;
+    }
+
+    .file-icon {
+        transition: opacity 0.2s ease;
+    }
+
+    .file-icon.processing {
+        opacity: 0.4;
+    }
+
+    .spinner-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .error-overlay {
+        position: absolute;
+        bottom: -4px;
+        right: -4px;
+    }
+
+    .file-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .file-name {
+        font-size: 0.875rem;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .file-size {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .error-message {
+        font-size: 0.7rem;
+        color: var(--mud-palette-error);
+    }
+
+    .remove-button {
+        opacity: 0.6;
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+
+    .remove-button:hover {
+        opacity: 1;
+    }
+
+    /* Progress spinner styling */
+    .progress-spinner {
+        background: transparent;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Display mode for the file attachment
+    /// </summary>
+    public enum FileAttachmentMode
+    {
+        /// <summary>
+        /// File is pending upload/processing (shown in message input)
+        /// </summary>
+        Pending,
+
+        /// <summary>
+        /// File is already attached to conversation (shown in messages)
+        /// </summary>
+        Attached
+    }
+
+    [Parameter]
+    public string FileName { get; set; } = string.Empty;
+
+    [Parameter]
+    public long FileSize { get; set; }
+
+    [Parameter]
+    public bool ShowSize { get; set; } = true;
+
+    [Parameter]
+    public FileAttachmentMode Mode { get; set; } = FileAttachmentMode.Pending;
+
+    [Parameter]
+    public bool IsProcessing { get; set; }
+
+    [Parameter]
+    public int Progress { get; set; }
+
+    [Parameter]
+    public bool HasError { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public EventCallback OnRemove { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    [Parameter]
+    public bool IsDeleted { get; set; }
+
+    private bool IsClickable => OnClick.HasDelegate && Mode == FileAttachmentMode.Attached && !IsProcessing && !IsDeleted;
+
+    private string TooltipText => IsDeleted ? "This file has been deleted." : FileName;
+
+    private string ModeClass => Mode switch
+    {
+        FileAttachmentMode.Pending => "mode-pending",
+        FileAttachmentMode.Attached => "mode-attached",
+        _ => "mode-pending"
+    };
+
+    private Size IconSize => Mode switch
+    {
+        FileAttachmentMode.Pending => Size.Medium,
+        FileAttachmentMode.Attached => Size.Large,
+        _ => Size.Medium
+    };
+
+    private Size SpinnerSize => Mode switch
+    {
+        FileAttachmentMode.Pending => Size.Small,
+        FileAttachmentMode.Attached => Size.Medium,
+        _ => Size.Small
+    };
+
+    private string TruncatedName
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(FileName)) return string.Empty;
+            var maxLength = Mode == FileAttachmentMode.Attached ? 30 : 20;
+            return FileName.Length > maxLength ? FileName[..(maxLength - 3)] + "..." : FileName;
+        }
+    }
+
+    private string FormattedSize => FormatSize(FileSize);
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes <= 0) return string.Empty;
+        string[] sizes = ["B", "KB", "MB", "GB"];
+        var order = 0;
+        double size = bytes;
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        return $"{size:0.##} {sizes[order]}";
+    }
+
+    private string GetFileIcon()
+    {
+        if (string.IsNullOrEmpty(FileName))
+            return Icons.Material.Filled.InsertDriveFile;
+
+        var extension = Path.GetExtension(FileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".pdf" => Icons.Material.Filled.PictureAsPdf,
+            ".txt" or ".md" => Icons.Material.Filled.Description,
+            ".json" or ".xml" => Icons.Material.Filled.DataObject,
+            ".csv" or ".xls" or ".xlsx" => Icons.Material.Filled.TableChart,
+            ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" => Icons.Material.Filled.Image,
+            ".doc" or ".docx" => Icons.Material.Filled.Article,
+            ".ppt" or ".pptx" => Icons.Material.Filled.Slideshow,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+
+    private async Task HandleRemove()
+    {
+        if (OnRemove.HasDelegate)
+        {
+            await OnRemove.InvokeAsync();
+        }
+    }
+
+    private async Task HandleClick()
+    {
+        if (IsClickable)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+}

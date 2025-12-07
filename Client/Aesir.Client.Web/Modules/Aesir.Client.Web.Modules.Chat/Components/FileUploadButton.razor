@@ -1,0 +1,84 @@
+@using Aesir.Client.Web.Modules.Chat.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IDocumentApiService DocumentService
+
+<MudFileUpload T="IBrowserFile"
+               Accept="@AcceptFilter"
+               MaximumFileCount="1"
+               FilesChanged="@HandleFileSelected"
+               Hidden="true"
+               @ref="_fileUpload">
+</MudFileUpload>
+<MudIconButton Icon="@Icons.Material.Filled.AttachFile"
+               Size="Size.Small"
+               Color="Color.Default"
+               Disabled="@IsDisabled"
+               Title="@TooltipText"
+               OnClick="@OpenFilePickerAsync"
+               Class="@ButtonClass" />
+
+@code {
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    [Parameter]
+    public string TooltipText { get; set; } = "Attach files";
+
+    [Parameter]
+    public EventCallback<IBrowserFile> OnFileSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnError { get; set; }
+
+    private MudFileUpload<IBrowserFile>? _fileUpload;
+
+    private string ButtonClass => IsDisabled ? "file-upload-disabled" : "";
+
+    private string AcceptFilter => string.Join(",", IDocumentApiService.SupportedExtensions);
+
+    private Task OpenFilePickerAsync()
+        => _fileUpload?.OpenFilePickerAsync() ?? Task.CompletedTask;
+
+    private async Task HandleFileSelected(IBrowserFile? file)
+    {
+        if (file == null) return;
+
+        // Validate file type
+        if (!DocumentService.IsFileTypeSupported(file.Name))
+        {
+            if (OnError.HasDelegate)
+            {
+                await OnError.InvokeAsync($"File type not supported: {Path.GetExtension(file.Name)}");
+            }
+            return;
+        }
+
+        // Validate file size
+        if (!DocumentService.IsFileSizeValid(file.Size))
+        {
+            if (OnError.HasDelegate)
+            {
+                var maxSizeMB = IDocumentApiService.MaxFileSize / (1024 * 1024);
+                await OnError.InvokeAsync($"File size exceeds the maximum allowed ({maxSizeMB}MB)");
+            }
+            return;
+        }
+
+        // Notify parent of valid file selection
+        if (OnFileSelected.HasDelegate)
+        {
+            await OnFileSelected.InvokeAsync(file);
+        }
+    }
+
+    /// <summary>
+    /// Clears the file input to allow selecting the same file again.
+    /// </summary>
+    public async Task ClearAsync()
+    {
+        if (_fileUpload != null)
+        {
+            await _fileUpload.ClearAsync();
+        }
+    }
+}

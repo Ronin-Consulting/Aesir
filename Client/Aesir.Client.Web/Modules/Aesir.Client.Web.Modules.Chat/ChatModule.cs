@@ -1,0 +1,54 @@
+using Aesir.Client.Web.Infrastructure.Modules;
+using Aesir.Client.Web.Modules.Chat.Services;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Aesir.Client.Web.Modules.Chat;
+
+/// <summary>
+/// Chat module for the AESIR client.
+/// Provides chat functionality including conversation UI and history management.
+/// </summary>
+public class ChatModule : ClientModuleBase
+{
+    /// <inheritdoc />
+    public override string Name => "Chat";
+
+    /// <inheritdoc />
+    public override string Version => "1.0.0";
+
+    /// <inheritdoc />
+    public override string Description => "Chat functionality with AI assistants.";
+
+    /// <inheritdoc />
+    public override void RegisterServices(IServiceCollection services)
+    {
+        // Register chat state service as singleton to persist across navigation
+        services.AddSingleton<IChatStateService, ChatStateService>();
+
+        // Register chat history service as scoped (depends on scoped IChatApiService)
+        services.AddScoped<IChatHistoryService, ChatHistoryService>();
+
+        // Register markdown service for rendering assistant messages
+        services.AddSingleton<IMarkdownService, MarkdownService>();
+
+        // Register agent tools service as scoped (depends on scoped IApiClient)
+        services.AddScoped<IAgentToolsService, AgentToolsService>();
+
+        // Note: IDocumentApiService is registered in Program.cs with a typed HttpClient
+        // that has the proper base URL configured (same as IApiClient)
+    }
+
+    /// <inheritdoc />
+    public override void RegisterNavigation(INavigationRegistry registry)
+    {
+        // Chat page is the main entry point - uses ChatLayout
+        registry.Register(new NavigationItem
+        {
+            Title = "Chat",
+            Href = "/chat",
+            Icon = "Chat",
+            Priority = 10,
+            Group = "Main"
+        });
+    }
+}

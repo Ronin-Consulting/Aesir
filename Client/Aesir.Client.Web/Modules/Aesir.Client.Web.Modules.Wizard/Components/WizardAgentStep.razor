@@ -1,0 +1,352 @@
+@namespace Aesir.Client.Web.Modules.Wizard.Components
+@inject IAgentService AgentService
+@inject IInferenceEngineService EngineService
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="4" Class="pa-4">
+    <MudText Typo="Typo.h5" Align="Align.Center">
+        Create Your First Agent
+    </MudText>
+
+    <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-4">
+        An agent is your AI assistant. You need at least one to start chatting.
+    </MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mx-auto" />
+    }
+    else
+    {
+        @* Existing Agents Section *@
+        @if (_agents.Count > 0)
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-2">
+                <MudText Typo="Typo.body1">
+                    You have @_agents.Count agent(s) configured.
+                </MudText>
+            </MudAlert>
+
+            <MudPaper Elevation="0" Class="pa-2" Style="border: 1px solid var(--mud-palette-lines-default); max-height: 200px; overflow-y: auto;">
+                @foreach (var agent in _agents)
+                {
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="pa-2">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.SmartToy" Color="Color.Primary" Size="Size.Small" />
+                            <MudText>@agent.Name</MudText>
+                            @if (!string.IsNullOrEmpty(agent.ChatModel))
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
+                                    @agent.ChatModel
+                                </MudChip>
+                            }
+                        </MudStack>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => DeleteAgentAsync(agent))"
+                                       Disabled="@(_isDeleting || _isSaving)" />
+                    </MudStack>
+                }
+            </MudPaper>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-2">
+                No agents configured. Create one below to continue.
+            </MudAlert>
+        }
+
+        <MudDivider Class="my-2" />
+
+        @* Agent Creation Form *@
+        <MudText Typo="Typo.subtitle1" Color="Color.Primary">Create Agent</MudText>
+
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_agentName"
+                              Label="Name"
+                              Required="true"
+                              RequiredError="Name is required"
+                              Placeholder="My Assistant"
+                              HelperText="Give your agent a friendly name"
+                              Variant="Variant.Outlined"
+                              Disabled="@_isSaving" />
+
+                <MudTextField @bind-Value="_agentDescription"
+                              Label="Description"
+                              Lines="2"
+                              Placeholder="A helpful AI assistant"
+                              HelperText="Optional description of what this agent does"
+                              Variant="Variant.Outlined"
+                              Disabled="@_isSaving" />
+
+                <MudSelect T="Guid?"
+                           @bind-Value="_inferenceEngineId"
+                           Label="Inference Engine"
+                           Required="true"
+                           RequiredError="Inference engine is required"
+                           Variant="Variant.Outlined"
+                           AnchorOrigin="Origin.BottomCenter"
+                           Disabled="@_isSaving">
+                    @foreach (var engine in _inferenceEngines)
+                    {
+                        <MudSelectItem Value="@engine.Id">@engine.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <ModelSelector @bind-SelectedModel="_chatModel"
+                               InferenceEngineId="_inferenceEngineId"
+                               Category="ModelCategory.Chat"
+                               Label="Chat Model"
+                               Required="true"
+                               RequiredError="Chat model is required" />
+
+                @* Advanced Options (Expandable) *@
+                <MudExpansionPanels Elevation="0">
+                    <MudExpansionPanel Text="Advanced Options" MaxHeight="500">
+                        <MudStack Spacing="3" Class="pt-2">
+                            <MudSelect T="PromptPersona?"
+                                       @bind-Value="_promptPersona"
+                                       Label="Persona"
+                                       Variant="Variant.Outlined"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Disabled="@_isSaving">
+                                <MudSelectItem Value="@((PromptPersona?)PromptPersona.Default)">Default</MudSelectItem>
+                                <MudSelectItem Value="@((PromptPersona?)PromptPersona.Business)">Business</MudSelectItem>
+                                <MudSelectItem Value="@((PromptPersona?)PromptPersona.Military)">Military</MudSelectItem>
+                                <MudSelectItem Value="@((PromptPersona?)PromptPersona.Ocr)">OCR</MudSelectItem>
+                            </MudSelect>
+
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mb-2">Temperature: @_temperature.ToString("F2")</MudText>
+                                <MudSlider @bind-Value="_temperature"
+                                           Min="0.0"
+                                           Max="1.0"
+                                           Step="0.01"
+                                           Color="Color.Primary"
+                                           Disabled="@_isSaving" />
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    0.0 = Deterministic, 1.0 = Creative
+                                </MudText>
+                            </div>
+
+                            <MudNumericField @bind-Value="_maxTokens"
+                                             Label="Max Tokens"
+                                             Min="1"
+                                             Max="128000"
+                                             HelperText="Maximum response length"
+                                             Variant="Variant.Outlined"
+                                             Disabled="@_isSaving" />
+                        </MudStack>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+
+                <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Default"
+                               OnClick="ResetForm"
+                               Disabled="@_isSaving">
+                        Reset
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="SaveAgentAsync"
+                               Disabled="@(!_isValid || _isSaving)">
+                        @if (_isSaving)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Create Agent
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudForm>
+    }
+
+    <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-4">
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@OnBack"
+                   Disabled="@_isSaving">
+            Back
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                   OnClick="@HandleNext"
+                   Disabled="@(!HasAgent || _isSaving)">
+            Next
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    private List<AesirAgentBase> _agents = [];
+    private List<AesirInferenceEngineBase> _inferenceEngines = [];
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isDeleting;
+    private bool _isValid;
+
+    // Form fields
+    private MudForm _form = null!;
+    private string? _agentName;
+    private string? _agentDescription;
+    private Guid? _inferenceEngineId;
+    private string? _chatModel;
+    private PromptPersona? _promptPersona = PromptPersona.Default;
+    private double _temperature = 0.7;
+    private int? _maxTokens = 4096;
+
+    private bool HasAgent => _agents.Count > 0;
+
+    [Parameter]
+    public EventCallback OnNext { get; set; }
+
+    [Parameter]
+    public EventCallback OnBack { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            // Load inference engines
+            var enginesResult = await EngineService.GetAllAsync();
+            if (enginesResult.IsSuccess && enginesResult.Value != null)
+            {
+                _inferenceEngines = enginesResult.Value.ToList();
+
+                // Auto-select first engine if available
+                if (_inferenceEngines.Count > 0 && !_inferenceEngineId.HasValue)
+                {
+                    _inferenceEngineId = _inferenceEngines[0].Id;
+                }
+            }
+
+            // Load existing agents
+            var agentsResult = await AgentService.GetAllAsync();
+            if (agentsResult.IsSuccess && agentsResult.Value != null)
+            {
+                _agents = agentsResult.Value.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        _agentName = null;
+        _agentDescription = null;
+        _chatModel = null;
+        _promptPersona = PromptPersona.Default;
+        _temperature = 0.7;
+        _maxTokens = 4096;
+
+        // Keep the inference engine selection
+        if (_inferenceEngines.Count > 0)
+        {
+            _inferenceEngineId = _inferenceEngines[0].Id;
+        }
+    }
+
+    private async Task SaveAgentAsync()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_isValid) return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var agent = new AesirAgentBase
+            {
+                Name = _agentName,
+                Description = _agentDescription,
+                ChatInferenceEngineId = _inferenceEngineId,
+                ChatModel = _chatModel,
+                ChatPromptPersona = _promptPersona,
+                ChatTemperature = _temperature,
+                ChatTopP = 1.0,
+                ChatMaxTokens = _maxTokens,
+                AllowThinking = false
+            };
+
+            var result = await AgentService.CreateAsync(agent);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add($"Agent '{_agentName}' created successfully.", Severity.Success);
+                ResetForm();
+                await LoadDataAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to create agent: {result.Error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating agent: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteAgentAsync(AesirAgentBase agent)
+    {
+        if (!agent.Id.HasValue) return;
+
+        _isDeleting = true;
+        try
+        {
+            var result = await AgentService.DeleteAsync(agent.Id.Value);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add($"Agent '{agent.Name}' deleted.", Severity.Info);
+                await LoadDataAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to delete agent: {result.Error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting agent: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+
+    private async Task HandleNext()
+    {
+        if (HasAgent)
+        {
+            await OnNext.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add("Please create at least one agent.", Severity.Warning);
+        }
+    }
+}

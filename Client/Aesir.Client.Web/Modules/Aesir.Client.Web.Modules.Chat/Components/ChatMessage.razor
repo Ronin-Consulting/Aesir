@@ -1,0 +1,21 @@
+@using Aesir.Common.Models
+
+<MudPaper Class="pa-3 mb-2" Elevation="1" Style="@GetMessageStyle()">
+    <MudText Typo="Typo.caption" Color="Color.Secondary">
+        @Message.Role.ToUpperInvariant()
+    </MudText>
+    <MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@Message.Content</MudText>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public required AesirChatMessage Message { get; set; }
+
+    private string GetMessageStyle() => Message.Role.ToLower() switch
+    {
+        "user" => "background-color: var(--mud-palette-primary-lighten); margin-left: 20%;",
+        "assistant" => "background-color: var(--mud-palette-surface); margin-right: 20%;",
+        "system" => "background-color: var(--mud-palette-warning-lighten); font-style: italic;",
+        _ => ""
+    };
+}

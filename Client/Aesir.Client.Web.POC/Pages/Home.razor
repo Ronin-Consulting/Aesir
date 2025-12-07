@@ -1,0 +1,82 @@
+@page "/"
+
+<PageTitle>AESIR Web Client POC</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">AESIR Web Client</MudText>
+<MudText Typo="Typo.body1" Class="mb-4">
+    Proof of Concept for Blazor WebAssembly + MudBlazor + Tauri desktop client.
+</MudText>
+
+<MudGrid>
+    <MudItem xs="12" sm="6" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.h6">Blazor WebAssembly</MudText>
+                <MudText Typo="Typo.body2">Full .NET runtime in the browser via WebAssembly.</MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.h6">MudBlazor UI</MudText>
+                <MudText Typo="Typo.body2">Material Design component library for Blazor.</MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudChip T="string" Color="Color.Success" Size="Size.Small">v8.15.0</MudChip>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.h6">Aesir.Common</MudText>
+                <MudText Typo="Typo.body2">Shared models and DTOs for client-server communication.</MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudChip T="string" Color="Color.Info" Size="Size.Small">Referenced</MudChip>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<MudDivider Class="my-6" />
+
+<MudText Typo="Typo.h5" GutterBottom="true">Technology Stack Validation</MudText>
+
+<MudSimpleTable Style="overflow-x: auto;">
+    <thead>
+        <tr>
+            <th>Component</th>
+            <th>Status</th>
+            <th>Notes</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Blazor WASM</td>
+            <td><MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" /></td>
+            <td>Running in browser</td>
+        </tr>
+        <tr>
+            <td>MudBlazor Components</td>
+            <td><MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" /></td>
+            <td>Rendering correctly</td>
+        </tr>
+        <tr>
+            <td>Aesir.Common Reference</td>
+            <td><MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" /></td>
+            <td>Models accessible</td>
+        </tr>
+        <tr>
+            <td>Tauri Desktop</td>
+            <td><MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Warning" /></td>
+            <td>Pending Rust installation</td>
+        </tr>
+    </tbody>
+</MudSimpleTable>

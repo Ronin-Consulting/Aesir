@@ -1,0 +1,114 @@
+@using Aesir.Client.Web.Modules.Chat.Services
+
+<MudChip T="string"
+         Size="Size.Small"
+         Variant="Variant.Outlined"
+         Color="@ChipColor"
+         OnClose="@HandleRemove"
+         Class="file-chip">
+    <MudIcon Icon="@GetFileIcon()" Size="Size.Small" Class="file-chip-icon" />
+    <span class="file-chip-name" title="@FileName">@TruncatedName</span>
+    @if (FileSize > 0)
+    {
+        <span class="file-chip-size">(@FormattedSize)</span>
+    }
+    @if (IsUploading)
+    {
+        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="file-chip-progress" />
+    }
+</MudChip>
+
+<style>
+    .file-chip {
+        max-width: 200px;
+    }
+
+    .file-chip-icon {
+        margin-right: 4px;
+    }
+
+    .file-chip-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 120px;
+    }
+
+    .file-chip-size {
+        font-size: 0.75rem;
+        opacity: 0.7;
+        margin-left: 4px;
+    }
+
+    .file-chip-progress {
+        margin-left: 4px;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string FileName { get; set; } = string.Empty;
+
+    [Parameter]
+    public long FileSize { get; set; }
+
+    [Parameter]
+    public bool IsUploading { get; set; }
+
+    [Parameter]
+    public bool HasError { get; set; }
+
+    [Parameter]
+    public EventCallback OnRemove { get; set; }
+
+    private Color ChipColor => HasError ? Color.Error : (IsUploading ? Color.Info : Color.Default);
+
+    private string TruncatedName
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(FileName)) return string.Empty;
+            return FileName.Length > 20 ? FileName[..17] + "..." : FileName;
+        }
+    }
+
+    private string FormattedSize => FormatSize(FileSize);
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes <= 0) return string.Empty;
+        string[] sizes = ["B", "KB", "MB", "GB"];
+        var order = 0;
+        double size = bytes;
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        return $"{size:0.##} {sizes[order]}";
+    }
+
+    private string GetFileIcon()
+    {
+        if (string.IsNullOrEmpty(FileName))
+            return Icons.Material.Filled.InsertDriveFile;
+
+        var extension = Path.GetExtension(FileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".pdf" => Icons.Material.Filled.PictureAsPdf,
+            ".txt" or ".md" => Icons.Material.Filled.Description,
+            ".json" or ".xml" or ".csv" => Icons.Material.Filled.Code,
+            ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" => Icons.Material.Filled.Image,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+
+    private async Task HandleRemove()
+    {
+        if (OnRemove.HasDelegate)
+        {
+            await OnRemove.InvokeAsync();
+        }
+    }
+}

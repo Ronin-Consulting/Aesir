@@ -1,0 +1,95 @@
+@* Drop zone overlay for drag-and-drop file upload *@
+@using Microsoft.AspNetCore.Components.Forms
+
+@if (IsVisible)
+{
+    <div class="drop-zone-overlay @(IsHovering ? "hovering" : "")">
+        <div class="drop-zone-content">
+            <MudIcon Icon="@Icons.Material.Filled.CloudUpload"
+                     Size="Size.Large"
+                     Class="drop-icon" />
+            <MudText Typo="Typo.h6" Class="mt-2">Drop files here</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Supported: PDF, TXT, MD, CSV, JSON, XML, HTML
+            </MudText>
+        </div>
+
+        @* Invisible InputFile that captures drop events *@
+        <InputFile OnChange="HandleFileChange"
+                   @ref="_inputFile"
+                   multiple
+                   class="drop-zone-input"
+                   accept=".pdf,.txt,.md,.csv,.json,.xml,.html,.htm,.doc,.docx,.xls,.xlsx,.ppt,.pptx" />
+    </div>
+}
+
+<style>
+    .drop-zone-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(var(--mud-palette-primary-rgb), 0.1);
+        border: 3px dashed var(--mud-palette-primary);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        transition: all 0.2s ease;
+    }
+
+    .drop-zone-overlay.hovering {
+        background-color: rgba(var(--mud-palette-primary-rgb), 0.2);
+        border-color: var(--mud-palette-primary-darken);
+    }
+
+    .drop-zone-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 32px;
+        background-color: var(--mud-palette-surface);
+        border-radius: 12px;
+        box-shadow: var(--mud-elevation-8);
+        pointer-events: none;
+    }
+
+    .drop-icon {
+        font-size: 4rem !important;
+        color: var(--mud-palette-primary);
+    }
+
+    .drop-zone-input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public bool IsHovering { get; set; }
+
+    [Parameter]
+    public EventCallback<IBrowserFile> OnFileDropped { get; set; }
+
+    private InputFile? _inputFile;
+
+    private async Task HandleFileChange(InputFileChangeEventArgs e)
+    {
+        foreach (var file in e.GetMultipleFiles())
+        {
+            await OnFileDropped.InvokeAsync(file);
+        }
+    }
+}

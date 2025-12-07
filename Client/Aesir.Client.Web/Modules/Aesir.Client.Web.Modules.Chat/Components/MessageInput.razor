@@ -1,0 +1,425 @@
+@using Aesir.Client.Web.Modules.Chat.Services
+@using Aesir.Client.Web.Modules.Chat.Models
+@using Aesir.Common.Models
+@using Microsoft.AspNetCore.Components.Forms
+@inject IChatStateService ChatState
+@inject IAgentToolsService AgentToolsService
+@inject IDocumentApiService DocumentService
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+@* Event callback to request conversation ID from parent when needed for immediate upload *@
+
+<div class="message-input-wrapper">
+    <div class="message-input-container">
+        @* Pending Files Display *@
+        @if (_pendingFiles.Count > 0)
+        {
+            <div class="pending-files">
+                @foreach (var file in _pendingFiles)
+                {
+                    <FileAttachment FileName="@file.FileName"
+                                    FileSize="@file.FileSize"
+                                    Mode="FileAttachment.FileAttachmentMode.Pending"
+                                    IsProcessing="@(file.Status == UploadStatus.Uploading)"
+                                    Progress="@file.Progress"
+                                    HasError="@(file.Status == UploadStatus.Failed)"
+                                    ErrorMessage="@file.ErrorMessage"
+                                    OnRemove="@(() => RemovePendingFile(file))" />
+                }
+            </div>
+        }
+
+        @* Input Area - No outline, clean look *@
+        <MudTextField @bind-Value="_message"
+                      @ref="_textField"
+                      Placeholder="@Placeholder"
+                      Variant="Variant.Text"
+                      Lines="@Lines"
+                      AutoGrow="true"
+                      MaxLines="10"
+                      FullWidth="true"
+                      Immediate="true"
+                      Disabled="@IsDisabled"
+                      OnKeyDown="@HandleKeyDown"
+                      DisableUnderLine="true"
+                      Class="message-input" />
+
+        @* Action Bar *@
+        <div class="action-bar">
+            <div class="left-actions">
+                <FileUploadButton IsDisabled="@(!_isRagEnabled || _isCheckingRag || IsLoading)"
+                                  TooltipText="@AttachButtonTooltip"
+                                  OnFileSelected="@HandleFileSelected"
+                                  OnError="@HandleFileError"
+                                  @ref="_fileUploadButton" />
+                <MudIconButton Icon="@Icons.Material.Filled.Tune"
+                               Size="Size.Small"
+                               Color="Color.Default"
+                               Disabled="true"
+                               Title="Adjust settings" />
+                <MudIconButton Icon="@Icons.Material.Filled.History"
+                               Size="Size.Small"
+                               Color="Color.Default"
+                               Disabled="true"
+                               Title="History" />
+            </div>
+
+            <div class="right-actions">
+                @* Agent Selector (Claude-style) *@
+                <AgentSelectorCompact OnAgentSelected="HandleAgentSelected" />
+
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               OnClick="@SendMessage"
+                               Disabled="@(!CanSend)"
+                               Title="Send message"
+                               Class="send-button" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .message-input-wrapper {
+        padding: 0 48px 24px 48px;
+        max-width: 900px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .message-input-container {
+        background-color: var(--mud-palette-background-grey);
+        border-radius: 16px;
+        padding: 12px 16px;
+        border: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .pending-files {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .message-input {
+        font-size: 1rem;
+    }
+
+    .message-input .mud-input-root {
+        padding: 0 !important;
+    }
+
+    .message-input .mud-input {
+        padding: 0 !important;
+    }
+
+    .message-input .mud-input-slot {
+        padding: 0 !important;
+    }
+
+    /* Remove underline completely */
+    .message-input .mud-input-underline::before,
+    .message-input .mud-input-underline::after {
+        display: none !important;
+        border: none !important;
+    }
+
+    .action-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .left-actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    .left-actions .mud-icon-button {
+        opacity: 0.6;
+    }
+
+    .left-actions .mud-icon-button:hover {
+        opacity: 1;
+    }
+
+    .right-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .send-button {
+        border-radius: 50% !important;
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+    }
+
+    .send-button:disabled {
+        opacity: 0.4;
+    }
+
+    .rag-disabled {
+        opacity: 0.3 !important;
+        cursor: not-allowed !important;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string Placeholder { get; set; } = "How can I help you today?";
+
+    [Parameter]
+    public int Lines { get; set; } = 1;
+
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSend { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Message, List<PendingFileUpload> Files)> OnSendWithFiles { get; set; }
+
+    [Parameter]
+    public EventCallback<AesirAgentBase> OnAgentSelected { get; set; }
+
+    /// <summary>
+    /// Callback to get the conversation ID from the parent component.
+    /// Used for immediate file upload on selection.
+    /// </summary>
+    [Parameter]
+    public Func<Guid>? GetConversationId { get; set; }
+
+    private string _message = string.Empty;
+    private MudTextField<string>? _textField;
+    private FileUploadButton? _fileUploadButton;
+    private bool _isRagEnabled;
+    private bool _isCheckingRag;
+    private readonly List<PendingFileUpload> _pendingFiles = new();
+
+    private bool CanSend => !string.IsNullOrWhiteSpace(_message) &&
+                            !IsDisabled &&
+                            !IsLoading &&
+                            ChatState.SelectedAgent != null &&
+                            !_pendingFiles.Any(f => f.Status == UploadStatus.Uploading);
+
+    private string AttachButtonTooltip => _isRagEnabled
+        ? "Attach files"
+        : "Assign RagTool to this agent to enable file uploads";
+
+    protected override void OnInitialized()
+    {
+        ChatState.OnAgentChanged += HandleAgentChangedAsync;
+        // Check RAG status for currently selected agent
+        _ = CheckRagEnabledAsync();
+    }
+
+    private async void HandleAgentChangedAsync()
+    {
+        await CheckRagEnabledAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CheckRagEnabledAsync()
+    {
+        var agent = ChatState.SelectedAgent;
+        if (agent?.Id == null)
+        {
+            _isRagEnabled = false;
+            return;
+        }
+
+        _isCheckingRag = true;
+        try
+        {
+            _isRagEnabled = await AgentToolsService.AgentHasRagToolAsync(agent.Id.Value);
+        }
+        catch
+        {
+            _isRagEnabled = false;
+        }
+        finally
+        {
+            _isCheckingRag = false;
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey && CanSend)
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (!CanSend) return;
+
+        var message = _message.Trim();
+        _message = string.Empty;
+
+        // If we have files, use the OnSendWithFiles callback
+        if (_pendingFiles.Count > 0 && OnSendWithFiles.HasDelegate)
+        {
+            var filesToSend = _pendingFiles.ToList();
+            _pendingFiles.Clear();
+            await OnSendWithFiles.InvokeAsync((message, filesToSend));
+        }
+        else
+        {
+            await OnSend.InvokeAsync(message);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task HandleAgentSelected(AesirAgentBase agent)
+    {
+        if (OnAgentSelected.HasDelegate)
+        {
+            await OnAgentSelected.InvokeAsync(agent);
+        }
+    }
+
+    private async Task HandleFileSelected(IBrowserFile file)
+    {
+        // Check for duplicate files
+        if (_pendingFiles.Any(f => f.FileName == file.Name))
+        {
+            Snackbar.Add($"File '{file.Name}' is already attached.", Severity.Warning);
+            return;
+        }
+
+        var pendingFile = new PendingFileUpload { File = file };
+        _pendingFiles.Add(pendingFile);
+
+        // Clear the file input to allow selecting the same file again
+        if (_fileUploadButton != null)
+        {
+            await _fileUploadButton.ClearAsync();
+        }
+
+        StateHasChanged();
+
+        // Start immediate upload in background (like the Avalonia client)
+        // This uploads and indexes the file right away, not waiting for message send
+        _ = UploadFileImmediatelyAsync(pendingFile);
+    }
+
+    /// <summary>
+    /// Uploads a file immediately after selection (background task).
+    /// This matches the Avalonia client behavior where files are uploaded and indexed
+    /// as soon as they are selected, showing a spinner while processing.
+    /// </summary>
+    private async Task UploadFileImmediatelyAsync(PendingFileUpload pendingFile)
+    {
+        // Get the conversation ID from the parent component
+        if (GetConversationId == null)
+        {
+            // If no callback provided, fall back to waiting for send
+            return;
+        }
+
+        var conversationId = GetConversationId();
+
+        try
+        {
+            pendingFile.Status = UploadStatus.Uploading;
+            await InvokeAsync(StateHasChanged);
+
+            var progress = new Progress<int>(p =>
+            {
+                pendingFile.Progress = p;
+                InvokeAsync(StateHasChanged);
+            });
+
+            await DocumentService.UploadFileAsync(
+                conversationId,
+                pendingFile.File,
+                progress,
+                pendingFile.CancellationTokenSource.Token);
+
+            pendingFile.Status = UploadStatus.Completed;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException)
+        {
+            pendingFile.Status = UploadStatus.Cancelled;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            pendingFile.Status = UploadStatus.Failed;
+            pendingFile.ErrorMessage = ex.Message;
+            await InvokeAsync(StateHasChanged);
+            Snackbar.Add($"Failed to upload '{pendingFile.FileName}': {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void HandleFileError(string error)
+    {
+        Snackbar.Add(error, Severity.Error);
+    }
+
+    private void RemovePendingFile(PendingFileUpload file)
+    {
+        // Cancel upload if in progress
+        file.CancellationTokenSource.Cancel();
+        _pendingFiles.Remove(file);
+        StateHasChanged();
+    }
+
+    public void Focus()
+    {
+        _textField?.FocusAsync();
+    }
+
+    public void Clear()
+    {
+        _message = string.Empty;
+        _pendingFiles.Clear();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Gets the pending files for external access.
+    /// </summary>
+    public IReadOnlyList<PendingFileUpload> PendingFiles => _pendingFiles.AsReadOnly();
+
+    /// <summary>
+    /// Adds a file to the pending files list (used by drag-and-drop).
+    /// </summary>
+    public async Task AddFileAsync(IBrowserFile file)
+    {
+        await HandleFileSelected(file);
+    }
+
+    /// <summary>
+    /// Gets whether RAG is enabled for the current agent.
+    /// </summary>
+    public bool IsRagEnabled => _isRagEnabled;
+
+    public void Dispose()
+    {
+        ChatState.OnAgentChanged -= HandleAgentChangedAsync;
+
+        // Cancel any pending uploads
+        foreach (var file in _pendingFiles)
+        {
+            file.CancellationTokenSource.Cancel();
+            file.CancellationTokenSource.Dispose();
+        }
+    }
+}

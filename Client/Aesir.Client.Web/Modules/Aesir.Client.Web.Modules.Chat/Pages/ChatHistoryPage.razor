@@ -1,0 +1,82 @@
+@page "/chat/history"
+
+<PageTitle>Chat History - AESIR</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Chat History</MudText>
+<MudText Typo="Typo.body2" Class="mb-4">
+    View and manage your conversation history.
+</MudText>
+
+<MudPaper Elevation="2" Class="pa-4">
+    <MudTable Items="@_sessions" Hover="true" Striped="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Title</MudTh>
+            <MudTh>Last Updated</MudTh>
+            <MudTh>Messages</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Title">@context.Title</MudTd>
+            <MudTd DataLabel="Last Updated">@context.UpdatedAt.ToString("g")</MudTd>
+            <MudTd DataLabel="Messages">@context.MessageCount</MudTd>
+            <MudTd DataLabel="Actions">
+                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                               Size="Size.Small"
+                               OnClick="@(() => OpenSession(context.Id))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               OnClick="@(() => DeleteSession(context.Id))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>No chat sessions found.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private List<ChatSessionSummary> _sessions = [];
+
+    protected override void OnInitialized()
+    {
+        // TODO: Load from API
+        // For now, show demo data
+        _sessions =
+        [
+            new ChatSessionSummary
+            {
+                Id = Guid.NewGuid(),
+                Title = "Demo Conversation 1",
+                UpdatedAt = DateTimeOffset.Now.AddHours(-1),
+                MessageCount = 5
+            },
+            new ChatSessionSummary
+            {
+                Id = Guid.NewGuid(),
+                Title = "Demo Conversation 2",
+                UpdatedAt = DateTimeOffset.Now.AddDays(-1),
+                MessageCount = 12
+            }
+        ];
+    }
+
+    private void OpenSession(Guid id)
+    {
+        // TODO: Navigate to chat with session loaded
+    }
+
+    private void DeleteSession(Guid id)
+    {
+        // TODO: Confirm and delete
+        _sessions.RemoveAll(s => s.Id == id);
+    }
+
+    private record ChatSessionSummary
+    {
+        public Guid Id { get; init; }
+        public required string Title { get; init; }
+        public DateTimeOffset UpdatedAt { get; init; }
+        public int MessageCount { get; init; }
+    }
+}

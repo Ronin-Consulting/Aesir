@@ -1,0 +1,78 @@
+@namespace Aesir.Client.Web.Modules.Wizard.Components
+
+<MudStack Spacing="4" Class="pa-4" AlignItems="AlignItems.Center">
+    <MudText Typo="Typo.h4" Align="Align.Center" Color="Color.Primary" Style="font-weight: 600;">
+        Welcome to AESIR
+    </MudText>
+
+    <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-2" Style="max-width: 500px;">
+        Let's get you set up! This wizard will guide you through the initial configuration
+        to get your AI assistant platform running.
+    </MudText>
+
+    <MudGrid Spacing="3" Justify="Justify.Center" Class="mt-4" Style="max-width: 700px;">
+        <MudItem xs="12" sm="4">
+            <MudPaper Elevation="0" Class="pa-4 text-center" Style="border: 1px solid var(--mud-palette-lines-default); border-radius: 12px; height: 100%;">
+                <MudIcon Icon="@Icons.Material.Filled.Memory"
+                         Color="Color.Primary"
+                         Style="font-size: 2.5rem;" />
+                <MudText Typo="Typo.subtitle1" Class="mt-2" Style="font-weight: 600;">
+                    Inference Engine
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Connect to Ollama, OpenAI, or other AI providers
+                </MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="4">
+            <MudPaper Elevation="0" Class="pa-4 text-center" Style="border: 1px solid var(--mud-palette-lines-default); border-radius: 12px; height: 100%;">
+                <MudIcon Icon="@Icons.Material.Filled.Settings"
+                         Color="Color.Secondary"
+                         Style="font-size: 2.5rem;" />
+                <MudText Typo="Typo.subtitle1" Class="mt-2" Style="font-weight: 600;">
+                    RAG Settings
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Configure embedding and vision models
+                </MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="4">
+            <MudPaper Elevation="0" Class="pa-4 text-center" Style="border: 1px solid var(--mud-palette-lines-default); border-radius: 12px; height: 100%;">
+                <MudIcon Icon="@Icons.Material.Filled.SmartToy"
+                         Color="Color.Tertiary"
+                         Style="font-size: 2.5rem;" />
+                <MudText Typo="Typo.subtitle1" Class="mt-2" Style="font-weight: 600;">
+                    AI Agent
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Create your first intelligent assistant
+                </MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudAlert Severity="Severity.Info" Class="mt-4" Style="max-width: 600px;" Dense="true">
+        <MudText Typo="Typo.body2">
+            You can always modify these settings later from the Settings page.
+        </MudText>
+    </MudAlert>
+
+    <MudStack Row="true" Justify="Justify.Center" Class="mt-6">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Size="Size.Large"
+                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                   OnClick="@OnNext"
+                   Style="padding: 12px 32px; font-weight: 600;">
+            Get Started
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public EventCallback OnNext { get; set; }
+}

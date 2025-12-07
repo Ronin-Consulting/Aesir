@@ -1,0 +1,87 @@
+@page "/settings"
+@layout Aesir.Client.Web.Modules.Chat.Layout.ChatLayout
+
+<PageTitle>Settings - AESIR</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">Settings</MudText>
+    <MudText Typo="Typo.body1" Class="mb-4">
+        Configure inference engines, MCP servers, tools, and agents for your ÆSIR instance.
+    </MudText>
+
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="0" Outlined="true" Class="cursor-pointer" @onclick="@(() => NavigateTo("/settings/general"))">
+                <MudCardContent Class="d-flex flex-column align-center pa-6">
+                    <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Large" Color="Color.Default" Class="mb-2" />
+                    <MudText Typo="Typo.h6">General</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Application settings</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="0" Outlined="true" Class="cursor-pointer" @onclick="@(() => NavigateTo("/settings/inference-engines"))">
+                <MudCardContent Class="d-flex flex-column align-center pa-6">
+                    <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Large" Color="Color.Primary" Class="mb-2" />
+                    <MudText Typo="Typo.h6">Inference Engines</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Configure AI backends</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="0" Outlined="true" Class="cursor-pointer" @onclick="@(() => NavigateTo("/settings/mcp-servers"))">
+                <MudCardContent Class="d-flex flex-column align-center pa-6">
+                    <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+                    <MudText Typo="Typo.h6">MCP Servers</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Manage tool servers</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="0" Outlined="true" Class="cursor-pointer" @onclick="@(() => NavigateTo("/settings/tools"))">
+                <MudCardContent Class="d-flex flex-column align-center pa-6">
+                    <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Large" Color="Color.Tertiary" Class="mb-2" />
+                    <MudText Typo="Typo.h6">Tools</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">View available tools</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="0" Outlined="true" Class="cursor-pointer" @onclick="@(() => NavigateTo("/settings/agents"))">
+                <MudCardContent Class="d-flex flex-column align-center pa-6">
+                    <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Large" Color="Color.Info" Class="mb-2" />
+                    <MudText Typo="Typo.h6">Agents</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Configure AI agents</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <MudDivider Class="my-6" />
+
+    <MudText Typo="Typo.h5" GutterBottom="true">Utilities</MudText>
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="0" Outlined="true" Class="cursor-pointer" @onclick="@(() => NavigateTo("/setup"))">
+                <MudCardContent Class="d-flex flex-column align-center pa-6">
+                    <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Large" Color="Color.Warning" Class="mb-2" />
+                    <MudText Typo="Typo.h6">Setup Wizard</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Run initial setup</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+
+    private void NavigateTo(string url)
+    {
+        Navigation.NavigateTo(url);
+    }
+}

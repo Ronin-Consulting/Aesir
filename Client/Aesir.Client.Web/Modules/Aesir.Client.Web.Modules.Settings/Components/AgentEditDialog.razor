@@ -1,0 +1,377 @@
+@using Aesir.Common.Prompts
+
+<MudDialog>
+    <DialogContent>
+        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+            <MudTabPanel Text="Basic Info" Icon="@Icons.Material.Filled.Info">
+                <MudStack Spacing="3">
+                    <MudTextField @bind-Value="_name"
+                                  Label="Name"
+                                  Required="true"
+                                  RequiredError="Name is required"
+                                  Variant="Variant.Outlined" />
+
+                    <MudTextField @bind-Value="_description"
+                                  Label="Description"
+                                  Lines="2"
+                                  Variant="Variant.Outlined" />
+
+                    <MudSelect T="Guid?"
+                               @bind-Value="_inferenceEngineId"
+                               Label="Inference Engine"
+                               Required="true"
+                               RequiredError="Inference engine is required"
+                               Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var engine in InferenceEngines)
+                        {
+                            <MudSelectItem Value="@engine.Id">@engine.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <ModelSelector @bind-SelectedModel="_chatModel"
+                                   InferenceEngineId="_inferenceEngineId"
+                                   Category="ModelCategory.Chat"
+                                   OnModelSelected="OnModelSelected"
+                                   Required="true"
+                                   RequiredError="Model is required" />
+                </MudStack>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Model Parameters" Icon="@Icons.Material.Filled.Tune">
+                <MudStack Spacing="4">
+                    <div>
+                        <MudText Typo="Typo.body2" Class="mb-2">Temperature: @_temperature.ToString("F2")</MudText>
+                        <MudSlider @bind-Value="_temperature"
+                                   Min="0.0"
+                                   Max="1.0"
+                                   Step="0.01"
+                                   Color="Color.Primary">
+                            <ChildContent>
+                                Temperature controls randomness. Lower values are more deterministic.
+                            </ChildContent>
+                        </MudSlider>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            0.0 = Deterministic, 1.0 = Creative
+                        </MudText>
+                    </div>
+
+                    <div>
+                        <MudText Typo="Typo.body2" Class="mb-2">Top-P: @_topP.ToString("F2")</MudText>
+                        <MudSlider @bind-Value="_topP"
+                                   Min="0.0"
+                                   Max="1.0"
+                                   Step="0.01"
+                                   Color="Color.Primary">
+                            <ChildContent>
+                                Top-P controls nucleus sampling probability mass.
+                            </ChildContent>
+                        </MudSlider>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Lower values focus on most likely tokens
+                        </MudText>
+                    </div>
+
+                    <MudNumericField @bind-Value="_maxTokens"
+                                     Label="Max Tokens"
+                                     Min="1"
+                                     Max="128000"
+                                     HelperText="Maximum number of tokens to generate"
+                                     Variant="Variant.Outlined" />
+                </MudStack>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Persona" Icon="@Icons.Material.Filled.Psychology">
+                <MudStack Spacing="3">
+                    <MudSelect T="PromptPersona?"
+                               @bind-Value="_promptPersona"
+                               Label="Persona Type"
+                               Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter">
+                        <MudSelectItem Value="@((PromptPersona?)PromptPersona.Default)">Default</MudSelectItem>
+                        <MudSelectItem Value="@((PromptPersona?)PromptPersona.Business)">Business</MudSelectItem>
+                        <MudSelectItem Value="@((PromptPersona?)PromptPersona.Military)">Military</MudSelectItem>
+                        <MudSelectItem Value="@((PromptPersona?)PromptPersona.Ocr)">OCR</MudSelectItem>
+                        <MudSelectItem Value="@((PromptPersona?)PromptPersona.Custom)">Custom</MudSelectItem>
+                    </MudSelect>
+
+                    @if (_promptPersona == PromptPersona.Custom)
+                    {
+                        <MudTextField @bind-Value="_customPromptContent"
+                                      Label="Custom System Prompt"
+                                      Lines="6"
+                                      Placeholder="Enter your custom system prompt..."
+                                      Variant="Variant.Outlined" />
+                    }
+
+                    <MudDivider Class="my-2" />
+
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.subtitle1">Thinking Options</MudText>
+                        @if (ModelSupportsThinking)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
+                                Supported
+                            </MudChip>
+                        }
+                        else if (_selectedModelInfo != null)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">
+                                Not Supported
+                            </MudChip>
+                        }
+                    </MudStack>
+
+                    @if (!ModelSupportsThinking && _selectedModelInfo != null)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
+                            The selected model does not advertise thinking/reasoning capabilities.
+                            Enabling thinking may not have any effect.
+                        </MudAlert>
+                    }
+
+                    <MudSwitch @bind-Value="_allowThinking"
+                               Label="Allow Thinking"
+                               Color="Color.Primary"
+                               Disabled="@(!_inferenceEngineId.HasValue || string.IsNullOrEmpty(_chatModel))" />
+
+                    @if (_allowThinking)
+                    {
+                        <MudSelect T="string"
+                                   @bind-Value="_thinkValueString"
+                                   Label="Think Level"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            <MudSelectItem Value="@("true")">Enabled (Boolean)</MudSelectItem>
+                            <MudSelectItem Value="@("high")">High</MudSelectItem>
+                            <MudSelectItem Value="@("medium")">Medium</MudSelectItem>
+                            <MudSelectItem Value="@("low")">Low</MudSelectItem>
+                        </MudSelect>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Controls the depth of reasoning for models that support extended thinking.
+                        </MudText>
+                    }
+                </MudStack>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Tools" Icon="@Icons.Material.Filled.Build">
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Select the tools this agent can use. MCP server tools require the server to be running.
+                    </MudText>
+
+                    <MudTextField @bind-Value="_toolSearchText"
+                                  Placeholder="Search tools..."
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Variant="Variant.Outlined"
+                                  Immediate="true" />
+
+                    <MudPaper Elevation="0" Class="pa-2" Style="max-height: 300px; overflow-y: auto; border: 1px solid var(--mud-palette-lines-default);">
+                        @if (FilteredTools.Any())
+                        {
+                            @foreach (var tool in FilteredTools)
+                            {
+                                <MudCheckBox T="bool"
+                                             Value="@IsToolSelected(tool)"
+                                             ValueChanged="@((bool value) => ToggleTool(tool, value))"
+                                             Label="@tool.Name"
+                                             Color="Color.Primary"
+                                             Dense="true">
+                                    <ChildContent>
+                                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                            <MudText>@tool.Name</MudText>
+                                            <MudChip T="string"
+                                                     Size="Size.Small"
+                                                     Color="@GetToolTypeColor(tool.Type)">
+                                                @GetToolTypeDisplayName(tool.Type)
+                                            </MudChip>
+                                        </MudStack>
+                                    </ChildContent>
+                                </MudCheckBox>
+                            }
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-2">
+                                No tools available. Configure tools in the Tools settings page.
+                            </MudText>
+                        }
+                    </MudPaper>
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @_selectedToolIds.Count tool(s) selected
+                    </MudText>
+                </MudStack>
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Save"
+                   Disabled="@(!IsValid)">
+            @(IsNew ? "Create" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public AesirAgentBase Agent { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+    [Parameter] public IReadOnlyList<AesirInferenceEngineBase> InferenceEngines { get; set; } = [];
+    [Parameter] public IReadOnlyList<AesirToolBase> AvailableTools { get; set; } = [];
+    [Parameter] public IReadOnlyList<AesirToolBase> AssignedTools { get; set; } = [];
+
+    [Inject] private IAgentService AgentService { get; set; } = null!;
+
+    // Basic Info
+    private string? _name;
+    private string? _description;
+    private Guid? _inferenceEngineId;
+    private string? _chatModel;
+
+    // Model Parameters
+    private double _temperature = 0.7;
+    private double _topP = 1.0;
+    private int? _maxTokens = 4096;
+
+    // Persona
+    private PromptPersona? _promptPersona = PromptPersona.Default;
+    private string? _customPromptContent;
+    private bool _allowThinking;
+    private string _thinkValueString = "true";
+
+    // Tools
+    private HashSet<Guid> _selectedToolIds = [];
+    private string _toolSearchText = "";
+
+    // Selected model info (for thinking support detection)
+    private AesirModelInfo? _selectedModelInfo;
+
+    private bool IsValid =>
+        !string.IsNullOrWhiteSpace(_name) &&
+        _inferenceEngineId.HasValue &&
+        !string.IsNullOrWhiteSpace(_chatModel);
+
+    private bool ModelSupportsThinking =>
+        _selectedModelInfo != null && ModelSelector.HasThinkingSupport(_selectedModelInfo);
+
+    private IEnumerable<AesirToolBase> FilteredTools =>
+        string.IsNullOrWhiteSpace(_toolSearchText)
+            ? AvailableTools
+            : AvailableTools.Where(t =>
+                (t.Name?.Contains(_toolSearchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (t.Description?.Contains(_toolSearchText, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override void OnParametersSet()
+    {
+        // Basic Info
+        _name = Agent.Name;
+        _description = Agent.Description;
+        _inferenceEngineId = Agent.ChatInferenceEngineId;
+        _chatModel = Agent.ChatModel;
+
+        // Model Parameters
+        _temperature = Agent.ChatTemperature ?? 0.7;
+        _topP = Agent.ChatTopP ?? 1.0;
+        _maxTokens = Agent.ChatMaxTokens ?? 4096;
+
+        // Persona
+        _promptPersona = Agent.ChatPromptPersona ?? PromptPersona.Default;
+        _customPromptContent = Agent.ChatCustomPromptContent;
+        _allowThinking = Agent.AllowThinking ?? false;
+
+        if (Agent.ThinkValue.HasValue)
+        {
+            _thinkValueString = Agent.ThinkValue.Value.ToString() ?? "true";
+        }
+
+        // Tools - initialize from assigned tools
+        _selectedToolIds = AssignedTools
+            .Where(t => t.Id.HasValue)
+            .Select(t => t.Id!.Value)
+            .ToHashSet();
+    }
+
+    private bool IsToolSelected(AesirToolBase tool)
+    {
+        return tool.Id.HasValue && _selectedToolIds.Contains(tool.Id.Value);
+    }
+
+    private void ToggleTool(AesirToolBase tool, bool selected)
+    {
+        if (!tool.Id.HasValue) return;
+
+        if (selected)
+            _selectedToolIds.Add(tool.Id.Value);
+        else
+            _selectedToolIds.Remove(tool.Id.Value);
+    }
+
+    private void OnModelSelected(AesirModelInfo? modelInfo)
+    {
+        _selectedModelInfo = modelInfo;
+        StateHasChanged();
+    }
+
+    private static Color GetToolTypeColor(ToolType? type) => type switch
+    {
+        ToolType.Internal => Color.Primary,
+        ToolType.McpServer => Color.Secondary,
+        _ => Color.Default
+    };
+
+    private static string GetToolTypeDisplayName(ToolType? type) => type switch
+    {
+        ToolType.Internal => "Internal",
+        ToolType.McpServer => "MCP",
+        null => "Unknown",
+        _ => type.ToString() ?? "Unknown"
+    };
+
+    private async Task Save()
+    {
+        // Update agent properties
+        Agent.Name = _name;
+        Agent.Description = _description;
+        Agent.ChatInferenceEngineId = _inferenceEngineId;
+        Agent.ChatModel = _chatModel;
+        Agent.ChatTemperature = _temperature;
+        Agent.ChatTopP = _topP;
+        Agent.ChatMaxTokens = _maxTokens;
+        Agent.ChatPromptPersona = _promptPersona;
+        Agent.ChatCustomPromptContent = _promptPersona == PromptPersona.Custom ? _customPromptContent : null;
+        Agent.AllowThinking = _allowThinking;
+        Agent.ThinkValue = _allowThinking ? new ThinkValue(_thinkValueString) : (ThinkValue?)null;
+
+        if (IsNew)
+        {
+            var createResult = await AgentService.CreateAsync(Agent);
+            if (createResult.IsSuccess && createResult.Value != Guid.Empty)
+            {
+                // Update tool assignments
+                await AgentService.UpdateAgentToolsAsync(createResult.Value, _selectedToolIds);
+                MudDialog.Close(DialogResult.Ok(createResult.Value));
+            }
+        }
+        else
+        {
+            var updateResult = await AgentService.UpdateAsync(Agent);
+            if (updateResult.IsSuccess)
+            {
+                // Update tool assignments
+                if (Agent.Id.HasValue)
+                {
+                    await AgentService.UpdateAgentToolsAsync(Agent.Id.Value, _selectedToolIds);
+                }
+                MudDialog.Close(DialogResult.Ok(Agent.Id));
+            }
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

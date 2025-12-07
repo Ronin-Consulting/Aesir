@@ -1,0 +1,804 @@
+@inherits LayoutComponentBase
+@using Aesir.Client.Web.Modules.Chat.Components
+@using Aesir.Client.Web.Modules.Chat.Services
+@inject INavigationRegistry NavigationRegistry
+@inject NavigationManager NavigationManager
+@inject IChatStateService ChatState
+@inject IChatHistoryService HistoryService
+@inject IDialogService DialogService
+@inject IThemeService ThemeService
+@inject IAgentToolsService AgentToolsService
+@implements IDisposable
+
+<MudLayout>
+    <MudDrawer @bind-Open="_drawerOpen"
+               Variant="DrawerVariant.Responsive"
+               ClipMode="DrawerClipMode.Never"
+               Elevation="0"
+               Width="280px"
+               Class="chat-drawer">
+        @* Sidebar Header - Logo + New Chat Button *@
+        <div class="sidebar-header pt-3" style="padding-left: 24px; padding-right: 12px;">
+            <div class="brand-section">
+                <img src="images/logo-blue.svg"
+                     alt="AESIR"
+                     class="brand-logo" />
+                <span class="brand-text">ÆSIR</span>
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Add"
+                           Size="Size.Small"
+                           Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           OnClick="@StartNewChat"
+                           Title="New chat"
+                           Class="new-chat-btn" />
+        </div>
+
+        @* Navigation Items *@
+        <MudNavMenu Dense="true" Class="nav-menu px-2">
+            <MudNavLink Href="/chats"
+                        Icon="@Icons.Material.Filled.Chat"
+                        Match="NavLinkMatch.Prefix"
+                        Class="nav-item">
+                Chats
+            </MudNavLink>
+        </MudNavMenu>
+
+        @* Recents Section - Show recent chats grouped by date *@
+        @if (_recentSessions.Any())
+        {
+            <div class="recents-section px-2 mt-2">
+                <div class="recents-list">
+                    @{
+                        var displayedSessions = _recentSessions.Take(_displayCount).ToList();
+                        var groupedSessions = GroupSessionsByDate(displayedSessions);
+                    }
+                    @foreach (var group in groupedSessions)
+                    {
+                        <MudText Typo="Typo.overline" Class="px-2 py-1 mt-2 mud-text-secondary date-group-header">
+                            @group.Key
+                        </MudText>
+                        @foreach (var session in group.Value)
+                        {
+                            <ChatHistoryItem Session="session"
+                                             IsSelected="@(ChatState.CurrentSessionId == session.Id)"
+                                             ShowTimestamp="false"
+                                             OnClick="HandleSessionClick"
+                                             OnDelete="HandleSessionDelete"
+                                             OnRename="HandleSessionRename"
+                                             OnStarChanged="HandleSessionStarChanged" />
+                        }
+                    }
+                </div>
+                @if (_recentSessions.Count > _displayCount)
+                {
+                    <div class="load-more-container">
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   OnClick="@LoadMore"
+                                   Class="load-more-btn">
+                            Load More (@(_recentSessions.Count - _displayCount) more)
+                        </MudButton>
+                    </div>
+                }
+            </div>
+        }
+
+        @* User Section with Popup Menu - wrapped to stick to bottom *@
+        <div class="user-section-wrapper">
+            <MudDivider Class="user-divider" />
+            <MudMenu AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Class="user-menu-container">
+            <ActivatorContent>
+                <div class="user-menu-activator pa-3">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                            </MudAvatar>
+                            <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 140px;">
+                                @_userId
+                            </MudText>
+                        </MudStack>
+                        <MudIcon Icon="@Icons.Material.Filled.UnfoldMore" Size="Size.Small" Class="mud-text-secondary" />
+                    </MudStack>
+                </div>
+            </ActivatorContent>
+            <ChildContent>
+                <div class="user-popup-menu">
+                    <MudText Typo="Typo.body2" Class="px-4 py-2 mud-text-secondary">
+                        @_userId
+                    </MudText>
+                    <MudDivider Class="my-1" />
+                    <MudMenuItem Href="/settings" Icon="@Icons.Material.Filled.Settings">
+                        Settings
+                    </MudMenuItem>
+                    <MudMenuItem Href="/settings/inference-engines" Icon="@Icons.Material.Filled.Memory">
+                        Inference Engines
+                    </MudMenuItem>
+                    <MudMenuItem Href="/settings/agents" Icon="@Icons.Material.Filled.SmartToy">
+                        Agents
+                    </MudMenuItem>
+                    <MudDivider Class="my-1" />
+                    <MudMenuItem Icon="@Icons.Material.Filled.HelpOutline">
+                        Get Help
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Info">
+                        About ÆSIR
+                    </MudMenuItem>
+                </div>
+            </ChildContent>
+            </MudMenu>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent Class="chat-main-content">
+        @* Floating Sidebar Toggle - Always visible at left edge of main content *@
+        <div class="sidebar-toggle-container">
+            <MudIconButton Icon="@Icons.Material.Filled.ViewSidebar"
+                           Size="Size.Small"
+                           Color="Color.Default"
+                           OnClick="@ToggleDrawer"
+                           Title="@(_drawerOpen ? "Close sidebar" : "Open sidebar")"
+                           Class="sidebar-toggle-btn" />
+        </div>
+
+        @* Centered Title with Dropdown Menu - Between sidebar toggle and theme toggle *@
+        <div class="title-container">
+            @if (ChatState.CurrentSessionId.HasValue)
+            {
+                <MudMenu AnchorOrigin="Origin.BottomCenter"
+                         TransformOrigin="Origin.TopCenter"
+                         Class="title-menu">
+                    <ActivatorContent>
+                        <div class="title-button">
+                            <span class="session-title @(string.IsNullOrEmpty(ChatState.CurrentSessionTitle) ? "untitled" : "")">
+                                @(string.IsNullOrEmpty(ChatState.CurrentSessionTitle) ? "Untitled Chat" : TruncateTitle(ChatState.CurrentSessionTitle, 40))
+                            </span>
+                            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown"
+                                     Size="Size.Small"
+                                     Class="dropdown-icon" />
+                        </div>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudMenuItem OnClick="@ToggleCurrentSessionStar" Class="menu-item">
+                            <div class="menu-item-content">
+                                <MudIcon Icon="@(_isCurrentSessionStarred ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
+                                         Size="Size.Small"
+                                         Color="@(_isCurrentSessionStarred ? Color.Warning : Color.Default)" />
+                                <span>@(_isCurrentSessionStarred ? "Unstar" : "Star")</span>
+                            </div>
+                        </MudMenuItem>
+                        <MudMenuItem OnClick="@ShowRenameDialog" Class="menu-item">
+                            <div class="menu-item-content">
+                                <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" />
+                                <span>Rename</span>
+                            </div>
+                        </MudMenuItem>
+                        <MudDivider Class="my-1" />
+                        <MudMenuItem OnClick="@ShowDeleteConfirmation" Class="menu-item delete-item">
+                            <div class="menu-item-content">
+                                <MudIcon Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" />
+                                <span class="delete-text">Delete</span>
+                            </div>
+                        </MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
+            }
+        </div>
+
+        @* Top Right Controls *@
+        <div class="top-right-controls">
+            @if (_showDocumentsButton || ChatState.CurrentSessionId.HasValue)
+            {
+                <MudIconButton Icon="@Icons.Material.Outlined.FolderOpen"
+                               Color="Color.Default"
+                               Size="Size.Small"
+                               OnClick="@ToggleDocumentsDrawer"
+                               Title="@(_documentsDrawerOpen ? "Hide documents" : "Show documents")"
+                               Class="@($"control-btn {(_documentsDrawerOpen ? "active" : "")}")" />
+            }
+            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                           Color="Color.Default"
+                           Size="Size.Small"
+                           OnClick="@ToggleThemeAsync"
+                           Title="@(_isDarkMode ? "Switch to light mode" : "Switch to dark mode")"
+                           Class="control-btn" />
+        </div>
+        <CascadingValue Name="ConversationFileNames" Value="_conversationFileNames">
+            @Body
+        </CascadingValue>
+    </MudMainContent>
+
+    @* Right Drawer for Documents *@
+    <MudDrawer @bind-Open="_documentsDrawerOpen"
+               Anchor="Anchor.End"
+               Variant="DrawerVariant.Temporary"
+               Elevation="1"
+               Width="320px"
+               Class="documents-drawer">
+        <div class="documents-drawer-header">
+            <MudText Typo="Typo.subtitle1" Class="drawer-title">
+                <MudIcon Icon="@Icons.Material.Outlined.Folder" Size="Size.Small" Class="mr-2" />
+                Documents
+            </MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small"
+                           OnClick="@(() => _documentsDrawerOpen = false)"
+                           Class="close-btn" />
+        </div>
+        <ConversationDocumentsList @ref="_documentsListRef"
+                                   ConversationId="@ChatState.CurrentSessionId"
+                                   OnFilesChanged="@HandleFilesChanged" />
+    </MudDrawer>
+</MudLayout>
+
+<style>
+    .chat-drawer {
+        background-color: var(--mud-palette-background) !important;
+        border-right: 1px solid var(--mud-palette-lines-default);
+        height: 100vh;
+    }
+
+    .chat-drawer .mud-drawer-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .sidebar-toggle-container {
+        position: absolute;
+        top: 12px;
+        left: 16px;
+        z-index: 10;
+    }
+
+    .sidebar-toggle-btn {
+        opacity: 0.6;
+        transition: opacity 0.2s ease;
+    }
+
+    .sidebar-toggle-btn:hover {
+        opacity: 1;
+    }
+
+    .chat-main-content {
+        background-color: var(--mud-palette-surface);
+        height: 100vh;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .title-container {
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .title-button {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+    }
+
+    .title-button:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .session-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--mud-palette-text-primary);
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .session-title.untitled {
+        color: var(--mud-palette-text-secondary);
+        font-style: italic;
+    }
+
+    .dropdown-icon {
+        color: var(--mud-palette-text-secondary);
+        transition: transform 0.2s ease;
+    }
+
+    .menu-item-content {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 4px 0;
+    }
+
+    .delete-text {
+        color: var(--mud-palette-error);
+    }
+
+    .top-right-controls {
+        position: absolute;
+        top: 12px;
+        right: 16px;
+        z-index: 10;
+        display: flex;
+        gap: 4px;
+        align-items: center;
+    }
+
+    .control-btn {
+        opacity: 0.6;
+        transition: all 0.2s ease;
+    }
+
+    .control-btn:hover {
+        opacity: 1;
+    }
+
+    .control-btn.active {
+        opacity: 1;
+        color: var(--mud-palette-primary);
+    }
+
+    .documents-drawer {
+        background-color: var(--mud-palette-surface) !important;
+        border-left: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .documents-drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .drawer-title {
+        display: flex;
+        align-items: center;
+        font-weight: 600;
+    }
+
+    .close-btn {
+        opacity: 0.6;
+    }
+
+    .close-btn:hover {
+        opacity: 1;
+    }
+
+    .sidebar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        padding-left: 16px !important;
+        padding-right: 12px !important;
+    }
+
+    .brand-section {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .brand-logo {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+    }
+
+    .brand-text {
+        font-size: 1.1rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+    }
+
+    .new-chat-btn {
+        border-radius: 50% !important;
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+    }
+
+    .nav-menu {
+        margin-top: 0;
+    }
+
+    .nav-item {
+        border-radius: 8px;
+        margin-bottom: 2px;
+    }
+
+    .recents-section {
+        margin-top: 8px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .recents-list {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .load-more-container {
+        padding: 8px 0;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .load-more-btn {
+        font-size: 0.75rem;
+        text-transform: none;
+    }
+
+    .date-group-header {
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        opacity: 0.7;
+    }
+
+    .date-group-header:first-child {
+        margin-top: 0 !important;
+    }
+
+    .recent-item {
+        border-radius: 6px;
+        padding: 6px 8px !important;
+        min-height: 32px !important;
+    }
+
+    .recent-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        opacity: 0.8;
+    }
+
+    .text-truncate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .user-section-wrapper {
+        margin-top: auto;
+    }
+
+    .user-divider {
+        margin: 0 !important;
+    }
+
+    .user-menu-container {
+        width: 100%;
+    }
+
+    .user-menu-activator {
+        cursor: pointer;
+        border-radius: 8px;
+        transition: background-color 0.2s ease;
+        width: 100%;
+    }
+
+    .user-menu-activator:hover {
+        background-color: var(--mud-palette-action-default-hover);
+    }
+
+    .user-popup-menu {
+        min-width: 240px;
+        padding: 8px 0;
+    }
+</style>
+
+@code {
+    private const int InitialDisplayCount = 25;
+    private const int LoadMoreIncrement = 25;
+
+    [CascadingParameter(Name = "IsDarkMode")]
+    private bool _isDarkMode { get; set; } = true;
+
+    private bool _drawerOpen = true;
+    private bool _documentsDrawerOpen;
+    private bool _showDocumentsButton;
+    private string _userId = "blangford@gmail.com";
+    private List<AesirChatSessionItem> _recentSessions = new();
+    private int _displayCount = InitialDisplayCount;
+    private bool _isCurrentSessionStarred;
+    private ConversationDocumentsList? _documentsListRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        HistoryService.OnSessionsChanged += HandleSessionsChanged;
+        ChatState.OnConversationChanged += HandleConversationChanged;
+        ChatState.OnAgentChanged += HandleAgentChangedAsync;
+        ChatState.OnSessionChanged += HandleSessionChangedAsync;
+
+        // Load all sessions on startup for recents (pagination handled via _displayCount)
+        await HistoryService.LoadSessionsAsync();
+        _recentSessions = HistoryService.Sessions.ToList();
+
+        // Check if the current agent has RAG enabled
+        await UpdateDocumentsButtonVisibilityAsync();
+    }
+
+    private void HandleSessionsChanged()
+    {
+        _recentSessions = HistoryService.Sessions.ToList();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleConversationChanged()
+    {
+        // Refresh sessions when a conversation changes (new message sent)
+        InvokeAsync(async () =>
+        {
+            await HistoryService.LoadSessionsAsync();
+            _recentSessions = HistoryService.Sessions.ToList();
+        });
+    }
+
+    private void LoadMore()
+    {
+        _displayCount += LoadMoreIncrement;
+    }
+
+    private static Dictionary<string, List<AesirChatSessionItem>> GroupSessionsByDate(List<AesirChatSessionItem> sessions)
+    {
+        var result = new Dictionary<string, List<AesirChatSessionItem>>();
+        var now = DateTimeOffset.Now;
+        var today = now.Date;
+        var yesterday = today.AddDays(-1);
+        var thisWeekStart = today.AddDays(-(int)today.DayOfWeek);
+        var lastWeekStart = thisWeekStart.AddDays(-7);
+        var thisMonthStart = new DateTime(today.Year, today.Month, 1);
+        var lastMonthStart = thisMonthStart.AddMonths(-1);
+
+        foreach (var session in sessions)
+        {
+            var sessionDate = session.UpdatedAt.Date;
+            var groupName = GetFriendlyDateGroup(sessionDate, today, yesterday, thisWeekStart, lastWeekStart, thisMonthStart, lastMonthStart);
+
+            if (!result.ContainsKey(groupName))
+            {
+                result[groupName] = new List<AesirChatSessionItem>();
+            }
+            result[groupName].Add(session);
+        }
+
+        return result;
+    }
+
+    private static string GetFriendlyDateGroup(
+        DateTime sessionDate,
+        DateTime today,
+        DateTime yesterday,
+        DateTime thisWeekStart,
+        DateTime lastWeekStart,
+        DateTime thisMonthStart,
+        DateTime lastMonthStart)
+    {
+        if (sessionDate == today)
+            return "Today";
+
+        if (sessionDate == yesterday)
+            return "Yesterday";
+
+        if (sessionDate >= thisWeekStart)
+            return "This Week";
+
+        if (sessionDate >= lastWeekStart)
+            return "Last Week";
+
+        if (sessionDate >= thisMonthStart)
+            return "This Month";
+
+        if (sessionDate >= lastMonthStart)
+            return "Last Month";
+
+        // For older dates, show the month and year
+        return sessionDate.ToString("MMMM yyyy");
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        await ThemeService.ToggleThemeAsync();
+    }
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private void StartNewChat()
+    {
+        ChatState.StartNewChat();
+        NavigationManager.NavigateTo("/chat", forceLoad: false);
+    }
+
+    private static string TruncateTitle(string title, int maxLength)
+    {
+        if (string.IsNullOrEmpty(title)) return title;
+        return title.Length <= maxLength ? title : title[..(maxLength - 3)] + "...";
+    }
+
+    private void HandleSessionClick(AesirChatSessionItem session)
+    {
+        ChatState.SetCurrentSession(session.Id);
+        NavigationManager.NavigateTo($"/chat?session={session.Id}", forceLoad: false);
+    }
+
+    private async Task HandleSessionDelete(AesirChatSessionItem session)
+    {
+        var result = await HistoryService.DeleteSessionAsync(session.Id);
+        if (result.IsSuccess)
+        {
+            // If we deleted the current session, start a new chat
+            if (ChatState.CurrentSessionId == session.Id)
+            {
+                ChatState.StartNewChat();
+                NavigationManager.NavigateTo("/chat", forceLoad: false);
+            }
+        }
+    }
+
+    private async Task HandleSessionRename((AesirChatSessionItem Session, string NewTitle) args)
+    {
+        await HistoryService.UpdateSessionTitleAsync(args.Session.Id, args.NewTitle);
+    }
+
+    private Task HandleSessionStarChanged((AesirChatSessionItem Session, bool IsStarred) args)
+    {
+        // TODO: Implement star persistence when API supports it
+        return Task.CompletedTask;
+    }
+
+    // Title dropdown menu actions for current session
+    private void ToggleCurrentSessionStar()
+    {
+        _isCurrentSessionStarred = !_isCurrentSessionStarred;
+        // TODO: Implement star persistence when API supports it
+        StateHasChanged();
+    }
+
+    private async Task ShowRenameDialog()
+    {
+        if (!ChatState.CurrentSessionId.HasValue) return;
+
+        var parameters = new DialogParameters<RenameDialog>
+        {
+            { x => x.CurrentTitle, ChatState.CurrentSessionTitle ?? "" }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<RenameDialog>("Rename Chat", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: string newTitle } && !string.IsNullOrWhiteSpace(newTitle))
+        {
+            var updateResult = await HistoryService.UpdateSessionTitleAsync(ChatState.CurrentSessionId.Value, newTitle);
+            if (updateResult.IsSuccess)
+            {
+                ChatState.SetCurrentSessionTitle(newTitle);
+            }
+        }
+    }
+
+    private async Task ShowDeleteConfirmation()
+    {
+        if (!ChatState.CurrentSessionId.HasValue) return;
+
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, "Are you sure you want to delete this chat? This action cannot be undone." },
+            { x => x.ConfirmButtonText, "Delete" },
+            { x => x.ConfirmButtonColor, Color.Error }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Chat", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var sessionId = ChatState.CurrentSessionId.Value;
+            var deleteResult = await HistoryService.DeleteSessionAsync(sessionId);
+            if (deleteResult.IsSuccess)
+            {
+                ChatState.StartNewChat();
+                NavigationManager.NavigateTo("/chat", forceLoad: false);
+            }
+        }
+    }
+
+    private async void HandleAgentChangedAsync()
+    {
+        await UpdateDocumentsButtonVisibilityAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleSessionChangedAsync()
+    {
+        // Refresh documents list when session changes
+        if (_documentsListRef != null && ChatState.CurrentSessionId.HasValue)
+        {
+            await _documentsListRef.RefreshAsync();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task UpdateDocumentsButtonVisibilityAsync()
+    {
+        if (ChatState.SelectedAgent?.Id == null)
+        {
+            _showDocumentsButton = false;
+            return;
+        }
+
+        try
+        {
+            _showDocumentsButton = await AgentToolsService.AgentHasRagToolAsync(ChatState.SelectedAgent.Id.Value);
+        }
+        catch
+        {
+            _showDocumentsButton = false;
+        }
+    }
+
+    private async Task ToggleDocumentsDrawer()
+    {
+        _documentsDrawerOpen = !_documentsDrawerOpen;
+
+        // Refresh documents when opening the drawer
+        if (_documentsDrawerOpen && _documentsListRef != null)
+        {
+            await _documentsListRef.RefreshAsync();
+        }
+    }
+
+    /// <summary>
+    /// Current list of file names in the conversation. Cascaded to child components.
+    /// </summary>
+    private IReadOnlyList<string> _conversationFileNames = [];
+
+    private Task HandleFilesChanged(IReadOnlyList<string> fileNames)
+    {
+        // Update the cached file names and notify children
+        _conversationFileNames = fileNames;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        HistoryService.OnSessionsChanged -= HandleSessionsChanged;
+        ChatState.OnConversationChanged -= HandleConversationChanged;
+        ChatState.OnAgentChanged -= HandleAgentChangedAsync;
+        ChatState.OnSessionChanged -= HandleSessionChangedAsync;
+    }
+}

@@ -1,0 +1,209 @@
+@inject IModelApiService ModelApiService
+
+<MudSelect T="string"
+           @bind-Value="SelectedModel"
+           Label="@Label"
+           Required="@Required"
+           RequiredError="@RequiredError"
+           Variant="Variant.Outlined"
+           AnchorOrigin="Origin.BottomCenter"
+           Disabled="@(!InferenceEngineId.HasValue || _isLoading)"
+           HelperText="@GetHelperText()">
+    @if (_isLoading)
+    {
+        <MudSelectItem Value="@string.Empty" Disabled="true">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <MudText>Loading models...</MudText>
+            </MudStack>
+        </MudSelectItem>
+    }
+    else if (_loadError != null)
+    {
+        <MudSelectItem Value="@string.Empty" Disabled="true">
+            <MudText Color="Color.Error">@_loadError</MudText>
+        </MudSelectItem>
+    }
+    else if (_models.Count == 0)
+    {
+        <MudSelectItem Value="@string.Empty" Disabled="true">
+            <MudText Color="Color.Warning">No models available</MudText>
+        </MudSelectItem>
+    }
+    else
+    {
+        @foreach (var model in _models)
+        {
+            <MudSelectItem Value="@model.Id">
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudText>@model.Id</MudText>
+                    @if (HasThinkingSupport(model))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                            Thinking
+                        </MudChip>
+                    }
+                    @if (model.Details?.ParameterSize != null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">
+                            @model.Details.ParameterSize
+                        </MudChip>
+                    }
+                </MudStack>
+            </MudSelectItem>
+        }
+    }
+</MudSelect>
+
+@code {
+    [Parameter] public Guid? InferenceEngineId { get; set; }
+    [Parameter] public ModelCategory Category { get; set; } = ModelCategory.Chat;
+    [Parameter] public string? SelectedModel { get; set; }
+    [Parameter] public EventCallback<string?> SelectedModelChanged { get; set; }
+    [Parameter] public EventCallback<AesirModelInfo?> OnModelSelected { get; set; }
+    [Parameter] public string Label { get; set; } = "Model";
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string RequiredError { get; set; } = "Model is required";
+
+    private List<AesirModelInfo> _models = [];
+    private bool _isLoading;
+    private string? _loadError;
+    private Guid? _lastLoadedEngineId;
+    private CancellationTokenSource? _loadCts;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Only reload if inference engine changed
+        if (InferenceEngineId != _lastLoadedEngineId)
+        {
+            await LoadModelsAsync();
+        }
+    }
+
+    private async Task LoadModelsAsync()
+    {
+        // Cancel any pending load
+        _loadCts?.Cancel();
+        _loadCts = new CancellationTokenSource();
+
+        _lastLoadedEngineId = InferenceEngineId;
+        _models.Clear();
+        _loadError = null;
+
+        if (!InferenceEngineId.HasValue)
+        {
+            return;
+        }
+
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ModelApiService.GetModelsAsync(
+                InferenceEngineId.Value,
+                Category,
+                _loadCts.Token);
+
+            if (result.IsSuccess && result.Value != null)
+            {
+                _models = result.Value.ToList();
+
+                // Cascade Model Loading Pattern:
+                // 1. If current selection exists in new list, preserve it and notify parent with model info
+                // 2. If current selection doesn't exist, auto-select first model
+                // 3. If no models available, clear selection
+
+                var currentSelectionExists = !string.IsNullOrEmpty(SelectedModel) &&
+                    _models.Any(m => m.Id == SelectedModel);
+
+                if (currentSelectionExists)
+                {
+                    // Preserve selection but notify parent with updated model info
+                    await NotifyModelChanged(SelectedModel);
+                }
+                else if (_models.Count > 0)
+                {
+                    // Auto-select first model
+                    await NotifyModelChanged(_models[0].Id);
+                }
+                else
+                {
+                    // No models available, clear selection
+                    await NotifyModelChanged(null);
+                }
+            }
+            else
+            {
+                _loadError = result.Error ?? "Failed to load models";
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Load was cancelled, ignore
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task NotifyModelChanged(string? modelId)
+    {
+        SelectedModel = modelId;
+        await SelectedModelChanged.InvokeAsync(modelId);
+
+        var selectedModelInfo = _models.FirstOrDefault(m => m.Id == modelId);
+        await OnModelSelected.InvokeAsync(selectedModelInfo);
+    }
+
+    private string GetHelperText()
+    {
+        if (!InferenceEngineId.HasValue)
+            return "Select an inference engine first";
+        if (_isLoading)
+            return "Loading available models...";
+        if (_loadError != null)
+            return _loadError;
+        if (_models.Count == 0)
+            return "No models found for this engine";
+        return $"{_models.Count} model(s) available";
+    }
+
+    /// <summary>
+    /// Checks if a model supports extended thinking/reasoning capabilities.
+    /// </summary>
+    public static bool HasThinkingSupport(AesirModelInfo model)
+    {
+        if (model.Details?.Capabilities == null)
+            return false;
+
+        var thinkingCapabilities = new[] { "thinking", "reasoning", "extended-thinking", "chain-of-thought" };
+        return model.Details.Capabilities.Any(c =>
+            thinkingCapabilities.Contains(c, StringComparer.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Gets the currently selected model info.
+    /// </summary>
+    public AesirModelInfo? GetSelectedModelInfo()
+    {
+        return _models.FirstOrDefault(m => m.Id == SelectedModel);
+    }
+
+    /// <summary>
+    /// Gets all loaded models.
+    /// </summary>
+    public IReadOnlyList<AesirModelInfo> GetModels() => _models;
+
+    public void Dispose()
+    {
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+    }
+}

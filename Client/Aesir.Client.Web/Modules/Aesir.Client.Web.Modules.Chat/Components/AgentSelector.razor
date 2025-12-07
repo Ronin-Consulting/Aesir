@@ -1,0 +1,113 @@
+@using Aesir.Client.Web.Infrastructure.Services
+@using Aesir.Client.Web.Modules.Chat.Services
+@inject IConfigurationApiService ConfigurationApi
+@inject IChatStateService ChatState
+
+<MudMenu AnchorOrigin="Origin.BottomCenter"
+         TransformOrigin="Origin.TopCenter"
+         Class="agent-selector">
+    <ActivatorContent>
+        <MudChip T="string"
+                 Color="Color.Primary"
+                 Variant="Variant.Outlined"
+                 Class="cursor-pointer"
+                 Size="Size.Medium">
+            <MudIcon Icon="@Icons.Material.Filled.SmartToy" Class="mr-1" Size="Size.Small" />
+            @if (ChatState.SelectedAgent != null)
+            {
+                <span>@ChatState.SelectedAgent.Name</span>
+            }
+            else if (_isLoading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+                <span>Loading...</span>
+            }
+            else
+            {
+                <span>Select Agent</span>
+            }
+            <MudIcon Icon="@Icons.Material.Filled.ArrowDropDown" Size="Size.Small" />
+        </MudChip>
+    </ActivatorContent>
+    <ChildContent>
+        @if (_agents.Any())
+        {
+            @foreach (var agent in _agents)
+            {
+                <MudMenuItem OnClick="@(() => SelectAgent(agent))">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.SmartToy"
+                                 Size="Size.Small"
+                                 Color="@(ChatState.SelectedAgentId == agent.Id ? Color.Primary : Color.Default)" />
+                        <div>
+                            <MudText Typo="Typo.body2">@agent.Name</MudText>
+                            @if (!string.IsNullOrWhiteSpace(agent.ChatModel))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@agent.ChatModel</MudText>
+                            }
+                        </div>
+                        @if (ChatState.SelectedAgentId == agent.Id)
+                        {
+                            <MudSpacer />
+                            <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Primary" />
+                        }
+                    </MudStack>
+                </MudMenuItem>
+            }
+        }
+        else if (!_isLoading)
+        {
+            <MudMenuItem Disabled="true">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    No agents configured
+                </MudText>
+            </MudMenuItem>
+            <MudDivider />
+            <MudMenuItem Href="/settings/agents">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                    <MudText Typo="Typo.body2">Configure Agents</MudText>
+                </MudStack>
+            </MudMenuItem>
+        }
+    </ChildContent>
+</MudMenu>
+
+@code {
+    [Parameter]
+    public EventCallback<AesirAgentBase> OnAgentSelected { get; set; }
+
+    private List<AesirAgentBase> _agents = [];
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAgentsAsync();
+    }
+
+    private async Task LoadAgentsAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        var result = await ConfigurationApi.GetAgentsAsync();
+        result.OnSuccess(agents =>
+        {
+            _agents = agents.ToList();
+
+            // Auto-select first agent if none selected
+            if (ChatState.SelectedAgent == null && _agents.Any())
+            {
+                ChatState.SelectAgent(_agents.First());
+            }
+        });
+
+        _isLoading = false;
+    }
+
+    private async Task SelectAgent(AesirAgentBase agent)
+    {
+        ChatState.SelectAgent(agent);
+        await OnAgentSelected.InvokeAsync(agent);
+    }
+}

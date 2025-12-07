@@ -1,0 +1,331 @@
+@page "/chats"
+@layout ChatLayout
+@using Aesir.Client.Web.Modules.Chat.Services
+@using Aesir.Client.Web.Modules.Chat.Components
+@inject IChatStateService ChatState
+@inject IChatHistoryService HistoryService
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@implements IDisposable
+
+<PageTitle>Chats - AESIR</PageTitle>
+
+<div class="chats-page">
+    <div class="chats-content">
+        @if (HistoryService.IsLoading)
+        {
+            <div class="d-flex flex-column align-center justify-center" style="flex: 1;">
+                <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">Loading chats...</MudText>
+            </div>
+        }
+        else if (!_sessions.Any())
+        {
+            @* No Chats - Show New Chat CTA *@
+            <div class="empty-state">
+                <img src="images/logo-blue.svg"
+                     alt="AESIR"
+                     class="empty-logo" />
+
+                <MudText Typo="Typo.h5" Align="Align.Center" Class="mt-4">
+                    No conversations yet
+                </MudText>
+
+                <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Class="mt-2">
+                    Start a new chat to begin exploring with ÆSIR
+                </MudText>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="@StartNewChat"
+                           Class="mt-6">
+                    New Chat
+                </MudButton>
+            </div>
+        }
+        else
+        {
+            @* Search Header *@
+            <div class="search-header">
+                <MudTextField @bind-Value="_searchTerm"
+                              Placeholder="Search conversations..."
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="@HandleSearchChanged"
+                              Clearable="true"
+                              OnClearButtonClick="@HandleClearSearch"
+                              Class="search-input" />
+            </div>
+
+            @* Recent Chats Section *@
+            <div class="chats-section">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="section-header">
+                    <MudText Typo="Typo.h6">
+                        @(string.IsNullOrEmpty(_searchTerm) ? "Recent Conversations" : "Search Results")
+                    </MudText>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="@StartNewChat">
+                        New Chat
+                    </MudButton>
+                </MudStack>
+
+                <div class="chats-list">
+                    @foreach (var session in _sessions.Take(_displayCount))
+                    {
+                        <MudPaper Elevation="0" Class="chat-item" @onclick="@(() => OpenChat(session))">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                <MudStack Spacing="1" Style="flex: 1; min-width: 0;">
+                                    <MudText Typo="Typo.subtitle1" Class="chat-title">
+                                        @(session.Title ?? "New Chat")
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Info">
+                                        @FormatTimeAgo(session.UpdatedAt)
+                                    </MudText>
+                                </MudStack>
+
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Default"
+                                               OnClick="@(e => DeleteChat(session, e))"
+                                               Class="delete-btn" />
+                            </MudStack>
+                        </MudPaper>
+                    }
+                </div>
+
+                @* Load More Button *@
+                @if (_sessions.Count > _displayCount)
+                {
+                    <div class="d-flex justify-center mt-4">
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   OnClick="@LoadMore">
+                            Load More (@(_sessions.Count - _displayCount) remaining)
+                        </MudButton>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .chats-page {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .chats-content {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        max-width: 800px;
+        margin: 0 auto;
+        width: 100%;
+        padding: 24px;
+        overflow-y: auto;
+    }
+
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        flex: 1;
+        text-align: center;
+    }
+
+    .empty-logo {
+        width: 80px;
+        height: 80px;
+        opacity: 0.6;
+    }
+
+    .search-header {
+        margin-bottom: 24px;
+    }
+
+    .search-input {
+        width: 100%;
+    }
+
+    .chats-section {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .section-header {
+        margin-bottom: 16px;
+    }
+
+    .chats-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .chat-item {
+        padding: 16px;
+        border-radius: 12px;
+        background-color: var(--mud-palette-background-grey);
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.1s ease;
+        border: 1px solid transparent;
+    }
+
+    .chat-item:hover {
+        background-color: var(--mud-palette-action-default-hover);
+        border-color: var(--mud-palette-lines-default);
+    }
+
+    .chat-item:active {
+        transform: scale(0.99);
+    }
+
+    .chat-title {
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .chat-preview {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+    }
+
+    .delete-btn {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .chat-item:hover .delete-btn {
+        opacity: 0.6;
+    }
+
+    .delete-btn:hover {
+        opacity: 1 !important;
+    }
+</style>
+
+@code {
+    [CascadingParameter(Name = "IsDarkMode")]
+    private bool _isDarkMode { get; set; } = true;
+
+    private List<AesirChatSessionItem> _sessions = new();
+    private string? _searchTerm;
+    private int _displayCount = 5;
+
+    protected override async Task OnInitializedAsync()
+    {
+        HistoryService.OnSessionsChanged += HandleSessionsChanged;
+
+        // Load sessions
+        await HistoryService.LoadSessionsAsync();
+        _sessions = HistoryService.Sessions.ToList();
+    }
+
+    private void HandleSessionsChanged()
+    {
+        _sessions = HistoryService.Sessions.ToList();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleSearchChanged(string value)
+    {
+        _searchTerm = value;
+        _displayCount = 5; // Reset display count on new search
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            await HistoryService.ClearSearchAsync();
+        }
+        else
+        {
+            await HistoryService.SearchSessionsAsync(value);
+        }
+        _sessions = HistoryService.Sessions.ToList();
+    }
+
+    private async Task HandleClearSearch()
+    {
+        _searchTerm = null;
+        _displayCount = 5;
+        await HistoryService.ClearSearchAsync();
+        _sessions = HistoryService.Sessions.ToList();
+    }
+
+    private void StartNewChat()
+    {
+        ChatState.StartNewChat();
+        NavigationManager.NavigateTo("/chat", forceLoad: false);
+    }
+
+    private void OpenChat(AesirChatSessionItem session)
+    {
+        NavigationManager.NavigateTo($"/chat?session={session.Id}", forceLoad: false);
+    }
+
+    private async Task DeleteChat(AesirChatSessionItem session, MouseEventArgs e)
+    {
+        // Stop propagation so we don't open the chat
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Are you sure you want to delete \"{session.Title ?? "New Chat"}\"?" },
+            { x => x.ButtonText, "Delete" },
+            { x => x.Color, Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Chat", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var deleteResult = await HistoryService.DeleteSessionAsync(session.Id);
+            if (deleteResult.IsSuccess)
+            {
+                _sessions.Remove(session);
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void LoadMore()
+    {
+        _displayCount += 5;
+    }
+
+    private static string FormatTimeAgo(DateTimeOffset dateTime)
+    {
+        var timeSpan = DateTimeOffset.UtcNow - dateTime;
+
+        if (timeSpan.TotalMinutes < 1)
+            return "Just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)}w ago";
+
+        return dateTime.ToString("MMM d, yyyy");
+    }
+
+    public void Dispose()
+    {
+        HistoryService.OnSessionsChanged -= HandleSessionsChanged;
+    }
+}

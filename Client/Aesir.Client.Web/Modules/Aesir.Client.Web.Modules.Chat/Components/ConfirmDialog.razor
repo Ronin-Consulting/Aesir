@@ -1,0 +1,42 @@
+@* Confirmation Dialog Component *@
+
+<MudDialog>
+    <DialogContent>
+        <MudText>@ContentText</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="@ConfirmButtonColor" Variant="Variant.Filled" OnClick="Confirm">@ConfirmButtonText</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string ContentText { get; set; } = "Are you sure?";
+
+    [Parameter]
+    public string ConfirmButtonText { get; set; } = "Confirm";
+
+    [Parameter]
+    public Color ConfirmButtonColor { get; set; } = Color.Primary;
+
+    // Legacy parameter for backward compatibility
+    [Parameter]
+    public string ButtonText { get => ConfirmButtonText; set => ConfirmButtonText = value; }
+
+    [Parameter]
+    public Color Color { get => ConfirmButtonColor; set => ConfirmButtonColor = value; }
+
+    private void Confirm()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

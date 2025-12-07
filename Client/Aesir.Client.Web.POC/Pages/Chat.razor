@@ -1,0 +1,122 @@
+@page "/chat"
+
+<PageTitle>Chat Demo</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Chat Demo</MudText>
+<MudText Typo="Typo.body2" Class="mb-4">
+    Demonstrates MudBlazor chat components using Aesir.Common models.
+</MudText>
+
+<MudPaper Elevation="2" Class="pa-4" Style="height: 500px; display: flex; flex-direction: column;">
+    <MudText Typo="Typo.subtitle1" Class="mb-2">
+        Session: @_session.Id.ToString()[..8]... | Title: @_session.Title
+    </MudText>
+
+    <MudDivider Class="mb-2" />
+
+    <div style="flex: 1; overflow-y: auto; padding: 8px;">
+        @foreach (var message in _session.Conversation.Messages)
+        {
+            <MudPaper Class="pa-3 mb-2" Elevation="1"
+                      Style="@GetMessageStyle(message.Role)">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @message.Role.ToUpperInvariant()
+                </MudText>
+                <MudText Typo="Typo.body1">@message.Content</MudText>
+            </MudPaper>
+        }
+    </div>
+
+    <MudDivider Class="my-2" />
+
+    <div class="d-flex gap-2">
+        <MudTextField @bind-Value="_newMessage"
+                      Label="Message"
+                      Variant="Variant.Outlined"
+                      FullWidth="true"
+                      OnKeyUp="HandleKeyUp" />
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SendMessage"
+                   Disabled="@string.IsNullOrWhiteSpace(_newMessage)">
+            Send
+        </MudButton>
+    </div>
+</MudPaper>
+
+<MudDivider Class="my-4" />
+
+<MudExpansionPanels>
+    <MudExpansionPanel Text="Session Data (AesirChatSessionBase)">
+        <MudText Typo="Typo.body2">
+            <pre>@System.Text.Json.JsonSerializer.Serialize(_session, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })</pre>
+        </MudText>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+    private string _newMessage = string.Empty;
+    private DemoChatSession _session = new();
+
+    protected override void OnInitialized()
+    {
+        // Initialize with demo data using Aesir.Common models
+        _session = new DemoChatSession
+        {
+            Id = Guid.NewGuid(),
+            UserId = "demo-user",
+            Title = "POC Demo Chat",
+            UpdatedAt = DateTimeOffset.Now,
+            Conversation = new AesirConversation
+            {
+                Messages =
+                [
+                    new AesirChatMessage { Role = "system", Content = "You are a helpful AI assistant." },
+                    new AesirChatMessage { Role = "user", Content = "Hello! Can you help me test this POC?" },
+                    new AesirChatMessage { Role = "assistant", Content = "Hello! I'd be happy to help you test the AESIR Web Client POC. This demonstrates that Blazor WebAssembly can successfully use models from Aesir.Common. What would you like to test?" }
+                ]
+            }
+        };
+    }
+
+    private void SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_newMessage)) return;
+
+        // Add user message
+        _session.Conversation.Messages.Add(new AesirChatMessage
+        {
+            Role = "user",
+            Content = _newMessage
+        });
+
+        // Simulate assistant response
+        _session.Conversation.Messages.Add(new AesirChatMessage
+        {
+            Role = "assistant",
+            Content = $"This is a demo response. In the real app, this would call the AESIR API. You said: \"{_newMessage}\""
+        });
+
+        _session.UpdatedAt = DateTimeOffset.Now;
+        _newMessage = string.Empty;
+    }
+
+    private void HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(_newMessage))
+        {
+            SendMessage();
+        }
+    }
+
+    private string GetMessageStyle(string role) => role.ToLower() switch
+    {
+        "user" => "background-color: var(--mud-palette-primary-lighten); margin-left: 20%;",
+        "assistant" => "background-color: var(--mud-palette-surface); margin-right: 20%;",
+        "system" => "background-color: var(--mud-palette-warning-lighten); font-style: italic;",
+        _ => ""
+    };
+
+    // Demo class that inherits from AesirChatSessionBase to prove the reference works
+    private class DemoChatSession : AesirChatSessionBase { }
+}

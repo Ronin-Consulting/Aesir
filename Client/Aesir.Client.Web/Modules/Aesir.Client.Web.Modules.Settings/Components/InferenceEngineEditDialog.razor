@@ -1,0 +1,210 @@
+@using System.ComponentModel.DataAnnotations
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Memory" Class="mr-2" />
+            @(IsNew ? "Create" : "Edit") Inference Engine
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" Model="@_model" @bind-IsValid="@_isValid">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_model.Name"
+                              Label="Name"
+                              Required="true"
+                              RequiredError="Name is required"
+                              Variant="Variant.Outlined" />
+
+                <MudTextField @bind-Value="_model.Description"
+                              Label="Description"
+                              Lines="2"
+                              Variant="Variant.Outlined" />
+
+                <MudSelect @bind-Value="_model.Type"
+                           Label="Type"
+                           Required="true"
+                           RequiredError="Type is required"
+                           Variant="Variant.Outlined"
+                           AnchorOrigin="Origin.BottomCenter">
+                    <MudSelectItem T="InferenceEngineType?" Value="InferenceEngineType.Ollama">Ollama</MudSelectItem>
+                    <MudSelectItem T="InferenceEngineType?" Value="InferenceEngineType.OpenAICompatible">OpenAI Compatible</MudSelectItem>
+                </MudSelect>
+
+                @if (_model.Type.HasValue)
+                {
+                    <MudDivider Class="my-2" />
+                    <MudText Typo="Typo.subtitle1" Color="Color.Primary">Configuration</MudText>
+
+                    @if (_model.Type == InferenceEngineType.Ollama)
+                    {
+                        <MudTextField @bind-Value="_endpoint"
+                                      Label="Endpoint"
+                                      Placeholder="http://localhost:11434"
+                                      Required="true"
+                                      RequiredError="Endpoint is required"
+                                      HelperText="The URL where Ollama is running"
+                                      Variant="Variant.Outlined" />
+
+                        <MudSwitch @bind-Value="_enableChatModelThinking"
+                                   Label="Enable Chat Model Thinking"
+                                   Color="Color.Primary" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-n2 mb-2">
+                            Enables thinking/reasoning capabilities for models that support it (e.g., DeepSeek, QwQ).
+                            Agent-level settings can further control thinking behavior per agent.
+                        </MudText>
+                    }
+                    else if (_model.Type == InferenceEngineType.OpenAICompatible)
+                    {
+                        <MudTextField @bind-Value="_endpoint"
+                                      Label="Endpoint"
+                                      Placeholder="https://api.openai.com/v1"
+                                      Required="true"
+                                      RequiredError="Endpoint is required"
+                                      HelperText="The API endpoint URL"
+                                      Variant="Variant.Outlined" />
+
+                        <MudTextField @bind-Value="_apiKey"
+                                      Label="API Key"
+                                      InputType="@(_showApiKey ? InputType.Text : InputType.Password)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showApiKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                      OnAdornmentClick="ToggleApiKeyVisibility"
+                                      HelperText="Your API key for authentication"
+                                      Variant="Variant.Outlined" />
+                    }
+                }
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="SubmitAsync"
+                   Disabled="@(!_isValid || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsNew ? "Create" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Inject] private IInferenceEngineService EngineService { get; set; } = null!;
+
+    [Parameter] public AesirInferenceEngineBase Engine { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+
+    private MudForm _form = null!;
+    private AesirInferenceEngineBase _model = new();
+    private bool _isValid;
+    private bool _isSaving;
+    private bool _showApiKey;
+
+    // Configuration fields
+    private string? _endpoint;
+    private string? _apiKey;
+    private bool _enableChatModelThinking;
+
+    protected override void OnInitialized()
+    {
+        // Clone the engine to avoid modifying the original
+        _model = new AesirInferenceEngineBase
+        {
+            Id = Engine.Id,
+            Name = Engine.Name,
+            Description = Engine.Description,
+            Type = Engine.Type,
+            Configuration = Engine.Configuration != null
+                ? new Dictionary<string, string?>(Engine.Configuration)
+                : new Dictionary<string, string?>()
+        };
+
+        // Extract configuration values
+        if (_model.Configuration != null)
+        {
+            _model.Configuration.TryGetValue("Endpoint", out _endpoint);
+            _model.Configuration.TryGetValue("ApiKey", out _apiKey);
+
+            if (_model.Configuration.TryGetValue("EnableChatModelThinking", out var thinkingValue))
+            {
+                _enableChatModelThinking = bool.TryParse(thinkingValue, out var thinking) && thinking;
+            }
+        }
+    }
+
+    private void ToggleApiKeyVisibility()
+    {
+        _showApiKey = !_showApiKey;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task SubmitAsync()
+    {
+        await _form.Validate();
+        if (!_isValid)
+            return;
+
+        _isSaving = true;
+
+        // Build configuration dictionary
+        _model.Configuration = new Dictionary<string, string?>();
+
+        if (!string.IsNullOrWhiteSpace(_endpoint))
+        {
+            _model.Configuration["Endpoint"] = _endpoint;
+        }
+
+        if (_model.Type == InferenceEngineType.OpenAICompatible && !string.IsNullOrWhiteSpace(_apiKey))
+        {
+            _model.Configuration["ApiKey"] = _apiKey;
+        }
+
+        // Save thinking setting for Ollama engines
+        if (_model.Type == InferenceEngineType.Ollama)
+        {
+            _model.Configuration["EnableChatModelThinking"] = _enableChatModelThinking.ToString().ToLower();
+        }
+
+        try
+        {
+            if (IsNew)
+            {
+                var result = await EngineService.CreateAsync(_model);
+                if (result.IsSuccess)
+                {
+                    MudDialog.Close(DialogResult.Ok(_model));
+                }
+                else
+                {
+                    // Show error - in a real app, use Snackbar
+                    _isSaving = false;
+                }
+            }
+            else
+            {
+                var result = await EngineService.UpdateAsync(_model);
+                if (result.IsSuccess)
+                {
+                    MudDialog.Close(DialogResult.Ok(_model));
+                }
+                else
+                {
+                    _isSaving = false;
+                }
+            }
+        }
+        catch
+        {
+            _isSaving = false;
+        }
+    }
+}

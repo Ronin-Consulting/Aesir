@@ -1,0 +1,290 @@
+@using Aesir.Client.Web.Infrastructure.Services
+@using Aesir.Client.Web.Modules.Chat.Models
+@using Aesir.Client.Web.Modules.Chat.Services
+@inject IChatStateService ChatState
+@inject IConfigurationApiService ConfigurationApi
+@inject NavigationManager Navigation
+
+<div class="chat-welcome-container">
+    @if (_isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">Loading...</MudText>
+    }
+    else if (_apiError)
+    {
+        @* API Connection Error State *@
+        <MudIcon Icon="@Icons.Material.Filled.CloudOff"
+                 Style="font-size: 4rem; opacity: 0.5;"
+                 Color="Color.Error" />
+
+        <MudText Typo="Typo.h5" Align="Align.Center" Color="Color.Error" Class="mt-4">
+            Unable to Connect
+        </MudText>
+
+        <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Style="max-width: 400px;" Class="mt-2">
+            Could not connect to the ÆSIR server. Please check that the server is running.
+        </MudText>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="RetryLoadAsync"
+                   Class="mt-4">
+            Retry Connection
+        </MudButton>
+    }
+    else if (!_hasAgents || !_hasInferenceEngines)
+    {
+        @* Setup Required State *@
+        <MudIcon Icon="@Icons.Material.Filled.Settings"
+                 Style="font-size: 4rem; opacity: 0.5;"
+                 Color="Color.Warning" />
+
+        <MudText Typo="Typo.h5" Align="Align.Center" Color="Color.Secondary" Class="mt-4">
+            Setup Required
+        </MudText>
+
+        <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Style="max-width: 400px;" Class="mt-2">
+            @if (!_hasInferenceEngines)
+            {
+                @("Connect an inference engine to get started.")
+            }
+            else
+            {
+                @("Configure an AI agent to start chatting.")
+            }
+        </MudText>
+
+        <MudStack Row="true" Spacing="2" Class="mt-4">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.AutoAwesome"
+                       Href="/setup">
+                Run Setup Wizard
+            </MudButton>
+        </MudStack>
+    }
+    else
+    {
+        @* Main Welcome View - Claude Style *@
+        <div class="welcome-content">
+            @* Decorative Greeting *@
+            <div class="greeting-section">
+                <img src="images/logo-blue.svg" alt="" class="greeting-logo" />
+                <MudText Typo="Typo.h3" Class="greeting-text">
+                    @_currentGreeting
+                </MudText>
+            </div>
+
+            @* Centered Input Area - Using shared MessageInput component *@
+            <div class="input-section">
+                <MessageInput @ref="_messageInput"
+                              OnSend="@SendMessage"
+                              OnSendWithFiles="@SendMessageWithFiles"
+                              OnAgentSelected="@SelectAgent"
+                              IsDisabled="@(ChatState.SelectedAgent == null)"
+                              GetConversationId="@GetConversationId" />
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .chat-welcome-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        flex: 1;
+        padding: 24px;
+        min-height: 0;
+        height: 100%;
+    }
+
+    .welcome-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        max-width: 900px;
+        gap: 32px;
+    }
+
+    .greeting-section {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .greeting-logo {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+    }
+
+    .greeting-text {
+        font-weight: 400;
+        letter-spacing: -0.02em;
+    }
+
+    .input-section {
+        width: 100%;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public EventCallback<AesirAgentBase> OnAgentSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSend { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Message, List<PendingFileUpload> Files)> OnSendWithFiles { get; set; }
+
+    /// <summary>
+    /// Callback to get the conversation ID from the parent component.
+    /// Used for immediate file upload on selection.
+    /// </summary>
+    [Parameter]
+    public Func<Guid>? GetConversationId { get; set; }
+
+    private MessageInput? _messageInput;
+
+    /// <summary>
+    /// Adds a file to the pending files list (used by drag-and-drop from parent).
+    /// </summary>
+    public async Task AddFileAsync(Microsoft.AspNetCore.Components.Forms.IBrowserFile file)
+    {
+        if (_messageInput != null)
+        {
+            await _messageInput.AddFileAsync(file);
+        }
+    }
+
+    /// <summary>
+    /// Gets whether RAG is enabled for the current agent.
+    /// </summary>
+    public bool IsRagEnabled => _messageInput?.IsRagEnabled ?? false;
+
+    private static readonly string[] Greetings =
+    [
+        // Original 15
+        "How can I help you today?",
+        "What would you like to explore?",
+        "Ready to assist you",
+        "What's on your mind?",
+        "Let's create something amazing",
+        "What can I do for you?",
+        "How may I assist you?",
+        "What brings you here today?",
+        "Ready when you are",
+        "What shall we work on?",
+        "How can I be of service?",
+        "What would you like to know?",
+        "Let's get started",
+        "At your service",
+        "What can we accomplish together?",
+        // Additional 15
+        "What challenge can I help you solve?",
+        "Let's build something great",
+        "How can I make your day easier?",
+        "What's the plan for today?",
+        "Ready to dive in",
+        "What problem shall we tackle?",
+        "Let's make something happen",
+        "What's next on the agenda?",
+        "Here to help you succeed",
+        "What ideas are we exploring?",
+        "Let's turn ideas into reality",
+        "What questions do you have?",
+        "Ready to collaborate",
+        "What's your goal for today?",
+        "Let's figure this out together"
+    ];
+
+    private static readonly Random _random = new();
+
+    private bool _isLoading = true;
+    private bool _hasAgents;
+    private bool _hasInferenceEngines;
+    private bool _apiError;
+    private List<AesirAgentBase> _agents = new();
+    private string _currentGreeting = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _currentGreeting = GetRandomGreeting();
+        await LoadConfigurationStatusAsync();
+    }
+
+    private static string GetRandomGreeting()
+    {
+        return Greetings[_random.Next(Greetings.Length)];
+    }
+
+    private async Task LoadConfigurationStatusAsync()
+    {
+        _isLoading = true;
+        _apiError = false;
+        StateHasChanged();
+
+        try
+        {
+            // Check agents
+            var agentsResult = await ConfigurationApi.GetAgentsAsync();
+            agentsResult
+                .OnSuccess(agents =>
+                {
+                    _hasAgents = agents.Any();
+                    _agents = agents.ToList();
+
+                    // Auto-select first agent if none selected
+                    if (_hasAgents && ChatState.SelectedAgent == null)
+                    {
+                        ChatState.SelectAgent(_agents.First());
+                    }
+                })
+                .OnFailure(_ => _apiError = true);
+
+            // Check inference engines
+            var enginesResult = await ConfigurationApi.GetInferenceEnginesAsync();
+            enginesResult
+                .OnSuccess(engines => _hasInferenceEngines = engines.Any())
+                .OnFailure(_ => _apiError = true);
+        }
+        catch
+        {
+            _apiError = true;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RetryLoadAsync()
+    {
+        await LoadConfigurationStatusAsync();
+    }
+
+    private async Task SelectAgent(AesirAgentBase agent)
+    {
+        ChatState.SelectAgent(agent);
+        await OnAgentSelected.InvokeAsync(agent);
+        StateHasChanged();
+    }
+
+    private async Task SendMessage(string message)
+    {
+        await OnSend.InvokeAsync(message);
+    }
+
+    private async Task SendMessageWithFiles((string Message, List<PendingFileUpload> Files) data)
+    {
+        await OnSendWithFiles.InvokeAsync(data);
+    }
+}

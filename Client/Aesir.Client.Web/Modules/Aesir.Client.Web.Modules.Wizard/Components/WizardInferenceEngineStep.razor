@@ -1,0 +1,401 @@
+@namespace Aesir.Client.Web.Modules.Wizard.Components
+@inject IInferenceEngineService EngineService
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="4" Class="pa-4">
+    <MudText Typo="Typo.h5" Align="Align.Center">
+        Configure Inference Engine
+    </MudText>
+
+    <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-4">
+        An inference engine connects AESIR to AI models. You need at least one configured.
+    </MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mx-auto" />
+    }
+    else
+    {
+        @* Existing Engines Section *@
+        @if (_inferenceEngines.Count > 0)
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-2">
+                <MudText Typo="Typo.body1">
+                    You have @_inferenceEngines.Count inference engine(s) configured.
+                </MudText>
+            </MudAlert>
+
+            <MudPaper Elevation="0" Class="pa-2" Style="border: 1px solid var(--mud-palette-lines-default); max-height: 200px; overflow-y: auto;">
+                @foreach (var engine in _inferenceEngines)
+                {
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="pa-2">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Memory" Color="Color.Primary" Size="Size.Small" />
+                            <MudText>@engine.Name</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
+                                @GetEngineTypeDisplayName(engine.Type)
+                            </MudChip>
+                        </MudStack>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => DeleteEngineAsync(engine))"
+                                       Disabled="@(_isDeleting || _isSaving)" />
+                    </MudStack>
+                }
+            </MudPaper>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-2">
+                No inference engines configured. Create one using a preset below or configure manually.
+            </MudAlert>
+        }
+
+        <MudDivider Class="my-2" />
+
+        @* Quick Presets Section *@
+        <MudText Typo="Typo.subtitle1" Color="Color.Primary">Quick Setup</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+            Choose a preset to quickly configure an inference engine:
+        </MudText>
+
+        <MudStack Row="true" Spacing="2" Justify="Justify.Center">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Computer"
+                       OnClick="@(() => ApplyPreset(EnginePreset.OllamaLocal))"
+                       Disabled="@_isSaving">
+                Ollama (Local)
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.Cloud"
+                       OnClick="@(() => ApplyPreset(EnginePreset.OpenAI))"
+                       Disabled="@_isSaving">
+                OpenAI
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Filled.Edit"
+                       OnClick="@(() => ApplyPreset(EnginePreset.Custom))"
+                       Disabled="@_isSaving">
+                Custom
+            </MudButton>
+        </MudStack>
+
+        @* Engine Form *@
+        @if (_showForm)
+        {
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.subtitle1" Color="Color.Primary">
+                @(_selectedPreset == EnginePreset.Custom ? "Custom Configuration" : $"{GetPresetDisplayName(_selectedPreset)} Configuration")
+            </MudText>
+
+            <MudForm @ref="_form" @bind-IsValid="_isValid">
+                <MudStack Spacing="3">
+                    <MudTextField @bind-Value="_engineName"
+                                  Label="Name"
+                                  Required="true"
+                                  RequiredError="Name is required"
+                                  Variant="Variant.Outlined"
+                                  Disabled="@_isSaving" />
+
+                    <MudSelect T="InferenceEngineType?"
+                               @bind-Value="_engineType"
+                               Label="Type"
+                               Required="true"
+                               RequiredError="Type is required"
+                               Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter"
+                               Disabled="@_isSaving">
+                        <MudSelectItem T="InferenceEngineType?" Value="InferenceEngineType.Ollama">Ollama</MudSelectItem>
+                        <MudSelectItem T="InferenceEngineType?" Value="InferenceEngineType.OpenAICompatible">OpenAI Compatible</MudSelectItem>
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="_endpoint"
+                                  Label="Endpoint"
+                                  Placeholder="@GetEndpointPlaceholder()"
+                                  Required="true"
+                                  RequiredError="Endpoint is required"
+                                  HelperText="@GetEndpointHelperText()"
+                                  Variant="Variant.Outlined"
+                                  Disabled="@_isSaving" />
+
+                    @if (_engineType == InferenceEngineType.OpenAICompatible)
+                    {
+                        <MudTextField @bind-Value="_apiKey"
+                                      Label="API Key"
+                                      InputType="@(_showApiKey ? InputType.Text : InputType.Password)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showApiKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                      OnAdornmentClick="ToggleApiKeyVisibility"
+                                      HelperText="Your API key for authentication"
+                                      Variant="Variant.Outlined"
+                                      Disabled="@_isSaving" />
+                    }
+
+                    <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Default"
+                                   OnClick="CancelForm"
+                                   Disabled="@_isSaving">
+                            Cancel
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="SaveEngineAsync"
+                                   Disabled="@(!_isValid || _isSaving)">
+                            @if (_isSaving)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Add Engine
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+            </MudForm>
+        }
+    }
+
+    <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-4">
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@OnBack"
+                   Disabled="@_isSaving">
+            Back
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                   OnClick="@HandleNext"
+                   Disabled="@(!HasInferenceEngine || _isSaving)">
+            Next
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    private enum EnginePreset { None, OllamaLocal, OpenAI, Custom }
+
+    private List<AesirInferenceEngineBase> _inferenceEngines = [];
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isDeleting;
+    private bool _showForm;
+    private bool _isValid;
+    private bool _showApiKey;
+
+    // Form fields
+    private MudForm _form = null!;
+    private EnginePreset _selectedPreset = EnginePreset.None;
+    private string? _engineName;
+    private InferenceEngineType? _engineType;
+    private string? _endpoint;
+    private string? _apiKey;
+
+    private bool HasInferenceEngine => _inferenceEngines.Count > 0;
+
+    [Parameter]
+    public EventCallback OnNext { get; set; }
+
+    [Parameter]
+    public EventCallback OnBack { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInferenceEnginesAsync();
+    }
+
+    private async Task LoadInferenceEnginesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var result = await EngineService.GetAllAsync();
+            if (result.IsSuccess && result.Value != null)
+            {
+                _inferenceEngines = result.Value.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load inference engines: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ApplyPreset(EnginePreset preset)
+    {
+        _selectedPreset = preset;
+        _showForm = true;
+
+        switch (preset)
+        {
+            case EnginePreset.OllamaLocal:
+                _engineName = "Ollama Local";
+                _engineType = InferenceEngineType.Ollama;
+                _endpoint = "http://localhost:11434";
+                _apiKey = null;
+                break;
+            case EnginePreset.OpenAI:
+                _engineName = "OpenAI";
+                _engineType = InferenceEngineType.OpenAICompatible;
+                _endpoint = "https://api.openai.com/v1";
+                _apiKey = "";
+                break;
+            case EnginePreset.Custom:
+                _engineName = "";
+                _engineType = null;
+                _endpoint = "";
+                _apiKey = null;
+                break;
+        }
+    }
+
+    private void CancelForm()
+    {
+        _showForm = false;
+        _selectedPreset = EnginePreset.None;
+        ResetFormFields();
+    }
+
+    private void ResetFormFields()
+    {
+        _engineName = null;
+        _engineType = null;
+        _endpoint = null;
+        _apiKey = null;
+        _isValid = false;
+    }
+
+    private async Task SaveEngineAsync()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_isValid) return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var engine = new AesirInferenceEngineBase
+            {
+                Name = _engineName,
+                Type = _engineType,
+                Configuration = new Dictionary<string, string?>()
+            };
+
+            if (!string.IsNullOrWhiteSpace(_endpoint))
+            {
+                engine.Configuration["Endpoint"] = _endpoint;
+            }
+
+            if (_engineType == InferenceEngineType.OpenAICompatible && !string.IsNullOrWhiteSpace(_apiKey))
+            {
+                engine.Configuration["ApiKey"] = _apiKey;
+            }
+
+            var result = await EngineService.CreateAsync(engine);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add($"Inference engine '{_engineName}' created successfully.", Severity.Success);
+                _showForm = false;
+                ResetFormFields();
+                await LoadInferenceEnginesAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to create engine: {result.Error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating engine: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteEngineAsync(AesirInferenceEngineBase engine)
+    {
+        if (!engine.Id.HasValue) return;
+
+        _isDeleting = true;
+        try
+        {
+            var result = await EngineService.DeleteAsync(engine.Id.Value);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add($"Engine '{engine.Name}' deleted.", Severity.Info);
+                await LoadInferenceEnginesAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to delete engine: {result.Error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting engine: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+
+    private async Task HandleNext()
+    {
+        if (HasInferenceEngine)
+        {
+            await OnNext.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add("Please configure at least one inference engine.", Severity.Warning);
+        }
+    }
+
+    private void ToggleApiKeyVisibility()
+    {
+        _showApiKey = !_showApiKey;
+    }
+
+    private static string GetEngineTypeDisplayName(InferenceEngineType? type) => type switch
+    {
+        InferenceEngineType.Ollama => "Ollama",
+        InferenceEngineType.OpenAICompatible => "OpenAI",
+        _ => "Unknown"
+    };
+
+    private static string GetPresetDisplayName(EnginePreset preset) => preset switch
+    {
+        EnginePreset.OllamaLocal => "Ollama Local",
+        EnginePreset.OpenAI => "OpenAI",
+        EnginePreset.Custom => "Custom",
+        _ => ""
+    };
+
+    private string GetEndpointPlaceholder() => _engineType switch
+    {
+        InferenceEngineType.Ollama => "http://localhost:11434",
+        InferenceEngineType.OpenAICompatible => "https://api.openai.com/v1",
+        _ => "Enter endpoint URL"
+    };
+
+    private string GetEndpointHelperText() => _engineType switch
+    {
+        InferenceEngineType.Ollama => "The URL where Ollama is running",
+        InferenceEngineType.OpenAICompatible => "The API endpoint URL",
+        _ => "The endpoint URL for the inference engine"
+    };
+}

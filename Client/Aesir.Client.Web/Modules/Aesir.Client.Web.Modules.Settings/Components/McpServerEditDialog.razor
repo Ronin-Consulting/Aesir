@@ -1,0 +1,288 @@
+@using System.ComponentModel.DataAnnotations
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Dns" Class="mr-2" />
+            @(IsNew ? "Create" : "Edit") MCP Server
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" Model="@_model" @bind-IsValid="@_isValid">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_model.Name"
+                              Label="Name"
+                              Required="true"
+                              RequiredError="Name is required"
+                              Variant="Variant.Outlined" />
+
+                <MudTextField @bind-Value="_model.Description"
+                              Label="Description"
+                              Lines="2"
+                              Variant="Variant.Outlined" />
+
+                <MudSelect @bind-Value="_model.Location"
+                           Label="Location"
+                           Required="true"
+                           RequiredError="Location is required"
+                           Variant="Variant.Outlined"
+                           AnchorOrigin="Origin.BottomCenter">
+                    <MudSelectItem T="ServerLocation?" Value="ServerLocation.Local">Local</MudSelectItem>
+                    <MudSelectItem T="ServerLocation?" Value="ServerLocation.Remote">Remote</MudSelectItem>
+                </MudSelect>
+
+                @if (_model.Location.HasValue)
+                {
+                    <MudDivider Class="my-2" />
+                    <MudText Typo="Typo.subtitle1" Color="Color.Primary">Configuration</MudText>
+
+                    @if (_model.Location == ServerLocation.Local)
+                    {
+                        <MudTextField @bind-Value="_model.Command"
+                                      Label="Command"
+                                      Placeholder="npx"
+                                      Required="true"
+                                      RequiredError="Command is required"
+                                      HelperText="The executable command to run"
+                                      Variant="Variant.Outlined" />
+
+                        <MudText Typo="Typo.subtitle2" Class="mt-2">Arguments</MudText>
+                        <MudStack Spacing="2">
+                            @for (var i = 0; i < _arguments.Count; i++)
+                            {
+                                var index = i;
+                                <MudStack Row="true" AlignItems="AlignItems.Center">
+                                    <MudTextField @bind-Value="_arguments[index]"
+                                                  Placeholder="Argument"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  Style="flex: 1" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Remove"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => RemoveArgument(index))" />
+                                </MudStack>
+                            }
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       Size="Size.Small"
+                                       OnClick="AddArgument">
+                                Add Argument
+                            </MudButton>
+                        </MudStack>
+
+                        <MudText Typo="Typo.subtitle2" Class="mt-3">Environment Variables</MudText>
+                        <MudStack Spacing="2">
+                            @for (var i = 0; i < _envVars.Count; i++)
+                            {
+                                var index = i;
+                                <MudStack Row="true" AlignItems="AlignItems.Center">
+                                    <MudTextField @bind-Value="_envVars[index].Key"
+                                                  Placeholder="Key"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  Style="flex: 1" />
+                                    <MudTextField @bind-Value="_envVars[index].Value"
+                                                  Placeholder="Value"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  Style="flex: 1" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Remove"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => RemoveEnvVar(index))" />
+                                </MudStack>
+                            }
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       Size="Size.Small"
+                                       OnClick="AddEnvVar">
+                                Add Environment Variable
+                            </MudButton>
+                        </MudStack>
+                    }
+                    else if (_model.Location == ServerLocation.Remote)
+                    {
+                        <MudTextField @bind-Value="_model.Url"
+                                      Label="URL"
+                                      Placeholder="https://mcp.example.com"
+                                      Required="true"
+                                      RequiredError="URL is required"
+                                      HelperText="The URL of the remote MCP server"
+                                      Variant="Variant.Outlined" />
+
+                        <MudText Typo="Typo.subtitle2" Class="mt-3">HTTP Headers</MudText>
+                        <MudStack Spacing="2">
+                            @for (var i = 0; i < _httpHeaders.Count; i++)
+                            {
+                                var index = i;
+                                <MudStack Row="true" AlignItems="AlignItems.Center">
+                                    <MudTextField @bind-Value="_httpHeaders[index].Key"
+                                                  Placeholder="Header Name"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  Style="flex: 1" />
+                                    <MudTextField @bind-Value="_httpHeaders[index].Value"
+                                                  Placeholder="Header Value"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  Style="flex: 1" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Remove"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => RemoveHttpHeader(index))" />
+                                </MudStack>
+                            }
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       Size="Size.Small"
+                                       OnClick="AddHttpHeader">
+                                Add HTTP Header
+                            </MudButton>
+                        </MudStack>
+                    }
+                }
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="SubmitAsync"
+                   Disabled="@(!_isValid || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsNew ? "Create" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Inject] private IMcpServerService McpServerService { get; set; } = null!;
+
+    [Parameter] public AesirMcpServerBase Server { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+
+    private MudForm _form = null!;
+    private AesirMcpServerBase _model = new();
+    private bool _isValid;
+    private bool _isSaving;
+
+    // Collection editors
+    private List<string> _arguments = [];
+    private List<KeyValuePair> _envVars = [];
+    private List<KeyValuePair> _httpHeaders = [];
+
+    private class KeyValuePair
+    {
+        public string Key { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+
+    protected override void OnInitialized()
+    {
+        // Clone the server to avoid modifying the original
+        _model = new AesirMcpServerBase
+        {
+            Id = Server.Id,
+            Name = Server.Name,
+            Description = Server.Description,
+            Location = Server.Location,
+            Command = Server.Command,
+            Url = Server.Url,
+            Arguments = new List<string>(Server.Arguments),
+            EnvironmentVariables = new Dictionary<string, string?>(Server.EnvironmentVariables),
+            HttpHeaders = new Dictionary<string, string?>(Server.HttpHeaders)
+        };
+
+        // Load arguments
+        _arguments = [.. _model.Arguments];
+
+        // Load environment variables
+        _envVars = _model.EnvironmentVariables
+            .Select(kvp => new KeyValuePair { Key = kvp.Key, Value = kvp.Value ?? "" })
+            .ToList();
+
+        // Load HTTP headers
+        _httpHeaders = _model.HttpHeaders
+            .Select(kvp => new KeyValuePair { Key = kvp.Key, Value = kvp.Value ?? "" })
+            .ToList();
+    }
+
+    private void AddArgument() => _arguments.Add("");
+    private void RemoveArgument(int index) => _arguments.RemoveAt(index);
+
+    private void AddEnvVar() => _envVars.Add(new KeyValuePair());
+    private void RemoveEnvVar(int index) => _envVars.RemoveAt(index);
+
+    private void AddHttpHeader() => _httpHeaders.Add(new KeyValuePair());
+    private void RemoveHttpHeader(int index) => _httpHeaders.RemoveAt(index);
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task SubmitAsync()
+    {
+        await _form.Validate();
+        if (!_isValid)
+            return;
+
+        _isSaving = true;
+
+        // Build arguments list
+        _model.Arguments = _arguments
+            .Where(a => !string.IsNullOrWhiteSpace(a))
+            .ToList();
+
+        // Build environment variables dictionary
+        _model.EnvironmentVariables = _envVars
+            .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Key))
+            .ToDictionary(kvp => kvp.Key, kvp => (string?)kvp.Value);
+
+        // Build HTTP headers dictionary
+        _model.HttpHeaders = _httpHeaders
+            .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Key))
+            .ToDictionary(kvp => kvp.Key, kvp => (string?)kvp.Value);
+
+        try
+        {
+            if (IsNew)
+            {
+                var result = await McpServerService.CreateAsync(_model);
+                if (result.IsSuccess)
+                {
+                    MudDialog.Close(DialogResult.Ok(_model));
+                }
+                else
+                {
+                    _isSaving = false;
+                }
+            }
+            else
+            {
+                var result = await McpServerService.UpdateAsync(_model);
+                if (result.IsSuccess)
+                {
+                    MudDialog.Close(DialogResult.Ok(_model));
+                }
+                else
+                {
+                    _isSaving = false;
+                }
+            }
+        }
+        catch
+        {
+            _isSaving = false;
+        }
+    }
+}

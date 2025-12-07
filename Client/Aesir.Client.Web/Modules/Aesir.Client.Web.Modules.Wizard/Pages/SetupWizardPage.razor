@@ -1,0 +1,159 @@
+@page "/setup"
+@namespace Aesir.Client.Web.Modules.Wizard.Pages
+@layout Aesir.Client.Web.Modules.Wizard.Layout.WizardLayout
+@inject IWizardStateService WizardState
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>AESIR Setup Wizard</PageTitle>
+
+<MudPaper Elevation="8" Class="wizard-container pa-0" Style="width: 100%; max-width: 900px; border-radius: 16px; overflow: hidden;">
+    @* Header with logo/branding *@
+    <div class="wizard-header pa-6">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.AutoAwesome"
+                     Size="Size.Large"
+                     Style="font-size: 3rem; color: white;" />
+            <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                ÆSIR Setup
+            </MudText>
+            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                Configure your AI assistant platform
+            </MudText>
+        </MudStack>
+    </div>
+
+    @* Wizard content *@
+    <div class="wizard-body pa-6">
+        <MudStepper @ref="_stepper"
+                    @bind-ActiveIndex="_activeIndex"
+                    NonLinear="false"
+                    Class="wizard-stepper">
+            <ChildContent>
+                @* Welcome Step *@
+                <MudStep Title="Welcome">
+                    <ChildContent>
+                        <WizardWelcomeStep OnNext="@NextStepAsync" />
+                    </ChildContent>
+                </MudStep>
+
+                @* Inference Engine Step *@
+                <MudStep Title="Inference">
+                    <ChildContent>
+                        <WizardInferenceEngineStep OnNext="@NextStepAsync"
+                                                   OnBack="@PreviousStepAsync" />
+                    </ChildContent>
+                </MudStep>
+
+                @* General Settings Step *@
+                <MudStep Title="Settings">
+                    <ChildContent>
+                        <WizardGeneralSettingsStep OnNext="@NextStepAsync"
+                                                   OnBack="@PreviousStepAsync" />
+                    </ChildContent>
+                </MudStep>
+
+                @* Agent Step *@
+                <MudStep Title="Agent">
+                    <ChildContent>
+                        <WizardAgentStep OnNext="@NextStepAsync"
+                                         OnBack="@PreviousStepAsync" />
+                    </ChildContent>
+                </MudStep>
+
+                @* Complete Step *@
+                <MudStep Title="Complete">
+                    <ChildContent>
+                        <WizardCompleteStep OnFinish="@CompleteWizardAsync" OnBack="@PreviousStepAsync" />
+                    </ChildContent>
+                </MudStep>
+            </ChildContent>
+
+            <ActionContent>
+                @* Hide default action buttons - we use custom ones in each step *@
+            </ActionContent>
+        </MudStepper>
+    </div>
+</MudPaper>
+
+<style>
+    .wizard-header {
+        background: linear-gradient(135deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-darken) 100%);
+    }
+
+    .wizard-body {
+        background: var(--mud-palette-surface);
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+    }
+
+    .wizard-stepper {
+        background: transparent !important;
+    }
+
+    .wizard-stepper .mud-stepper-nav {
+        background: var(--mud-palette-background-grey);
+        border-radius: 8px;
+        padding: 8px;
+        margin-bottom: 24px;
+    }
+
+    .wizard-container {
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    @@media (max-width: 600px) {
+        .wizard-container {
+            border-radius: 0;
+            max-width: 100%;
+        }
+
+        .wizard-body {
+            max-height: calc(100vh - 160px);
+        }
+    }
+</style>
+
+@code {
+    private MudStepper? _stepper;
+    private int _activeIndex;
+
+    protected override void OnInitialized()
+    {
+        WizardState.StateChanged += OnWizardStateChanged;
+    }
+
+    private async Task NextStepAsync()
+    {
+        if (_stepper != null)
+        {
+            await _stepper.NextStepAsync();
+        }
+    }
+
+    private async Task PreviousStepAsync()
+    {
+        if (_stepper != null)
+        {
+            await _stepper.PreviousStepAsync();
+        }
+    }
+
+    private async Task CompleteWizardAsync()
+    {
+        await WizardState.CompleteWizardAsync();
+        Snackbar.Add("Setup complete! Welcome to ÆSIR.", Severity.Success);
+        Navigation.NavigateTo("/");
+    }
+
+    private void OnWizardStateChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        WizardState.StateChanged -= OnWizardStateChanged;
+    }
+}

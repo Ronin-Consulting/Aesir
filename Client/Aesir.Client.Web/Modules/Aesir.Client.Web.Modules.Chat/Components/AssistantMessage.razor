@@ -1,0 +1,408 @@
+@using Aesir.Common.Models
+@using Aesir.Client.Web.Modules.Chat.Services
+@inject IMarkdownService MarkdownService
+@inject IJSRuntime JSRuntime
+
+<div class="assistant-message">
+    @* Collapsible Thinking Section (Claude-style) *@
+    @if (ShowThinking && !string.IsNullOrEmpty(Message.ThoughtsContent))
+    {
+        <div class="thinking-section">
+            <div class="thinking-toggle @(_thinkingExpanded ? "expanded" : "")" @onclick="ToggleThinking">
+                <MudIcon Icon="@(_thinkingExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                         Size="Size.Small" Class="toggle-icon" />
+                <span class="thinking-summary">@GetThinkingSummary()</span>
+            </div>
+            @if (_thinkingExpanded)
+            {
+                <div class="thinking-content">
+                    @((MarkupString)MarkdownService.ToHtml(Message.ThoughtsContent))
+                </div>
+            }
+        </div>
+    }
+    @* Main Message Content (clean, minimal style like Claude) *@
+    <div class="message-content markdown-body">
+        @((MarkupString)MarkdownService.ToHtml(Message.Content))
+    </div>
+    @* Response Footer with Actions - Claude style: right-aligned icons *@
+    <div class="response-footer">
+        <div class="response-actions">
+            <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
+                           Size="Size.Small"
+                           Class="action-btn"
+                           Title="Copy response"
+                           OnClick="CopyToClipboard" />
+            <MudIconButton Icon="@Icons.Material.Outlined.ThumbUpOffAlt"
+                           Size="Size.Small"
+                           Class="action-btn"
+                           Title="Good response" />
+            <MudIconButton Icon="@Icons.Material.Outlined.ThumbDownOffAlt"
+                           Size="Size.Small"
+                           Class="action-btn"
+                           Title="Bad response" />
+            <MudText Typo="Typo.body2" Class="action-text" @onclick="HandleRetry" title="Retry">Retry</MudText>
+        </div>
+    </div>
+    @* AESIR Brand Icon - Only shows on latest message, large and prominent with ready message *@
+    @if (IsLatestMessage)
+    {
+        <div class="brand-section-large">
+            <AesirBrandIcon IconSize="AesirBrandIcon.BrandIconSize.ExtraLarge" ShowReadyMessage="true" />
+        </div>
+    }
+    @if (ShowDisclaimer)
+    {
+        <div class="disclaimer">
+            <MudText Typo="Typo.caption" Color="Color.Tertiary">
+                ÆSIR can make mistakes. Please double-check responses.
+            </MudText>
+        </div>
+    }
+</div>
+
+<style>
+    .assistant-message {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 8px;
+        padding: 0 48px;
+        max-width: 100%;
+    }
+
+    /* Collapsible Thinking Section */
+    .assistant-message .thinking-section {
+        width: 100%;
+        margin-bottom: 12px;
+    }
+
+    .assistant-message .thinking-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        padding: 8px 12px;
+        background-color: rgba(74, 144, 217, 0.1);
+        border-radius: 8px;
+        transition: background-color 0.2s ease;
+    }
+
+    .assistant-message .thinking-toggle:hover {
+        background-color: rgba(74, 144, 217, 0.15);
+    }
+
+    .assistant-message .thinking-toggle .toggle-icon {
+        color: #4A90D9;
+        transition: transform 0.2s ease;
+    }
+
+    .assistant-message .thinking-toggle.expanded .toggle-icon {
+        transform: rotate(0deg);
+    }
+
+    .assistant-message .thinking-summary {
+        font-size: 0.875rem;
+        color: var(--mud-palette-text-secondary);
+        font-style: italic;
+    }
+
+    .assistant-message .thinking-content {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-secondary);
+        background-color: rgba(74, 144, 217, 0.05);
+        border-radius: 0 0 8px 8px;
+        padding: 12px 16px;
+        margin-top: -4px;
+        border-left: 2px solid #4A90D9;
+        animation: fadeIn 0.2s ease;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Message Content - Clean minimal style */
+    .assistant-message .message-content {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        line-height: 1.6;
+        color: var(--mud-palette-text-primary);
+    }
+
+    /* Response Footer */
+    .assistant-message .response-footer {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-top: 8px;
+        width: 100%;
+    }
+
+    /* Response Actions */
+    .assistant-message .response-actions {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .assistant-message:hover .response-actions {
+        opacity: 1;
+    }
+
+    .assistant-message .action-btn {
+        color: var(--mud-palette-text-secondary);
+        width: 32px;
+        height: 32px;
+    }
+
+    .assistant-message .action-btn:hover {
+        color: var(--mud-palette-text-primary);
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .assistant-message .action-text {
+        color: var(--mud-palette-text-secondary);
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .assistant-message .action-text:hover {
+        color: var(--mud-palette-text-primary);
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Large Brand Section - Only on latest message */
+    .assistant-message .brand-section-large {
+        margin-top: 16px;
+        opacity: 0.5;
+    }
+
+    /* Disclaimer */
+    .assistant-message .disclaimer {
+        margin-top: 8px;
+        text-align: center;
+    }
+
+    /* Markdown styling */
+    .assistant-message .markdown-body p {
+        margin: 0 0 0.75em 0;
+    }
+
+    .assistant-message .markdown-body p:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Code block wrapper with copy button */
+    .assistant-message .markdown-body .code-block-wrapper {
+        position: relative;
+        margin: 12px 0;
+        border-radius: 8px;
+        overflow: hidden;
+        background-color: #1e1e2e;
+    }
+
+    .assistant-message .markdown-body .code-block-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .assistant-message .markdown-body .code-language {
+        font-size: 0.75rem;
+        color: #a0a0a0;
+        text-transform: uppercase;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+
+    .assistant-message .markdown-body .code-copy-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        color: #a0a0a0;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .assistant-message .markdown-body .code-copy-btn:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+        color: #e0e0e0;
+    }
+
+    .assistant-message .markdown-body .code-copy-btn.copied {
+        background-color: rgba(34, 197, 94, 0.2);
+        border-color: rgba(34, 197, 94, 0.5);
+        color: #22c55e;
+    }
+
+    .assistant-message .markdown-body .code-copy-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .assistant-message .markdown-body .code-block-wrapper pre {
+        margin: 0;
+        border-radius: 0;
+        background-color: transparent;
+    }
+
+    .assistant-message .markdown-body .code-block-wrapper pre code {
+        color: #e0e0e0;
+    }
+
+    .assistant-message .markdown-body pre {
+        background-color: #1e1e2e;
+        border-radius: 8px;
+        padding: 16px;
+        overflow-x: auto;
+        margin: 12px 0;
+        color: #e0e0e0;
+    }
+
+    .assistant-message .markdown-body code {
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 0.9em;
+    }
+
+    .assistant-message .markdown-body pre code {
+        background-color: transparent;
+        padding: 0;
+        color: #e0e0e0;
+    }
+
+    .assistant-message .markdown-body ul,
+    .assistant-message .markdown-body ol {
+        margin: 8px 0;
+        padding-left: 24px;
+    }
+
+    .assistant-message .markdown-body blockquote {
+        border-left: 4px solid var(--mud-palette-primary);
+        margin: 8px 0;
+        padding-left: 16px;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .assistant-message .markdown-body table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 12px 0;
+    }
+
+    .assistant-message .markdown-body th,
+    .assistant-message .markdown-body td {
+        border: 1px solid var(--mud-palette-lines-default);
+        padding: 8px 12px;
+        text-align: left;
+    }
+
+    .assistant-message .markdown-body th {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .assistant-message .markdown-body a {
+        color: #4A90D9;
+        text-decoration: none;
+    }
+
+    .assistant-message .markdown-body a:hover {
+        text-decoration: underline;
+    }
+
+    .assistant-message .markdown-body h1,
+    .assistant-message .markdown-body h2,
+    .assistant-message .markdown-body h3,
+    .assistant-message .markdown-body h4 {
+        margin-top: 16px;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .assistant-message .markdown-body h1 { font-size: 1.5em; }
+    .assistant-message .markdown-body h2 { font-size: 1.3em; }
+    .assistant-message .markdown-body h3 { font-size: 1.1em; }
+</style>
+
+@code {
+    private bool _thinkingExpanded = false;
+
+    [Parameter]
+    public required AesirChatMessage Message { get; set; }
+
+    [Parameter]
+    public string? AgentName { get; set; }
+
+    [Parameter]
+    public bool ShowThinking { get; set; } = true;
+
+    [Parameter]
+    public bool ShowTimestamp { get; set; } = false;
+
+    [Parameter]
+    public DateTimeOffset? Timestamp { get; set; }
+
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+
+    [Parameter]
+    public bool ShowDisclaimer { get; set; } = false;
+
+    [Parameter]
+    public bool IsLatestMessage { get; set; } = false;
+
+    private void ToggleThinking()
+    {
+        _thinkingExpanded = !_thinkingExpanded;
+    }
+
+    private string GetThinkingSummary()
+    {
+        if (string.IsNullOrEmpty(Message.ThoughtsContent)) return "View thinking";
+
+        // Generate a summary similar to Claude's style
+        var content = Message.ThoughtsContent.Trim();
+        var firstLine = content.Split('\n').FirstOrDefault() ?? "";
+
+        // Clean up and truncate
+        firstLine = firstLine.TrimStart('#', ' ', '-', '*');
+        if (firstLine.Length > 60)
+        {
+            firstLine = firstLine[..57] + "...";
+        }
+
+        return string.IsNullOrWhiteSpace(firstLine)
+            ? "Analyzed the request and formulated a response."
+            : firstLine;
+    }
+
+    private async Task CopyToClipboard()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Message.Content);
+    }
+
+    private async Task HandleRetry()
+    {
+        if (OnRetry.HasDelegate)
+        {
+            await OnRetry.InvokeAsync();
+        }
+    }
+}

@@ -1,0 +1,85 @@
+@namespace Aesir.Client.Web.Modules.Wizard.Components
+
+@* This component is a reusable wrapper for MudStepper with custom step definitions.
+   It can be used when you need a programmatic stepper outside the main wizard page. *@
+
+<MudStepper @ref="_stepper"
+            @bind-ActiveIndex="_activeIndex"
+            Class="mb-4">
+    <ChildContent>
+        @foreach (var step in Steps)
+        {
+            <MudStep Title="@step.Title">
+                <ChildContent>
+                    @step.Content
+                </ChildContent>
+            </MudStep>
+        }
+    </ChildContent>
+</MudStepper>
+
+@code {
+    private MudStepper? _stepper;
+    private int _activeIndex;
+
+    /// <summary>
+    /// The wizard steps to display.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<WizardStep> Steps { get; set; } = [];
+
+    /// <summary>
+    /// The current step index.
+    /// </summary>
+    [Parameter]
+    public int CurrentStep { get; set; }
+
+    /// <summary>
+    /// Event callback when the step changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> CurrentStepChanged { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _activeIndex = CurrentStep;
+    }
+
+    private string GetStepIcon(WizardStep step)
+    {
+        return step.Icon ?? Icons.Material.Filled.Circle;
+    }
+
+    /// <summary>
+    /// Navigate to the next step.
+    /// </summary>
+    public async Task NextStepAsync()
+    {
+        if (_stepper != null)
+        {
+            await _stepper.NextStepAsync();
+        }
+    }
+
+    /// <summary>
+    /// Navigate to the previous step.
+    /// </summary>
+    public async Task PreviousStepAsync()
+    {
+        if (_stepper != null)
+        {
+            await _stepper.PreviousStepAsync();
+        }
+    }
+
+    /// <summary>
+    /// Navigate to a specific step.
+    /// </summary>
+    public void GoToStep(int index)
+    {
+        if (index >= 0 && index < Steps.Count)
+        {
+            _activeIndex = index;
+        }
+    }
+}

@@ -1,0 +1,323 @@
+@* Displays the list of documents uploaded to the current conversation *@
+@using Aesir.Client.Web.Modules.Chat.Models
+@using Aesir.Client.Web.Modules.Chat.Services
+@inject IDocumentApiService DocumentService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<div class="documents-list">
+    @if (_isLoading)
+    {
+        <div class="documents-loading">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            <MudText Typo="Typo.body2" Class="ml-2">Loading documents...</MudText>
+        </div>
+    }
+    else if (_files.Count == 0)
+    {
+        <div class="documents-empty">
+            <MudIcon Icon="@Icons.Material.Outlined.FolderOpen"
+                     Size="Size.Large"
+                     Class="empty-icon" />
+            <MudText Typo="Typo.body2" Class="empty-text">
+                No documents uploaded
+            </MudText>
+            <MudText Typo="Typo.caption" Class="empty-hint">
+                Drop files here or use the attach button
+            </MudText>
+        </div>
+    }
+    else
+    {
+        <div class="documents-header">
+            <MudText Typo="Typo.subtitle2" Class="header-title">
+                @_files.Count document@(_files.Count != 1 ? "s" : "")
+            </MudText>
+        </div>
+        <div class="documents-items">
+            @foreach (var file in _files)
+            {
+                <div class="document-item" @key="file.Id">
+                    <div class="document-icon">
+                        <MudIcon Icon="@GetFileIcon(file.DisplayName)" Size="Size.Medium" />
+                    </div>
+                    <div class="document-info">
+                        <span class="document-name" title="@file.DisplayName">
+                            @TruncateName(file.DisplayName, 24)
+                        </span>
+                        <span class="document-meta">
+                            @file.FormattedSize
+                        </span>
+                    </div>
+                    <div class="document-actions">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Download"
+                                       Size="Size.Small"
+                                       OnClick="@(() => DownloadFile(file))"
+                                       Title="Download" />
+                        <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => DeleteFile(file))"
+                                       Title="Delete" />
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .documents-list {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .documents-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .documents-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+        text-align: center;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .empty-icon {
+        opacity: 0.4;
+        margin-bottom: 12px;
+    }
+
+    .empty-text {
+        color: var(--mud-palette-text-secondary);
+        margin-bottom: 4px;
+    }
+
+    .empty-hint {
+        color: var(--mud-palette-text-disabled);
+    }
+
+    .documents-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .header-title {
+        color: var(--mud-palette-text-secondary);
+        font-weight: 500;
+    }
+
+    .documents-items {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+    }
+
+    .document-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        margin-bottom: 4px;
+        background-color: var(--mud-palette-background);
+        border: 1px solid var(--mud-palette-lines-default);
+        transition: all 0.15s ease;
+    }
+
+    .document-item:hover {
+        background-color: var(--mud-palette-action-default-hover);
+        border-color: var(--mud-palette-lines-inputs);
+    }
+
+    .document-item:hover .document-actions {
+        opacity: 1;
+    }
+
+    .document-icon {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        color: var(--mud-palette-primary);
+    }
+
+    .document-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .document-name {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--mud-palette-text-primary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .document-meta {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .document-actions {
+        display: flex;
+        gap: 2px;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+    }
+
+    /* Always show actions on touch devices */
+    @@media (hover: none) {
+        .document-actions {
+            opacity: 1;
+        }
+    }
+</style>
+
+@code {
+    [Parameter]
+    public Guid? ConversationId { get; set; }
+
+    /// <summary>
+    /// Callback when the files list changes. Passes the current file names.
+    /// </summary>
+    [Parameter]
+    public EventCallback<IReadOnlyList<string>> OnFilesChanged { get; set; }
+
+    private List<ConversationFile> _files = new();
+
+    /// <summary>
+    /// Gets the current file names in this conversation.
+    /// </summary>
+    public IReadOnlyList<string> GetFileNames() => _files.Select(f => f.DisplayName).ToList();
+    private bool _isLoading;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ConversationId.HasValue)
+        {
+            await LoadFilesAsync();
+        }
+        else
+        {
+            _files.Clear();
+        }
+    }
+
+    public async Task RefreshAsync()
+    {
+        await LoadFilesAsync();
+    }
+
+    private async Task LoadFilesAsync()
+    {
+        if (!ConversationId.HasValue)
+        {
+            _files.Clear();
+            await OnFilesChanged.InvokeAsync(GetFileNames());
+            return;
+        }
+
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _files = (await DocumentService.GetFilesAsync(ConversationId.Value)).ToList();
+            // Notify parent of the current files list
+            await OnFilesChanged.InvokeAsync(GetFileNames());
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load documents: {ex.Message}", Severity.Error);
+            _files.Clear();
+            await OnFilesChanged.InvokeAsync(GetFileNames());
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadFile(ConversationFile file)
+    {
+        if (!ConversationId.HasValue) return;
+
+        try
+        {
+            var downloadUrl = DocumentService.GetDownloadUrl(ConversationId.Value, file.DisplayName);
+            // Use JS interop to trigger download with proper filename
+            await JSRuntime.InvokeVoidAsync("downloadFile", downloadUrl, file.DisplayName);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to download file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteFile(ConversationFile file)
+    {
+        if (!ConversationId.HasValue) return;
+
+        try
+        {
+            var success = await DocumentService.DeleteFileAsync(ConversationId.Value, file.DisplayName);
+            if (success)
+            {
+                _files.Remove(file);
+                Snackbar.Add($"Deleted '{file.DisplayName}'", Severity.Success);
+                await OnFilesChanged.InvokeAsync(GetFileNames());
+            }
+            else
+            {
+                Snackbar.Add($"Failed to delete '{file.DisplayName}'", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to delete file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static string TruncateName(string name, int maxLength)
+    {
+        if (string.IsNullOrEmpty(name)) return string.Empty;
+        return name.Length > maxLength ? name[..(maxLength - 3)] + "..." : name;
+    }
+
+    private static string GetFileIcon(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+            return Icons.Material.Filled.InsertDriveFile;
+
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".pdf" => Icons.Material.Filled.PictureAsPdf,
+            ".txt" or ".md" => Icons.Material.Filled.Description,
+            ".json" or ".xml" or ".csv" => Icons.Material.Filled.Code,
+            ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" => Icons.Material.Filled.Image,
+            ".doc" or ".docx" => Icons.Material.Filled.Article,
+            ".xls" or ".xlsx" => Icons.Material.Filled.TableChart,
+            ".ppt" or ".pptx" => Icons.Material.Filled.Slideshow,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+}

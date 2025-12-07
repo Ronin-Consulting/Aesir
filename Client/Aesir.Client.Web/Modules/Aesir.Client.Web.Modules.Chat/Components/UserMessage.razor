@@ -1,0 +1,206 @@
+@using Aesir.Common.Models
+@using Aesir.Client.Web.Modules.Chat.Components
+@using Aesir.Client.Web.Modules.Chat.Services
+@inject IDocumentApiService DocumentService
+@inject IJSRuntime JSRuntime
+
+<div class="user-message @ThemeClass">
+    <div class="message-bubble">
+        @* User Avatar with Initials - Inside the bubble *@
+        <div class="user-avatar" title="@UserDisplayName">
+            <span class="initials">@UserInitials</span>
+        </div>
+        <div class="message-content">
+            @if (Message.HasFile())
+            {
+                <div class="attached-files">
+                    @foreach (var fileName in Message.GetFileNames())
+                    {
+                        <FileAttachment FileName="@fileName"
+                                        Mode="FileAttachment.FileAttachmentMode.Attached"
+                                        ShowSize="false"
+                                        IsDeleted="@IsFileDeleted(fileName)"
+                                        OnClick="@(() => HandleFileClick(fileName))" />
+                    }
+                </div>
+            }
+            <span class="message-text">@GetDisplayContent()</span>
+        </div>
+    </div>
+</div>
+
+<style>
+    .user-message {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 16px;
+        padding: 0 48px;
+    }
+
+    .user-message .message-bubble {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-radius: 28px;
+        padding: 8px 20px 8px 8px;
+        max-width: 85%;
+    }
+
+    /* Dark theme styles */
+    .user-message.theme-dark .message-bubble {
+        background-color: #424242;
+    }
+
+    .user-message.theme-dark .user-avatar {
+        background-color: var(--mud-palette-primary);
+    }
+
+    .user-message.theme-dark .user-avatar .initials {
+        color: #ffffff;
+    }
+
+    .user-message.theme-dark .message-text {
+        color: #ffffff;
+    }
+
+    /* Light theme styles */
+    .user-message.theme-light .message-bubble {
+        background-color: #e0e0e0;
+    }
+
+    .user-message.theme-light .user-avatar {
+        background-color: var(--mud-palette-primary);
+    }
+
+    .user-message.theme-light .user-avatar .initials {
+        color: #ffffff;
+    }
+
+    .user-message.theme-light .message-text {
+        color: #212121;
+    }
+
+    .user-message .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .user-message .user-avatar .initials {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .user-message .message-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .user-message .attached-files {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .user-message .message-text {
+        font-size: 1rem;
+        line-height: 1.5;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public required AesirChatMessage Message { get; set; }
+
+    [Parameter]
+    public string UserDisplayName { get; set; } = "blangford@gmail.com";
+
+    [Parameter]
+    public Guid? ConversationId { get; set; }
+
+    /// <summary>
+    /// List of filenames that currently exist in the conversation.
+    /// Used to determine if a file has been deleted.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<string> ExistingFiles { get; set; } = [];
+
+    [CascadingParameter(Name = "IsDarkMode")]
+    private bool IsDarkMode { get; set; }
+
+    private string ThemeClass => IsDarkMode ? "theme-dark" : "theme-light";
+
+    private string UserInitials => GetInitials(UserDisplayName);
+
+    /// <summary>
+    /// Checks if the specified file attached to this message has been deleted.
+    /// </summary>
+    private bool IsFileDeleted(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+            return false;
+
+        // File is deleted if it's not in the existing files list
+        return !ExistingFiles.Contains(fileName, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+
+        // Handle email addresses - use the part before @
+        if (name.Contains('@'))
+        {
+            name = name.Split('@')[0];
+        }
+
+        // Try to split by common separators (space, dot, underscore)
+        var parts = name.Split([' ', '.', '_'], StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+        {
+            return $"{char.ToUpper(parts[0][0])}{char.ToUpper(parts[^1][0])}";
+        }
+
+        // Single name - take first two characters
+        if (name.Length >= 2)
+        {
+            return $"{char.ToUpper(name[0])}{char.ToUpper(name[1])}";
+        }
+
+        return name.Length > 0 ? char.ToUpper(name[0]).ToString() : "U";
+    }
+
+    private string GetDisplayContent()
+    {
+        if (Message.HasFile())
+        {
+            return Message.GetContentWithoutFileName() ?? Message.Content;
+        }
+        return Message.Content;
+    }
+
+    private async Task HandleFileClick(string fileName)
+    {
+        if (!ConversationId.HasValue || string.IsNullOrEmpty(fileName))
+            return;
+
+        try
+        {
+            var downloadUrl = DocumentService.GetDownloadUrl(ConversationId.Value, fileName);
+            await JSRuntime.InvokeVoidAsync("downloadFile", downloadUrl, fileName);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to download file: {ex.Message}");
+        }
+    }
+}

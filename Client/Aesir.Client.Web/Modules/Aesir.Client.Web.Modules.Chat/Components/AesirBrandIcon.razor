@@ -1,0 +1,185 @@
+@* AESIR Brand Icon - Static icon using the actual AESIR geometric logo *@
+
+<div class="aesir-brand-container @(ShowReadyMessage ? "with-message" : "")">
+    <div class="aesir-brand @SizeClass">
+        <img src="images/logo-blue.svg" alt="AESIR" class="brand-icon" />
+    </div>
+    @if (ShowReadyMessage)
+    {
+        <span class="ready-message">@_readyMessage</span>
+    }
+</div>
+
+<style>
+    .aesir-brand-container {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .aesir-brand-container.with-message {
+        flex-direction: row;
+    }
+
+    .aesir-brand {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .aesir-brand.size-small {
+        width: 20px;
+        height: 20px;
+    }
+
+    .aesir-brand.size-medium {
+        width: 28px;
+        height: 28px;
+    }
+
+    .aesir-brand.size-large {
+        width: 40px;
+        height: 40px;
+    }
+
+    .aesir-brand.size-extra-large {
+        width: 60px;
+        height: 60px;
+    }
+
+    .brand-icon {
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Subtle continuous shimmer effect - masked to SVG shape */
+    .aesir-brand {
+        position: relative;
+    }
+
+    .aesir-brand::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+            110deg,
+            transparent 0%,
+            transparent 40%,
+            rgba(255, 255, 255, 0.4) 50%,
+            transparent 60%,
+            transparent 100%
+        );
+        background-size: 200% 100%;
+        animation: subtleShimmer 4s ease-in-out infinite;
+        pointer-events: none;
+        /* Use the SVG as a mask so shimmer only shows on the shape */
+        -webkit-mask-image: url('images/logo-blue.svg');
+        mask-image: url('images/logo-blue.svg');
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+    }
+
+    @@keyframes subtleShimmer {
+        0% {
+            background-position: 200% 0;
+            opacity: 0;
+        }
+        10% {
+            opacity: 1;
+        }
+        90% {
+            opacity: 1;
+        }
+        100% {
+            background-position: -200% 0;
+            opacity: 0;
+        }
+    }
+
+    .ready-message {
+        font-size: 0.875rem;
+        font-style: italic;
+        color: var(--mud-palette-text-secondary);
+        opacity: 0.7;
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateX(-8px); }
+        to { opacity: 0.7; transform: translateX(0); }
+    }
+</style>
+
+@code {
+    private static readonly Random _random = new();
+    private string _readyMessage = string.Empty;
+
+    private static readonly string[] _readyMessages =
+    [
+        "Ready to rock!",
+        "What ya got now?",
+        "Bring it!",
+        "Let's go!",
+        "Fire away!",
+        "Hit me!",
+        "Ready when you are!",
+        "What's next?",
+        "I'm all ears!",
+        "Lay it on me!",
+        "Standing by...",
+        "At your service!",
+        "Ready for more!",
+        "What else?",
+        "Keep 'em coming!",
+        "I'm listening...",
+        "Go ahead!",
+        "Your move!",
+        "Awaiting orders...",
+        "Ready to assist!",
+        "What can I help with?",
+        "Challenge accepted!",
+        "Let's do this!",
+        "Locked and loaded!",
+        "Ask away!",
+        "I'm here for you!",
+        "Ready to roll!",
+        "What's on your mind?",
+        "How can I help?",
+        "The floor is yours!"
+    ];
+
+    [Parameter]
+    public BrandIconSize IconSize { get; set; } = BrandIconSize.Medium;
+
+    [Parameter]
+    public bool ShowReadyMessage { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        _readyMessage = _readyMessages[_random.Next(_readyMessages.Length)];
+    }
+
+    private string SizeClass => IconSize switch
+    {
+        BrandIconSize.Small => "size-small",
+        BrandIconSize.Large => "size-large",
+        BrandIconSize.ExtraLarge => "size-extra-large",
+        _ => "size-medium"
+    };
+
+    public enum BrandIconSize
+    {
+        Small,
+        Medium,
+        Large,
+        ExtraLarge
+    }
+}
