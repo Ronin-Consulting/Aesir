@@ -36,8 +36,9 @@ public class ChatService : BaseChatService
     /// Service responsible for managing collections of documents related to conversations.
     /// Supports operations such as retrieval, search, and integration of document collections
     /// into conversation workflows for enhanced dialogue-based interactions.
+    /// This service is optional and will be null if no embedding engine is configured.
     /// </summary>
-    private readonly IConversationDocumentCollectionService _conversationDocumentCollectionService;
+    private readonly IConversationDocumentCollectionService? _conversationDocumentCollectionService;
 
     /// <summary>
     /// An instance of the IKernelPluginService interface, providing access to kernel plugin-related
@@ -84,7 +85,7 @@ public class ChatService : BaseChatService
         IServiceProvider serviceProvider,
         string inferenceEngineId,
         IChatHistoryService chatHistoryService,
-        IConversationDocumentCollectionService conversationDocumentCollectionService,
+        IConversationDocumentCollectionService? conversationDocumentCollectionService,
         bool enableThinking = false)
         : base(logger, chatHistoryService, kernel, serviceProvider, inferenceEngineId)
     {

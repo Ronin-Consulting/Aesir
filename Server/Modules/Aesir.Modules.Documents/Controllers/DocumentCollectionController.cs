@@ -222,6 +222,93 @@ public class DocumentCollectionController(
         return await DeleteFileAsync(conversationId, "ConversationId", FolderType.Conversation, filename);
     }
 
+    /// <summary>
+    /// Moves all files from one conversation to another.
+    /// This is used when a session ID is assigned after files were uploaded with a temporary conversation ID.
+    /// </summary>
+    /// <param name="sourceConversationId">The source conversation ID containing the files.</param>
+    /// <param name="targetConversationId">The target conversation ID to move files to.</param>
+    /// <returns>An <see cref="IActionResult"/> indicating the result of the operation.</returns>
+    [HttpPost("conversations/{sourceConversationId}/move/{targetConversationId}")]
+    public async Task<IActionResult> MoveConversationFilesAsync(
+        [FromRoute] string sourceConversationId,
+        [FromRoute] string targetConversationId)
+    {
+        if (string.IsNullOrWhiteSpace(sourceConversationId))
+            return BadRequest("Source conversation ID is required.");
+
+        if (string.IsNullOrWhiteSpace(targetConversationId))
+            return BadRequest("Target conversation ID is required.");
+
+        if (sourceConversationId == targetConversationId)
+            return Ok(new { message = "Source and target are the same, no migration needed", count = 0 });
+
+        try
+        {
+            // Get all files from the source conversation
+            var sourceFiles = await fileStorageService.GetFilesByFolderAsync(sourceConversationId);
+            var fileList = sourceFiles.ToList();
+
+            if (fileList.Count == 0)
+            {
+                return Ok(new { message = "No files to migrate", count = 0 });
+            }
+
+            var migratedCount = 0;
+
+            foreach (var file in fileList)
+            {
+                try
+                {
+                    // Get file content
+                    var fileContent = await fileStorageService.GetFileContentAsync(file.FileName);
+                    if (fileContent == null)
+                    {
+                        logger.LogWarning("Could not retrieve content for file {FileName}", file.FileName);
+                        continue;
+                    }
+
+                    // Read file bytes
+                    byte[] fileBytes;
+                    await using (var fileStream = new FileStream(fileContent.Value.TempFile.FilePath, FileMode.Open, FileAccess.Read))
+                    {
+                        fileBytes = new byte[fileStream.Length];
+                        await fileStream.ReadExactlyAsync(fileBytes.AsMemory());
+                    }
+
+                    // Create new filename with target conversation ID
+                    var originalFileName = Path.GetFileName(file.FileName.TrimStart('/').Split('/').LastOrDefault() ?? file.FileName);
+                    var newVirtualFilename = $"/{targetConversationId}/{originalFileName}";
+
+                    // Upload to new location
+                    await fileStorageService.UpsertFileAsync(newVirtualFilename, file.MimeType, fileBytes);
+
+                    // Delete from old location
+                    await fileStorageService.DeleteFileAsync(file.Id);
+
+                    // Clean up temp file
+                    fileContent.Value.TempFile.Dispose();
+
+                    migratedCount++;
+                    logger.LogInformation("Migrated file {FileName} from {Source} to {Target}",
+                        originalFileName, sourceConversationId, targetConversationId);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error migrating file {FileName}", file.FileName);
+                }
+            }
+
+            return Ok(new { message = $"Migrated {migratedCount} files", count = migratedCount });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error migrating files from {Source} to {Target}",
+                sourceConversationId, targetConversationId);
+            return StatusCode(500, "An error occurred while migrating files.");
+        }
+    }
+
     #endregion
 
     #region Common Methods
@@ -336,7 +423,8 @@ public class DocumentCollectionController(
 
         try
         {
-            var virtualFilename = $"{folderId}/{filename}";
+            // Files are stored with leading slash: /{folderId}/{filename}
+            var virtualFilename = $"/{folderId}/{filename}";
             return await GetFileContentCoreAsync(virtualFilename);
         }
         catch (Exception ex)

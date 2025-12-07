@@ -165,12 +165,26 @@ public abstract class BaseChatService(
     {
         request = request ?? throw new ArgumentNullException(nameof(request));
 
+        // Generate a new session ID if one isn't provided (new chat)
+        request.ChatSessionId ??= Guid.NewGuid();
+
         var completionId = Guid.NewGuid().ToString();
         var messageToSave = AesirChatMessage.NewAssistantMessage("");
 
+        // Use the existing title from request, but treat "title-not-set" as empty
         var title = request.Title;
+        if (string.IsNullOrEmpty(title) || title == "title-not-set")
+        {
+            // Try to fetch existing title from database for existing sessions
+            if (request.ChatSessionId.HasValue)
+            {
+                var existingSession = await _chatHistoryService.GetChatSessionAsync(request.ChatSessionId.Value);
+                title = existingSession?.Title ?? string.Empty;
+            }
+        }
+
         var titleTask = Task.FromResult(title);
-        if (request.Conversation.Messages.Count == 2)
+        if (request.Conversation.Messages.Count == 2 && string.IsNullOrEmpty(title))
         {
             titleTask = GetTitleForUserMessageAsync(request);
         }
@@ -364,6 +378,7 @@ public abstract class BaseChatService(
 
     /// <summary>
     /// Renders the system prompt within the conversation by applying the provided arguments to the system message template.
+    /// If no system message exists in the conversation, a default one will be added.
     /// </summary>
     /// <param name="conversation">
     /// The conversation containing the messages, including the system message that needs to be rendered with the given arguments.
@@ -371,12 +386,21 @@ public abstract class BaseChatService(
     /// <param name="arguments">
     /// A dictionary of key-value pairs representing the variables to replace in the system message template.
     /// </param>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when there is no system message present in the provided conversation.
-    /// </exception>
     protected void RenderSystemPrompt(AesirConversation conversation, Dictionary<string, object> arguments)
     {
-        var systemPromptMessage = conversation.Messages.First(m => m.Role == "system");
+        var systemPromptMessage = conversation.Messages.FirstOrDefault(m => m.Role == "system");
+
+        // If no system message exists, add a default one
+        if (systemPromptMessage == null)
+        {
+            systemPromptMessage = new AesirChatMessage
+            {
+                Role = "system",
+                Content = "You are a helpful AI assistant."
+            };
+            conversation.Messages.Insert(0, systemPromptMessage);
+        }
+
         var systemPromptTemplate = new PromptTemplate(
             systemPromptMessage.Content
         );

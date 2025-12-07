@@ -158,7 +158,7 @@ public class OpenAIInferenceModule : ModuleBase
             var kernelPluginService = sp.GetRequiredService<IKernelPluginService>();
             var chatHistoryService = sp.GetRequiredService<IChatHistoryService>();
             var conversationDocumentCollectionService =
-                sp.GetRequiredService<IConversationDocumentCollectionService>();
+                sp.GetService<IConversationDocumentCollectionService>();
 
             return new ChatService(
                 logger,

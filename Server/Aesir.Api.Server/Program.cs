@@ -33,7 +33,12 @@ public class Program
             {
                 options.AddPolicy("AllowAvaloniaApp", policy =>
                 {
-                    policy.WithOrigins("http://aesir.localhost:5236")
+                    policy.WithOrigins(
+                            "http://aesir.localhost:5236",
+                            "http://localhost:5173",
+                            "https://localhost:5173",
+                            "http://localhost:5000",
+                            "https://localhost:5001")
                         .AllowAnyMethod()
                         .AllowAnyHeader();
                 });

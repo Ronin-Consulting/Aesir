@@ -68,9 +68,11 @@ public class ConfigurationService(
 
         foreach (var inferenceEngine in inferenceEngines)
         {
+            var config = inferenceEngine.Configuration;
+
             if (inferenceEngine.Type == InferenceEngineType.OpenAICompatible)
             {
-                if (inferenceEngine.Configuration?["ApiKey"] == null)
+                if (config == null || !config.TryGetValue("ApiKey", out var apiKey) || string.IsNullOrEmpty(apiKey))
                 {
                     configurationReadinessService.ReportMissingConfiguration(
                         $"API Key missing for Inference Engine {inferenceEngine.Name}");
@@ -79,7 +81,7 @@ public class ConfigurationService(
                 }
             }
 
-            if (inferenceEngine.Configuration?["Endpoint"] == null)
+            if (config == null || !config.TryGetValue("Endpoint", out var endpoint) || string.IsNullOrEmpty(endpoint))
             {
                 configurationReadinessService.ReportMissingConfiguration(
                     $"Endpoint missing for Inference Engine {inferenceEngine.Name}");

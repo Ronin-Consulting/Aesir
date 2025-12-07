@@ -6,14 +6,14 @@ namespace Aesir.Modules.Inference.Services;
 
 public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSettings>(
     Kernel kernel,
-    IConversationDocumentCollectionService conversationDocumentCollectionService,
+    IConversationDocumentCollectionService? conversationDocumentCollectionService,
     IKernelPluginService kernelPluginService)
     where TPromptExecutionSettings : PromptExecutionSettings
 {
     // ReSharper disable once MemberCanBePrivate.Global
     protected readonly Kernel Kernel = kernel;
     // ReSharper disable once MemberCanBePrivate.Global
-    protected readonly IConversationDocumentCollectionService ConversationDocumentCollectionService = conversationDocumentCollectionService;
+    protected readonly IConversationDocumentCollectionService? ConversationDocumentCollectionService = conversationDocumentCollectionService;
 
     protected readonly IKernelPluginService KernelPluginService = kernelPluginService;
 

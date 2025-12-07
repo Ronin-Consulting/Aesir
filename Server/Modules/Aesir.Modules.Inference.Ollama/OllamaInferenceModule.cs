@@ -66,21 +66,29 @@ public class OllamaInferenceModule : ModuleBase
         var inferenceEngines = await ConfigurationService!.GetInferenceEnginesAsync();
         var generalSettings = await ConfigurationService!.GetGeneralSettingsAsync();
 
+        Logger.LogInformation("[Ollama] Found {Count} inference engines", inferenceEngines.Count());
+        Logger.LogInformation("[Ollama] General settings: RagEmbeddingInferenceEngineId={EmbeddingEngineId}, RagEmbeddingModel={EmbeddingModel}",
+            generalSettings.RagEmbeddingInferenceEngineId, generalSettings.RagEmbeddingModel);
+
         foreach (var inferenceEngine in inferenceEngines)
         {
+            Logger.LogInformation("[Ollama] Processing inference engine: {Name} (Id={Id}, Type={Type})",
+                inferenceEngine.Name, inferenceEngine.Id, inferenceEngine.Type);
+
             if (!ConfigurationReadinessService!.IsInferenceEngineReadyAtBoot(inferenceEngine.Id!.Value))
             {
                 Logger.LogWarning("Configuration for Inference Engine {EngineName} is not ready and being skipped for initialization", inferenceEngine.Name);
                 continue;
             }
-            
+
             switch (inferenceEngine.Type)
             {
                 case InferenceEngineType.Ollama:
                 {
-                    RegisterSemanticKernelInferenceServices(services, inferenceEngine, generalSettings);
+                    Logger.LogInformation("[Ollama] Registering services for Ollama engine: {Name}", inferenceEngine.Name);
+                    RegisterSemanticKernelInferenceServices(services, inferenceEngine, generalSettings, Logger);
                     RegisterInferenceEngine(services, inferenceEngine);
-                    
+
                     break;
                 }
                 case InferenceEngineType.OpenAICompatible:
@@ -99,9 +107,11 @@ public class OllamaInferenceModule : ModuleBase
     /// <param name="services">The service collection in which to register the inference services.</param>
     /// <param name="inferenceEngine">The configuration of the inference engine to initialize services for.</param>
     /// <param name="generalSettings">The general settings utilized for configuring the inference engine.</param>
+    /// <param name="logger">The logger for diagnostic output.</param>
     private static void RegisterSemanticKernelInferenceServices(IServiceCollection services,
         AesirInferenceEngine inferenceEngine,
-        AesirGeneralSettings generalSettings)
+        AesirGeneralSettings generalSettings,
+        ILogger logger)
     {
         var inferenceEngineIdKey = inferenceEngine.Id.ToString();
 
@@ -110,8 +120,7 @@ public class OllamaInferenceModule : ModuleBase
 
         if (ragEmbeddingInferenceEngineId == null)
         {
-            // Note: This is a static method, so we can't use instance Logger. This will be addressed in Phase 4.
-            Console.Write("Configuration for RAG embedding inference engine is not ready and being skipped for initialization");
+            logger.LogWarning("[Ollama] RAG embedding inference engine ID is null - skipping embedding generator registration");
         }
 
         services.AddOllamaChatCompletion(null, inferenceEngineIdKey);
@@ -119,8 +128,12 @@ public class OllamaInferenceModule : ModuleBase
         services.AddKeyedSingleton<IChatCompletionServiceFactory>(inferenceEngineIdKey,
             (sp, key) => new ChatCompletionServiceFactory(sp, inferenceEngineIdKey!));
 
+        logger.LogInformation("[Ollama] Checking embedding registration: InferenceEngineId={EngineId}, RagEmbeddingInferenceEngineId={RagId}, Match={IsMatch}",
+            inferenceEngine.Id, ragEmbeddingInferenceEngineId, inferenceEngine.Id == ragEmbeddingInferenceEngineId);
+
         if (inferenceEngine.Id == ragEmbeddingInferenceEngineId)
         {
+            logger.LogInformation("[Ollama] Registering IEmbeddingGenerator with model: {Model}", embeddingModel);
             const string? serviceId = null;
             services.AddKeyedSingleton<IEmbeddingGenerator<string, Embedding<float>>>(serviceId, (serviceProvider, _) =>
             {
@@ -139,6 +152,10 @@ public class OllamaInferenceModule : ModuleBase
 
                 return builder.Build(serviceProvider);
             });
+        }
+        else
+        {
+            logger.LogInformation("[Ollama] IEmbeddingGenerator NOT registered - engine ID does not match RAG embedding engine ID");
         }
     }
 
@@ -170,11 +187,12 @@ public class OllamaInferenceModule : ModuleBase
             var kernelPluginService = sp.GetRequiredService<IKernelPluginService>();
             var chatHistoryService = sp.GetRequiredService<IChatHistoryService>();
             var conversationDocumentCollectionService =
-                sp.GetRequiredService<IConversationDocumentCollectionService>();
+                sp.GetService<IConversationDocumentCollectionService>();
 
             var ollamaApiClient = sp.GetRequiredKeyedService<OllamaApiClient>(inferenceEngineIdKey);
 
-            var enableThinking = bool.Parse(inferenceEngine.Configuration["EnableChatModelThinking"] ?? "false");
+            var enableThinking = inferenceEngine.Configuration.TryGetValue("EnableChatModelThinking", out var thinkingValue)
+                && bool.TryParse(thinkingValue, out var thinking) && thinking;
 
             return new ChatService(
                 logger,

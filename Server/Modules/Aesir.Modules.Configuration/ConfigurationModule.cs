@@ -28,31 +28,41 @@ public class ConfigurationModule : ModuleBase
     public override async Task RegisterServicesAsync(IServiceCollection services)
     {
         await Task.CompletedTask;
-        
+
         var factoryInstance = Infrastructure.Services.ConfigurationServiceFactory.Instance();
 
         factoryInstance!.DefaultConfigurationServiceFactory =
             (Func<ILoggerFactory, IDbContext, IConfiguration, ConfigurationService>?)
             ConfigurationServiceFactory;
-        
-        // singleton readiness service
-        var configurationReadinessService = new ConfigurationReadinessService();
-        
-        factoryInstance!.DefaultConfigurationReadinessServiceFactory = 
-            (_, d, i) => configurationReadinessService;
-        
+
+        factoryInstance!.DefaultConfigurationReadinessServiceFactory =
+            (Func<ILoggerFactory, IDbContext, IConfiguration, ConfigurationReadinessService>?)
+            ConfigurationReadinessServiceFactory;
+
         // Register configuration readiness service as singleton (maintains boot-time state)
-        services.AddSingleton<IConfigurationReadinessService>((sp) => factoryInstance.CreateConfigurationReadinessService());
+        // Using factory delegate to allow DI to provide the service provider
+        services.AddSingleton<IConfigurationReadinessService>(sp => new ConfigurationReadinessService(sp));
 
         // Register main configuration service as singleton (manages all configuration)
         services.AddSingleton<IConfigurationService>((sp) => factoryInstance.CreateConfigurationService());
-        
+
         return;
-        
+
         ConfigurationService ConfigurationServiceFactory(ILoggerFactory f, IDbContext d, IConfiguration i)
         {
             var logger = f.CreateLogger<ConfigurationService>();
             return new ConfigurationService(logger, d, i);
+        }
+
+        ConfigurationReadinessService ConfigurationReadinessServiceFactory(ILoggerFactory f, IDbContext d, IConfiguration i)
+        {
+            // Build a temporary service provider to get required services
+            var tempServices = new ServiceCollection();
+            tempServices.AddSingleton(f);
+            tempServices.AddSingleton(d);
+            tempServices.AddSingleton(i);
+            var sp = tempServices.BuildServiceProvider();
+            return new ConfigurationReadinessService(sp);
         }
     }
 

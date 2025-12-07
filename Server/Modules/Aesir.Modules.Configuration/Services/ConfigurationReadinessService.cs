@@ -1,4 +1,5 @@
 using Aesir.Infrastructure.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Aesir.Modules.Configuration.Services;
 
@@ -7,9 +8,14 @@ namespace Aesir.Modules.Configuration.Services;
 /// </summary>
 public class ConfigurationReadinessService : IConfigurationReadinessService
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly List<string> _missingRequiredConfigurationReasons = [];
-
     private readonly HashSet<Guid> _nonReadyInferenceEngines = [];
+
+    public ConfigurationReadinessService(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+    }
 
     /// <summary>
     /// Indicates whether the configuration was in a ready state during boot up.
@@ -52,5 +58,35 @@ public class ConfigurationReadinessService : IConfigurationReadinessService
     public bool IsInferenceEngineReadyAtBoot(Guid inferenceEngineId)
     {
         return !_nonReadyInferenceEngines.Contains(inferenceEngineId);
+    }
+
+    /// <summary>
+    /// Clears all current readiness status data to prepare for a fresh evaluation.
+    /// </summary>
+    public void ClearStatus()
+    {
+        _missingRequiredConfigurationReasons.Clear();
+        _nonReadyInferenceEngines.Clear();
+    }
+
+    /// <summary>
+    /// Refreshes the configuration readiness status by re-evaluating all configuration requirements.
+    /// </summary>
+    public async Task RefreshAsync()
+    {
+        ClearStatus();
+
+        // Re-run configuration checks
+        using var scope = _serviceProvider.CreateScope();
+        var configurationService = scope.ServiceProvider.GetRequiredService<IConfigurationService>();
+
+        if (configurationService.DatabaseMode)
+        {
+            await configurationService.PrepareDatabaseConfigurationAsync(this);
+        }
+        else
+        {
+            configurationService.PrepareFileConfigurationAsync();
+        }
     }
 }

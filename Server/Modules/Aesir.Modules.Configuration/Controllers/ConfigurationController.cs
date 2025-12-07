@@ -45,6 +45,37 @@ public class ConfigurationController(
         return Ok(model);
     }
 
+    /// <summary>
+    /// Reloads the configuration and re-evaluates system readiness.
+    /// Call this endpoint after making configuration changes to update the readiness state.
+    /// </summary>
+    /// <returns>The updated configuration readiness status.</returns>
+    [HttpPost("reload")]
+    public async Task<IActionResult> ReloadConfigurationAsync()
+    {
+        try
+        {
+            logger.LogInformation("Configuration reload requested");
+
+            await configurationReadinessService.RefreshAsync();
+
+            var model = new AesirConfigurationReadinessBase()
+            {
+                IsReady = configurationReadinessService.IsReadyAtBoot,
+                Reasons = configurationReadinessService.MissingRequiredConfigurationReasons
+            };
+
+            logger.LogInformation("Configuration reload complete. IsReady = {IsReady}", model.IsReady);
+
+            return Ok(model);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error reloading configuration");
+            return StatusCode(500, "An error occurred while reloading configuration");
+        }
+    }
+
     [HttpGet("databaseconfigurationmode")]
     public IActionResult IsInDatabaseConfigurationMode()
     {

@@ -46,4 +46,16 @@ public interface IConfigurationReadinessService
     /// True if the inference engine is ready at boot; otherwise, false.
     /// </returns>
     bool IsInferenceEngineReadyAtBoot(Guid inferenceEngineId);
+
+    /// <summary>
+    /// Refreshes the configuration readiness status by re-evaluating all configuration requirements.
+    /// Clears all existing reasons and re-checks the current configuration state.
+    /// </summary>
+    /// <returns>A task representing the asynchronous refresh operation.</returns>
+    Task RefreshAsync();
+
+    /// <summary>
+    /// Clears all current readiness status data to prepare for a fresh evaluation.
+    /// </summary>
+    void ClearStatus();
 }

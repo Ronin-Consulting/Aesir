@@ -202,7 +202,7 @@ Do not generate library-specific code without first consulting context7 document
     - `IDbConnectionFactory` should be Singleton
     - Repositories should be Scoped
     - `IUnitOfWork` should be Scoped
-- **MVVM Pattern**: When developing Desktop applications, when using ViewModels they should derive from ViewModelBase, use CommunityToolkit.Mvvm
+- **Component Pattern**: For Blazor components, use code-behind pattern for complex logic. See Blazor WebAssembly Client Guidelines section for details
 - **Error Handling**: Use try/catch with specific exception types, avoid general Exception catches
 
 ## Logging Guidelines
@@ -215,9 +215,8 @@ Do not generate library-specific code without first consulting context7 document
 - **Format**: Simple text format with correlation IDs for request tracking
 
 ### Configuration Files
-- **API**: `src/Server/Aesir.Api/nlog.config`
-- **Desktop**: `src/Desktop/Aesir.Desktop.Agent/nlog.config`
-- Both configurations include:
+- **API**: `Server/Aesir.Api.Server/nlog.config`
+- Configuration includes:
     - File targets for all logs and errors
     - Console output for development
     - Automatic log rotation (daily)
@@ -350,21 +349,6 @@ finally
 }
 ```
 
-**Desktop (App.axaml.cs)**:
-```csharp
-using NLog;
-using NLog.Extensions.Logging;
-
-private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-
-services.AddLogging(loggingBuilder =>
-{
-    loggingBuilder.ClearProviders();
-    loggingBuilder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
-    loggingBuilder.AddNLog();
-});
-```
-
 ### Log Files
 - **Location**: `logs/` directory in application root
 - **Rotation**: Daily (automatically archived)
@@ -467,5 +451,214 @@ docker tag aesir-api:latest your-registry/aesir-api:v1.0.0
 - **Kubernetes Manifests**: `k8s/` directory
 - **Environment Template**: `.env.example`
 
+## Blazor WebAssembly Client Guidelines
+
+### Project Structure
+The Blazor WebAssembly client is located at `Client/Aesir.Client.Web/`:
+```
+Client/Aesir.Client.Web/
+├── Aesir.Client.Web.App/              # Main Blazor WASM application
+│   ├── Layout/                        # Layout components
+│   ├── Pages/                         # App-level pages (Home)
+│   ├── wwwroot/                       # Static assets, appsettings.json
+│   ├── App.razor                      # Root component with providers
+│   ├── Program.cs                     # Service registration
+│   └── _Imports.razor                 # Global usings
+├── Aesir.Client.Web.Infrastructure/   # Shared client infrastructure
+│   ├── Http/                          # API client (IApiClient, ApiClient)
+│   ├── Modules/                       # Module system interfaces
+│   └── Services/                      # Shared services
+├── Modules/                           # Feature modules
+│   └── Aesir.Client.Web.Modules.Chat/ # Chat module
+│       ├── Pages/                     # Module pages
+│       ├── Components/                # Module components
+│       ├── Services/                  # Module services
+│       └── ChatModule.cs              # Module registration
+└── src-tauri/                         # Tauri desktop configuration
+```
+
+### UI Framework
+- **Component Library**: MudBlazor 8.x (Material Design)
+- **Providers Required** (in App.razor):
+  ```razor
+  <MudThemeProvider />
+  <MudPopoverProvider />
+  <MudDialogProvider />
+  <MudSnackbarProvider />
+  ```
+- **Service Registration**:
+  ```csharp
+  builder.Services.AddMudServices();
+  ```
+
+### Module System
+
+#### Architectural Decision
+Blazor client modules use **explicit project references** for component visibility (compile-time) combined with **runtime discovery** for services and routes.
+
+**Why explicit references for components:**
+- Razor components are compiled at build time
+- IntelliSense, Go to Definition require project references
+- Compile-time type checking for component parameters
+
+**What uses explicit project references (compile-time):**
+- Component visibility (`<ChatMessage />` tags in Razor)
+- `@using` directives in `_Imports.razor`
+- Strongly-typed component parameters
+
+**What uses auto-discovery (runtime):**
+- Service registration via `IClientModule.RegisterServices()`
+- Route scanning (Blazor scans `@page` directives from referenced assemblies)
+- Navigation menu items via `INavigationRegistry`
+
+#### Creating a New Module
+
+1. **Create project** at `Modules/Aesir.Client.Web.Modules.{Name}/`
+2. **Add project reference** in `Aesir.Client.Web.App.csproj`:
+   ```xml
+   <ProjectReference Include="..\Modules\Aesir.Client.Web.Modules.{Name}\..." />
+   ```
+3. **Implement `IClientModule`**:
+   ```csharp
+   public class MyModule : ClientModuleBase
+   {
+       public override string Name => "MyModule";
+       public override string Version => "1.0.0";
+       public override string Description => "Description here";
+
+       public override void RegisterServices(IServiceCollection services)
+       {
+           services.AddScoped<IMyService, MyService>();
+       }
+
+       public override void RegisterNavigation(INavigationRegistry registry)
+       {
+           registry.Register(new NavigationItem
+           {
+               Title = "My Page",
+               Href = "/mypage",
+               Icon = "Dashboard",
+               Priority = 50
+           });
+       }
+   }
+   ```
+4. **Register module** in `Program.cs`:
+   ```csharp
+   builder.Services.AddModule<MyModule>();
+   ```
+5. **Add namespace** to `_Imports.razor`:
+   ```razor
+   @using Aesir.Client.Web.Modules.{Name}
+   ```
+6. **Add assembly** to router in `App.razor`:
+   ```csharp
+   private static readonly Assembly[] AdditionalAssemblies =
+   [
+       typeof(ChatModule).Assembly,
+       typeof(MyModule).Assembly  // Add new module
+   ];
+   ```
+
+### API Client
+
+#### Interface
+```csharp
+public interface IApiClient
+{
+    Task<T?> GetAsync<T>(string endpoint, CancellationToken ct = default);
+    Task<T?> PostAsync<T>(string endpoint, object data, CancellationToken ct = default);
+    Task<T?> PutAsync<T>(string endpoint, object data, CancellationToken ct = default);
+    Task<bool> DeleteAsync(string endpoint, CancellationToken ct = default);
+    IAsyncEnumerable<T> StreamAsync<T>(string endpoint, CancellationToken ct = default);
+    IAsyncEnumerable<T> StreamPostAsync<T>(string endpoint, object data, CancellationToken ct = default);
+}
+```
+
+#### Configuration
+```csharp
+// Program.cs
+var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5000";
+builder.Services.AddAesirApiClient(apiBaseUrl);
+```
+
+#### Usage in Components
+```csharp
+@inject IApiClient ApiClient
+
+@code {
+    private List<Agent>? _agents;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _agents = await ApiClient.GetAsync<List<Agent>>("/api/configuration/agents");
+    }
+}
+```
+
+### Tauri Desktop Integration
+
+#### Configuration
+The Tauri configuration is in `src-tauri/tauri.conf.json`:
+```json
+{
+  "build": {
+    "frontendDist": "../Aesir.Client.Web.App/bin/Release/net10.0/publish/wwwroot",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "dotnet publish Aesir.Client.Web.App -c Release"
+  }
+}
+```
+
+#### Development Workflow
+```bash
+# Browser development (primary - hot reload)
+cd Client/Aesir.Client.Web/Aesir.Client.Web.App
+dotnet watch run --urls "http://localhost:5173"
+
+# Desktop development (connects to dev server)
+cd Client/Aesir.Client.Web
+cargo tauri dev
+
+# Production build (creates native app)
+cargo tauri build
+```
+
+### Best Practices
+
+#### Component Patterns
+- Use `@inject` for dependency injection in components
+- Prefer `EventCallback` over direct method calls for parent-child communication
+- Use cascading parameters for deeply nested state
+
+#### State Management
+- Simple: Component state + cascading parameters
+- Medium: Custom services + events (recommended for AESIR)
+- Complex: Fluxor (Redux-like) - overkill for most cases
+
+#### Naming Conventions
+- **Pages**: `{Feature}Page.razor` (e.g., `ChatPage.razor`)
+- **Components**: Descriptive names (e.g., `ChatMessage.razor`, `AgentSelector.razor`)
+- **Services**: `I{Name}Service` / `{Name}Service`
+- **Modules**: `{Feature}Module.cs`
+
+#### Code-Behind Pattern
+For complex components, use code-behind:
+```csharp
+// ChatPage.razor.cs
+public partial class ChatPage
+{
+    [Inject] private IApiClient ApiClient { get; set; } = null!;
+
+    private async Task LoadDataAsync() { ... }
+}
+```
+
 ## Plan Creation
 - Always create a detailed plan and wait for approval before implementing any code changes.
+- Always add newly created work plans to the Solution Items.
+- Always consider using the stylized Æ ligature in prominent areas
+- Dont run docker-compose-aesir-all.yml it is old and will be removed in the future.  Only run the DEV version.
+- remember that the API is always at https://aesir.localhost becuase we use reverse proxy.
+- I will do most of the testing manually unless I tell you to do the testing for me.
+- **CRITICAL**: The API server must ALWAYS be run from Docker container, never locally. Connection strings use Docker service names (e.g., `pgdb`) which only resolve within the Docker network. Do NOT attempt to run `dotnet run` on the server project directly.

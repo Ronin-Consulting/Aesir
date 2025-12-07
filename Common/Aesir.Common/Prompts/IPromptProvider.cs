@@ -40,6 +40,11 @@ public interface IPromptProvider
 public enum PromptPersona
 {
     /// <summary>
+    /// Represents the default prompt persona with no specific context.
+    /// </summary>
+    [Description("Default")] Default,
+
+    /// <summary>
     /// Represents a prompt persona focused on business contexts, suitable for corporate, professional, or enterprise use cases.
     /// </summary>
     [Description("Business")] Business,

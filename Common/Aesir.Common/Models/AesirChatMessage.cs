@@ -40,44 +40,43 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     }
 
     /// <summary>
-    /// Adds or updates a file reference in the content of the message.
+    /// Adds a file reference to the content of the message. Supports multiple files.
     /// </summary>
-    /// <param name="filename">The name of the file to be added or updated in the content.</param>
+    /// <param name="filename">The name of the file to be added to the content.</param>
     public void AddFile(string filename)
     {
         if (Role != "user") return;
-        
-        // Try to replace existing <file>...</file> tag with new filename
-        var originalContent = Content;
-        Content = System.Text.RegularExpressions.Regex.Replace(
-            Content, 
-            @"<file>.*?</file>", 
-            $"<file>{filename}</file>", 
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-    
-        // If no replacement was made (no existing file tag), add the file tag
-        if (Content == originalContent)
-        {
-            Content = $"<file>{filename}</file>{Content}";
-        }
+
+        // Always prepend the file tag (supports multiple files)
+        Content = $"<file>{filename}</file>{Content}";
     }
 
     /// <summary>
-    /// Extracts the file name from the message content if a file tag is present.
+    /// Extracts the first file name from the message content if a file tag is present.
+    /// For multiple files, use GetFileNames().
     /// </summary>
     /// <returns>The extracted file name if a file tag exists; otherwise, null.</returns>
     public string? GetFileName()
     {
-        if (Role != "user") return null;
+        var fileNames = GetFileNames();
+        return fileNames.Count > 0 ? fileNames[0] : null;
+    }
 
-        if (!HasFile()) return null;
-        
-        var match = System.Text.RegularExpressions.Regex.Match(
-            Content, 
-            @"<file>(.*?)</file>", 
+    /// <summary>
+    /// Extracts all file names from the message content.
+    /// </summary>
+    /// <returns>A list of file names found in the message content.</returns>
+    public IReadOnlyList<string> GetFileNames()
+    {
+        if (Role != "user" || !HasFile())
+            return Array.Empty<string>();
+
+        var matches = System.Text.RegularExpressions.Regex.Matches(
+            Content,
+            @"<file>(.*?)</file>",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        
-        return match.Success ? match.Groups[1].Value : null;
+
+        return matches.Select(m => m.Groups[1].Value).ToList();
     }
 
     /// <summary>
@@ -101,6 +100,7 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
 
     /// <summary>
     /// Gets the message content with file references included and formatted for display.
+    /// Supports multiple files.
     /// </summary>
     /// <returns>The message content with file references included and formatted for display.</returns>
     public string? GetContentWithFileName()
@@ -109,15 +109,25 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
 
         // Use regex to remove all <file>...</file> tags
         var result = System.Text.RegularExpressions.Regex.Replace(
-            Content, 
-            @"<file>.*?</file>", 
-            string.Empty, 
+            Content,
+            @"<file>.*?</file>",
+            string.Empty,
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-    
+
         result = result.Trim();
 
-        result = $"The file is: {GetFileName()}\n{result}";
-        
+        // Format all files for the LLM
+        var fileNames = GetFileNames();
+        if (fileNames.Count == 1)
+        {
+            result = $"The file is: {fileNames[0]}\n{result}";
+        }
+        else if (fileNames.Count > 1)
+        {
+            var fileList = string.Join(", ", fileNames);
+            result = $"The files are: {fileList}\n{result}";
+        }
+
         // Clean up any extra whitespace that might be left
         return result.Trim();
     }
