@@ -1,0 +1,81 @@
+@inherits Microsoft.AspNetCore.Components.Web.ErrorBoundary
+@inject NavigationManager Navigation
+
+@if (CurrentException is not null)
+{
+    <MudContainer MaxWidth="MaxWidth.Small" Class="error-boundary-container">
+        <MudPaper Elevation="3" Class="pa-6 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline"
+                     Color="Color.Error"
+                     Style="font-size: 4rem;" />
+
+            <MudText Typo="Typo.h5" Class="mt-4" Color="Color.Error">
+                Something went wrong
+            </MudText>
+
+            <MudText Typo="Typo.body1" Class="mt-2" Color="Color.Secondary">
+                An unexpected error occurred. Please try refreshing the page or going back to home.
+            </MudText>
+
+            @if (ShowDetails)
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-4 text-left" Dense="true">
+                    <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap;">
+                        @CurrentException.Message
+                    </MudText>
+                </MudAlert>
+            }
+
+            <MudStack Row="true" Justify="Justify.Center" Spacing="2" Class="mt-6">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="@Recover">
+                    Try Again
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.Home"
+                           OnClick="@GoHome">
+                    Go Home
+                </MudButton>
+            </MudStack>
+
+            <MudButton Variant="Variant.Text"
+                       Size="Size.Small"
+                       Color="Color.Secondary"
+                       OnClick="@ToggleDetails"
+                       Class="mt-4">
+                @(ShowDetails ? "Hide Details" : "Show Details")
+            </MudButton>
+        </MudPaper>
+    </MudContainer>
+}
+else
+{
+    @ChildContent
+}
+
+<style>
+    .error-boundary-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 60vh;
+        padding: 24px;
+    }
+</style>
+
+@code {
+    private bool ShowDetails { get; set; }
+
+    private void ToggleDetails()
+    {
+        ShowDetails = !ShowDetails;
+    }
+
+    private void GoHome()
+    {
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+}

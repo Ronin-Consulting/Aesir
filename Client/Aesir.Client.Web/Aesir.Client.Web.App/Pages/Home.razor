@@ -1,0 +1,10 @@
+@page "/"
+@inject NavigationManager Navigation
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Redirect to splash screen for backend initialization checks
+        Navigation.NavigateTo("/splash", replace: true);
+    }
+}

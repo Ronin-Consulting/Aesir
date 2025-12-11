@@ -1,0 +1,302 @@
+@page "/splash"
+@using Aesir.Client.Web.Infrastructure.Services
+@using Aesir.Client.Web.Infrastructure.Theme
+@using Aesir.Client.Web.Modules.Chat.Services
+@inject IConfigurationApiService ConfigurationService
+@inject IChatHistoryService ChatHistoryService
+@inject NavigationManager Navigation
+
+<PageTitle>ÆSIR - Starting...</PageTitle>
+
+<div class="splash-screen">
+    <div class="splash-content">
+        <img src="images/logo-blue.svg" alt="ÆSIR" class="splash-logo" />
+
+        <div class="loading-container">
+            @if (_hasError)
+            {
+                <div class="error-container">
+                    <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large" />
+                    <p class="error-title">Connection Failed</p>
+                    <p class="error-message">@_errorMessage</p>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="RetryInitialization"
+                               Class="mt-4">
+                        Retry Connection
+                    </MudButton>
+                </div>
+            }
+            else
+            {
+                <div class="loading-bar">
+                    <div class="loading-bar-progress" style="@GetProgressStyle()"></div>
+                </div>
+                <p class="loading-text">@_statusMessage</p>
+            }
+        </div>
+
+        <p class="sponsor-text">Sponsored by Ronin Consulting LLC</p>
+    </div>
+</div>
+
+<style>
+    .splash-screen {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: @AesirTheme.DarkBackground;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 9999;
+    }
+
+    .splash-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 40px;
+    }
+
+    .splash-logo {
+        width: 500px;
+        max-width: 90vw;
+        margin-bottom: 60px;
+        animation: fadeIn 0.8s ease-out;
+    }
+
+    .loading-container {
+        width: 500px;
+        max-width: 90vw;
+        animation: fadeIn 1s ease-out 0.3s both;
+    }
+
+    .loading-bar {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .loading-bar-progress {
+        height: 100%;
+        background: linear-gradient(90deg, @AesirTheme.AccentBlue, #2563EB);
+        border-radius: 3px;
+        transition: width 0.3s ease-out;
+    }
+
+    .loading-text {
+        margin-top: 20px;
+        color: rgba(255, 255, 255, 0.7);
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        font-weight: 400;
+    }
+
+    .error-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .error-title {
+        margin-top: 16px;
+        color: @AesirTheme.DarkTextPrimary;
+        font-family: 'Inter', sans-serif;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .error-message {
+        margin-top: 8px;
+        color: rgba(255, 255, 255, 0.6);
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        font-weight: 400;
+        max-width: 400px;
+    }
+
+    .sponsor-text {
+        position: fixed;
+        bottom: 30px;
+        color: rgba(255, 255, 255, 0.4);
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        font-weight: 300;
+        animation: fadeIn 1.2s ease-out 0.6s both;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+@code {
+    private const int MaxRetries = 5;
+    private const int RetryDelayMs = 2000;
+
+    private string _statusMessage = "Connecting to server...";
+    private int _progress = 0;
+    private bool _hasError = false;
+    private string? _errorMessage;
+    private bool _isNotConfigured = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await InitializeAsync();
+        }
+    }
+
+    private async Task InitializeAsync()
+    {
+        _hasError = false;
+        _errorMessage = null;
+        _isNotConfigured = false;
+
+        try
+        {
+            // Delay between steps for smooth progress visualization
+            const int stepDelayMs = 2000;
+
+            // Step 1: Check system readiness
+            await UpdateStatus("Checking system configuration...", 10);
+            await Task.Delay(stepDelayMs);
+            var readiness = await CheckWithRetryAsync(
+                () => ConfigurationService.GetSystemReadinessAsync(),
+                "system configuration");
+
+            if (readiness == null)
+            {
+                await ShowError("Unable to connect to the ÆSIR server. Please ensure the server is running.");
+                return;
+            }
+
+            if (!readiness.IsReady)
+            {
+                // System not configured - redirect to wizard
+                _isNotConfigured = true;
+                await UpdateStatus("Configuration required...", 100);
+                await Task.Delay(500);
+                Navigation.NavigateTo("/wizard/welcome", replace: true);
+                return;
+            }
+
+            // Step 2: Load agents
+            await UpdateStatus("Loading agents...", 40);
+            await Task.Delay(stepDelayMs);
+            var agentsResult = await CheckWithRetryAsync(
+                () => ConfigurationService.GetAgentsAsync(),
+                "agents");
+
+            if (agentsResult == null)
+            {
+                await ShowError("Unable to load agents. Please check server connection.");
+                return;
+            }
+
+            // Step 3: Load chat sessions
+            await UpdateStatus("Loading chat sessions...", 70);
+            await Task.Delay(stepDelayMs);
+            var sessionsResult = await ChatHistoryService.LoadSessionsAsync();
+
+            if (!sessionsResult.IsSuccess)
+            {
+                // Log but don't fail - sessions may be empty for new users
+                Console.WriteLine($"Warning: Could not load chat sessions: {sessionsResult.Error}");
+            }
+
+            // Step 4: Complete
+            await UpdateStatus("Starting ÆSIR...", 100);
+            await Task.Delay(stepDelayMs);
+
+            // Navigate to chat
+            Navigation.NavigateTo("/chat", replace: true);
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"An unexpected error occurred: {ex.Message}");
+        }
+    }
+
+    private async Task<T?> CheckWithRetryAsync<T>(
+        Func<Task<Infrastructure.Http.ApiResult<T>>> apiCall,
+        string operationName) where T : class
+    {
+        for (int attempt = 1; attempt <= MaxRetries; attempt++)
+        {
+            try
+            {
+                var result = await apiCall();
+
+                if (result.IsSuccess && result.Value != null)
+                {
+                    return result.Value;
+                }
+
+                if (attempt < MaxRetries)
+                {
+                    await UpdateStatus($"Retrying {operationName} ({attempt}/{MaxRetries})...", _progress);
+                    await Task.Delay(RetryDelayMs);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Attempt {attempt} failed for {operationName}: {ex.Message}");
+
+                if (attempt < MaxRetries)
+                {
+                    await UpdateStatus($"Retrying {operationName} ({attempt}/{MaxRetries})...", _progress);
+                    await Task.Delay(RetryDelayMs);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private async Task UpdateStatus(string message, int progress)
+    {
+        _statusMessage = message;
+        _progress = progress;
+        StateHasChanged();
+        await Task.Delay(100); // Allow UI to update
+    }
+
+    private async Task ShowError(string message)
+    {
+        _hasError = true;
+        _errorMessage = message;
+        StateHasChanged();
+        await Task.CompletedTask;
+    }
+
+    private async Task RetryInitialization()
+    {
+        _hasError = false;
+        _errorMessage = null;
+        _progress = 0;
+        StateHasChanged();
+        await InitializeAsync();
+    }
+
+    private string GetProgressStyle()
+    {
+        return $"width: {_progress}%";
+    }
+}

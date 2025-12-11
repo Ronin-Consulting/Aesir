@@ -1,0 +1,85 @@
+@using Aesir.Client.Web.Infrastructure.Services
+@using Aesir.Client.Web.Infrastructure.Theme
+@inject IThemeService ThemeService
+@inject IPlatformDetectionService PlatformDetection
+@implements IDisposable
+
+<MudThemeProvider @ref="_themeProvider" Theme="_theme" IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<CascadingValue Value="_isDarkMode" Name="IsDarkMode">
+<CascadingValue Value="ThemeService" Name="ThemeService">
+    <AppErrorBoundary>
+        <Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="@AdditionalAssemblies">
+            <Found Context="routeData">
+                <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
+                <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+            </Found>
+            <NotFound>
+                <PageTitle>Not Found</PageTitle>
+                <LayoutView Layout="@typeof(Layout.MainLayout)">
+                    <MudContainer Class="mt-16 text-center">
+                        <MudIcon Icon="@Icons.Material.Filled.SearchOff"
+                                 Style="font-size: 4rem; opacity: 0.5;"
+                                 Color="Color.Secondary" />
+                        <MudText Typo="Typo.h4" GutterBottom="true" Class="mt-4">
+                            Page Not Found
+                        </MudText>
+                        <MudText Typo="Typo.body1" Color="Color.Secondary">
+                            Sorry, the page you're looking for doesn't exist.
+                        </MudText>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Href="/"
+                                   StartIcon="@Icons.Material.Filled.Home"
+                                   Class="mt-4">
+                            Go to Home
+                        </MudButton>
+                    </MudContainer>
+                </LayoutView>
+            </NotFound>
+        </Router>
+    </AppErrorBoundary>
+</CascadingValue>
+</CascadingValue>
+
+@code {
+    // Include module assemblies for route scanning
+    private static readonly System.Reflection.Assembly[] AdditionalAssemblies =
+    [
+        typeof(Aesir.Client.Web.Modules.Chat.ChatModule).Assembly,
+        typeof(Aesir.Client.Web.Modules.Settings.SettingsModule).Assembly,
+        typeof(Aesir.Client.Web.Modules.Wizard.WizardModule).Assembly
+    ];
+
+    private MudThemeProvider? _themeProvider;
+    private readonly MudTheme _theme = AesirTheme.Create();
+    private bool _isDarkMode = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize platform detection (must be done via JS interop after render)
+            await PlatformDetection.InitializeAsync();
+
+            await ThemeService.InitializeAsync();
+            _isDarkMode = ThemeService.IsDarkMode;
+            ThemeService.ThemeChanged += OnThemeChanged;
+            StateHasChanged();
+        }
+    }
+
+    private void OnThemeChanged(object? sender, bool isDarkMode)
+    {
+        _isDarkMode = isDarkMode;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ThemeService.ThemeChanged -= OnThemeChanged;
+    }
+}

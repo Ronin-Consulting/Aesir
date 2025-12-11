@@ -1,0 +1,116 @@
+@inherits LayoutComponentBase
+@inject INavigationRegistry NavigationRegistry
+@inject IConfigurationApiService ConfigurationService
+@inject IWizardStateService WizardState
+@inject IThemeService ThemeService
+@inject NavigationManager Navigation
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+        <img src="images/logo-blue.svg"
+             alt="AESIR"
+             height="32"
+             class="ml-2" />
+        <MudText Typo="Typo.h5" Class="ml-2">ÆSIR</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit"
+                       OnClick="@ToggleThemeAsync"
+                       Title="@(_isDarkMode ? "Switch to light mode" : "Switch to dark mode")" />
+        <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Inherit" Href="/settings" />
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+        <MudNavMenu>
+            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+            @foreach (var item in NavigationRegistry.GetItems())
+            {
+                <MudNavLink Href="@item.Href" Match="NavLinkMatch.Prefix" Icon="@GetIcon(item.Icon)">
+                    @item.Title
+                </MudNavLink>
+            }
+        </MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="my-4 pt-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    [CascadingParameter(Name = "IsDarkMode")]
+    private bool _isDarkMode { get; set; } = true;
+
+    private bool _drawerOpen = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await CheckConfigurationAsync();
+        }
+    }
+
+    private async Task CheckConfigurationAsync()
+    {
+        // Skip check if already on the setup page
+        var currentUri = Navigation.Uri;
+        if (currentUri.Contains("/setup", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        try
+        {
+            // First check if wizard was already completed (localStorage)
+            var wizardCompleted = await WizardState.CheckWizardCompletedAsync();
+            if (wizardCompleted)
+            {
+                return;
+            }
+
+            // Check system readiness from API
+            var readinessResult = await ConfigurationService.GetSystemReadinessAsync();
+            if (readinessResult.IsSuccess && readinessResult.Value?.IsReady == true)
+            {
+                // System is ready, mark wizard as completed
+                await WizardState.CompleteWizardAsync();
+                return;
+            }
+
+            // System not ready and wizard not completed - redirect to setup
+            Navigation.NavigateTo("/setup");
+        }
+        catch
+        {
+            // On error (e.g., API unreachable), allow navigation without redirect
+        }
+    }
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        await ThemeService.ToggleThemeAsync();
+    }
+
+    private string GetIcon(string? iconName)
+    {
+        // Map icon names to MudBlazor Icons
+        return iconName?.ToLower() switch
+        {
+            "chat" => Icons.Material.Filled.Chat,
+            "history" => Icons.Material.Filled.History,
+            "settings" => Icons.Material.Filled.Settings,
+            "home" => Icons.Material.Filled.Home,
+            "wizard" => Icons.Material.Filled.AutoAwesome,
+            _ => Icons.Material.Filled.Circle
+        };
+    }
+}

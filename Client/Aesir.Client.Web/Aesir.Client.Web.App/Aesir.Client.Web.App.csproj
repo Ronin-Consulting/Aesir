@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0-*" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.0-*" PrivateAssets="all" />
+    <PackageReference Include="MudBlazor" Version="8.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aesir.Client.Web.Infrastructure\Aesir.Client.Web.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Aesir.Client.Web.Modules.Chat\Aesir.Client.Web.Modules.Chat.csproj" />
+    <ProjectReference Include="..\Modules\Aesir.Client.Web.Modules.Settings\Aesir.Client.Web.Modules.Settings.csproj" />
+    <ProjectReference Include="..\Modules\Aesir.Client.Web.Modules.Wizard\Aesir.Client.Web.Modules.Wizard.csproj" />
+  </ItemGroup>
+
+</Project>
