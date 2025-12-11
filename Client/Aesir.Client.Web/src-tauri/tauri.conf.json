@@ -79,17 +79,6 @@
   "plugins": {
     "shell": {
       "open": true
-    },
-    "dialog": {},
-    "fs": {
-      "scope": {
-        "allow": ["$TEMP/**", "$DOWNLOAD/**"],
-        "deny": []
-      }
-    },
-    "os": {},
-    "opener": {
-      "open": true
     }
   }
 }
