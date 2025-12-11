@@ -71,9 +71,17 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Modules.Inference", "Server\Modules\Aesir.Modules.Inference\Aesir.Modules.Inference.csproj", "{869F5ABA-70FA-4451-ACDC-74A87C1B9609}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Aesir.Client.Web", "Aesir.Client.Web", "{F0E11866-5CBB-70D7-B828-0C853EED6857}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src-tauri", "src-tauri", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
 	ProjectSection(SolutionItems) = preProject
 		Client\Aesir.Client.Web\src-tauri\Cargo.toml = Client\Aesir.Client.Web\src-tauri\Cargo.toml
+		Client\Aesir.Client.Web\src-tauri\build.rs = Client\Aesir.Client.Web\src-tauri\build.rs
+		Client\Aesir.Client.Web\src-tauri\tauri.conf.json = Client\Aesir.Client.Web\src-tauri\tauri.conf.json
+		Client\Aesir.Client.Web\src-tauri\.gitignore = Client\Aesir.Client.Web\src-tauri\.gitignore
+		Client\Aesir.Client.Web\src-tauri\src\lib.rs = Client\Aesir.Client.Web\src-tauri\src\lib.rs
+		Client\Aesir.Client.Web\src-tauri\src\main.rs = Client\Aesir.Client.Web\src-tauri\src\main.rs
 		Client\Aesir.Client.Web\src-tauri\capabilities\default.json = Client\Aesir.Client.Web\src-tauri\capabilities\default.json
+		Client\Aesir.Client.Web\src-tauri\README.md = Client\Aesir.Client.Web\src-tauri\README.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Client.Web.Infrastructure", "Client\Aesir.Client.Web\Aesir.Client.Web.Infrastructure\Aesir.Client.Web.Infrastructure.csproj", "{D3CE5296-2A47-4B75-AF74-87B0D8948323}"
@@ -408,5 +416,6 @@ Global
 		{0359F731-8BA0-42F6-82FF-E2499BD63C37} = {F0E11866-5CBB-70D7-B828-0C853EED6857}
 		{F41D0BE4-D70F-42B4-994E-65B0E82F312E} = {8EB20F60-ACA4-A2FA-1B47-1AFCC4CAD3B4}
 		{4A32106B-AA39-430E-B987-834CC1BDD103} = {8EB20F60-ACA4-A2FA-1B47-1AFCC4CAD3B4}
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890} = {F0E11866-5CBB-70D7-B828-0C853EED6857}
 	EndGlobalSection
 EndGlobal

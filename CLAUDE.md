@@ -2,6 +2,23 @@
 
 This document contains guidelines and instructions for Claude Code when working in this project.
 
+## Table of Contents
+
+1. [Project Configuration](#project-configuration)
+2. [Code Generation](#code-generation)
+3. [Data Access Guidelines](#data-access-guidelines)
+4. [API Documentation (Swagger)](#api-documentation-swagger)
+5. [Code Style Guidelines](#code-style-guidelines)
+6. [Logging Guidelines](#logging-guidelines)
+7. [Docker & Kubernetes Guidelines](#docker--kubernetes-guidelines)
+8. [Blazor WebAssembly Client Guidelines](#blazor-webassembly-client-guidelines)
+9. [Development Environment](#development-environment)
+10. [MCP Tools](#mcp-tools)
+11. [Testing Guidelines](#testing-guidelines)
+12. [Planning & Workflow](#planning--workflow)
+
+---
+
 ## Project Configuration
 
 - **Target Framework:** .NET 10.0
@@ -360,26 +377,22 @@ finally
 ## Docker & Kubernetes Guidelines
 
 ### Docker Configuration
-- **Dockerfile Location**: `src/Server/Aesir.Api/Dockerfile`
+- **Dockerfile Location**: `Server/Aesir.Api.Server/Dockerfile`
 - **Base Images**:
-    - Build: `mcr.microsoft.com/dotnet/sdk:9.0`
-    - Runtime: `mcr.microsoft.com/dotnet/aspnet:9.0`
+    - Build: `mcr.microsoft.com/dotnet/sdk:10.0`
+    - Runtime: `mcr.microsoft.com/dotnet/aspnet:10.0`
 - **Multi-stage Build**: Required for optimal image size (~200MB runtime)
 - **Non-root User**: Always run as `appuser` (UID 1000)
 - **Exposed Ports**: 8080 (HTTP), 8081 (HTTPS)
 - **Health Check**: Built-in via `/health` endpoint
 
 ### Docker Compose
-- **Development**: `docker-compose.yml`
+- **Development**: `docker-compose-api-dev.yml`
     - Includes PostgreSQL container
+    - Traefik reverse proxy (https://aesir.localhost)
     - Volume mounts for logs
-    - Port mappings: 5000:8080, 5001:8081
     - Development environment variables
-- **Production**: `docker-compose.prod.yml`
-    - Resource limits configured
-    - Optimized health checks
-    - Logging driver configuration
-    - Security hardening
+- **Deprecated**: `docker-compose-aesir-all.yml` (do not use, will be removed)
 - **Environment**: Configure via `.env` file (never commit!)
 
 ### Health Check Endpoint
@@ -388,7 +401,7 @@ finally
     - `200 OK` - API healthy, database connected
     - `503 Service Unavailable` - API unhealthy
 - **Dependencies Checked**: PostgreSQL connectivity
-- **Package**: `AspNetCore.HealthChecks.NpgSql` version 9.0.0
+- **Package**: `AspNetCore.HealthChecks.NpgSql` version 10.0.0
 
 ### Kubernetes (K3s) Configuration
 - **Namespace**: `aesir`
@@ -406,7 +419,7 @@ finally
 **Image Building**:
 ```bash
 # Build from solution root
-docker build -t aesir-api:latest -f src/Server/Aesir.Api/Dockerfile .
+docker build -t aesir-api:latest -f Server/Aesir.Api.Server/Dockerfile .
 
 # Tag for registry
 docker tag aesir-api:latest your-registry/aesir-api:v1.0.0
@@ -446,10 +459,8 @@ docker tag aesir-api:latest your-registry/aesir-api:v1.0.0
 - Scan images for vulnerabilities
 
 ### Documentation
-- **Docker Guide**: `DOCKER.md` - Complete deployment instructions
-- **Docker Compose**: `docker-compose.yml` (dev), `docker-compose.prod.yml` (prod)
-- **Kubernetes Manifests**: `k8s/` directory
-- **Environment Template**: `.env.example`
+- **Docker Compose**: `docker-compose-api-dev.yml` (development)
+- **Environment Template**: `.env.example` (if available)
 
 ## Blazor WebAssembly Client Guidelines
 
@@ -654,11 +665,53 @@ public partial class ChatPage
 }
 ```
 
-## Plan Creation
-- Always create a detailed plan and wait for approval before implementing any code changes.
-- Always add newly created work plans to the Solution Items.
-- Always consider using the stylized Æ ligature in prominent areas
-- Dont run docker-compose-aesir-all.yml it is old and will be removed in the future.  Only run the DEV version.
-- remember that the API is always at https://aesir.localhost becuase we use reverse proxy.
-- I will do most of the testing manually unless I tell you to do the testing for me.
-- **CRITICAL**: The API server must ALWAYS be run from Docker container, never locally. Connection strings use Docker service names (e.g., `pgdb`) which only resolve within the Docker network. Do NOT attempt to run `dotnet run` on the server project directly.
+## Development Environment
+
+### API Server
+- **CRITICAL**: The API server must ALWAYS be run from Docker container, never locally
+- Connection strings use Docker service names (e.g., `pgdb`) which only resolve within the Docker network
+- Do NOT attempt to run `dotnet run` on the server project directly
+
+### API URL
+- The API is always accessible at `https://aesir.localhost` via reverse proxy (Traefik)
+- All client applications should use this URL for API communication
+
+### Docker Compose
+- **Use**: `docker-compose-api-dev.yml` for development
+- **Do NOT use**: `docker-compose-aesir-all.yml` (deprecated, will be removed)
+
+## MCP Tools
+
+### Context7 (Documentation)
+- **Purpose**: Fetch up-to-date documentation for external libraries and frameworks
+- **Required**: Must be installed and available
+- **Usage**: Always use Context7 before generating library-specific code (see Code Generation section)
+- If Context7 is not available, ask to have it installed
+
+### Playwright (Browser Testing)
+- **Purpose**: Automated browser testing for the web application
+- **Required**: Must be installed and available
+- **Usage**: Always use Playwright MCP tool when testing the web app in the browser
+- If Playwright is not available, ask to have it installed
+
+## Testing Guidelines
+
+### Manual Testing
+- The user will perform most testing manually unless explicitly asked to run tests
+- Do not run test suites unless specifically requested
+
+### Automated Browser Testing
+- Use the Playwright MCP tool for browser-based testing
+- Navigate to `https://aesir.localhost` for testing the web client
+- Take screenshots to verify UI state when appropriate
+
+## Planning & Workflow
+
+### Work Plans
+- Always create a detailed plan and wait for approval before implementing any code changes
+- Add newly created work plans to the Solution Items in the solution file
+- Work plan files should follow the naming convention: `WORK_PLAN_RELEASE_{N}.md`
+
+### Branding
+- Use the stylized Æ ligature (ÆSIR) in prominent areas where appropriate
+- The application name is "Aesir" or "ÆSIR" for stylized display
