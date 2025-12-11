@@ -14,6 +14,8 @@ public class Migration20250730124501 : Migration
 
     public override void Down()
     {
-        throw new NotImplementedException();
+        Rename.Table("aesir_agent_tool")
+            .InSchema("aesir")
+            .To("aesir_agent_tools");
     }
 }

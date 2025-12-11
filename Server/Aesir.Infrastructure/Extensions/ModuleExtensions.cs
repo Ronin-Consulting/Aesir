@@ -87,12 +87,7 @@ public static class ModuleExtensions
     public static IServiceCollection AddAesirFeatureModules(this IServiceCollection services, IConfiguration configuration)
     {
         // Get or create ILoggerFactory from services
-        using var loggerFactory = LoggerFactory.Create(builder => {
-        {
-            //builder.ClearProviders(); // Clear default providers like Console
-            //builder.SetMinimumLevel(LogLevel.Trace); // Set desired minimum logging level
-            builder.AddNLog();
-        } });
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddNLog());
         var logger = loggerFactory.CreateLogger("ModuleExtensions");
 
         EnsureModulesDiscovered(loggerFactory);
@@ -142,12 +137,7 @@ public static class ModuleExtensions
     public static IEnumerable<System.Reflection.Assembly> GetModuleAssemblies()
     {
         // Create a logger factory for module discovery
-        using var loggerFactory = LoggerFactory.Create(builder => {
-        {
-            //builder.ClearProviders(); // Clear default providers like Console
-            //builder.SetMinimumLevel(LogLevel.Trace); // Set desired minimum logging level
-            builder.AddNLog();
-        } });
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddNLog());
         return ModuleDiscovery.DiscoverModuleAssemblies(loggerFactory);
     }
 

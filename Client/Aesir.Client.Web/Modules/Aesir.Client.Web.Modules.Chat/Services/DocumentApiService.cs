@@ -95,6 +95,14 @@ public class DocumentApiService : IDocumentApiService
     }
 
     /// <inheritdoc />
+    public string GetThumbnailUrl(Guid conversationId, string filename)
+    {
+        var encodedFilename = Uri.EscapeDataString(filename);
+        var baseUrl = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "";
+        return $"{baseUrl}/document/collections/conversations/{conversationId}/files/{encodedFilename}/thumbnail";
+    }
+
+    /// <inheritdoc />
     public bool IsFileTypeSupported(string filename)
     {
         if (string.IsNullOrEmpty(filename))
@@ -121,4 +129,144 @@ public class DocumentApiService : IDocumentApiService
         var response = await _httpClient.PostAsync(endpoint, null, ct);
         return response.IsSuccessStatusCode;
     }
+
+    #region Citation Viewer Methods
+
+    /// <inheritdoc />
+    public async Task<CitationFileMetadata?> GetCitationMetadataAsync(
+        string conversationId,
+        string filename,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var encodedFilename = Uri.EscapeDataString(filename);
+            var endpoint = $"/document/collections/conversations/{conversationId}/files/{encodedFilename}/info";
+
+            var response = await _httpClient.GetAsync(endpoint, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<CitationFileMetadata>(ct);
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<byte[]?> GetCitationContentAsync(
+        string conversationId,
+        string filename,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var encodedFilename = Uri.EscapeDataString(filename);
+            var endpoint = $"/document/collections/conversations/{conversationId}/files/{encodedFilename}/content";
+
+            var response = await _httpClient.GetAsync(endpoint, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            return await response.Content.ReadAsByteArrayAsync(ct);
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public string GetCitationViewUrl(string conversationId, string filename)
+    {
+        var encodedFilename = Uri.EscapeDataString(filename);
+        var baseUrl = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "";
+        // Use the inline endpoint that sets Content-Disposition: inline
+        // This allows browsers to display PDFs and images directly instead of downloading
+        return $"{baseUrl}/document/collections/file/{conversationId}/{encodedFilename}";
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetCitationDataUrlAsync(
+        string conversationId,
+        string filename,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var content = await GetCitationContentAsync(conversationId, filename, ct);
+            if (content == null)
+            {
+                return null;
+            }
+
+            // Determine MIME type from extension
+            var mimeType = GetMimeTypeFromExtension(filename);
+            var base64 = Convert.ToBase64String(content);
+
+            return $"data:{mimeType};base64,{base64}";
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> CitationExistsAsync(
+        string conversationId,
+        string filename,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var encodedFilename = Uri.EscapeDataString(filename);
+            var endpoint = $"/document/collections/conversations/{conversationId}/files/{encodedFilename}/content";
+
+            // Use HEAD request to check existence without downloading content
+            var request = new HttpRequestMessage(HttpMethod.Head, endpoint);
+            var response = await _httpClient.SendAsync(request, ct);
+
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets the MIME type for a file based on its extension.
+    /// </summary>
+    private static string GetMimeTypeFromExtension(string filename)
+    {
+        var extension = Path.GetExtension(filename).ToLowerInvariant();
+        return extension switch
+        {
+            ".pdf" => "application/pdf",
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".bmp" => "image/bmp",
+            ".tiff" or ".tif" => "image/tiff",
+            ".txt" or ".log" => "text/plain",
+            ".md" or ".markdown" => "text/markdown",
+            ".json" => "application/json",
+            ".xml" => "application/xml",
+            ".csv" => "text/csv",
+            ".html" or ".htm" => "text/html",
+            _ => "application/octet-stream"
+        };
+    }
+
+    #endregion
 }

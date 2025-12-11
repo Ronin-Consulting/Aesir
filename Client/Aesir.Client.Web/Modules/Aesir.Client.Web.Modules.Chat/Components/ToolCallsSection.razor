@@ -1,0 +1,153 @@
+@using Aesir.Common.Models
+
+@if (ToolCalls?.Count > 0)
+{
+    <div class="tool-calls-section">
+        <div class="tool-calls-toggle @(_expanded ? "expanded" : "")" @onclick="ToggleExpanded">
+            <div class="toggle-left">
+                <MudIcon Icon="@(_expanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                         Size="Size.Small" Class="toggle-icon" />
+                <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Small" Class="tools-icon" />
+                <span class="toggle-text">@GetSummaryText()</span>
+            </div>
+            @if (HasActiveToolCalls)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="active-spinner" />
+            }
+        </div>
+        @if (_expanded)
+        {
+            <div class="tool-calls-content">
+                @foreach (var toolCall in ToolCalls)
+                {
+                    <ToolCallCard ToolCall="toolCall" DefaultExpanded="@ShouldExpandCard(toolCall)" />
+                }
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .tool-calls-section {
+        width: 100%;
+        margin-bottom: 12px;
+    }
+
+    .tool-calls-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        cursor: pointer;
+        padding: 10px 14px;
+        background-color: rgba(156, 39, 176, 0.1);
+        border-radius: 8px;
+        transition: background-color 0.2s ease;
+    }
+
+    .tool-calls-toggle:hover {
+        background-color: rgba(156, 39, 176, 0.15);
+    }
+
+    .toggle-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .tool-calls-toggle .toggle-icon {
+        color: #9C27B0;
+        transition: transform 0.2s ease;
+    }
+
+    .tool-calls-toggle .tools-icon {
+        color: #9C27B0;
+    }
+
+    .toggle-text {
+        font-size: 0.9rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .active-spinner {
+        width: 18px !important;
+        height: 18px !important;
+        color: #9C27B0;
+    }
+
+    .tool-calls-content {
+        padding: 12px;
+        background-color: rgba(156, 39, 176, 0.05);
+        border-radius: 0 0 8px 8px;
+        margin-top: -4px;
+        border-left: 2px solid #9C27B0;
+        animation: fadeIn 0.2s ease;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+@code {
+    private bool _expanded = false;
+    private bool _autoExpandedOnce = false;
+
+    [Parameter]
+    public IReadOnlyList<AesirToolCallInfo>? ToolCalls { get; set; }
+
+    [Parameter]
+    public bool AutoExpandWhenActive { get; set; } = true;
+
+    [Parameter]
+    public bool IsStreaming { get; set; } = false;
+
+    private bool HasActiveToolCalls => ToolCalls?.Any(tc => tc.Status == ToolCallStatus.Started) ?? false;
+
+    protected override void OnParametersSet()
+    {
+        // Auto-expand when tools become active during streaming
+        if (AutoExpandWhenActive && IsStreaming && HasActiveToolCalls && !_autoExpandedOnce)
+        {
+            _expanded = true;
+            _autoExpandedOnce = true;
+        }
+    }
+
+    private void ToggleExpanded()
+    {
+        _expanded = !_expanded;
+    }
+
+    private string GetSummaryText()
+    {
+        if (ToolCalls == null || ToolCalls.Count == 0)
+            return "No tools used";
+
+        var total = ToolCalls.Count;
+        var completed = ToolCalls.Count(tc => tc.Status == ToolCallStatus.Completed);
+        var failed = ToolCalls.Count(tc => tc.Status == ToolCallStatus.Failed);
+        var inProgress = ToolCalls.Count(tc => tc.Status == ToolCallStatus.Started);
+
+        if (inProgress > 0)
+        {
+            var toolWord = total == 1 ? "tool" : "tools";
+            return $"Using {total} {toolWord}...";
+        }
+
+        if (failed > 0)
+        {
+            return $"Used {total} tools ({completed} completed, {failed} failed)";
+        }
+
+        var usedToolWord = total == 1 ? "tool" : "tools";
+        return $"Used {total} {usedToolWord}";
+    }
+
+    private bool ShouldExpandCard(AesirToolCallInfo toolCall)
+    {
+        // Expand cards that are in progress or failed
+        return toolCall.Status == ToolCallStatus.Started || toolCall.Status == ToolCallStatus.Failed;
+    }
+}

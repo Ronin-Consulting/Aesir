@@ -1,0 +1,281 @@
+@using Aesir.Client.Web.Modules.Chat.Models
+@inject IJSRuntime JSRuntime
+
+@* Text Citation Viewer - Displays text files with syntax highlighting *@
+
+<div class="text-viewer-container">
+    @if (!string.IsNullOrEmpty(TextContent))
+    {
+        <div class="text-viewer-toolbar">
+            <div class="text-info">
+                <span class="text-language">@GetLanguageLabel()</span>
+                <span class="text-line-count">@_lineCount lines</span>
+            </div>
+            <div class="text-actions">
+                <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
+                               Size="Size.Small"
+                               OnClick="CopyToClipboard"
+                               Class="text-action-btn"
+                               aria-label="Copy to clipboard" />
+                @if (FileType == CitationFileType.Markdown)
+                {
+                    <MudIconButton Icon="@(_showRendered ? Icons.Material.Outlined.Code : Icons.Material.Outlined.Visibility)"
+                                   Size="Size.Small"
+                                   OnClick="ToggleRendered"
+                                   Class="text-action-btn"
+                                   aria-label="@(_showRendered ? "Show source" : "Show rendered")" />
+                }
+            </div>
+        </div>
+
+        <div class="text-content-area">
+            @if (FileType == CitationFileType.Markdown && _showRendered)
+            {
+                <div class="markdown-rendered">
+                    @((MarkupString)_renderedMarkdown)
+                </div>
+            }
+            else
+            {
+                <pre class="text-pre"><code class="@GetLanguageClass()">@TextContent</code></pre>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-placeholder">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        </div>
+    }
+</div>
+
+<style>
+    .text-viewer-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background-color: #1e1e2e;
+    }
+
+    .text-viewer-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 16px;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        flex-shrink: 0;
+    }
+
+    .text-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .text-language {
+        background-color: rgba(74, 144, 217, 0.2);
+        color: #4A90D9;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    .text-line-count {
+        color: var(--mud-palette-text-secondary);
+        font-size: 0.8rem;
+    }
+
+    .text-actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    .text-action-btn {
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .text-action-btn:hover {
+        color: white;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .text-content-area {
+        flex: 1;
+        overflow: auto;
+        padding: 16px;
+    }
+
+    .text-pre {
+        margin: 0;
+        padding: 0;
+        background-color: transparent;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        color: #e0e0e0;
+    }
+
+    .text-pre code {
+        color: inherit;
+        background: transparent;
+        padding: 0;
+    }
+
+    /* JSON syntax colors */
+    .language-json {
+        color: #e0e0e0;
+    }
+
+    /* XML syntax colors */
+    .language-xml {
+        color: #e0e0e0;
+    }
+
+    /* Markdown rendered view */
+    .markdown-rendered {
+        color: var(--mud-palette-text-primary);
+        line-height: 1.6;
+    }
+
+    .markdown-rendered h1,
+    .markdown-rendered h2,
+    .markdown-rendered h3 {
+        margin-top: 16px;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .markdown-rendered p {
+        margin: 8px 0;
+    }
+
+    .markdown-rendered code {
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+
+    .markdown-rendered pre {
+        background-color: rgba(0, 0, 0, 0.3);
+        padding: 16px;
+        border-radius: 8px;
+        overflow-x: auto;
+    }
+
+    .markdown-rendered pre code {
+        background: transparent;
+        padding: 0;
+    }
+
+    .markdown-rendered a {
+        color: #4A90D9;
+    }
+
+    .markdown-rendered ul,
+    .markdown-rendered ol {
+        margin: 8px 0;
+        padding-left: 24px;
+    }
+
+    .markdown-rendered blockquote {
+        border-left: 4px solid #4A90D9;
+        padding-left: 16px;
+        margin: 8px 0;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .text-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string? ContentUrl { get; set; }
+
+    [Parameter]
+    public string? FileName { get; set; }
+
+    [Parameter]
+    public CitationFileType FileType { get; set; }
+
+    [Parameter]
+    public string? TextContent { get; set; }
+
+    private int _lineCount;
+    private bool _showRendered = true;
+    private string _renderedMarkdown = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(TextContent))
+        {
+            _lineCount = TextContent.Split('\n').Length;
+
+            // Render markdown if applicable
+            if (FileType == CitationFileType.Markdown)
+            {
+                _renderedMarkdown = RenderMarkdown(TextContent);
+            }
+        }
+    }
+
+    private string GetLanguageLabel()
+    {
+        return FileType switch
+        {
+            CitationFileType.Json => "JSON",
+            CitationFileType.Xml => "XML",
+            CitationFileType.Csv => "CSV",
+            CitationFileType.Markdown => "Markdown",
+            CitationFileType.Html => "HTML",
+            _ => "Text"
+        };
+    }
+
+    private string GetLanguageClass()
+    {
+        return FileType switch
+        {
+            CitationFileType.Json => "language-json",
+            CitationFileType.Xml => "language-xml",
+            CitationFileType.Csv => "language-csv",
+            CitationFileType.Markdown => "language-markdown",
+            CitationFileType.Html => "language-html",
+            _ => "language-text"
+        };
+    }
+
+    private void ToggleRendered()
+    {
+        _showRendered = !_showRendered;
+    }
+
+    private async Task CopyToClipboard()
+    {
+        if (!string.IsNullOrEmpty(TextContent))
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", TextContent);
+        }
+    }
+
+    private static string RenderMarkdown(string markdown)
+    {
+        // Simple markdown rendering - in production you'd want a proper markdown library
+        // For now, we'll use basic HTML escaping and line breaks
+        var html = System.Web.HttpUtility.HtmlEncode(markdown);
+        html = html.Replace("\n", "<br/>");
+        return html;
+    }
+}

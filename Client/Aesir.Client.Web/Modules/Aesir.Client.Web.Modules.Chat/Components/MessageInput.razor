@@ -6,27 +6,72 @@
 @inject IAgentToolsService AgentToolsService
 @inject IDocumentApiService DocumentService
 @inject ISnackbar Snackbar
-@implements IDisposable
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
 
 @* Event callback to request conversation ID from parent when needed for immediate upload *@
 
 <div class="message-input-wrapper">
     <div class="message-input-container">
-        @* Pending Files Display *@
+        @* Pending Files Display - Horizontal scrolling container *@
         @if (_pendingFiles.Count > 0)
         {
-            <div class="pending-files">
-                @foreach (var file in _pendingFiles)
-                {
-                    <FileAttachment FileName="@file.FileName"
-                                    FileSize="@file.FileSize"
-                                    Mode="FileAttachment.FileAttachmentMode.Pending"
-                                    IsProcessing="@(file.Status == UploadStatus.Uploading)"
-                                    Progress="@file.Progress"
-                                    HasError="@(file.Status == UploadStatus.Failed)"
-                                    ErrorMessage="@file.ErrorMessage"
-                                    OnRemove="@(() => RemovePendingFile(file))" />
-                }
+            <div class="pending-files-container">
+                <div class="pending-files">
+                    @foreach (var file in _pendingFiles)
+                    {
+                        @if (FileTypeHelper.IsImage(file.FileName) && !string.IsNullOrEmpty(file.ObjectUrl))
+                        {
+                            @* Image files show a thumbnail with the card *@
+                            <div class="pending-file-item @(file.IsRemoving ? "removing" : "")">
+                                <ImageThumbnail FileName="@file.FileName"
+                                                FileObjectUrl="@file.ObjectUrl"
+                                                Size="ImageThumbnail.ThumbnailSize.Medium"
+                                                ShowOverlay="false" />
+                                <div class="thumbnail-overlay-actions">
+                                    @if (file.Status == UploadStatus.Uploading)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="@(file.Progress <= 0)" Value="@file.Progress" Color="Color.Primary" />
+                                    }
+                                    else
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                       Size="Size.Small"
+                                                       OnClick="@(async () => await RemovePendingFileAsync(file))"
+                                                       Class="remove-btn"
+                                                       aria-label="Remove file" />
+                                    }
+                                </div>
+                                @if (file.Status == UploadStatus.Completed)
+                                {
+                                    <div class="thumbnail-success-badge">
+                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" />
+                                    </div>
+                                }
+                                @if (file.Status == UploadStatus.Failed)
+                                {
+                                    <div class="thumbnail-error-badge" title="@file.ErrorMessage">
+                                        <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small" Color="Color.Error" />
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            @* Non-image files use the FileCard component *@
+                            <FileCard FileName="@file.FileName"
+                                      FileSize="@file.FileSize"
+                                      Size="FileCard.FileCardSize.Compact"
+                                      IsUploading="@(file.Status == UploadStatus.Uploading)"
+                                      Progress="@file.Progress"
+                                      HasError="@(file.Status == UploadStatus.Failed)"
+                                      ShowSuccess="@(file.Status == UploadStatus.Completed)"
+                                      IsRemoving="@file.IsRemoving"
+                                      ErrorMessage="@file.ErrorMessage"
+                                      OnRemove="@(async () => await RemovePendingFileAsync(file))" />
+                        }
+                    }
+                </div>
             </div>
         }
 
@@ -97,13 +142,139 @@
         border: 1px solid var(--mud-palette-lines-default);
     }
 
-    .pending-files {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+    /* Pending files horizontal scroll container */
+    .pending-files-container {
         margin-bottom: 8px;
         padding-bottom: 8px;
         border-bottom: 1px solid var(--mud-palette-lines-default);
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: thin;
+        scrollbar-color: var(--mud-palette-lines-default) transparent;
+    }
+
+    .pending-files-container::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .pending-files-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .pending-files-container::-webkit-scrollbar-thumb {
+        background-color: var(--mud-palette-lines-default);
+        border-radius: 3px;
+    }
+
+    .pending-files {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 8px;
+        padding: 4px 0;
+    }
+
+    /* Animation for new pending files */
+    @@keyframes fileSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    /* Image thumbnail in pending files */
+    .pending-file-item {
+        position: relative;
+        flex-shrink: 0;
+        animation: fileSlideIn 0.2s ease-out;
+    }
+
+    .pending-file-item.removing {
+        animation: fileSlideOut 0.2s ease-in forwards;
+    }
+
+    /* Apply animation to FileCard components too */
+    .pending-files > :global(.file-card) {
+        animation: fileSlideIn 0.2s ease-out;
+    }
+
+    .pending-files > :global(.file-card.removing) {
+        animation: fileSlideOut 0.2s ease-in forwards;
+    }
+
+    @@keyframes fileSlideOut {
+        from {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.95);
+        }
+    }
+
+    .thumbnail-overlay-actions {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(0, 0, 0, 0.6);
+        border-radius: 50%;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+    }
+
+    .pending-file-item:hover .thumbnail-overlay-actions {
+        opacity: 1;
+    }
+
+    .thumbnail-overlay-actions .remove-btn {
+        color: white;
+        width: 24px;
+        height: 24px;
+        padding: 2px;
+    }
+
+    .thumbnail-overlay-actions .remove-btn:hover {
+        color: var(--mud-palette-error);
+    }
+
+    .thumbnail-error-badge {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        background-color: var(--mud-palette-surface);
+        border-radius: 50%;
+        padding: 2px;
+    }
+
+    .thumbnail-success-badge {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        background-color: var(--mud-palette-surface);
+        border-radius: 50%;
+        padding: 2px;
+        animation: successCheckPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @@keyframes successCheckPop {
+        0% {
+            opacity: 0;
+            transform: scale(0);
+        }
+        50% {
+            transform: scale(1.2);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
     }
 
     .message-input {
@@ -311,11 +482,47 @@
             await _fileUploadButton.ClearAsync();
         }
 
+        // Generate object URL for image files for thumbnail preview
+        if (FileTypeHelper.IsImage(file.Name))
+        {
+            try
+            {
+                pendingFile.ObjectUrl = await CreateObjectUrlAsync(file);
+            }
+            catch
+            {
+                // Thumbnail generation failed, will show fallback icon
+            }
+        }
+
         StateHasChanged();
 
         // Start immediate upload in background (like the Avalonia client)
         // This uploads and indexes the file right away, not waiting for message send
         _ = UploadFileImmediatelyAsync(pendingFile);
+    }
+
+    /// <summary>
+    /// Creates a JavaScript object URL for a browser file to enable client-side preview.
+    /// </summary>
+    private async Task<string?> CreateObjectUrlAsync(IBrowserFile file)
+    {
+        try
+        {
+            // Read file into memory (limit to 10MB for thumbnails)
+            const long maxSize = 10 * 1024 * 1024;
+            await using var stream = file.OpenReadStream(maxSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+            var base64 = Convert.ToBase64String(bytes);
+            var mimeType = file.ContentType;
+            return $"data:{mimeType};base64,{base64}";
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -373,10 +580,35 @@
         Snackbar.Add(error, Severity.Error);
     }
 
-    private void RemovePendingFile(PendingFileUpload file)
+    private async Task RemovePendingFileAsync(PendingFileUpload file)
     {
-        // Cancel upload if in progress
-        file.CancellationTokenSource.Cancel();
+        // If upload is in progress, cancel it (server-side cleanup handled by cancellation)
+        if (file.Status == UploadStatus.Uploading)
+        {
+            file.CancellationTokenSource.Cancel();
+        }
+        // If upload completed successfully, delete from server (storage + vector store)
+        else if (file.Status == UploadStatus.Completed && GetConversationId != null)
+        {
+            try
+            {
+                var conversationId = GetConversationId();
+                await DocumentService.DeleteFileAsync(conversationId, file.FileName);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't block removal from UI - file is already "gone" from user's perspective
+                Console.WriteLine($"Failed to delete file from server: {ex.Message}");
+            }
+        }
+
+        // Trigger exit animation
+        file.IsRemoving = true;
+        StateHasChanged();
+
+        // Wait for animation to complete (200ms)
+        await Task.Delay(200);
+
         _pendingFiles.Remove(file);
         StateHasChanged();
     }
@@ -411,15 +643,20 @@
     /// </summary>
     public bool IsRagEnabled => _isRagEnabled;
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         ChatState.OnAgentChanged -= HandleAgentChangedAsync;
 
-        // Cancel any pending uploads
+        // Cancel any pending uploads and clean up object URLs
         foreach (var file in _pendingFiles)
         {
             file.CancellationTokenSource.Cancel();
             file.CancellationTokenSource.Dispose();
         }
+
+        // Clear the list
+        _pendingFiles.Clear();
+
+        await Task.CompletedTask;
     }
 }

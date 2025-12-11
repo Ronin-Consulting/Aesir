@@ -24,6 +24,10 @@ public class Migration20240903091001 : Migration
 
     public override void Down()
     {
-        throw new NotImplementedException();
+        // This is the foundational migration - rollback would destroy all application data
+        throw new NotSupportedException(
+            "Migration rollback is not supported. This is the foundational migration that creates the " +
+            "aesir schema and core tables. Rolling back would destroy all application data. " +
+            "Manual database intervention is required if rollback is necessary.");
     }
 }

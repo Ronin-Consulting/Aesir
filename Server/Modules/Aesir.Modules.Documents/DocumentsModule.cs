@@ -33,10 +33,8 @@ public class DocumentsModule : ModuleBase
 
     public override string? Description => "Provides document collection management, document loaders (PDF, text, images), and RAG functionality";
 
-    public override async Task RegisterServicesAsync(IServiceCollection services)
+    public override Task RegisterServicesAsync(IServiceCollection services)
     {
-        await Task.CompletedTask;
-        
         Log("Registering document services...");
 
         // Set up Qdrant vector store
@@ -224,8 +222,10 @@ public class DocumentsModule : ModuleBase
         services.AddSingleton<IDocumentCollectionService, AutoDocumentCollectionService>();
 
         services.AddSingleton<IConfiguredKernelFactory, ConfiguredKernelFactory>();
-        
+
         Log("Document services registered successfully");
+
+        return Task.CompletedTask;
     }
 }
 

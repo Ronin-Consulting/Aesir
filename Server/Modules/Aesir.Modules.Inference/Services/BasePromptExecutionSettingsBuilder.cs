@@ -1,5 +1,6 @@
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 
 namespace Aesir.Modules.Inference.Services;
@@ -7,7 +8,8 @@ namespace Aesir.Modules.Inference.Services;
 public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSettings>(
     Kernel kernel,
     IConversationDocumentCollectionService? conversationDocumentCollectionService,
-    IKernelPluginService kernelPluginService)
+    IKernelPluginService kernelPluginService,
+    ILogger logger)
     where TPromptExecutionSettings : PromptExecutionSettings
 {
     // ReSharper disable once MemberCanBePrivate.Global
@@ -17,8 +19,13 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
 
     protected readonly IKernelPluginService KernelPluginService = kernelPluginService;
 
+    protected readonly ILogger Logger = logger;
+
     public async Task<PromptExecutionSettingsResult<TPromptExecutionSettings>> BuildAsync(AesirChatRequestBase request)
     {
+        Logger.LogWarning("[PromptSettings] BuildAsync called for request with {ToolCount} tools", request.Tools?.Count ?? 0);
+        Logger.LogWarning("[PromptSettings] Conversation has {MessageCount} messages", request.Conversation?.Messages?.Count ?? 0);
+
         var systemPromptVariables = new Dictionary<string, object>
         {
             ["currentDateTime"] = request.ClientDateTime,
@@ -46,10 +53,20 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
         var kernelPluginArgs = ConversationDocumentCollectionArgs.Default;
 
         var enableWebSearch = request.Tools.Any(t => t.IsWebSearchToolRequest);
-        var enableDocumentSearch =
-            request.Tools.Any(t => t.IsRagToolRequest) &&
-            request.Conversation.Messages.Any(m => m.HasFile());
+        var hasRagTool = request.Tools.Any(t => t.IsRagToolRequest);
+        var hasFileInMessages = request.Conversation.Messages.Any(m => m.HasFile());
+        var enableDocumentSearch = hasRagTool && hasFileInMessages;
         var enableMcpTools = request.Tools.Any(t => t.IsMcpServerToolRequest);
+
+        Logger.LogWarning("[PromptSettings] hasRagTool={HasRagTool}, hasFileInMessages={HasFileInMessages}", hasRagTool, hasFileInMessages);
+        foreach (var msg in request.Conversation.Messages)
+        {
+            Logger.LogWarning("[PromptSettings]   Message Role={Role}, HasFile={HasFile}, FileName={FileName}", msg.Role, msg.HasFile(), msg.GetFileName() ?? "null");
+        }
+        foreach (var tool in request.Tools)
+        {
+            Logger.LogWarning("[PromptSettings]   Tool: IsRag={IsRag}, IsWeb={IsWeb}, IsMcp={IsMcp}", tool.IsRagToolRequest, tool.IsWebSearchToolRequest, tool.IsMcpServerToolRequest);
+        }
 
         kernelPluginArgs["PluginName"] = "ChatTools";
 
@@ -77,11 +94,6 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
             kernelPluginArgs.SetMcpTools(mcpTools);
         }
 
-        if (enableWebSearch || enableDocumentSearch || enableMcpTools)
-        {
-            settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
-        }
-
         var plugin = await KernelPluginService.GetKernelPluginAsync(kernelPluginArgs);
 
         // Remove the existing plugin if it exists to avoid conflicts with conversations
@@ -89,6 +101,24 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
             Kernel.Plugins.Remove(existingPlugin);
 
         Kernel.Plugins.Add(plugin);
+
+        // Log plugin configuration for debugging
+        Logger.LogWarning("[PromptSettings] enableWebSearch={EnableWebSearch}, enableDocumentSearch={EnableDocumentSearch}, enableMcpTools={EnableMcpTools}", enableWebSearch, enableDocumentSearch, enableMcpTools);
+        Logger.LogWarning("[PromptSettings] Plugin '{PluginName}' added with {FunctionCount} functions", plugin.Name, plugin.Count());
+        foreach (var func in plugin)
+        {
+            Logger.LogWarning("[PromptSettings]   - Function: {FunctionName}", func.Name);
+        }
+
+        if (enableWebSearch || enableDocumentSearch || enableMcpTools)
+        {
+            settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
+            Logger.LogWarning("[PromptSettings] FunctionChoiceBehavior set to Auto");
+        }
+        else
+        {
+            Logger.LogWarning("[PromptSettings] No tools enabled - FunctionChoiceBehavior NOT set");
+        }
     }
 
     protected virtual void ConfigureForThinking(TPromptExecutionSettings settings, AesirChatRequestBase request)

@@ -1,5 +1,6 @@
 @using Aesir.Common.Models
 @using Aesir.Client.Web.Modules.Chat.Components
+@using Aesir.Client.Web.Modules.Chat.Models
 @using Aesir.Client.Web.Modules.Chat.Services
 @inject IDocumentApiService DocumentService
 @inject IJSRuntime JSRuntime
@@ -13,16 +14,50 @@
         <div class="message-content">
             @if (Message.HasFile())
             {
-                <div class="attached-files">
-                    @foreach (var fileName in Message.GetFileNames())
-                    {
-                        <FileAttachment FileName="@fileName"
-                                        Mode="FileAttachment.FileAttachmentMode.Attached"
-                                        ShowSize="false"
-                                        IsDeleted="@IsFileDeleted(fileName)"
-                                        OnClick="@(() => HandleFileClick(fileName))" />
-                    }
-                </div>
+                @* Image attachments displayed as thumbnails *@
+                @if (ImageFiles.Any())
+                {
+                    <div class="attached-images @(ImageFiles.Count == 1 ? "single" : ImageFiles.Count == 2 ? "double" : "grid")">
+                        @foreach (var fileName in ImageFiles)
+                        {
+                            var isDeleted = IsFileDeleted(fileName);
+                            <div class="image-attachment @(isDeleted ? "deleted" : "")">
+                                @if (!isDeleted && ConversationId.HasValue)
+                                {
+                                    <ImageThumbnail FileName="@fileName"
+                                                    ImageUrl="@DocumentService.GetDownloadUrl(ConversationId.Value, fileName)"
+                                                    Size="ImageThumbnail.ThumbnailSize.Large"
+                                                    OnClick="@(() => HandleFileClick(fileName))" />
+                                }
+                                else
+                                {
+                                    <div class="deleted-image-placeholder">
+                                        <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="MudBlazor.Size.Medium" />
+                                        <span class="deleted-text">Deleted</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                @* Non-image files displayed as cards *@
+                @if (OtherFiles.Any())
+                {
+                    <div class="attached-files">
+                        @foreach (var fileName in OtherFiles)
+                        {
+                            var thumbnailUrl = GetThumbnailUrl(fileName);
+                            <FileCard FileName="@fileName"
+                                      Size="FileCard.FileCardSize.Compact"
+                                      ShowFileSize="false"
+                                      IsDeleted="@IsFileDeleted(fileName)"
+                                      ThumbnailUrl="@thumbnailUrl"
+                                      ShowThumbnail="@(!string.IsNullOrEmpty(thumbnailUrl))"
+                                      OnClick="@(() => HandleFileClick(fileName))" />
+                        }
+                    </div>
+                }
             }
             <span class="message-text">@GetDisplayContent()</span>
         </div>
@@ -109,6 +144,61 @@
         gap: 8px;
     }
 
+    /* Image attachments grid */
+    .user-message .attached-images {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+
+    .user-message .attached-images.single .image-attachment {
+        max-width: 200px;
+    }
+
+    .user-message .attached-images.double {
+        display: flex;
+    }
+
+    .user-message .attached-images.double .image-attachment {
+        max-width: 150px;
+    }
+
+    .user-message .attached-images.grid {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .user-message .attached-images.grid .image-attachment {
+        max-width: 120px;
+    }
+
+    .user-message .image-attachment {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .user-message .image-attachment.deleted {
+        opacity: 0.6;
+    }
+
+    .user-message .deleted-image-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        padding: 16px;
+        min-width: 80px;
+        min-height: 60px;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .user-message .deleted-image-placeholder .deleted-text {
+        font-size: 0.7rem;
+        margin-top: 4px;
+    }
+
     .user-message .message-text {
         font-size: 1rem;
         line-height: 1.5;
@@ -128,11 +218,11 @@
     public Guid? ConversationId { get; set; }
 
     /// <summary>
-    /// List of filenames that currently exist in the conversation.
-    /// Used to determine if a file has been deleted.
+    /// List of files that currently exist in the conversation.
+    /// Used to determine if a file has been deleted and whether thumbnails are available.
     /// </summary>
     [Parameter]
-    public IReadOnlyList<string> ExistingFiles { get; set; } = [];
+    public IReadOnlyList<ConversationFile> ExistingFiles { get; set; } = [];
 
     [CascadingParameter(Name = "IsDarkMode")]
     private bool IsDarkMode { get; set; }
@@ -142,6 +232,20 @@
     private string UserInitials => GetInitials(UserDisplayName);
 
     /// <summary>
+    /// Image file attachments for this message.
+    /// </summary>
+    private List<string> ImageFiles => Message.GetFileNames()
+        .Where(f => FileTypeHelper.IsImage(f))
+        .ToList();
+
+    /// <summary>
+    /// Non-image file attachments for this message.
+    /// </summary>
+    private List<string> OtherFiles => Message.GetFileNames()
+        .Where(f => !FileTypeHelper.IsImage(f))
+        .ToList();
+
+    /// <summary>
     /// Checks if the specified file attached to this message has been deleted.
     /// </summary>
     private bool IsFileDeleted(string fileName)
@@ -149,8 +253,35 @@
         if (string.IsNullOrEmpty(fileName))
             return false;
 
+        // If the existing files list is empty, assume files exist
+        // (the list may not have loaded yet from the API)
+        if (ExistingFiles.Count == 0)
+            return false;
+
         // File is deleted if it's not in the existing files list
-        return !ExistingFiles.Contains(fileName, StringComparer.OrdinalIgnoreCase);
+        return !ExistingFiles.Any(f =>
+            f.DisplayName.Equals(fileName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Gets the thumbnail URL for a file if it has a thumbnail available.
+    /// </summary>
+    private string? GetThumbnailUrl(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName) || !ConversationId.HasValue)
+            return null;
+
+        // Find the file in the existing files list
+        var file = ExistingFiles.FirstOrDefault(f =>
+            f.DisplayName.Equals(fileName, StringComparison.OrdinalIgnoreCase));
+
+        // Return thumbnail URL only if the file has a thumbnail
+        if (file?.HasThumbnail == true)
+        {
+            return DocumentService.GetThumbnailUrl(ConversationId.Value, fileName);
+        }
+
+        return null;
     }
 
     private static string GetInitials(string name)

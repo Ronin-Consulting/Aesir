@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @using Aesir.Client.Web.Modules.Chat.Components
+@using Aesir.Client.Web.Modules.Chat.Models
 @using Aesir.Client.Web.Modules.Chat.Services
 @inject INavigationRegistry NavigationRegistry
 @inject NavigationManager NavigationManager
@@ -8,6 +9,7 @@
 @inject IDialogService DialogService
 @inject IThemeService ThemeService
 @inject IAgentToolsService AgentToolsService
+@inject IDocumentApiService DocumentService
 @implements IDisposable
 
 <MudLayout>
@@ -205,7 +207,7 @@
                            Title="@(_isDarkMode ? "Switch to light mode" : "Switch to dark mode")"
                            Class="control-btn" />
         </div>
-        <CascadingValue Name="ConversationFileNames" Value="_conversationFileNames">
+        <CascadingValue Name="ConversationFiles" Value="_conversationFiles">
             @Body
         </CascadingValue>
     </MudMainContent>
@@ -232,6 +234,12 @@
                                    OnFilesChanged="@HandleFilesChanged" />
     </MudDrawer>
 </MudLayout>
+
+@* Citation Viewer Modal - Displays when a citation link is clicked *@
+<CitationViewer />
+
+@* Citation Handler - Receives citation click events from JavaScript *@
+<CitationHandler />
 
 <style>
     .chat-drawer {
@@ -544,11 +552,27 @@
 
     private void HandleConversationChanged()
     {
-        // Refresh sessions when a conversation changes (new message sent)
+        // Refresh sessions and files when a conversation changes (new message sent)
         InvokeAsync(async () =>
         {
             await HistoryService.LoadSessionsAsync();
             _recentSessions = HistoryService.Sessions.ToList();
+
+            // Also refresh conversation files (new files may have been uploaded with the message)
+            if (ChatState.CurrentSessionId.HasValue)
+            {
+                try
+                {
+                    var files = await DocumentService.GetFilesAsync(ChatState.CurrentSessionId.Value);
+                    _conversationFiles = files;
+                }
+                catch
+                {
+                    // Ignore - files will refresh when drawer is opened
+                }
+            }
+
+            StateHasChanged();
         });
     }
 
@@ -744,11 +768,31 @@
 
     private async void HandleSessionChangedAsync()
     {
-        // Refresh documents list when session changes
-        if (_documentsListRef != null && ChatState.CurrentSessionId.HasValue)
+        // Load files directly when session changes (don't rely on drawer being open)
+        if (ChatState.CurrentSessionId.HasValue)
         {
-            await _documentsListRef.RefreshAsync();
+            try
+            {
+                var files = await DocumentService.GetFilesAsync(ChatState.CurrentSessionId.Value);
+                _conversationFiles = files;
+            }
+            catch
+            {
+                // Failed to load files, keep existing list or empty
+                _conversationFiles = [];
+            }
+
+            // Also refresh the drawer component if it's open
+            if (_documentsListRef != null)
+            {
+                await _documentsListRef.RefreshAsync();
+            }
         }
+        else
+        {
+            _conversationFiles = [];
+        }
+
         await InvokeAsync(StateHasChanged);
     }
 
@@ -782,14 +826,14 @@
     }
 
     /// <summary>
-    /// Current list of file names in the conversation. Cascaded to child components.
+    /// Current list of files in the conversation. Cascaded to child components.
     /// </summary>
-    private IReadOnlyList<string> _conversationFileNames = [];
+    private IReadOnlyList<ConversationFile> _conversationFiles = [];
 
-    private Task HandleFilesChanged(IReadOnlyList<string> fileNames)
+    private Task HandleFilesChanged(IReadOnlyList<ConversationFile> files)
     {
-        // Update the cached file names and notify children
-        _conversationFileNames = fileNames;
+        // Update the cached files and notify children
+        _conversationFiles = files;
         StateHasChanged();
         return Task.CompletedTask;
     }

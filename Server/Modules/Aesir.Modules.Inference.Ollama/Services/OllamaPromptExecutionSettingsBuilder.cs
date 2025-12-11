@@ -2,14 +2,19 @@ using System.Diagnostics.CodeAnalysis;
 using Aesir.Common.Models;
 using Aesir.Modules.Inference.Services;
 using Aesir.Infrastructure.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Ollama;
 
 namespace Aesir.Modules.Inference.Ollama.Services;
 
 [Experimental("SKEXP0070")]
-public class OllamaPromptExecutionSettingsBuilder(Kernel kernel, IConversationDocumentCollectionService? conversationDocumentCollectionService, IKernelPluginService kernelPluginService) :
-    BasePromptExecutionSettingsBuilder<OllamaPromptExecutionSettings>(kernel, conversationDocumentCollectionService, kernelPluginService)
+public class OllamaPromptExecutionSettingsBuilder(
+    Kernel kernel,
+    IConversationDocumentCollectionService? conversationDocumentCollectionService,
+    IKernelPluginService kernelPluginService,
+    ILogger<OllamaPromptExecutionSettingsBuilder> logger) :
+    BasePromptExecutionSettingsBuilder<OllamaPromptExecutionSettings>(kernel, conversationDocumentCollectionService, kernelPluginService, logger)
 {
     protected override OllamaPromptExecutionSettings CreatePromptExecutionSettings(AesirChatRequestBase request)
     {

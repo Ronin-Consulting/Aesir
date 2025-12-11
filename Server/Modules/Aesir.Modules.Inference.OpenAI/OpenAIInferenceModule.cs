@@ -73,8 +73,8 @@ public class OpenAIInferenceModule : ModuleBase
             {
                 case InferenceEngineType.OpenAICompatible:
                 {
-                    RegisterSemanticKernelInferenceServices(services, inferenceEngine, generalSettings);
-                    RegisterInferenceEngine(services,inferenceEngine);
+                    RegisterSemanticKernelInferenceServices(services, inferenceEngine, generalSettings, Logger);
+                    RegisterInferenceEngine(services, inferenceEngine);
                     break;
                 }
                 case InferenceEngineType.Ollama:
@@ -86,17 +86,20 @@ public class OpenAIInferenceModule : ModuleBase
         }
     }
     
-    private static void RegisterSemanticKernelInferenceServices(IServiceCollection services, AesirInferenceEngine inferenceEngine, AesirGeneralSettings generalSettings)
+    private static void RegisterSemanticKernelInferenceServices(
+        IServiceCollection services,
+        AesirInferenceEngine inferenceEngine,
+        AesirGeneralSettings generalSettings,
+        ILogger logger)
     {
         var inferenceEngineIdKey = inferenceEngine.Id.ToString();
-        
+
         var ragEmbeddingInferenceEngineId = generalSettings.RagEmbeddingInferenceEngineId;
         var embeddingModel = generalSettings.RagEmbeddingModel;
 
         if (ragEmbeddingInferenceEngineId == null)
         {
-            // Note: This is a static method, so we can't use instance Logger. This will be addressed in Phase 4.
-            Console.Write("Configuration for RAG embedding inference engine is not ready and being skipped for initialization");
+            logger.LogWarning("[OpenAI] RAG embedding inference engine ID is null - skipping embedding generator registration");
         }
         
         services.AddKeyedSingleton<IChatCompletionServiceFactory>(inferenceEngineIdKey,
@@ -157,14 +160,18 @@ public class OpenAIInferenceModule : ModuleBase
             var kernel = sp.GetRequiredService<Kernel>();
             var kernelPluginService = sp.GetRequiredService<IKernelPluginService>();
             var chatHistoryService = sp.GetRequiredService<IChatHistoryService>();
+            var toolCallBroadcaster = sp.GetRequiredService<IToolCallBroadcaster>();
             var conversationDocumentCollectionService =
                 sp.GetService<IConversationDocumentCollectionService>();
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
 
             return new ChatService(
                 logger,
+                loggerFactory,
                 kernel,
                 kernelPluginService,
                 sp,
+                toolCallBroadcaster,
                 inferenceEngineIdKey,
                 chatHistoryService,
                 conversationDocumentCollectionService

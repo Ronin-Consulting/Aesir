@@ -1,5 +1,6 @@
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Documents.Services.DocumentCollections;
+using Aesir.Modules.Storage.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -17,7 +18,8 @@ public class DocumentCollectionController(
     ILogger<DocumentCollectionController> logger,
     IFileStorageService fileStorageService,
     IDocumentCollectionService documentCollectionService,
-    IConfigurationService configurationService)
+    IConfigurationService configurationService,
+    IPdfThumbnailService pdfThumbnailService)
     : ControllerBase
 {
     /// <summary>
@@ -101,7 +103,7 @@ public class DocumentCollectionController(
     [RequestFormLimits(MultipartBodyLengthLimit = MaxFileSize)]
     public async Task<IActionResult> UploadGlobalFileAsync(IFormFile? file, [FromRoute] string categoryId)
     {
-        var result = await ProcessFileUploadAsync(file, categoryId, FolderType.Global);
+        var result = await ProcessFileUploadAsync(file, categoryId, FolderType.Global, HttpContext.RequestAborted);
 
         if (!result.Success)
             return BadRequest(result.ErrorMessage);
@@ -175,7 +177,7 @@ public class DocumentCollectionController(
     [RequestFormLimits(MultipartBodyLengthLimit = MaxFileSize)]
     public async Task<IActionResult> UploadConversationFileAsync(IFormFile? file, [FromRoute] string conversationId)
     {
-        var result = await ProcessFileUploadAsync(file, conversationId, FolderType.Conversation);
+        var result = await ProcessFileUploadAsync(file, conversationId, FolderType.Conversation, HttpContext.RequestAborted);
 
         if (!result.Success)
             return BadRequest(result.ErrorMessage);
@@ -207,6 +209,20 @@ public class DocumentCollectionController(
         [FromRoute] string filename)
     {
         return await GetFolderFileContentAsync(conversationId, filename, FolderType.Conversation);
+    }
+
+    /// <summary>
+    /// Retrieves the thumbnail for a file associated with a specific conversation.
+    /// Returns 404 if no thumbnail exists for the file.
+    /// </summary>
+    /// <param name="conversationId">The unique identifier of the conversation to which the file belongs.</param>
+    /// <param name="filename">The name of the file to retrieve the thumbnail for.</param>
+    /// <returns>An <see cref="IActionResult"/> containing the thumbnail image, or an error response if not found.</returns>
+    [HttpGet("conversations/{conversationId}/files/{filename}/thumbnail")]
+    public async Task<IActionResult> GetConversationFileThumbnailAsync([FromRoute] string conversationId,
+        [FromRoute] string filename)
+    {
+        return await GetFileThumbnailCoreAsync(conversationId, filename, FolderType.Conversation);
     }
 
     /// <summary>
@@ -345,7 +361,8 @@ public class DocumentCollectionController(
     /// <returns>An <see cref="IActionResult"/> containing the file stream if successful, or a 404 Not Found response if the file does not exist.</returns>
     private async Task<IActionResult> GetFileInlineCoreAsync(string id, string filename)
     {
-        var virtualFilename = $"{id}/{filename}";
+        // Files are stored with leading slash: /{id}/{filename}
+        var virtualFilename = $"/{id}/{filename}";
         var result = await fileStorageService.GetFileContentAsync(virtualFilename);
 
         if (result == null || !System.IO.File.Exists(result.Value.TempFile.FilePath))
@@ -359,6 +376,41 @@ public class DocumentCollectionController(
         {
             EnableRangeProcessing = true
         };
+    }
+
+    /// <summary>
+    /// Retrieves the thumbnail for a file by folder ID and filename.
+    /// </summary>
+    /// <param name="folderId">The folder ID (conversation ID or category ID).</param>
+    /// <param name="filename">The name of the file.</param>
+    /// <param name="folderType">The type of folder.</param>
+    /// <returns>An <see cref="IActionResult"/> containing the thumbnail image or NotFound if no thumbnail exists.</returns>
+    private async Task<IActionResult> GetFileThumbnailCoreAsync(string folderId, string filename, FolderType folderType)
+    {
+        if (string.IsNullOrWhiteSpace(folderId))
+            return BadRequest($"{folderType} ID is required.");
+
+        if (string.IsNullOrWhiteSpace(filename))
+            return BadRequest("Filename is required.");
+
+        try
+        {
+            var virtualFilename = $"/{folderId}/{Uri.UnescapeDataString(filename)}";
+            var thumbnail = await fileStorageService.GetFileThumbnailAsync(virtualFilename);
+
+            if (thumbnail == null)
+                return NotFound("No thumbnail available for this file.");
+
+            // Return thumbnail with caching headers (thumbnails don't change)
+            Response.Headers["Cache-Control"] = "public, max-age=31536000"; // 1 year
+            return File(thumbnail.Value.Content, thumbnail.Value.MimeType);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving thumbnail for {FolderType} file: {FolderId}/{Filename}",
+                folderType.ToString().ToLowerInvariant(), folderId, filename);
+            return StatusCode(500, "An error occurred while retrieving the thumbnail.");
+        }
     }
 
     /// <summary>
@@ -505,7 +557,7 @@ public class DocumentCollectionController(
     /// - VirtualFilename: A string representing the virtual file path where the uploaded file is stored; null if unsuccessful.
     /// </returns>
     private async Task<(bool Success, string? ErrorMessage, string? VirtualFilename)> ProcessFileUploadAsync(
-        IFormFile? file, string folderId, FolderType folderType)
+        IFormFile? file, string folderId, FolderType folderType, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(folderId))
             return (false, $"{folderType.ToString()} ID is required.", null);
@@ -519,50 +571,88 @@ public class DocumentCollectionController(
         var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
 
         var tempFilePath = Path.GetTempFileName() + fileExtension;
+        string? virtualFilename = null;
+        var fileStoredInDb = false;
 
         try
         {
+            // Check for cancellation before starting
+            cancellationToken.ThrowIfCancellationRequested();
+
             var mimeType = file.ContentType;
 
             var fileName = Path.GetFileName(file.FileName);
-            var virtualFilename = $"/{folderId}/{fileName}";
+            virtualFilename = $"/{folderId}/{fileName}";
 
             // Stream directly to temp file to reduce memory pressure
             await using (var tempFileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 8192, useAsync: true))
             {
-                await file.CopyToAsync(tempFileStream);
+                await file.CopyToAsync(tempFileStream, cancellationToken);
             }
+
+            // Check for cancellation after file copy
+            cancellationToken.ThrowIfCancellationRequested();
 
             // For database storage, read file content in optimized chunks
             byte[] fileContent;
             const int maxMemoryFileSize = 50 * 1024 * 1024; // 50MB threshold
-            
+
             if (file.Length <= maxMemoryFileSize)
             {
                 // Small files: read all at once
-                fileContent = await System.IO.File.ReadAllBytesAsync(tempFilePath);
+                fileContent = await System.IO.File.ReadAllBytesAsync(tempFilePath, cancellationToken);
             }
             else
             {
                 // Large files: still need to load for database, but with better memory management
                 await using var fileStream = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 8192, useAsync: true);
                 using var memoryStream = new MemoryStream((int)file.Length);
-                await fileStream.CopyToAsync(memoryStream, 8192);
+                await fileStream.CopyToAsync(memoryStream, 8192, cancellationToken);
                 fileContent = memoryStream.ToArray();
             }
 
             try
             {
-                await fileStorageService.UpsertFileAsync(virtualFilename, mimeType, fileContent);
+                // Check for cancellation before DB storage
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Generate thumbnail for PDFs
+                byte[]? thumbnailContent = null;
+                string? thumbnailMimeType = null;
+
+                if (mimeType == "application/pdf" || fileExtension == ".pdf")
+                {
+                    try
+                    {
+                        var thumbnailResult = await pdfThumbnailService.GenerateThumbnailAsync(fileContent, cancellationToken);
+                        if (thumbnailResult != null)
+                        {
+                            thumbnailContent = thumbnailResult.Content;
+                            thumbnailMimeType = thumbnailResult.MimeType;
+                            logger.LogDebug("Generated thumbnail for PDF: {Filename} ({Width}x{Height})",
+                                virtualFilename, thumbnailResult.Width, thumbnailResult.Height);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log but don't fail the upload if thumbnail generation fails
+                        logger.LogWarning(ex, "Failed to generate thumbnail for PDF: {Filename}", virtualFilename);
+                    }
+                }
+
+                await fileStorageService.UpsertFileWithThumbnailAsync(virtualFilename, mimeType, fileContent,
+                    thumbnailContent, thumbnailMimeType);
+                fileStoredInDb = true;
             }
             finally
             {
-                // Explicitly clear large memory allocation
-                fileContent = null;
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
+                // Allow large byte array to be eligible for garbage collection
+                // The GC will reclaim memory as needed - explicit GC.Collect() calls are an anti-pattern
+                fileContent = null!;
             }
+
+            // Check for cancellation after DB storage but before indexing
+            cancellationToken.ThrowIfCancellationRequested();
 
             IDictionary<string, object>? args = null;
             switch (folderType)
@@ -582,14 +672,39 @@ public class DocumentCollectionController(
                 default:
                     throw new ArgumentOutOfRangeException(nameof(folderType), folderType, null);
             }
-            
+
             // assume we are using the global RAG vision inference engine and model, but
             // at some point the agent being used may identify its separate version
             var ragVisionModelLocationDescriptor = await GetRagVisionModelLocationDescriptorAsync();
 
-            await documentCollectionService.LoadDocumentAsync(tempFilePath, ragVisionModelLocationDescriptor, args);
+            await documentCollectionService.LoadDocumentAsync(tempFilePath, ragVisionModelLocationDescriptor, args, cancellationToken);
 
             return (true, null, virtualFilename);
+        }
+        catch (OperationCanceledException)
+        {
+            logger.LogInformation("File upload cancelled for {VirtualFilename}", virtualFilename ?? file?.FileName);
+
+            // Cleanup: if file was stored in DB before cancellation, delete it
+            if (fileStoredInDb && !string.IsNullOrEmpty(virtualFilename))
+            {
+                try
+                {
+                    var files = await fileStorageService.GetFilesByFolderAsync(folderId);
+                    var fileToDelete = files.FirstOrDefault(f => f.FileName == virtualFilename);
+                    if (fileToDelete != null)
+                    {
+                        await fileStorageService.DeleteFileAsync(fileToDelete.Id);
+                        logger.LogInformation("Cleaned up cancelled upload: {VirtualFilename}", virtualFilename);
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    logger.LogWarning(cleanupEx, "Failed to cleanup cancelled upload: {VirtualFilename}", virtualFilename);
+                }
+            }
+
+            return (false, "File upload was cancelled.", null);
         }
         catch (Exception ex)
         {
@@ -598,7 +713,10 @@ public class DocumentCollectionController(
         }
         finally
         {
-            System.IO.File.Delete(tempFilePath);
+            if (System.IO.File.Exists(tempFilePath))
+            {
+                System.IO.File.Delete(tempFilePath);
+            }
         }
     }
     

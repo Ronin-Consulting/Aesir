@@ -41,6 +41,23 @@ public class Migration20250724165701 : Migration
 
     public override void Down()
     {
-        throw new NotImplementedException();
+        // Drop foreign keys first
+        Delete.ForeignKey("FK_aesir_agent_tools_agent_id_aesir_agent_id")
+            .OnTable("aesir_agent_tools")
+            .InSchema("aesir");
+
+        Delete.ForeignKey("FK_aesir_agent_tools_tool_id_aesir_tool_id")
+            .OnTable("aesir_agent_tools")
+            .InSchema("aesir");
+
+        // Drop tables in reverse order of creation
+        Delete.Table("aesir_agent_tools")
+            .InSchema("aesir");
+
+        Delete.Table("aesir_tool")
+            .InSchema("aesir");
+
+        Delete.Table("aesir_agent")
+            .InSchema("aesir");
     }
 }

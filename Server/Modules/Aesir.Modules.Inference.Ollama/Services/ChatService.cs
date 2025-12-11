@@ -1,8 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using Aesir.Modules.Inference.Services;
 using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using Aesir.Infrastructure.Services;
+using Aesir.Modules.Inference.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -47,6 +47,11 @@ public class ChatService : BaseChatService
     private readonly IKernelPluginService _kernelPluginService;
 
     /// <summary>
+    /// Factory for creating loggers, used to create typed loggers for child services.
+    /// </summary>
+    private readonly ILoggerFactory _loggerFactory;
+
+    /// <summary>
     /// Indicates whether the "thinking" mode is enabled for chat interactions.
     /// When set to true, the service utilizes an extended processing mode to deliver
     /// intermediate responses or signal ongoing operations in chat sessions.
@@ -79,17 +84,20 @@ public class ChatService : BaseChatService
     /// </summary>
     public ChatService(
         ILogger<ChatService> logger,
+        ILoggerFactory loggerFactory,
         OllamaApiClient api,
         Kernel kernel,
         IKernelPluginService kernelPluginService,
         IServiceProvider serviceProvider,
+        IToolCallBroadcaster toolCallBroadcaster,
         string inferenceEngineId,
         IChatHistoryService chatHistoryService,
         IConversationDocumentCollectionService? conversationDocumentCollectionService,
         bool enableThinking = false)
-        : base(logger, chatHistoryService, kernel, serviceProvider, inferenceEngineId)
+        : base(logger, chatHistoryService, kernel, serviceProvider, toolCallBroadcaster, inferenceEngineId)
     {
         _enableThinking = enableThinking;
+        _loggerFactory = loggerFactory;
         _api = api;
         _conversationDocumentCollectionService = conversationDocumentCollectionService;
         _kernelPluginService = kernelPluginService;
@@ -233,10 +241,9 @@ public class ChatService : BaseChatService
     /// <returns>A task that represents the asynchronous operation, containing the configured Ollama prompt execution settings.</returns>
     private async Task<OllamaPromptExecutionSettings> CreatePromptExecutionSettingsAsync(AesirChatRequestBase request)
     {
-        await Task.CompletedTask;
-
+        var settingsBuilderLogger = _loggerFactory.CreateLogger<OllamaPromptExecutionSettingsBuilder>();
         var promptExecutionSettingsBuilder = new OllamaPromptExecutionSettingsBuilder(
-            _kernel, _conversationDocumentCollectionService, _kernelPluginService);
+            _kernel, _conversationDocumentCollectionService, _kernelPluginService, settingsBuilderLogger);
 
         var results =
             await promptExecutionSettingsBuilder.BuildAsync(request);

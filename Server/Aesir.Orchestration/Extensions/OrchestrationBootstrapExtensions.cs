@@ -67,8 +67,18 @@ public static class OrchestrationBootstrapExtensions
             var chatModelsService = app.Services.GetKeyedService<IModelsService>(chatInferenceEngineId) ??
                 throw new InvalidOperationException($"Missing expected ModelsService for {chatInferenceEngineId}");
 
-            appLifetime.ApplicationStopping.Register(() => {
-                chatModelsService.UnloadModelsAsync([chatModel]).Wait();
+            // Use GetAwaiter().GetResult() instead of .Wait() for better exception handling
+            // ApplicationStopping requires synchronous callback, so async lambda isn't possible
+            appLifetime.ApplicationStopping.Register(() =>
+            {
+                try
+                {
+                    chatModelsService.UnloadModelsAsync([chatModel]).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to unload chat model {Model} during shutdown", chatModel);
+                }
             });
         }
 
@@ -83,8 +93,16 @@ public static class OrchestrationBootstrapExtensions
                                                 throw new InvalidOperationException($"RagEmbeddingInferenceEngineId not configured");
             var ragEmbeddingModelsService = app.Services.GetKeyedService<IModelsService>(ragEmbeddingInferenceEngineId) ??
                 throw new InvalidOperationException($"Missing expected ModelsService for {ragEmbeddingInferenceEngineId}");
-            appLifetime.ApplicationStopping.Register(() => {
-                ragEmbeddingModelsService.UnloadModelsAsync([generalSettings.RagEmbeddingModel]).Wait();
+            appLifetime.ApplicationStopping.Register(() =>
+            {
+                try
+                {
+                    ragEmbeddingModelsService.UnloadModelsAsync([generalSettings.RagEmbeddingModel]).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to unload RAG embedding model {Model} during shutdown", generalSettings.RagEmbeddingModel);
+                }
             });
         }
 
@@ -99,8 +117,16 @@ public static class OrchestrationBootstrapExtensions
                                         throw new InvalidOperationException($"RagVisionInferenceEngineId not configured");
             var ragVisionModelsService = app.Services.GetKeyedService<IModelsService>(ragVisionInferenceEngineId) ??
                                             throw new InvalidOperationException($"Missing expected ModelsService for {ragVisionInferenceEngineId}");
-            appLifetime.ApplicationStopping.Register(() => {
-                ragVisionModelsService.UnloadModelsAsync([generalSettings.RagVisionModel]).Wait();
+            appLifetime.ApplicationStopping.Register(() =>
+            {
+                try
+                {
+                    ragVisionModelsService.UnloadModelsAsync([generalSettings.RagVisionModel]).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to unload RAG vision model {Model} during shutdown", generalSettings.RagVisionModel);
+                }
             });
         }
 

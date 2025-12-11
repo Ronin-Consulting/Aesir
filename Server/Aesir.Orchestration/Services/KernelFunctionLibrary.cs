@@ -423,10 +423,12 @@ internal class SummarizeConversationDocumentPlugin<TKey, TRecord>(
         Expression<Func<TRecord, bool>> filter = record =>
             record.ConversationId == conversationId;
 
+        // Filter by filename - use Contains with leading slash to handle #page=N suffix
+        // e.g., "/guid/filename.pdf#page=1" contains "/filename.pdf"
         var results = (await vectorStoreCollection
                 .GetAsync(filter, top: int.MaxValue, options)
                 .ToListAsync())
-            .Where(r => r.ReferenceDescription!.EndsWith(filename)).ToList();
+            .Where(r => r.ReferenceDescription!.Contains($"/{filename}")).ToList();
 
         // just take a summary of the document
         var count = results.Count;

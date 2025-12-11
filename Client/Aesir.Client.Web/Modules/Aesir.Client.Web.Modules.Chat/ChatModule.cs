@@ -31,6 +31,15 @@ public class ChatModule : ClientModuleBase
         // Register markdown service for rendering assistant messages
         services.AddSingleton<IMarkdownService, MarkdownService>();
 
+        // Register citation link parser for parsing file:// citation URLs
+        services.AddSingleton<ICitationLinkParser, CitationLinkParser>();
+
+        // Register citation state service for managing citation viewer state
+        services.AddSingleton<ICitationStateService, CitationStateService>();
+
+        // Register tool call state service for managing tool call display during streaming
+        services.AddScoped<IToolCallStateService, ToolCallStateService>();
+
         // Register agent tools service as scoped (depends on scoped IApiClient)
         services.AddScoped<IAgentToolsService, AgentToolsService>();
 

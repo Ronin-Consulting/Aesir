@@ -57,7 +57,8 @@ public class FileStorageService : IFileStorageService
 
         const string sql = @"
             SELECT id, file_name as FileName, mime_type as MimeType,
-                file_size as FileSize, created_at as CreatedAt, updated_at as UpdatedAt
+                file_size as FileSize, has_thumbnail as HasThumbnail,
+                created_at as CreatedAt, updated_at as UpdatedAt
             FROM aesir.aesir_file_storage
             WHERE id = @Id::uuid
         ";
@@ -73,7 +74,8 @@ public class FileStorageService : IFileStorageService
 
         const string sql = @"
             SELECT id, file_name as FileName, mime_type as MimeType,
-                file_size as FileSize, created_at as CreatedAt, updated_at as UpdatedAt
+                file_size as FileSize, has_thumbnail as HasThumbnail,
+                created_at as CreatedAt, updated_at as UpdatedAt
             FROM aesir.aesir_file_storage
             WHERE file_name = @FileName
         ";
@@ -89,7 +91,8 @@ public class FileStorageService : IFileStorageService
 
         const string sql = @"
             SELECT id, file_name as FileName, mime_type as MimeType,
-                file_size as FileSize, created_at as CreatedAt, updated_at as UpdatedAt
+                file_size as FileSize, has_thumbnail as HasThumbnail,
+                created_at as CreatedAt, updated_at as UpdatedAt
             FROM aesir.aesir_file_storage
         ";
 
@@ -108,7 +111,8 @@ public class FileStorageService : IFileStorageService
 
         const string sql = @"
             SELECT id, file_name as FileName, mime_type as MimeType,
-                file_size as FileSize, created_at as CreatedAt, updated_at as UpdatedAt
+                file_size as FileSize, has_thumbnail as HasThumbnail,
+                created_at as CreatedAt, updated_at as UpdatedAt
             FROM aesir.aesir_file_storage
             WHERE file_name LIKE @FolderPattern
         ";
@@ -241,4 +245,105 @@ public class FileStorageService : IFileStorageService
     /// Represents the content of a file stored in the database.
     /// </summary>
     private record FileContent(byte[] Content);
+
+    /// <summary>
+    /// Represents thumbnail content stored in the database.
+    /// </summary>
+    private record ThumbnailContent(byte[] Content, string MimeType);
+
+    /// <inheritdoc />
+    public async Task<int> UpsertFileWithThumbnailAsync(string filename, string mimeType, byte[] content,
+        byte[]? thumbnailContent, string? thumbnailMimeType)
+    {
+        _logger.LogDebug("Upserting file with thumbnail: {FileName} ({MimeType}, {Size} bytes, HasThumbnail: {HasThumbnail})",
+            filename, mimeType, content.Length, thumbnailContent != null);
+
+        const string sql = @"
+            INSERT INTO aesir.aesir_file_storage (file_name, mime_type, file_size, file_content, thumbnail_content, thumbnail_mime_type, has_thumbnail)
+            VALUES (@FileName, @MimeType, @FileSize, @Content, @ThumbnailContent, @ThumbnailMimeType, @HasThumbnail)
+            ON CONFLICT (file_name) DO UPDATE SET
+                mime_type = @MimeType,
+                file_size = @FileSize,
+                file_content = @Content,
+                thumbnail_content = @ThumbnailContent,
+                thumbnail_mime_type = @ThumbnailMimeType,
+                has_thumbnail = @HasThumbnail,
+                updated_at = CURRENT_TIMESTAMP
+        ";
+
+        var result = await _dbContext.UnitOfWorkAsync(async (connection) =>
+            await connection.ExecuteAsync(sql, new
+            {
+                FileName = filename,
+                MimeType = mimeType,
+                FileSize = content.Length,
+                Content = content,
+                ThumbnailContent = thumbnailContent,
+                ThumbnailMimeType = thumbnailMimeType,
+                HasThumbnail = thumbnailContent != null
+            }), true);
+
+        _logger.LogInformation("File upserted with thumbnail: {FileName} ({Size} bytes, HasThumbnail: {HasThumbnail})",
+            filename, content.Length, thumbnailContent != null);
+
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task<(byte[] Content, string MimeType)?> GetFileThumbnailAsync(string filename)
+    {
+        _logger.LogDebug("Getting file thumbnail: {FileName}", filename);
+
+        const string sql = @"
+            SELECT thumbnail_content as Content, thumbnail_mime_type as MimeType
+            FROM aesir.aesir_file_storage
+            WHERE file_name = @FileName AND has_thumbnail = true
+        ";
+
+        var result = await _dbContext.UnitOfWorkAsync(async (connection) =>
+            await connection.QueryFirstOrDefaultAsync<ThumbnailContent>(sql, new { FileName = filename }));
+
+        if (result == null)
+        {
+            _logger.LogDebug("No thumbnail found for file: {FileName}", filename);
+            return null;
+        }
+
+        _logger.LogDebug("Retrieved thumbnail for file: {FileName} ({Size} bytes)", filename, result.Content.Length);
+        return (result.Content, result.MimeType);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> UpdateFileThumbnailAsync(string filename, byte[] thumbnailContent, string thumbnailMimeType)
+    {
+        _logger.LogDebug("Updating thumbnail for file: {FileName}", filename);
+
+        const string sql = @"
+            UPDATE aesir.aesir_file_storage
+            SET thumbnail_content = @ThumbnailContent,
+                thumbnail_mime_type = @ThumbnailMimeType,
+                has_thumbnail = true,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE file_name = @FileName
+        ";
+
+        var result = await _dbContext.UnitOfWorkAsync(async (connection) =>
+            await connection.ExecuteAsync(sql, new
+            {
+                FileName = filename,
+                ThumbnailContent = thumbnailContent,
+                ThumbnailMimeType = thumbnailMimeType
+            }), true) > 0;
+
+        if (result)
+        {
+            _logger.LogInformation("Thumbnail updated for file: {FileName}", filename);
+        }
+        else
+        {
+            _logger.LogWarning("Failed to update thumbnail for file: {FileName}", filename);
+        }
+
+        return result;
+    }
 }

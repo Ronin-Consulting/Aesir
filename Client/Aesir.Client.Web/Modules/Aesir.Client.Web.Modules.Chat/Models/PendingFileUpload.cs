@@ -46,6 +46,17 @@ public class PendingFileUpload
     /// Cancellation token source for canceling the upload.
     /// </summary>
     public CancellationTokenSource CancellationTokenSource { get; } = new();
+
+    /// <summary>
+    /// Object URL for client-side image thumbnail preview.
+    /// Set via JavaScript for image file types.
+    /// </summary>
+    public string? ObjectUrl { get; set; }
+
+    /// <summary>
+    /// Indicates the file is being removed (for exit animation).
+    /// </summary>
+    public bool IsRemoving { get; set; }
 }
 
 /// <summary>

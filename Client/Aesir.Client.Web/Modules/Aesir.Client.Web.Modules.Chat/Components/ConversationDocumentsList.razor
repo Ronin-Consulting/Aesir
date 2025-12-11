@@ -195,17 +195,17 @@
     public Guid? ConversationId { get; set; }
 
     /// <summary>
-    /// Callback when the files list changes. Passes the current file names.
+    /// Callback when the files list changes. Passes the current files.
     /// </summary>
     [Parameter]
-    public EventCallback<IReadOnlyList<string>> OnFilesChanged { get; set; }
+    public EventCallback<IReadOnlyList<ConversationFile>> OnFilesChanged { get; set; }
 
     private List<ConversationFile> _files = new();
 
     /// <summary>
-    /// Gets the current file names in this conversation.
+    /// Gets the current files in this conversation.
     /// </summary>
-    public IReadOnlyList<string> GetFileNames() => _files.Select(f => f.DisplayName).ToList();
+    public IReadOnlyList<ConversationFile> GetFiles() => _files.AsReadOnly();
     private bool _isLoading;
 
     protected override async Task OnParametersSetAsync()
@@ -230,7 +230,7 @@
         if (!ConversationId.HasValue)
         {
             _files.Clear();
-            await OnFilesChanged.InvokeAsync(GetFileNames());
+            await OnFilesChanged.InvokeAsync(GetFiles());
             return;
         }
 
@@ -241,13 +241,13 @@
         {
             _files = (await DocumentService.GetFilesAsync(ConversationId.Value)).ToList();
             // Notify parent of the current files list
-            await OnFilesChanged.InvokeAsync(GetFileNames());
+            await OnFilesChanged.InvokeAsync(GetFiles());
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Failed to load documents: {ex.Message}", Severity.Error);
             _files.Clear();
-            await OnFilesChanged.InvokeAsync(GetFileNames());
+            await OnFilesChanged.InvokeAsync(GetFiles());
         }
         finally
         {
@@ -283,7 +283,7 @@
             {
                 _files.Remove(file);
                 Snackbar.Add($"Deleted '{file.DisplayName}'", Severity.Success);
-                await OnFilesChanged.InvokeAsync(GetFileNames());
+                await OnFilesChanged.InvokeAsync(GetFiles());
             }
             else
             {

@@ -41,6 +41,16 @@ public class Migration20250813100501 : Migration
 
     public override void Down()
     {
-        throw new NotImplementedException();
+        Delete.Column("description")
+            .FromTable("aesir_agent")
+            .InSchema("aesir");
+
+        Delete.Column("type")
+            .FromTable("aesir_tool")
+            .InSchema("aesir");
+
+        Delete.Column("description")
+            .FromTable("aesir_tool")
+            .InSchema("aesir");
     }
 }

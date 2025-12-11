@@ -3,6 +3,7 @@ using Aesir.Common.FileTypes;
 using Aesir.Infrastructure.Extensions;
 using Aesir.Infrastructure.Models;
 using Aesir.Infrastructure.Services;
+using Aesir.Orchestration.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;

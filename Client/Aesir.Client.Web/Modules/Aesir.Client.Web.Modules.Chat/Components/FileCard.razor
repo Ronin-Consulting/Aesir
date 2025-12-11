@@ -1,0 +1,492 @@
+@* Modern file card component - Claude/ChatGPT inspired design *@
+@using Aesir.Client.Web.Modules.Chat.Services
+
+<div class="file-card @SizeClass @StateClass @(IsClickable ? "clickable" : "") @(IsRemoving ? "removing" : "")"
+     @onclick="HandleClick"
+     @onmouseenter="() => _isHovered = true"
+     @onmouseleave="() => _isHovered = false"
+     role="@(IsClickable ? "button" : null)"
+     tabindex="@(IsClickable ? 0 : -1)"
+     title="@FileName">
+
+    @* Left: Icon with colored background *@
+    <div class="file-icon-wrapper" style="background-color: @_style.BackgroundColor;">
+        @if (ShowThumbnail && !string.IsNullOrEmpty(ThumbnailUrl))
+        {
+            <img src="@ThumbnailUrl" alt="@FileName" class="file-thumbnail" />
+        }
+        else
+        {
+            <MudIcon Icon="@_style.Icon" Size="@IconSize" Style="@($"color: {_style.AccentColor};")" />
+        }
+        @if (IsUploading)
+        {
+            <div class="upload-overlay">
+                <MudProgressCircular Size="MudBlazor.Size.Small" Indeterminate="@(Progress <= 0)" Value="@Progress" Color="Color.Primary" />
+            </div>
+        }
+        @if (ShowSuccess)
+        {
+            <div class="success-badge">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="MudBlazor.Size.Small" Color="Color.Success" />
+            </div>
+        }
+        @if (HasError)
+        {
+            <div class="error-badge">
+                <MudIcon Icon="@Icons.Material.Filled.Error" Size="MudBlazor.Size.Small" Color="Color.Error" />
+            </div>
+        }
+    </div>
+
+    @* Center: File info *@
+    <div class="file-info">
+        <span class="file-name">@TruncatedName</span>
+        @if (!string.IsNullOrEmpty(SecondaryText))
+        {
+            <span class="file-secondary">@SecondaryText</span>
+        }
+        else if (ShowFileSize && FileSize > 0)
+        {
+            <span class="file-size">@FileTypeHelper.FormatFileSize(FileSize)</span>
+        }
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <span class="error-text">@ErrorMessage</span>
+        }
+    </div>
+
+    @* Right: Actions (shown on hover or always for pending) *@
+    @if (ShowActions)
+    {
+        <div class="file-actions @(_isHovered || Size == FileCardSize.Compact ? "visible" : "")">
+            @if (OnRemove.HasDelegate)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                               Size="MudBlazor.Size.Small"
+                               OnClick="HandleRemove"
+                               OnClick:stopPropagation="true"
+                               Class="action-btn remove-btn"
+                               aria-label="Remove file" />
+            }
+            @if (OnDownload.HasDelegate && !IsUploading)
+            {
+                <MudIconButton Icon="@Icons.Material.Outlined.Download"
+                               Size="MudBlazor.Size.Small"
+                               OnClick="HandleDownload"
+                               OnClick:stopPropagation="true"
+                               Class="action-btn"
+                               aria-label="Download file" />
+            }
+        </div>
+    }
+
+    @* Upload progress bar at bottom *@
+    @if (IsUploading && Progress > 0)
+    {
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: @(Progress)%;"></div>
+        </div>
+    }
+</div>
+
+<style>
+    .file-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background-color: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-lines-default);
+        border-radius: 10px;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.15s ease;
+    }
+
+    /* Size variants */
+    .file-card.size-compact {
+        padding: 6px 10px;
+        max-width: 200px;
+    }
+
+    .file-card.size-default {
+        padding: 10px 14px;
+        max-width: 260px;
+    }
+
+    .file-card.size-large {
+        padding: 12px 16px;
+        max-width: 320px;
+    }
+
+    /* Hover state */
+    .file-card:hover {
+        border-color: var(--mud-palette-primary);
+        background-color: var(--mud-palette-background-gray);
+    }
+
+    .file-card.clickable {
+        cursor: pointer;
+    }
+
+    .file-card.clickable:hover {
+        transform: translateY(-2px) scale(1.01);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .file-card.clickable:active {
+        transform: translateY(0) scale(0.99);
+        transition: all 0.1s ease;
+    }
+
+    /* State variants */
+    .file-card.state-uploading {
+        border-color: var(--mud-palette-primary);
+    }
+
+    .file-card.state-error {
+        border-color: var(--mud-palette-error);
+        background-color: color-mix(in srgb, var(--mud-palette-error) 5%, var(--mud-palette-surface));
+    }
+
+    .file-card.state-deleted {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .file-card.state-deleted .file-name {
+        text-decoration: line-through;
+        color: var(--mud-palette-text-disabled);
+    }
+
+    .file-card.state-deleted:hover {
+        transform: none;
+        box-shadow: none;
+        border-color: var(--mud-palette-lines-default);
+    }
+
+    /* Icon wrapper */
+    .file-icon-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        flex-shrink: 0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .size-compact .file-icon-wrapper {
+        width: 32px;
+        height: 32px;
+    }
+
+    .size-default .file-icon-wrapper {
+        width: 40px;
+        height: 40px;
+    }
+
+    .size-large .file-icon-wrapper {
+        width: 48px;
+        height: 48px;
+    }
+
+    .file-thumbnail {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 6px;
+    }
+
+    .upload-overlay {
+        position: absolute;
+        inset: 0;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+    }
+
+    .error-badge {
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        background-color: var(--mud-palette-surface);
+        border-radius: 50%;
+        padding: 1px;
+    }
+
+    /* Success badge with animation */
+    .success-badge {
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        background-color: var(--mud-palette-surface);
+        border-radius: 50%;
+        padding: 1px;
+        animation: successPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @@keyframes successPop {
+        0% {
+            opacity: 0;
+            transform: scale(0);
+        }
+        50% {
+            transform: scale(1.2);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    /* State: success */
+    .file-card.state-success {
+        border-color: var(--mud-palette-success);
+    }
+
+    /* Removing animation */
+    .file-card.removing {
+        animation: fileCardSlideOut 0.2s ease-in forwards;
+        pointer-events: none;
+    }
+
+    @@keyframes fileCardSlideOut {
+        from {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.95);
+        }
+    }
+
+    /* File info */
+    .file-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .file-name {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--mud-palette-text-primary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .file-size,
+    .file-secondary {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .error-text {
+        font-size: 0.7rem;
+        color: var(--mud-palette-error);
+    }
+
+    /* Actions */
+    .file-actions {
+        display: flex;
+        gap: 2px;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        flex-shrink: 0;
+    }
+
+    .file-actions.visible {
+        opacity: 1;
+    }
+
+    .file-card:hover .file-actions {
+        opacity: 1;
+    }
+
+    .action-btn {
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .action-btn:hover {
+        color: var(--mud-palette-text-primary);
+    }
+
+    .remove-btn:hover {
+        color: var(--mud-palette-error);
+    }
+
+    /* Progress bar */
+    .progress-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background-color: var(--mud-palette-lines-default);
+    }
+
+    .progress-fill {
+        height: 100%;
+        background-color: var(--mud-palette-primary);
+        transition: width 0.2s ease;
+    }
+
+    /* Dark user message bubble context */
+    .user-message.theme-dark .file-card {
+        background-color: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .user-message.theme-dark .file-card:hover {
+        background-color: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .user-message.theme-dark .file-card .file-name {
+        color: #ffffff;
+    }
+
+    .user-message.theme-dark .file-card .file-size {
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Light user message bubble context */
+    .user-message.theme-light .file-card {
+        background-color: rgba(255, 255, 255, 0.9);
+        border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .user-message.theme-light .file-card:hover {
+        background-color: #ffffff;
+        border-color: rgba(0, 0, 0, 0.2);
+    }
+</style>
+
+@code {
+    public enum FileCardSize
+    {
+        Compact,    // For pending files in input
+        Default,    // Standard size
+        Large       // For prominent display
+    }
+
+    [Parameter]
+    public string FileName { get; set; } = string.Empty;
+
+    [Parameter]
+    public long FileSize { get; set; }
+
+    [Parameter]
+    public bool ShowFileSize { get; set; } = true;
+
+    [Parameter]
+    public string? SecondaryText { get; set; }
+
+    [Parameter]
+    public FileCardSize Size { get; set; } = FileCardSize.Default;
+
+    [Parameter]
+    public bool IsUploading { get; set; }
+
+    [Parameter]
+    public int Progress { get; set; }
+
+    [Parameter]
+    public bool HasError { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public bool IsDeleted { get; set; }
+
+    [Parameter]
+    public bool ShowSuccess { get; set; }
+
+    [Parameter]
+    public bool IsRemoving { get; set; }
+
+    [Parameter]
+    public string? ThumbnailUrl { get; set; }
+
+    [Parameter]
+    public bool ShowThumbnail { get; set; } = true;
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    [Parameter]
+    public EventCallback OnRemove { get; set; }
+
+    [Parameter]
+    public EventCallback OnDownload { get; set; }
+
+    private bool _isHovered;
+    private FileTypeHelper.FileTypeStyle _style = null!;
+
+    private bool IsClickable => OnClick.HasDelegate && !IsUploading && !IsDeleted;
+    private bool ShowActions => OnRemove.HasDelegate || OnDownload.HasDelegate;
+
+    private string SizeClass => Size switch
+    {
+        FileCardSize.Compact => "size-compact",
+        FileCardSize.Large => "size-large",
+        _ => "size-default"
+    };
+
+    private string StateClass
+    {
+        get
+        {
+            if (IsDeleted) return "state-deleted";
+            if (HasError) return "state-error";
+            if (ShowSuccess) return "state-success";
+            if (IsUploading) return "state-uploading";
+            return string.Empty;
+        }
+    }
+
+    private Size IconSize => Size switch
+    {
+        FileCardSize.Compact => MudBlazor.Size.Small,
+        FileCardSize.Large => MudBlazor.Size.Large,
+        _ => MudBlazor.Size.Medium
+    };
+
+    private string TruncatedName => Size switch
+    {
+        FileCardSize.Compact => FileTypeHelper.TruncateFileName(FileName, 18),
+        FileCardSize.Large => FileTypeHelper.TruncateFileName(FileName, 35),
+        _ => FileTypeHelper.TruncateFileName(FileName, 25)
+    };
+
+    protected override void OnParametersSet()
+    {
+        _style = FileTypeHelper.GetStyle(FileName);
+    }
+
+    private async Task HandleClick()
+    {
+        if (IsClickable)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+
+    private async Task HandleRemove()
+    {
+        await OnRemove.InvokeAsync();
+    }
+
+    private async Task HandleDownload()
+    {
+        await OnDownload.InvokeAsync();
+    }
+}

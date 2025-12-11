@@ -22,6 +22,13 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
 
     [JsonPropertyName("thoughts_content")]
     public string? ThoughtsContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets the tool calls made during generation of this message.
+    /// Only populated for assistant messages.
+    /// </summary>
+    [JsonPropertyName("tool_calls")]
+    public IReadOnlyList<AesirToolCallInfo>? ToolCalls { get; set; }
     
     /// <summary>
     /// Determines if the message content contains a file reference.

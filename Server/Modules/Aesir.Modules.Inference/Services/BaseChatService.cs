@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Threading.Channels;
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Inference.Models;
@@ -16,64 +17,59 @@ namespace Aesir.Modules.Inference.Services;
 /// <param name="logger">The logger instance used for recording application events and debugging information.</param>
 /// <param name="chatHistoryService">The service responsible for persisting and retrieving chat session histories.</param>
 /// <param name="kernel">The semantic kernel utilized for processing chat completion requests and generating AI responses.</param>
+/// <param name="toolCallBroadcaster">The broadcaster for streaming tool call events to clients.</param>
 /// <param name="inferenceEngineIdKey">The service key used to register this keyed service.</param>
 [Experimental("SKEXP0070")]
-public abstract class BaseChatService(
-    ILogger logger,
-    IChatHistoryService chatHistoryService,
-    Kernel kernel,
-    IServiceProvider serviceProvider,
-    string inferenceEngineIdKey)
-    : IChatService
+public abstract class BaseChatService : IChatService
 {
     /// <summary>
     /// A protected instance of <see cref="ILogger"/> utilized for logging operations within the service.
     /// </summary>
-    /// <remarks>
-    /// Supports capturing and recording of events such as errors, exceptions, and other operational details,
-    /// which aids in diagnostics, system monitoring, and application maintenance.
-    /// </remarks>
-    protected readonly ILogger _logger = logger;
+    protected readonly ILogger _logger;
 
     /// <summary>
     /// A protected instance of <see cref="IChatHistoryService"/> used for managing operations related to chat history.
     /// </summary>
-    /// <remarks>
-    /// Provides functionalities for persisting, retrieving, and managing chat session data.
-    /// Ensures that chat history is accessible and up-to-date for various application components.
-    /// </remarks>
-    protected readonly IChatHistoryService _chatHistoryService = chatHistoryService;
+    protected readonly IChatHistoryService _chatHistoryService;
 
     /// <summary>
     /// A protected instance of the <see cref="Kernel"/> class used for managing AI-driven operations within the service.
     /// </summary>
-    /// <remarks>
-    /// Serves as the core engine for enabling functionalities such as plugin execution, prompt handling,
-    /// and supporting various AI-related workflows essential to the chat service's operations.
-    /// </remarks>
-    protected readonly Kernel _kernel = kernel;
+    protected readonly Kernel _kernel;
 
     /// <summary>
-    /// A protected string representing the key used to identify the inference engine
-    /// within the services and factories utilized by the <see cref="BaseChatService"/>.
+    /// A protected string representing the key used to identify the inference engine.
     /// </summary>
-    /// <remarks>
-    /// This key is used as an identifier to retrieve the appropriate
-    /// <see cref="IChatCompletionServiceFactory"/> implementation. It facilitates
-    /// dynamic service resolution and enables the system to interact with the correct
-    /// inference engine for AI model execution.
-    /// </remarks>
-    private readonly string _inferenceEngineIdKey = inferenceEngineIdKey;
+    private readonly string _inferenceEngineIdKey;
 
     /// <summary>
-    /// A protected instance of <see cref="IServiceProvider"/> utilized to resolve service dependencies dynamically
-    /// within the chat service implementation.
+    /// A protected instance of <see cref="IServiceProvider"/> utilized to resolve service dependencies dynamically.
     /// </summary>
-    /// <remarks>
-    /// Enables the retrieval of service instances, such as factories or other required components,
-    /// facilitating dependency injection and runtime service resolution.
-    /// </remarks>
-    private readonly IServiceProvider _serviceProvider = serviceProvider;
+    private readonly IServiceProvider _serviceProvider;
+
+    /// <summary>
+    /// The tool call broadcaster for streaming tool call events to clients.
+    /// </summary>
+    private readonly IToolCallBroadcaster _toolCallBroadcaster;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BaseChatService"/> class.
+    /// </summary>
+    protected BaseChatService(
+        ILogger logger,
+        IChatHistoryService chatHistoryService,
+        Kernel kernel,
+        IServiceProvider serviceProvider,
+        IToolCallBroadcaster toolCallBroadcaster,
+        string inferenceEngineIdKey)
+    {
+        _logger = logger;
+        _chatHistoryService = chatHistoryService;
+        _kernel = kernel;
+        _serviceProvider = serviceProvider;
+        _toolCallBroadcaster = toolCallBroadcaster;
+        _inferenceEngineIdKey = inferenceEngineIdKey;
+    }
 
     /// <summary>
     /// Retrieves an instance of the chat completion service based on the specified model identifier.
@@ -190,11 +186,18 @@ public abstract class BaseChatService(
         }
 
         // Handle initialization errors without try/catch around yield
-        IAsyncEnumerable<(string content, bool isThinking, bool isComplete)> streamingResults = null;
+        IAsyncEnumerable<(string content, bool isThinking, bool isComplete)>? streamingResults = null;
 
         bool initializationError = false;
         AesirChatMessage errorMessage =
             AesirChatMessage.NewAssistantMessage("I apologize, but I encountered an error processing your request.");
+
+        // Create tool call broadcaster scope for this request and store it in Kernel.Data
+        // This allows the ToolCallStreamingFilter to access it via the Kernel context
+        await using var toolCallScope = _toolCallBroadcaster.CreateScope();
+        _kernel.Data[ToolCallBroadcaster.KernelDataKey] = toolCallScope;
+
+        _logger.LogWarning("[BaseChatService] About to call ExecuteStreamingChatCompletionAsync");
 
         try
         {
@@ -219,48 +222,110 @@ public abstract class BaseChatService(
             yield break;
         }
 
-        // Process streaming results - only execute if no initialization error occurred
+        // Process streaming results with tool call merging
         if (streamingResults != null)
         {
-            await foreach (var (content, isThinking, isComplete) in streamingResults)
+            await foreach (var streamEvent in MergeToolCallsAndContentAsync(
+                streamingResults, toolCallScope.Reader, completionId, request, title, titleTask, messageToSave))
             {
-                if(title == request.Title)
+                // Update title if available
+                if (title == request.Title && titleTask.IsCompleted)
                     title = await titleTask;
 
-                //_logger.LogDebug("Received streaming content: {Content}", content);
-
-                if (!string.IsNullOrEmpty(content))
-                {
-                    var messageToSend = AesirChatMessage.NewAssistantMessage(string.Empty);
-
-                    if (isThinking)
-                    {
-                        messageToSave.ThoughtsContent += content;
-
-                        messageToSend.ThoughtsContent = content;
-                    }
-                    else
-                    {
-                        messageToSave.Content += content;
-
-                        messageToSend.Content = content;
-                    }
-
-                    yield return new AesirChatStreamedResult()
-                    {
-                        Id = completionId,
-                        ChatSessionId = request.ChatSessionId,
-                        ConversationId = request.Conversation.Id,
-                        Delta = messageToSend,
-                        Title = title,
-                        IsThinking = isThinking
-                    };
-                }
+                yield return streamEvent;
             }
 
             request.Conversation.Messages.Add(messageToSave);
             await PersistChatSessionAsync(request, request.Conversation, title);
         }
+
+        // Signal that no more tool calls will come and clean up Kernel.Data
+        toolCallScope.Complete();
+        _kernel.Data.Remove(ToolCallBroadcaster.KernelDataKey);
+    }
+
+    /// <summary>
+    /// Merges tool call events with text/thinking content into a single stream.
+    /// Tool calls are checked non-blocking before each content chunk.
+    /// </summary>
+    private async IAsyncEnumerable<AesirChatStreamedResultBase> MergeToolCallsAndContentAsync(
+        IAsyncEnumerable<(string content, bool isThinking, bool isComplete)> contentStream,
+        ChannelReader<AesirToolCallInfo> toolCallReader,
+        string completionId,
+        AesirChatRequestBase request,
+        string title,
+        Task<string> titleTask,
+        AesirChatMessage messageToSave)
+    {
+        await foreach (var (content, isThinking, isComplete) in contentStream)
+        {
+            // Check for tool calls first (non-blocking) and yield any pending ones
+            while (toolCallReader.TryRead(out var toolCall))
+            {
+                yield return CreateToolCallResult(completionId, request, title, toolCall);
+            }
+
+            // Update title if ready
+            if (title == request.Title && titleTask.IsCompleted)
+                title = await titleTask;
+
+            // Yield content chunk
+            if (!string.IsNullOrEmpty(content))
+            {
+                var messageToSend = AesirChatMessage.NewAssistantMessage(string.Empty);
+
+                if (isThinking)
+                {
+                    messageToSave.ThoughtsContent += content;
+                    messageToSend.ThoughtsContent = content;
+                }
+                else
+                {
+                    messageToSave.Content += content;
+                    messageToSend.Content = content;
+                }
+
+                yield return new AesirChatStreamedResult
+                {
+                    Id = completionId,
+                    ChatSessionId = request.ChatSessionId,
+                    ConversationId = request.Conversation.Id,
+                    Delta = messageToSend,
+                    Title = title,
+                    IsThinking = isThinking,
+                    EventType = isThinking ? StreamEventType.Thinking : StreamEventType.Text
+                };
+            }
+        }
+
+        // Drain any remaining tool calls after content stream completes
+        while (toolCallReader.TryRead(out var toolCall))
+        {
+            yield return CreateToolCallResult(completionId, request, title, toolCall);
+        }
+    }
+
+    /// <summary>
+    /// Creates a streamed result for a tool call event.
+    /// </summary>
+    private static AesirChatStreamedResult CreateToolCallResult(
+        string completionId,
+        AesirChatRequestBase request,
+        string title,
+        AesirToolCallInfo toolCall)
+    {
+        return new AesirChatStreamedResult
+        {
+            Id = completionId,
+            ChatSessionId = request.ChatSessionId,
+            ConversationId = request.Conversation.Id,
+            Delta = AesirChatMessage.NewAssistantMessage(string.Empty),
+            Title = title,
+            EventType = toolCall.Status == ToolCallStatus.Started
+                ? StreamEventType.ToolCallStart
+                : StreamEventType.ToolCallResult,
+            ToolCall = toolCall
+        };
     }
 
     /// <summary>

@@ -135,9 +135,9 @@ public class ModelsService(
     /// <returns>
     /// A task representing the asynchronous unload operation.
     /// </returns>
-    public async Task UnloadModelsAsync(string[] modelIds)
+    public Task UnloadModelsAsync(string[] modelIds)
     {
-        // no op
-        await Task.CompletedTask;
+        // no op - OpenAI doesn't support model unloading
+        return Task.CompletedTask;
     }
 }

@@ -22,6 +22,10 @@ public class AesirFileInfo
     /// </summary>
     public long FileSize { get; set; }
     /// <summary>
+    /// Gets or sets whether a thumbnail is available for this file.
+    /// </summary>
+    public bool HasThumbnail { get; set; }
+    /// <summary>
     /// Gets or sets the date and time when the file was created.
     /// </summary>
     public DateTime CreatedAt { get; set; }

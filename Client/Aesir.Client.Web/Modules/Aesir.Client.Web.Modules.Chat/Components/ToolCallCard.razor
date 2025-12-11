@@ -1,0 +1,383 @@
+@using Aesir.Common.Models
+
+<div class="tool-call-card @GetToolTypeClass() @GetStatusClass()">
+    <div class="tool-call-header" @onclick="ToggleExpanded">
+        <div class="tool-call-icon">
+            @GetToolIcon()
+        </div>
+        <div class="tool-call-info">
+            <span class="tool-name">@GetDisplayName()</span>
+            @if (!string.IsNullOrEmpty(ToolCall.PluginName))
+            {
+                <span class="plugin-badge">@ToolCall.PluginName</span>
+            }
+        </div>
+        <div class="tool-call-status">
+            @if (ToolCall.Status == ToolCallStatus.Started)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="status-spinner" />
+            }
+            else if (ToolCall.Status == ToolCallStatus.Completed)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Class="status-icon completed" />
+            }
+            else if (ToolCall.Status == ToolCallStatus.Failed)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small" Class="status-icon failed" />
+            }
+            @if (ToolCall.DurationMs.HasValue)
+            {
+                <span class="duration">@FormatDuration(ToolCall.DurationMs.Value)</span>
+            }
+        </div>
+        <MudIcon Icon="@(_expanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                 Size="Size.Small" Class="expand-icon" />
+    </div>
+    @if (_expanded)
+    {
+        <div class="tool-call-details">
+            @if (!string.IsNullOrEmpty(ToolCall.Description))
+            {
+                <div class="detail-section">
+                    <span class="detail-label">Description</span>
+                    <span class="detail-value">@ToolCall.Description</span>
+                </div>
+            }
+            @if (ToolCall.Arguments?.Count > 0)
+            {
+                <div class="detail-section">
+                    <span class="detail-label">Arguments</span>
+                    <div class="arguments-list">
+                        @foreach (var arg in ToolCall.Arguments)
+                        {
+                            <div class="argument">
+                                <span class="arg-key">@arg.Key:</span>
+                                <span class="arg-value">@TruncateValue(arg.Value)</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(ToolCall.Result))
+            {
+                <div class="detail-section result-section">
+                    <span class="detail-label">Result</span>
+                    <pre class="result-value">@ToolCall.Result</pre>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(ToolCall.Error))
+            {
+                <div class="detail-section error-section">
+                    <span class="detail-label">Error</span>
+                    <span class="error-value">@ToolCall.Error</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .tool-call-card {
+        border-radius: 8px;
+        margin-bottom: 8px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: border-color 0.2s ease;
+    }
+
+    .tool-call-card:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .tool-call-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .tool-call-header:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .tool-call-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        flex-shrink: 0;
+    }
+
+    .tool-call-info {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .tool-name {
+        font-weight: 500;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .plugin-badge {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--mud-palette-text-secondary);
+        white-space: nowrap;
+    }
+
+    .tool-call-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .status-spinner {
+        width: 16px !important;
+        height: 16px !important;
+    }
+
+    .status-icon.completed {
+        color: #4CAF50;
+    }
+
+    .status-icon.failed {
+        color: #f44336;
+    }
+
+    .duration {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .expand-icon {
+        color: var(--mud-palette-text-secondary);
+        transition: transform 0.2s ease;
+    }
+
+    .tool-call-details {
+        padding: 12px 14px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: rgba(0, 0, 0, 0.1);
+        animation: slideDown 0.2s ease;
+    }
+
+    @@keyframes slideDown {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .detail-section {
+        margin-bottom: 10px;
+    }
+
+    .detail-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .detail-label {
+        display: block;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--mud-palette-text-secondary);
+        margin-bottom: 4px;
+    }
+
+    .detail-value {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .arguments-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .argument {
+        font-size: 0.85rem;
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    .arg-key {
+        color: #9CDCFE;
+    }
+
+    .arg-value {
+        color: #CE9178;
+        margin-left: 4px;
+    }
+
+    .result-value {
+        font-size: 0.8rem;
+        padding: 8px;
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 150px;
+        overflow-y: auto;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .error-value {
+        color: #f44336;
+        font-size: 0.85rem;
+    }
+
+    /* Tool Type Colors */
+    .tool-call-card.tool-document-search {
+        background-color: rgba(76, 175, 80, 0.1);
+    }
+    .tool-call-card.tool-document-search .tool-call-icon {
+        background-color: rgba(76, 175, 80, 0.2);
+        color: #4CAF50;
+    }
+
+    .tool-call-card.tool-web-search {
+        background-color: rgba(33, 150, 243, 0.1);
+    }
+    .tool-call-card.tool-web-search .tool-call-icon {
+        background-color: rgba(33, 150, 243, 0.2);
+        color: #2196F3;
+    }
+
+    .tool-call-card.tool-mcp-server {
+        background-color: rgba(255, 152, 0, 0.1);
+    }
+    .tool-call-card.tool-mcp-server .tool-call-icon {
+        background-color: rgba(255, 152, 0, 0.2);
+        color: #FF9800;
+    }
+
+    .tool-call-card.tool-image-analysis {
+        background-color: rgba(233, 30, 99, 0.1);
+    }
+    .tool-call-card.tool-image-analysis .tool-call-icon {
+        background-color: rgba(233, 30, 99, 0.2);
+        color: #E91E63;
+    }
+
+    .tool-call-card.tool-summarization {
+        background-color: rgba(156, 39, 176, 0.1);
+    }
+    .tool-call-card.tool-summarization .tool-call-icon {
+        background-color: rgba(156, 39, 176, 0.2);
+        color: #9C27B0;
+    }
+
+    .tool-call-card.tool-other {
+        background-color: rgba(96, 125, 139, 0.1);
+    }
+    .tool-call-card.tool-other .tool-call-icon {
+        background-color: rgba(96, 125, 139, 0.2);
+        color: #607D8B;
+    }
+
+    /* Status styles */
+    .tool-call-card.status-started {
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.85; }
+    }
+
+    .tool-call-card.status-failed {
+        border-color: rgba(244, 67, 54, 0.3);
+    }
+</style>
+
+@code {
+    private bool _expanded = false;
+
+    [Parameter]
+    public required AesirToolCallInfo ToolCall { get; set; }
+
+    [Parameter]
+    public bool DefaultExpanded { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        _expanded = DefaultExpanded;
+    }
+
+    private void ToggleExpanded()
+    {
+        _expanded = !_expanded;
+    }
+
+    private string GetToolTypeClass() => ToolCall.ToolType switch
+    {
+        ToolCallType.DocumentSearch => "tool-document-search",
+        ToolCallType.WebSearch => "tool-web-search",
+        ToolCallType.McpServer => "tool-mcp-server",
+        ToolCallType.ImageAnalysis => "tool-image-analysis",
+        ToolCallType.Summarization => "tool-summarization",
+        _ => "tool-other"
+    };
+
+    private string GetStatusClass() => ToolCall.Status switch
+    {
+        ToolCallStatus.Started => "status-started",
+        ToolCallStatus.Failed => "status-failed",
+        _ => ""
+    };
+
+    private RenderFragment GetToolIcon() => ToolCall.ToolType switch
+    {
+        ToolCallType.DocumentSearch => @<MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" />,
+        ToolCallType.WebSearch => @<MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" />,
+        ToolCallType.McpServer => @<MudIcon Icon="@Icons.Material.Filled.Extension" Size="Size.Small" />,
+        ToolCallType.ImageAnalysis => @<MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Small" />,
+        ToolCallType.Summarization => @<MudIcon Icon="@Icons.Material.Filled.Summarize" Size="Size.Small" />,
+        _ => @<MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Small" />
+    };
+
+    private string GetDisplayName()
+    {
+        // Transform function name to human-readable format
+        var name = ToolCall.FunctionName;
+
+        // Remove common prefixes
+        if (name.StartsWith("get_", StringComparison.OrdinalIgnoreCase))
+            name = name[4..];
+        else if (name.StartsWith("search_", StringComparison.OrdinalIgnoreCase))
+            name = name[7..];
+
+        // Convert snake_case or camelCase to Title Case
+        return string.Concat(name.Select((c, i) =>
+            i > 0 && (char.IsUpper(c) || c == '_')
+                ? " " + (c == '_' ? "" : c.ToString())
+                : c.ToString()
+        )).Trim().Replace("  ", " ");
+    }
+
+    private static string FormatDuration(long milliseconds)
+    {
+        return milliseconds < 1000
+            ? $"{milliseconds}ms"
+            : $"{milliseconds / 1000.0:F1}s";
+    }
+
+    private static string TruncateValue(string value, int maxLength = 100)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+        return value.Length <= maxLength ? value : value[..(maxLength - 3)] + "...";
+    }
+}

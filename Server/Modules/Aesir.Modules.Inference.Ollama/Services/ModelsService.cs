@@ -129,11 +129,11 @@ public class ModelsService(
     /// <returns>
     /// A task that represents the asynchronous operation of unloading the selected models.
     /// </returns>
-    public async Task UnloadModelsAsync(string[] modelIds)
+    public Task UnloadModelsAsync(string[] modelIds)
     {
         // Note: OllamaSharp 5.0+ removed RequestModelUnloadAsync
         // Model unloading is now handled automatically by Ollama server
-        await Task.CompletedTask;
         logger.LogInformation("Model unload requested for {Count} models - managed automatically by Ollama server", modelIds.Length);
+        return Task.CompletedTask;
     }
 }

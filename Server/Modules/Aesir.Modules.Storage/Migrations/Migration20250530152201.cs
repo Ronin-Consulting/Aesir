@@ -27,6 +27,11 @@ public class Migration20250530152201 : Migration
 
     public override void Down()
     {
-        throw new NotImplementedException();
+        Delete.UniqueConstraint("uc_file_name")
+            .FromTable("aesir_file_storage")
+            .InSchema("aesir");
+
+        Delete.Table("aesir_file_storage")
+            .InSchema("aesir");
     }
 }

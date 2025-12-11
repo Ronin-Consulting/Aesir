@@ -44,6 +44,12 @@ public class ConversationFile
     public DateTime UpdatedAt { get; set; }
 
     /// <summary>
+    /// Gets or sets whether a thumbnail is available for this file.
+    /// </summary>
+    [JsonPropertyName("hasThumbnail")]
+    public bool HasThumbnail { get; set; }
+
+    /// <summary>
     /// Gets the display name of the file (without the conversation path prefix).
     /// </summary>
     public string DisplayName => GetDisplayName();

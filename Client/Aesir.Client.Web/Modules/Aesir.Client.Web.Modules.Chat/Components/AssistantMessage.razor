@@ -4,6 +4,11 @@
 @inject IJSRuntime JSRuntime
 
 <div class="assistant-message">
+    @* Collapsible Tool Calls Section *@
+    @if (ShowToolCalls && ToolCalls?.Count > 0)
+    {
+        <ToolCallsSection ToolCalls="ToolCalls" IsStreaming="IsStreaming" AutoExpandWhenActive="true" />
+    }
     @* Collapsible Thinking Section (Claude-style) *@
     @if (ShowThinking && !string.IsNullOrEmpty(Message.ThoughtsContent))
     {
@@ -327,6 +332,122 @@
         text-decoration: underline;
     }
 
+    /* Citation Link Styling - Base */
+    .assistant-message .markdown-body .citation-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin: 2px 4px;
+        padding: 3px 10px;
+        background-color: rgba(117, 117, 117, 0.1);
+        border: 1px solid rgba(117, 117, 117, 0.25);
+        border-radius: 14px;
+        color: #757575;
+        font-size: 0.85em;
+        text-decoration: none;
+        transition: all 0.15s ease;
+        cursor: pointer;
+        vertical-align: middle;
+    }
+
+    .assistant-message .markdown-body .citation-link:hover {
+        background-color: rgba(117, 117, 117, 0.18);
+        border-color: rgba(117, 117, 117, 0.4);
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+
+    .assistant-message .markdown-body .citation-link .citation-icon {
+        flex-shrink: 0;
+        opacity: 0.85;
+    }
+
+    .assistant-message .markdown-body .citation-link .citation-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px;
+        font-weight: 500;
+    }
+
+    .assistant-message .markdown-body .citation-link .citation-page {
+        font-size: 0.75em;
+        padding: 1px 5px;
+        background-color: rgba(0, 0, 0, 0.08);
+        border-radius: 8px;
+        margin-left: 2px;
+    }
+
+    .assistant-message .markdown-body .citation-link:active {
+        transform: scale(0.97);
+    }
+
+    /* File type specific colors - PDF (Blue) */
+    .assistant-message .markdown-body .citation-link.citation-pdf {
+        background-color: rgba(30, 136, 229, 0.1);
+        border-color: rgba(30, 136, 229, 0.3);
+        color: #1E88E5;
+    }
+    .assistant-message .markdown-body .citation-link.citation-pdf:hover {
+        background-color: rgba(30, 136, 229, 0.18);
+        border-color: rgba(30, 136, 229, 0.45);
+    }
+
+    /* Image (Blue) */
+    .assistant-message .markdown-body .citation-link.citation-image {
+        background-color: rgba(30, 136, 229, 0.1);
+        border-color: rgba(30, 136, 229, 0.3);
+        color: #1E88E5;
+    }
+    .assistant-message .markdown-body .citation-link.citation-image:hover {
+        background-color: rgba(30, 136, 229, 0.18);
+        border-color: rgba(30, 136, 229, 0.45);
+    }
+
+    /* Document (Green) */
+    .assistant-message .markdown-body .citation-link.citation-document {
+        background-color: rgba(67, 160, 71, 0.1);
+        border-color: rgba(67, 160, 71, 0.3);
+        color: #43A047;
+    }
+    .assistant-message .markdown-body .citation-link.citation-document:hover {
+        background-color: rgba(67, 160, 71, 0.18);
+        border-color: rgba(67, 160, 71, 0.45);
+    }
+
+    /* Data (Orange) */
+    .assistant-message .markdown-body .citation-link.citation-data {
+        background-color: rgba(251, 140, 0, 0.1);
+        border-color: rgba(251, 140, 0, 0.3);
+        color: #FB8C00;
+    }
+    .assistant-message .markdown-body .citation-link.citation-data:hover {
+        background-color: rgba(251, 140, 0, 0.18);
+        border-color: rgba(251, 140, 0, 0.45);
+    }
+
+    /* Code (Purple) */
+    .assistant-message .markdown-body .citation-link.citation-code {
+        background-color: rgba(142, 36, 170, 0.1);
+        border-color: rgba(142, 36, 170, 0.3);
+        color: #8E24AA;
+    }
+    .assistant-message .markdown-body .citation-link.citation-code:hover {
+        background-color: rgba(142, 36, 170, 0.18);
+        border-color: rgba(142, 36, 170, 0.45);
+    }
+
+    /* Archive (Brown) */
+    .assistant-message .markdown-body .citation-link.citation-archive {
+        background-color: rgba(109, 76, 65, 0.1);
+        border-color: rgba(109, 76, 65, 0.3);
+        color: #6D4C41;
+    }
+    .assistant-message .markdown-body .citation-link.citation-archive:hover {
+        background-color: rgba(109, 76, 65, 0.18);
+        border-color: rgba(109, 76, 65, 0.45);
+    }
+
     .assistant-message .markdown-body h1,
     .assistant-message .markdown-body h2,
     .assistant-message .markdown-body h3,
@@ -367,6 +488,15 @@
 
     [Parameter]
     public bool IsLatestMessage { get; set; } = false;
+
+    [Parameter]
+    public IReadOnlyList<AesirToolCallInfo>? ToolCalls { get; set; }
+
+    [Parameter]
+    public bool ShowToolCalls { get; set; } = true;
+
+    [Parameter]
+    public bool IsStreaming { get; set; } = false;
 
     private void ToggleThinking()
     {

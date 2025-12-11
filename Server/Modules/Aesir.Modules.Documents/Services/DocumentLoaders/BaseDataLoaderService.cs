@@ -146,16 +146,16 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
     /// <param name="fileName">The source file name used as metadata for the record.</param>
     /// <param name="cancellationToken">Token used to propagate notifications that the operation should be canceled.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    protected async Task EnrichRecordAsync(TRecord record, string fileName, CancellationToken cancellationToken)
+    protected Task EnrichRecordAsync(TRecord record, string fileName, CancellationToken cancellationToken)
     {
         var textChunk = record.Text ?? throw new InvalidOperationException("Text is null");
-        
+
         record.Key = UniqueKeyGenerator.GenerateKey();
         record.ReferenceDescription ??= fileName.StartsWith("file://") ? fileName.Substring(7) : fileName;
         record.ReferenceLink ??= fileName.StartsWith("file://") ? System.Web.HttpUtility.UrlEncode(fileName) : $"file://{System.Web.HttpUtility.UrlEncode(fileName)}";
         record.TokenCount ??= TokenCounter.CountTokens(textChunk);
-        
-        await Task.CompletedTask;
+
+        return Task.CompletedTask;
     }
     
     protected async Task<Embedding<float>[]> GenerateEmbeddingsAsync(string[] textChunks, CancellationToken cancellationToken)

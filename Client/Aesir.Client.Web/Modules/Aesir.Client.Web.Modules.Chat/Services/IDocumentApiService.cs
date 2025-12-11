@@ -67,6 +67,14 @@ public interface IDocumentApiService
     string GetDownloadUrl(Guid conversationId, string filename);
 
     /// <summary>
+    /// Gets the thumbnail URL for a conversation file.
+    /// </summary>
+    /// <param name="conversationId">The conversation ID.</param>
+    /// <param name="filename">The filename to get the thumbnail for.</param>
+    /// <returns>The URL to retrieve the thumbnail.</returns>
+    string GetThumbnailUrl(Guid conversationId, string filename);
+
+    /// <summary>
     /// Checks if a file extension is supported for upload.
     /// </summary>
     /// <param name="filename">The filename to check.</param>
@@ -92,4 +100,65 @@ public interface IDocumentApiService
         Guid sourceConversationId,
         Guid targetConversationId,
         CancellationToken ct = default);
+
+    #region Citation Viewer Methods
+
+    /// <summary>
+    /// Gets metadata about a citation file.
+    /// </summary>
+    /// <param name="conversationId">The conversation ID.</param>
+    /// <param name="filename">The filename.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>File metadata including size, mime type, and page count.</returns>
+    Task<CitationFileMetadata?> GetCitationMetadataAsync(
+        string conversationId,
+        string filename,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the file content as a byte array.
+    /// </summary>
+    /// <param name="conversationId">The conversation ID.</param>
+    /// <param name="filename">The filename.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The file content as bytes, or null if not found.</returns>
+    Task<byte[]?> GetCitationContentAsync(
+        string conversationId,
+        string filename,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the URL for viewing/downloading a citation file.
+    /// </summary>
+    /// <param name="conversationId">The conversation ID.</param>
+    /// <param name="filename">The filename.</param>
+    /// <returns>The URL to access the file content.</returns>
+    string GetCitationViewUrl(string conversationId, string filename);
+
+    /// <summary>
+    /// Gets the file content as a data URL (base64 encoded).
+    /// Useful for embedding images and PDFs directly in the page.
+    /// </summary>
+    /// <param name="conversationId">The conversation ID.</param>
+    /// <param name="filename">The filename.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A data URL (e.g., "data:application/pdf;base64,..."), or null if not found.</returns>
+    Task<string?> GetCitationDataUrlAsync(
+        string conversationId,
+        string filename,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Checks if a citation file exists.
+    /// </summary>
+    /// <param name="conversationId">The conversation ID.</param>
+    /// <param name="filename">The filename.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>True if the file exists, false otherwise.</returns>
+    Task<bool> CitationExistsAsync(
+        string conversationId,
+        string filename,
+        CancellationToken ct = default);
+
+    #endregion
 }

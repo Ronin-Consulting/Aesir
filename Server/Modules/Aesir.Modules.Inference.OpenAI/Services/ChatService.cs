@@ -1,8 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using Aesir.Modules.Inference.Services;
 using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using Aesir.Infrastructure.Services;
+using Aesir.Modules.Inference.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -38,6 +38,11 @@ public class ChatService : BaseChatService
     private readonly IKernelPluginService _kernelPluginService;
 
     /// <summary>
+    /// Factory for creating loggers, used to create typed loggers for child services.
+    /// </summary>
+    private readonly ILoggerFactory _loggerFactory;
+
+    /// <summary>
     /// Provides an implementation of prompt generation functionalities used for constructing
     /// and accessing prompts essential to AI-driven workflows, such as chat completion and
     /// other conversational AI operations.
@@ -48,22 +53,29 @@ public class ChatService : BaseChatService
     /// Initializes a new instance of the <see cref="ChatService"/> class.
     /// </summary>
     /// <param name="logger">Logger for diagnostic information.</param>
+    /// <param name="loggerFactory">Factory for creating loggers for child services.</param>
     /// <param name="kernel">Semantic Kernel instance for AI operations.</param>
+    /// <param name="kernelPluginService">Service for managing kernel plugins.</param>
+    /// <param name="serviceProvider">Service provider for dependency resolution.</param>
+    /// <param name="toolCallBroadcaster">Broadcaster for streaming tool call events to clients.</param>
     /// <param name="inferenceEngineIdKey">The service key used to register this keyed service.</param>
     /// <param name="chatHistoryService">Service for persisting and managing chat history.</param>
     /// <param name="conversationDocumentCollectionService">Service for handling access and search functionalities for documents within conversations.</param>
     public ChatService(
         ILogger<ChatService> logger,
+        ILoggerFactory loggerFactory,
         Kernel kernel,
         IKernelPluginService kernelPluginService,
         IServiceProvider serviceProvider,
+        IToolCallBroadcaster toolCallBroadcaster,
         string inferenceEngineIdKey,
         IChatHistoryService chatHistoryService,
         IConversationDocumentCollectionService? conversationDocumentCollectionService)
-        : base(logger, chatHistoryService, kernel, serviceProvider, inferenceEngineIdKey)
+        : base(logger, chatHistoryService, kernel, serviceProvider, toolCallBroadcaster, inferenceEngineIdKey)
     {
         _conversationDocumentCollectionService = conversationDocumentCollectionService;
         _kernelPluginService = kernelPluginService;
+        _loggerFactory = loggerFactory;
     }
 
     /// <summary>
@@ -195,10 +207,9 @@ public class ChatService : BaseChatService
     /// <returns>A task representing the async operation, with a result of <see cref="OpenAIPromptExecutionSettings"/> configured based on the provided request.</returns>
     private async Task<OpenAIPromptExecutionSettings> CreatePromptExecutionSettingsAsync(AesirChatRequestBase request)
     {
-        await Task.CompletedTask;
-
+        var settingsBuilderLogger = _loggerFactory.CreateLogger<OpenAiPromptExecutionSettingsBuilder>();
         var promptExecutionSettingsBuilder = new OpenAiPromptExecutionSettingsBuilder(
-            _kernel, _conversationDocumentCollectionService, _kernelPluginService);
+            _kernel, _conversationDocumentCollectionService, _kernelPluginService, settingsBuilderLogger);
 
         var results =
             await promptExecutionSettingsBuilder.BuildAsync(request);

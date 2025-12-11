@@ -29,8 +29,11 @@ public class StorageModule : ModuleBase
         // Register file storage service
         services.AddScoped<IFileStorageService, FileStorageService>();
 
+        // Register PDF thumbnail service
+        services.AddScoped<IPdfThumbnailService, PdfThumbnailService>();
+
         Log("Storage services registered successfully");
-        
+
         return Task.CompletedTask;
     }
 }

@@ -18,6 +18,9 @@ public class Migration20250813111901 : Migration
 
     public override void Down()
     {
-        throw new NotImplementedException();
+        // Column type changes may cause data truncation - manual intervention required
+        throw new NotSupportedException(
+            "Migration rollback is not supported. Reverting column type changes may cause data loss. " +
+            "Manual database intervention is required if rollback is necessary.");
     }
 }

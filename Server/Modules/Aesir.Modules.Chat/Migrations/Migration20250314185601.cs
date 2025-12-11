@@ -14,6 +14,8 @@ public class Migration20250314185601 : Migration
 
     public override void Down()
     {
-        throw new NotImplementedException();
+        Delete.Column("title")
+            .FromTable("aesir_chat_session")
+            .InSchema("aesir");
     }
 }

@@ -8,43 +8,14 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Aesir.Modules.Chat.Controllers
 {
     /// <summary>
-    /// Controller for managing chat completion requests and responses.
+    /// Controller for managing agent-based chat completion requests and responses.
+    /// All chat completions require an agent context for proper inference engine resolution.
     /// </summary>
     [ApiController]
     [Route("chat/completions")]
     [Produces("application/json")]
     public class ChatController(IServiceProvider serviceProvider, IConfigurationService configurationService) : ControllerBase
-    {   
-        /// <summary>
-        /// Handles a chat completion request and returns the result asynchronously.
-        /// </summary>
-        /// <param name="request">The chat completion request containing conversation details and model parameters.</param>
-        /// <returns>A task representing the asynchronous operation that returns the chat completion result.</returns>
-        [HttpPost]
-        public async Task<AesirChatResult> ChatCompletionsAsync([FromBody] AesirChatRequest request)
-        {
-            //return await chatService.ChatCompletionsAsync(request);
-            
-            // either remove this method and all the calls to it (currently on test code) or support this by
-            // getting first inference engine, or by including an inference engine in request object
-            throw new InvalidOperationException("Currently unsupported without an agent context");
-        }
-
-        /// <summary>
-        /// Processes a chat completion request and returns a streamed response with chunks of data.
-        /// </summary>
-        /// <param name="request">The chat completion request containing conversation data and model parameters.</param>
-        /// <returns>An async enumerable of <see cref="AesirChatStreamedResult"/> representing streamed chat completion results.</returns>
-        [HttpPost("streamed")]
-        public IAsyncEnumerable<AesirChatStreamedResult> ChatCompletionsStreamedAsync([FromBody] AesirChatRequest request)
-        {
-            //return chatService.ChatCompletionsStreamedAsync(request);
-            
-            // either remove this method and all the calls to it (currently on test code) or support this by
-            // getting first inference engine, or by including an inference engine in request object
-            throw new InvalidOperationException("Currently unsupported without an agent context");
-        }
-        
+    {
         /// <summary>
         /// Handles an agent chat completion request and returns the result asynchronously.
         /// </summary>
@@ -152,7 +123,9 @@ namespace Aesir.Modules.Chat.Controllers
                     Title = baseResult.Title,
                     ConversationId = baseResult.ConversationId,
                     Delta = baseResult.Delta,
-                    IsThinking = baseResult.IsThinking
+                    IsThinking = baseResult.IsThinking,
+                    EventType = baseResult.EventType,
+                    ToolCall = baseResult.ToolCall
                 };
             }
         }

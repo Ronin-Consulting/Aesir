@@ -25,10 +25,8 @@ public class ConfigurationModule : ModuleBase
 
     public override string Description => "Provides configuration management for agents, tools, inference engines, MCP servers, and general settings";
 
-    public override async Task RegisterServicesAsync(IServiceCollection services)
+    public override Task RegisterServicesAsync(IServiceCollection services)
     {
-        await Task.CompletedTask;
-
         var factoryInstance = Infrastructure.Services.ConfigurationServiceFactory.Instance();
 
         factoryInstance!.DefaultConfigurationServiceFactory =
@@ -46,7 +44,7 @@ public class ConfigurationModule : ModuleBase
         // Register main configuration service as singleton (manages all configuration)
         services.AddSingleton<IConfigurationService>((sp) => factoryInstance.CreateConfigurationService());
 
-        return;
+        return Task.CompletedTask;
 
         ConfigurationService ConfigurationServiceFactory(ILoggerFactory f, IDbContext d, IConfiguration i)
         {

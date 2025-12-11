@@ -1,0 +1,237 @@
+@* Image thumbnail component with lazy loading and fallback *@
+@using Aesir.Client.Web.Modules.Chat.Services
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div class="image-thumbnail @SizeClass @(_isLoading ? "loading" : "") @(_hasError ? "error" : "")"
+     @onclick="HandleClick"
+     role="@(OnClick.HasDelegate ? "button" : null)"
+     tabindex="@(OnClick.HasDelegate ? 0 : -1)">
+
+    @if (_isLoading)
+    {
+        <div class="thumbnail-skeleton">
+            <MudProgressCircular Size="MudBlazor.Size.Small" Indeterminate="true" Color="Color.Default" />
+        </div>
+    }
+    else if (_hasError || string.IsNullOrEmpty(_imageUrl))
+    {
+        <div class="thumbnail-fallback" style="background-color: @_style.BackgroundColor;">
+            <MudIcon Icon="@_style.Icon" Size="@IconSize" Style="@($"color: {_style.AccentColor};")" />
+        </div>
+    }
+    else
+    {
+        <img src="@_imageUrl"
+             alt="@FileName"
+             class="thumbnail-image"
+             @onload="HandleImageLoaded"
+             @onerror="HandleImageError" />
+    }
+
+    @if (ShowOverlay && OnClick.HasDelegate)
+    {
+        <div class="thumbnail-overlay">
+            <MudIcon Icon="@Icons.Material.Filled.ZoomIn" Size="MudBlazor.Size.Small" />
+        </div>
+    }
+</div>
+
+<style>
+    .image-thumbnail {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        background-color: var(--mud-palette-background-gray);
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .image-thumbnail:hover {
+        transform: scale(1.02);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Size variants */
+    .image-thumbnail.size-small {
+        width: 48px;
+        height: 48px;
+    }
+
+    .image-thumbnail.size-medium {
+        width: 80px;
+        height: 60px;
+    }
+
+    .image-thumbnail.size-large {
+        width: 120px;
+        height: 90px;
+    }
+
+    .image-thumbnail.size-auto {
+        width: auto;
+        height: auto;
+        max-width: 200px;
+        max-height: 150px;
+    }
+
+    .thumbnail-skeleton {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(
+            90deg,
+            var(--mud-palette-background-gray) 0%,
+            var(--mud-palette-surface) 50%,
+            var(--mud-palette-background-gray) 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+    }
+
+    @@keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+
+    .thumbnail-fallback {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+    }
+
+    .thumbnail-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .thumbnail-overlay {
+        position: absolute;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        color: white;
+    }
+
+    .image-thumbnail:hover .thumbnail-overlay {
+        opacity: 1;
+    }
+
+    /* Error state */
+    .image-thumbnail.error {
+        border: 1px dashed var(--mud-palette-lines-default);
+    }
+</style>
+
+@code {
+    public enum ThumbnailSize
+    {
+        Small,   // 48x48
+        Medium,  // 80x60
+        Large,   // 120x90
+        Auto     // Fit to content
+    }
+
+    [Parameter]
+    public string? FileName { get; set; }
+
+    /// <summary>
+    /// URL to load the image from (for already-uploaded files)
+    /// </summary>
+    [Parameter]
+    public string? ImageUrl { get; set; }
+
+    /// <summary>
+    /// JavaScript object reference to a File object for client-side thumbnail generation
+    /// </summary>
+    [Parameter]
+    public string? FileObjectUrl { get; set; }
+
+    [Parameter]
+    public ThumbnailSize Size { get; set; } = ThumbnailSize.Medium;
+
+    [Parameter]
+    public bool ShowOverlay { get; set; } = true;
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    private bool _isLoading = true;
+    private bool _hasError;
+    private string? _imageUrl;
+    private FileTypeHelper.FileTypeStyle _style = null!;
+
+    private string SizeClass => Size switch
+    {
+        ThumbnailSize.Small => "size-small",
+        ThumbnailSize.Large => "size-large",
+        ThumbnailSize.Auto => "size-auto",
+        _ => "size-medium"
+    };
+
+    private Size IconSize => Size switch
+    {
+        ThumbnailSize.Small => MudBlazor.Size.Small,
+        ThumbnailSize.Large => MudBlazor.Size.Large,
+        _ => MudBlazor.Size.Medium
+    };
+
+    protected override void OnParametersSet()
+    {
+        _style = FileTypeHelper.GetStyle(FileName);
+
+        // Determine the image URL to use
+        if (!string.IsNullOrEmpty(FileObjectUrl))
+        {
+            _imageUrl = FileObjectUrl;
+            _isLoading = false;
+        }
+        else if (!string.IsNullOrEmpty(ImageUrl))
+        {
+            _imageUrl = ImageUrl;
+            _isLoading = false;
+        }
+        else
+        {
+            _isLoading = false;
+            _hasError = true;
+        }
+    }
+
+    private void HandleImageLoaded()
+    {
+        _isLoading = false;
+        _hasError = false;
+    }
+
+    private void HandleImageError()
+    {
+        _isLoading = false;
+        _hasError = true;
+    }
+
+    private async Task HandleClick()
+    {
+        if (OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // If we created an object URL from a File, we should revoke it
+        // (This would be handled by the parent component that created the URL)
+    }
+}

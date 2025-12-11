@@ -18,6 +18,7 @@
     <PackageReference Include="Dapper" Version="2.1.66" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
     <PackageReference Include="FluentMigrator" Version="7.1.0" />
+    <PackageReference Include="PDFtoImage" Version="5.2.0" />
   </ItemGroup>
 
   <!-- Copy all module files including dependencies, native binaries, and runtime assets -->

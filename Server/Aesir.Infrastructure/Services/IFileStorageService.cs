@@ -70,4 +70,32 @@ public interface IFileStorageService
     /// <param name="filename">The name of the file.</param>
     /// <returns>A task representing the asynchronous operation that returns the temporary file handle and information or null if not found.</returns>
     Task<(TempFileHandle TempFile, AesirFileInfo FileInfo)?> GetFileContentAsync(string filename);
+
+    /// <summary>
+    /// Inserts a new file or updates an existing file, including optional thumbnail data.
+    /// </summary>
+    /// <param name="filename">The name of the file.</param>
+    /// <param name="mimeType">The MIME type of the file.</param>
+    /// <param name="content">The file content as a byte array.</param>
+    /// <param name="thumbnailContent">The thumbnail image content as a byte array, or null if no thumbnail.</param>
+    /// <param name="thumbnailMimeType">The MIME type of the thumbnail, or null if no thumbnail.</param>
+    /// <returns>A task representing the asynchronous operation that returns the number of affected rows.</returns>
+    Task<int> UpsertFileWithThumbnailAsync(string filename, string mimeType, byte[] content,
+        byte[]? thumbnailContent, string? thumbnailMimeType);
+
+    /// <summary>
+    /// Retrieves the thumbnail content for a file by its filename.
+    /// </summary>
+    /// <param name="filename">The name of the file.</param>
+    /// <returns>A task representing the asynchronous operation that returns the thumbnail bytes and MIME type, or null if not found or no thumbnail exists.</returns>
+    Task<(byte[] Content, string MimeType)?> GetFileThumbnailAsync(string filename);
+
+    /// <summary>
+    /// Updates the thumbnail for an existing file.
+    /// </summary>
+    /// <param name="filename">The name of the file.</param>
+    /// <param name="thumbnailContent">The thumbnail image content as a byte array.</param>
+    /// <param name="thumbnailMimeType">The MIME type of the thumbnail.</param>
+    /// <returns>A task representing the asynchronous operation that returns true if the thumbnail was updated.</returns>
+    Task<bool> UpdateFileThumbnailAsync(string filename, byte[] thumbnailContent, string thumbnailMimeType);
 }

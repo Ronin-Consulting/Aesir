@@ -15,6 +15,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@inject IToolCallStateService ToolCallStateService
 @implements IDisposable
 
 <PageTitle>@(_sessionTitle ?? "Chat") - AESIR</PageTitle>
@@ -58,14 +59,15 @@
                 {
                     <UserMessage Message="message"
                                  ConversationId="@ChatState.CurrentSessionId"
-                                 ExistingFiles="@ConversationFileNames" />
+                                 ExistingFiles="@ConversationFiles" />
                 }
                 else if (message.Role == "assistant")
                 {
                     <AssistantMessage Message="message"
                                       AgentName="@ChatState.SelectedAgent?.Name"
                                       ShowThinking="@(ChatState.SelectedAgent?.AllowThinking ?? false)"
-                                      IsLatestMessage="@(message == lastAssistantMessage && !isCurrentlyStreaming)" />
+                                      IsLatestMessage="@(message == lastAssistantMessage && !isCurrentlyStreaming)"
+                                      ToolCalls="@message.ToolCalls" />
                 }
             }
             @if (_isWaitingForResponse || _isThinking || _isStreaming)
@@ -75,13 +77,15 @@
                     @* Show processing animation immediately after sending, and while thinking *@
                     <AesirProcessingIndicator IsProcessing="true" />
                 }
-                @if (!string.IsNullOrEmpty(_streamingContent))
+                @if (!string.IsNullOrEmpty(_streamingContent) || _currentToolCalls.Count > 0)
                 {
                     <div class="streaming-message">
                         <AssistantMessage Message="@_streamingMessage"
                                           AgentName="@ChatState.SelectedAgent?.Name"
                                           ShowThinking="@(ChatState.SelectedAgent?.AllowThinking ?? false)"
-                                          IsLatestMessage="true" />
+                                          IsLatestMessage="true"
+                                          ToolCalls="@_currentToolCalls"
+                                          IsStreaming="true" />
                         <div class="streaming-cursor"></div>
                     </div>
                 }
@@ -166,11 +170,11 @@
     public string? SessionId { get; set; }
 
     /// <summary>
-    /// Current file names in the conversation, cascaded from ChatLayout.
-    /// Used to determine if file attachments in messages have been deleted.
+    /// Current files in the conversation, cascaded from ChatLayout.
+    /// Used to determine if file attachments in messages have been deleted and for thumbnail info.
     /// </summary>
-    [CascadingParameter(Name = "ConversationFileNames")]
-    private IReadOnlyList<string> ConversationFileNames { get; set; } = [];
+    [CascadingParameter(Name = "ConversationFiles")]
+    private IReadOnlyList<ConversationFile> ConversationFiles { get; set; } = [];
 
     private ElementReference _messagesContainer;
     private MessageInput? _messageInput;
@@ -203,6 +207,9 @@
     private HashSet<ToolRequest> _agentToolRequests = new();
     private IReadOnlyList<AesirMcpServerBase>? _mcpServers;
 
+    // Tool call state - populated during streaming from IToolCallStateService
+    private IReadOnlyList<AesirToolCallInfo> _currentToolCalls = [];
+
     // Property to create the streaming message object
     private AesirChatMessage _streamingMessage => new AesirChatMessage
     {
@@ -216,9 +223,16 @@
         ChatState.OnAgentChanged += HandleAgentChanged;
         ChatState.OnNewChat += HandleNewChat;
         HistoryService.OnSessionSelected += HandleSessionSelected;
+        ToolCallStateService.OnToolCallsChanged += HandleToolCallsChanged;
 
         // Initialize with empty conversation (with ID for API validation)
         _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
+    }
+
+    private void HandleToolCallsChanged()
+    {
+        _currentToolCalls = ToolCallStateService.CurrentToolCalls;
+        InvokeAsync(StateHasChanged);
     }
 
     protected override async Task OnParametersSetAsync()
@@ -367,6 +381,8 @@
         _previousSessionId = null;
         _sessionTitle = null;
         _isStarred = false;
+        ToolCallStateService.Clear();
+        _currentToolCalls = [];
         ChatState.SetCurrentSession(null);
         UpdateSystemPrompt();
         StateHasChanged();
@@ -424,6 +440,10 @@
         _streamingContent = string.Empty;
         _currentThinkingContent = null;
 
+        // Clear tool calls for new message
+        ToolCallStateService.Clear();
+        _currentToolCalls = [];
+
         try
         {
             // Add user message (which may already have file reference via AddFile())
@@ -431,6 +451,13 @@
 
             StateHasChanged();
             await ScrollToBottomAsync();
+
+            // Notify that conversation changed so ChatLayout can refresh file list immediately
+            // This ensures files show correctly in user messages before the streaming completes
+            if (userMessage.GetFileNames().Count > 0)
+            {
+                ChatState.NotifyConversationChanged();
+            }
 
             // Create the chat request
             // Use the client's conversation ID - server will honor it (??= only assigns if null)
@@ -504,8 +531,16 @@
                     }
                 }
 
+                // Handle tool call events
+                if (chunk.EventType == StreamEventType.ToolCallStart || chunk.EventType == StreamEventType.ToolCallResult)
+                {
+                    if (chunk.ToolCall != null)
+                    {
+                        ToolCallStateService.ProcessToolCallEvent(chunk.ToolCall);
+                    }
+                }
                 // Handle thinking state
-                if (chunk.IsThinking)
+                else if (chunk.IsThinking)
                 {
                     _isThinking = true;
                     _isStreaming = false;
@@ -536,6 +571,10 @@
                 if (!string.IsNullOrEmpty(_currentThinkingContent))
                 {
                     assistantMessage.ThoughtsContent = _currentThinkingContent;
+                }
+                if (_currentToolCalls.Count > 0)
+                {
+                    assistantMessage.ToolCalls = _currentToolCalls.ToList();
                 }
                 _conversation.Messages.Add(assistantMessage);
             }
@@ -861,6 +900,7 @@
         ChatState.OnAgentChanged -= HandleAgentChanged;
         ChatState.OnNewChat -= HandleNewChat;
         HistoryService.OnSessionSelected -= HandleSessionSelected;
+        ToolCallStateService.OnToolCallsChanged -= HandleToolCallsChanged;
         _streamingCts?.Cancel();
         _streamingCts?.Dispose();
     }

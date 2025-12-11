@@ -6,6 +6,22 @@
     "main"
   ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "core:path:default",
+    "shell:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-open",
+    "fs:default",
+    "fs:allow-temp-write-recursive",
+    "fs:allow-temp-read-recursive",
+    "os:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        { "path": "$TEMP/**/*" },
+        { "path": "/tmp/**/*" },
+        { "path": "/var/folders/**/*" }
+      ]
+    }
   ]
 }

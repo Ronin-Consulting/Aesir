@@ -186,6 +186,7 @@ public class OllamaInferenceModule : ModuleBase
             var kernel = sp.GetRequiredService<Kernel>();
             var kernelPluginService = sp.GetRequiredService<IKernelPluginService>();
             var chatHistoryService = sp.GetRequiredService<IChatHistoryService>();
+            var toolCallBroadcaster = sp.GetRequiredService<IToolCallBroadcaster>();
             var conversationDocumentCollectionService =
                 sp.GetService<IConversationDocumentCollectionService>();
 
@@ -194,12 +195,16 @@ public class OllamaInferenceModule : ModuleBase
             var enableThinking = inferenceEngine.Configuration.TryGetValue("EnableChatModelThinking", out var thinkingValue)
                 && bool.TryParse(thinkingValue, out var thinking) && thinking;
 
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+
             return new ChatService(
                 logger,
+                loggerFactory,
                 ollamaApiClient,
                 kernel,
                 kernelPluginService,
                 sp,
+                toolCallBroadcaster,
                 inferenceEngineIdKey,
                 chatHistoryService,
                 conversationDocumentCollectionService,

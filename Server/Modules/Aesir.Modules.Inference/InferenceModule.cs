@@ -1,7 +1,9 @@
 using Aesir.Infrastructure.Modules;
+using Aesir.Modules.Inference.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.SemanticKernel;
 
 namespace Aesir.Modules.Inference;
 
@@ -21,12 +23,19 @@ public class InferenceModule : ModuleBase
     public override string Version => "1.0.0";
 
     public override string Description => "Base infrastructure for AI inference services";
-    
+
     public override Task RegisterServicesAsync(IServiceCollection services)
     {
-        // This module only provides abstractions (interfaces and base classes)
-        // No concrete services are registered here
-        Logger.LogInformation("Base module services registered (abstractions only)");
+        // Register tool call broadcasting infrastructure
+        // The broadcaster uses AsyncLocal<T> for per-request scoping, so it can be Singleton
+        services.AddSingleton<IToolCallBroadcaster, ToolCallBroadcaster>();
+
+        // Filter must be Singleton to be picked up by Semantic Kernel's AddKernel()
+        // The filter accesses the current scope via ToolCallBroadcaster.Current (AsyncLocal)
+        services.AddSingleton<ToolCallStreamingFilter>();
+        services.AddSingleton<IAutoFunctionInvocationFilter>(sp => sp.GetRequiredService<ToolCallStreamingFilter>());
+
+        Logger.LogInformation("Tool call broadcasting services registered");
 
         return Task.CompletedTask;
     }

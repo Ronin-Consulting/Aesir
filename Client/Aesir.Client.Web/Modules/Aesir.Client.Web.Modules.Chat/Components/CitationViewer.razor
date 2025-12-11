@@ -1,0 +1,557 @@
+@using Aesir.Client.Web.Modules.Chat.Models
+@using Aesir.Client.Web.Modules.Chat.Services
+@using Aesir.Client.Web.Infrastructure.Services
+@inject ICitationStateService CitationStateService
+@inject IDocumentApiService DocumentApiService
+@inject IPlatformDetectionService PlatformDetection
+@inject INativeFileService NativeFileService
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+@if (IsOpen)
+{
+    <div class="citation-viewer-overlay"
+         @onclick="HandleOverlayClick"
+         @onkeydown="HandleKeyDown"
+         tabindex="-1"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="citation-viewer-title">
+        <div class="citation-viewer-container" @onclick:stopPropagation="true">
+            @* Header *@
+            <div class="citation-viewer-header">
+                <div class="citation-file-info">
+                    <span class="citation-file-icon" aria-hidden="true">@GetFileIcon()</span>
+                    <span id="citation-viewer-title" class="citation-file-name" title="@Citation?.FileName">@Citation?.FileName</span>
+                    @if (Citation?.PageNumber.HasValue == true)
+                    {
+                        <span class="citation-page-badge">Page @Citation.PageNumber</span>
+                    }
+                </div>
+                <div class="citation-viewer-actions">
+                    @if (_metadata != null)
+                    {
+                        <span class="citation-file-size">@_metadata.FormattedFileSize</span>
+                    }
+                    @if (PlatformDetection.IsTauri)
+                    {
+                        @* Tauri: Open in native app is the primary action *@
+                        <MudTooltip Text="Open in default application">
+                            <MudIconButton Icon="@Icons.Material.Outlined.OpenWith"
+                                           Size="Size.Small"
+                                           Class="citation-action-btn"
+                                           OnClick="OpenInNativeApp"
+                                           aria-label="Open in default app" />
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        @* Browser: Open in new tab *@
+                        <MudTooltip Text="Open in new tab">
+                            <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew"
+                                           Size="Size.Small"
+                                           Class="citation-action-btn"
+                                           OnClick="OpenInNewTab"
+                                           aria-label="Open in new tab" />
+                        </MudTooltip>
+                    }
+                    <MudTooltip Text="Copy citation link">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Link"
+                                       Size="Size.Small"
+                                       Class="citation-action-btn"
+                                       OnClick="CopyLink"
+                                       aria-label="Copy citation link" />
+                    </MudTooltip>
+                    <MudTooltip Text="Copy as Markdown">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Code"
+                                       Size="Size.Small"
+                                       Class="citation-action-btn"
+                                       OnClick="CopyAsMarkdown"
+                                       aria-label="Copy as Markdown" />
+                    </MudTooltip>
+                    <MudTooltip Text="Download file">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Download"
+                                       Size="Size.Small"
+                                       Class="citation-action-btn"
+                                       OnClick="DownloadFile"
+                                       aria-label="Download file" />
+                    </MudTooltip>
+                    <MudIconButton Icon="@Icons.Material.Outlined.Close"
+                                   Size="Size.Small"
+                                   Class="citation-close-btn"
+                                   OnClick="Close"
+                                   aria-label="Close viewer" />
+                </div>
+            </div>
+
+            @* Content Area *@
+            <div class="citation-viewer-content" role="main" aria-live="polite">
+                @if (_isLoading)
+                {
+                    <div class="citation-loading" role="status" aria-busy="true">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" aria-hidden="true" />
+                        <MudText Typo="Typo.body2" Class="mt-2">Loading document...</MudText>
+                    </div>
+                }
+                else if (_showLargeFileWarning)
+                {
+                    <div class="citation-large-file-warning" role="alert">
+                        <MudIcon Icon="@Icons.Material.Outlined.Warning" Color="Color.Warning" Size="Size.Large" aria-hidden="true" />
+                        <MudText Typo="Typo.h6" Color="Color.Warning" Class="mt-2">Large File Warning</MudText>
+                        <MudText Typo="Typo.body2" Class="mt-1">
+                            This file is @(_metadata?.FormattedFileSize ?? "large"). Opening it may slow down your browser or cause performance issues.
+                        </MudText>
+                        <div class="large-file-actions mt-3">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ContinueWithLargeFile">
+                                Open Anyway
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="DownloadFile" Class="ml-2">
+                                Download Instead
+                            </MudButton>
+                        </div>
+                    </div>
+                }
+                else if (_error != null)
+                {
+                    <div class="citation-error" role="alert">
+                        <MudIcon Icon="@Icons.Material.Outlined.Error" Color="Color.Error" Size="Size.Large" aria-hidden="true" />
+                        <MudText Typo="Typo.h6" Color="Color.Error" Class="mt-2">Unable to load document</MudText>
+                        <MudText Typo="Typo.body2" Class="mt-1">@_error</MudText>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-3" OnClick="RetryLoad">
+                            Retry
+                        </MudButton>
+                    </div>
+                }
+                else if (Citation != null)
+                {
+                    @switch (Citation.FileType)
+                    {
+                        case CitationFileType.Image:
+                        case CitationFileType.Tiff:
+                            <ImageCitationViewer ContentUrl="@_contentUrl" FileName="@Citation.FileName" />
+                            break;
+
+                        case CitationFileType.Pdf:
+                            <PdfCitationViewer ContentUrl="@_contentUrl" FileName="@Citation.FileName" PageNumber="@Citation.PageNumber" />
+                            break;
+
+                        case CitationFileType.Text:
+                        case CitationFileType.Markdown:
+                        case CitationFileType.Json:
+                        case CitationFileType.Xml:
+                        case CitationFileType.Csv:
+                        case CitationFileType.Html:
+                            <TextCitationViewer ContentUrl="@_contentUrl"
+                                               FileName="@Citation.FileName"
+                                               FileType="@Citation.FileType"
+                                               TextContent="@_textContent" />
+                            break;
+
+                        default:
+                            <div class="citation-unsupported">
+                                <MudIcon Icon="@Icons.Material.Outlined.InsertDriveFile" Size="Size.Large" />
+                                <MudText Typo="Typo.h6" Class="mt-2">Preview not available</MudText>
+                                <MudText Typo="Typo.body2" Class="mt-1">This file type cannot be previewed in the browser.</MudText>
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="DownloadFile">
+                                    Download File
+                                </MudButton>
+                            </div>
+                            break;
+                    }
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .citation-viewer-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1300;
+        animation: fadeIn 0.15s ease;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .citation-viewer-container {
+        background-color: var(--mud-palette-surface);
+        border-radius: 12px;
+        width: 90vw;
+        max-width: 1200px;
+        height: 85vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+        animation: slideUp 0.2s ease;
+    }
+
+    @@keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .citation-viewer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+        background-color: var(--mud-palette-background);
+        flex-shrink: 0;
+    }
+
+    .citation-file-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .citation-file-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #4A90D9;
+    }
+
+    .citation-file-name {
+        font-weight: 500;
+        font-size: 1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 400px;
+    }
+
+    .citation-page-badge {
+        background-color: rgba(74, 144, 217, 0.2);
+        color: #4A90D9;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .citation-viewer-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .citation-file-size {
+        color: var(--mud-palette-text-secondary);
+        font-size: 0.8rem;
+        margin-right: 8px;
+    }
+
+    .citation-action-btn {
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .citation-action-btn:hover {
+        color: var(--mud-palette-text-primary);
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .citation-close-btn {
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .citation-close-btn:hover {
+        color: var(--mud-palette-error);
+        background-color: rgba(244, 67, 54, 0.1);
+    }
+
+    .citation-viewer-content {
+        flex: 1;
+        overflow: auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: var(--mud-palette-background-grey);
+    }
+
+    .citation-loading,
+    .citation-error,
+    .citation-unsupported,
+    .citation-large-file-warning {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 32px;
+    }
+
+    .large-file-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .citation-viewer-container {
+            width: 100vw;
+            height: 100vh;
+            border-radius: 0;
+        }
+
+        .citation-file-name {
+            max-width: 200px;
+        }
+    }
+</style>
+
+@code {
+    private CitationInfo? Citation => CitationStateService.CurrentCitation;
+    private bool IsOpen => CitationStateService.IsViewerOpen;
+
+    private const long LargeFileSizeThreshold = 50 * 1024 * 1024; // 50MB
+
+    private bool _isLoading;
+    private string? _error;
+    private string? _contentUrl;
+    private string? _textContent;
+    private CitationFileMetadata? _metadata;
+    private bool _showLargeFileWarning;
+    private bool _userAcceptedLargeFile;
+
+    protected override void OnInitialized()
+    {
+        CitationStateService.OnCitationChanged += HandleCitationChanged;
+    }
+
+    private async void HandleCitationChanged()
+    {
+        if (Citation != null)
+        {
+            await LoadCitationAsync();
+        }
+        else
+        {
+            _contentUrl = null;
+            _textContent = null;
+            _metadata = null;
+            _error = null;
+            _showLargeFileWarning = false;
+            _userAcceptedLargeFile = false;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadCitationAsync()
+    {
+        if (Citation == null) return;
+
+        _isLoading = true;
+        _error = null;
+        _contentUrl = null;
+        _textContent = null;
+        _showLargeFileWarning = false;
+        StateHasChanged();
+
+        try
+        {
+            // Try to get metadata first to check file size
+            _metadata = await DocumentApiService.GetCitationMetadataAsync(
+                Citation.ConversationId, Citation.FileName);
+
+            // Check if file is large and user hasn't accepted the warning
+            if (_metadata?.FileSize > LargeFileSizeThreshold && !_userAcceptedLargeFile)
+            {
+                _showLargeFileWarning = true;
+                _isLoading = false;
+                return;
+            }
+
+            // Get content URL for images and PDFs
+            _contentUrl = DocumentApiService.GetCitationViewUrl(Citation.ConversationId, Citation.FileName);
+
+            // For text-based files, load the content directly
+            if (IsTextBasedFile(Citation.FileType))
+            {
+                var content = await DocumentApiService.GetCitationContentAsync(
+                    Citation.ConversationId, Citation.FileName);
+
+                if (content != null)
+                {
+                    _textContent = System.Text.Encoding.UTF8.GetString(content);
+                }
+                else
+                {
+                    _error = "File not found or could not be loaded.";
+                }
+            }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            _error = "This file no longer exists or has been deleted.";
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Network error: Unable to load document. Please check your connection and try again.";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load document: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ContinueWithLargeFile()
+    {
+        _userAcceptedLargeFile = true;
+        _showLargeFileWarning = false;
+        await LoadCitationAsync();
+    }
+
+    private static bool IsTextBasedFile(CitationFileType fileType)
+    {
+        return fileType is CitationFileType.Text
+            or CitationFileType.Markdown
+            or CitationFileType.Json
+            or CitationFileType.Xml
+            or CitationFileType.Csv
+            or CitationFileType.Html;
+    }
+
+    private async Task RetryLoad()
+    {
+        await LoadCitationAsync();
+    }
+
+    private void Close()
+    {
+        CitationStateService.CloseCitation();
+    }
+
+    private void HandleOverlayClick()
+    {
+        Close();
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            Close();
+        }
+    }
+
+    private async Task OpenInNewTab()
+    {
+        if (_contentUrl != null)
+        {
+            await JSRuntime.InvokeVoidAsync("window.open", _contentUrl, "_blank");
+        }
+    }
+
+    private async Task DownloadFile()
+    {
+        if (Citation == null || _contentUrl == null) return;
+
+        if (PlatformDetection.IsTauri)
+        {
+            // In Tauri, use native save dialog
+            await NativeFileService.SaveFileWithDialogAsync(_contentUrl, Citation.FileName);
+        }
+        else
+        {
+            // In browser, use standard download
+            await JSRuntime.InvokeVoidAsync("downloadFile", _contentUrl, Citation.FileName);
+        }
+    }
+
+    private async Task OpenInNativeApp()
+    {
+        if (Citation == null || _contentUrl == null) return;
+
+        // Download the file and open it with the native application
+        await NativeFileService.DownloadAndOpenNativeAsync(_contentUrl, Citation.FileName);
+    }
+
+    private async Task CopyLink()
+    {
+        if (Citation == null) return;
+
+        try
+        {
+            // Build the file:// URL format used by the citation system
+            var link = $"file:///{Citation.ConversationId}/{Citation.FileName}";
+            if (Citation.PageNumber.HasValue)
+            {
+                link += $"#page={Citation.PageNumber}";
+            }
+
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", link);
+            Snackbar.Add("Citation link copied to clipboard", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to copy to clipboard", Severity.Error);
+        }
+    }
+
+    private async Task CopyAsMarkdown()
+    {
+        if (Citation == null) return;
+
+        try
+        {
+            // Build markdown link: [filename#page=N](file:///conversationId/filename#page=N)
+            var displayName = Citation.FileName;
+            var link = $"file:///{Citation.ConversationId}/{Citation.FileName}";
+
+            if (Citation.PageNumber.HasValue)
+            {
+                displayName += $"#page={Citation.PageNumber}";
+                link += $"#page={Citation.PageNumber}";
+            }
+
+            var markdown = $"[{displayName}]({link})";
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", markdown);
+            Snackbar.Add("Markdown citation copied to clipboard", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to copy to clipboard", Severity.Error);
+        }
+    }
+
+    private MarkupString GetFileIcon()
+    {
+        var icon = Citation?.FileType switch
+        {
+            CitationFileType.Pdf => @"<svg xmlns=""http://www.w3.org/2000/svg"" width=""20"" height=""20"" viewBox=""0 0 24 24"" fill=""none"" stroke=""currentColor"" stroke-width=""2""><path d=""M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z""/><polyline points=""14 2 14 8 20 8""/><path d=""M9 15h6""/><path d=""M9 11h6""/></svg>",
+            CitationFileType.Image or CitationFileType.Tiff => @"<svg xmlns=""http://www.w3.org/2000/svg"" width=""20"" height=""20"" viewBox=""0 0 24 24"" fill=""none"" stroke=""currentColor"" stroke-width=""2""><rect x=""3"" y=""3"" width=""18"" height=""18"" rx=""2"" ry=""2""/><circle cx=""8.5"" cy=""8.5"" r=""1.5""/><polyline points=""21 15 16 10 5 21""/></svg>",
+            CitationFileType.Json or CitationFileType.Xml or CitationFileType.Csv => @"<svg xmlns=""http://www.w3.org/2000/svg"" width=""20"" height=""20"" viewBox=""0 0 24 24"" fill=""none"" stroke=""currentColor"" stroke-width=""2""><path d=""M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z""/><polyline points=""14 2 14 8 20 8""/><line x1=""16"" y1=""13"" x2=""8"" y2=""13""/><line x1=""16"" y1=""17"" x2=""8"" y2=""17""/></svg>",
+            CitationFileType.Html => @"<svg xmlns=""http://www.w3.org/2000/svg"" width=""20"" height=""20"" viewBox=""0 0 24 24"" fill=""none"" stroke=""currentColor"" stroke-width=""2""><polyline points=""16 18 22 12 16 6""/><polyline points=""8 6 2 12 8 18""/></svg>",
+            _ => @"<svg xmlns=""http://www.w3.org/2000/svg"" width=""20"" height=""20"" viewBox=""0 0 24 24"" fill=""none"" stroke=""currentColor"" stroke-width=""2""><path d=""M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z""/><polyline points=""14 2 14 8 20 8""/></svg>"
+        };
+
+        return new MarkupString(icon);
+    }
+
+    public void Dispose()
+    {
+        CitationStateService.OnCitationChanged -= HandleCitationChanged;
+    }
+}

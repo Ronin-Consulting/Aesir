@@ -2,14 +2,19 @@ using System.Diagnostics.CodeAnalysis;
 using Aesir.Common.Models;
 using Aesir.Modules.Inference.Services;
 using Aesir.Infrastructure.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
 namespace Aesir.Modules.Inference.OpenAI.Services;
 
 [Experimental("SKEXP0070")]
-public class OpenAiPromptExecutionSettingsBuilder(Kernel kernel, IConversationDocumentCollectionService? conversationDocumentCollectionService, IKernelPluginService kernelPluginService) :
-    BasePromptExecutionSettingsBuilder<OpenAIPromptExecutionSettings>(kernel, conversationDocumentCollectionService, kernelPluginService)
+public class OpenAiPromptExecutionSettingsBuilder(
+    Kernel kernel,
+    IConversationDocumentCollectionService? conversationDocumentCollectionService,
+    IKernelPluginService kernelPluginService,
+    ILogger<OpenAiPromptExecutionSettingsBuilder> logger) :
+    BasePromptExecutionSettingsBuilder<OpenAIPromptExecutionSettings>(kernel, conversationDocumentCollectionService, kernelPluginService, logger)
 {
     protected override OpenAIPromptExecutionSettings CreatePromptExecutionSettings(AesirChatRequestBase request)
     {

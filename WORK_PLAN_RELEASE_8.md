@@ -1,6 +1,6 @@
 # WORK_PLAN_RELEASE_8.md
 
-> **STATUS: PENDING REVIEW** - Created 2025-12-07
+> **STATUS: IN PROGRESS** - Started 2025-12-07
 >
 > Server-Side Code Cleanup & Technical Debt Remediation
 >
@@ -51,8 +51,8 @@ A comprehensive code review of the `/Server/` directory revealed multiple catego
 | `/Server/Modules/Aesir.Modules.Inference/Migrations/Migration20250724165701.cs` | 44 | Down() throws NotImplementedException |
 
 **Work Items:**
-- [ ] 1.1.1 Implement proper `Down()` migrations for all files above
-- [ ] 1.1.2 Or if rollback is intentionally unsupported, throw a descriptive exception or log warning
+- [x] 1.1.1 Implement proper `Down()` migrations for all files above
+- [x] 1.1.2 Or if rollback is intentionally unsupported, throw a descriptive exception or log warning
 
 ---
 
@@ -67,9 +67,9 @@ A comprehensive code review of the `/Server/` directory revealed multiple catego
 - Line 38-46: `ChatCompletionsStreamedAsync` method
 
 **Work Items:**
-- [ ] 1.2.1 Review if these endpoints are needed (check test code references)
-- [ ] 1.2.2 Either remove endpoints entirely or add `[Obsolete]` attribute with migration path
-- [ ] 1.2.3 Remove commented-out code on lines 26-27 and 41-42
+- [x] 1.2.1 Review if these endpoints are needed (check test code references)
+- [x] 1.2.2 Either remove endpoints entirely or add `[Obsolete]` attribute with migration path
+- [x] 1.2.3 Remove commented-out code on lines 26-27 and 41-42
 
 ---
 
@@ -85,8 +85,8 @@ Console.Write("Configuration for RAG embedding inference engine is not ready and
 ```
 
 **Work Items:**
-- [ ] 1.3.1 Inject `ILogger` into static method context or make method non-static
-- [ ] 1.3.2 Replace with `logger.LogWarning(...)` to match existing pattern in OllamaInferenceModule
+- [x] 1.3.1 Inject `ILogger` into static method context or make method non-static
+- [x] 1.3.2 Replace with `logger.LogWarning(...)` to match existing pattern in OllamaInferenceModule
 
 ---
 
@@ -105,9 +105,9 @@ GC.Collect();
 ```
 
 **Work Items:**
-- [ ] 1.4.1 Remove explicit GC.Collect() calls
-- [ ] 1.4.2 Review memory handling in ProcessFileUploadAsync for better streaming approach
-- [ ] 1.4.3 Consider using `ArrayPool<byte>` for large file operations instead
+- [x] 1.4.1 Remove explicit GC.Collect() calls
+- [~] 1.4.2 Review memory handling in ProcessFileUploadAsync for better streaming approach (deferred)
+- [~] 1.4.3 Consider using `ArrayPool<byte>` for large file operations instead (deferred)
 
 ---
 
@@ -125,8 +125,8 @@ ragVisionModelsService.UnloadModelsAsync([generalSettings.RagVisionModel]).Wait(
 ```
 
 **Work Items:**
-- [ ] 1.5.1 Refactor to use async lambdas: `appLifetime.ApplicationStopping.Register(async () => await ...)`
-- [ ] 1.5.2 Or use `GetAwaiter().GetResult()` with proper error handling if sync required for lifecycle
+- [~] 1.5.1 Refactor to use async lambdas: `appLifetime.ApplicationStopping.Register(async () => await ...)` (not possible with CancellationToken.Register)
+- [x] 1.5.2 Or use `GetAwaiter().GetResult()` with proper error handling if sync required for lifecycle
 
 ---
 
@@ -148,10 +148,10 @@ ragVisionModelsService.UnloadModelsAsync([generalSettings.RagVisionModel]).Wait(
 - Commented-out code in Infrastructure version (line 167)
 
 **Work Items:**
-- [ ] 2.1.1 Create base class in Infrastructure with shared functionality
-- [ ] 2.1.2 Create derived class in Orchestration with MCP-specific methods
-- [ ] 2.1.3 Remove duplicate code
-- [ ] 2.1.4 Remove commented-out code: `//ToListToListAsync(cancellationToken).ConfigureAwait(false);`
+- [x] 2.1.1 Create base class in Infrastructure with shared functionality (consolidated in Release 7)
+- [x] 2.1.2 Create derived class in Orchestration with MCP-specific methods (consolidated in Release 7)
+- [x] 2.1.3 Remove duplicate code (consolidated in Release 7)
+- [x] 2.1.4 Remove commented-out code: `//ToListToListAsync(cancellationToken).ConfigureAwait(false);` (consolidated in Release 7)
 
 ---
 
@@ -164,8 +164,8 @@ ragVisionModelsService.UnloadModelsAsync([generalSettings.RagVisionModel]).Wait(
 - `/Server/Aesir.Orchestration/Services/KernelPluginService.cs`
 
 **Work Items:**
-- [ ] 2.2.1 Analyze differences between implementations
-- [ ] 2.2.2 Consolidate or establish clear inheritance pattern
+- [x] 2.2.1 Analyze differences between implementations (consolidated in Release 7)
+- [x] 2.2.2 Consolidate or establish clear inheritance pattern (consolidated in Release 7)
 
 ---
 
@@ -189,9 +189,9 @@ ragVisionModelsService.UnloadModelsAsync([generalSettings.RagVisionModel]).Wait(
 | `/Server/Modules/Aesir.Modules.Configuration/ConfigurationModule.cs` | 30 |
 
 **Work Items:**
-- [ ] 3.1.1 Remove `await Task.CompletedTask;` from start of methods
-- [ ] 3.1.2 Return `Task.CompletedTask` at end if no async work, or use `ValueTask`
-- [ ] 3.1.3 Consider making methods synchronous if no async operations needed
+- [x] 3.1.1 Remove `await Task.CompletedTask;` from start of methods
+- [x] 3.1.2 Return `Task.CompletedTask` at end if no async work, or use `ValueTask`
+- [x] 3.1.3 Consider making methods synchronous if no async operations needed
 
 ---
 
@@ -206,8 +206,8 @@ ragVisionModelsService.UnloadModelsAsync([generalSettings.RagVisionModel]).Wait(
 | `/Server/Modules/Aesir.Modules.Configuration/ConfigurationModule.cs` | 64 | Creates temp provider in factory method |
 
 **Work Items:**
-- [ ] 3.2.1 Refactor to use factory patterns that receive IServiceProvider at resolution time
-- [ ] 3.2.2 Remove intermediate BuildServiceProvider calls
+- [~] 3.2.1 Refactor to use factory patterns that receive IServiceProvider at resolution time (deferred - complex refactor)
+- [~] 3.2.2 Remove intermediate BuildServiceProvider calls (deferred - complex refactor)
 
 ---
 
@@ -226,9 +226,9 @@ ragVisionModelsService.UnloadModelsAsync([generalSettings.RagVisionModel]).Wait(
 | `/Server/Modules/Aesir.Modules.Inference.OpenAI/Services/OpenAIPromptExecutionSettingsBuilder.cs` | 36 | `// TODO: Implement thinking/reasoning mode when API support is available` |
 
 **Work Items:**
-- [ ] 4.1.1 Create GitHub issues for each TODO
-- [ ] 4.1.2 Replace TODO comments with issue references
-- [ ] 4.1.3 Or implement the TODO items
+- [~] 4.1.1 Create GitHub issues for each TODO (skipped - TODOs document valid known limitations)
+- [~] 4.1.2 Replace TODO comments with issue references (skipped)
+- [~] 4.1.3 Or implement the TODO items (skipped)
 
 ---
 
@@ -339,8 +339,8 @@ catch (Exception ex)
 | `/Server/Aesir.Infrastructure/Extensions/ModuleExtensions.cs` | 147-149 | Commented builder configuration |
 
 **Work Items:**
-- [ ] 6.1.1 Remove all commented-out code blocks
-- [ ] 6.1.2 Replace with proper explanation comments if context needed
+- [x] 6.1.1 Remove all commented-out code blocks
+- [x] 6.1.2 Replace with proper explanation comments if context needed
 
 ---
 

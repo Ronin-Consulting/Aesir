@@ -1,0 +1,239 @@
+@* Image Citation Viewer - Displays images with zoom and pan *@
+
+<div class="image-viewer-container">
+    @if (!string.IsNullOrEmpty(ContentUrl))
+    {
+        <div class="image-viewer-controls">
+            <MudIconButton Icon="@Icons.Material.Outlined.ZoomOut"
+                           Size="Size.Small"
+                           OnClick="ZoomOut"
+                           Disabled="@(_zoom <= MinZoom)"
+                           Class="zoom-btn"
+                           aria-label="Zoom out" />
+            <span class="zoom-level">@($"{(int)(_zoom * 100)}%")</span>
+            <MudIconButton Icon="@Icons.Material.Outlined.ZoomIn"
+                           Size="Size.Small"
+                           OnClick="ZoomIn"
+                           Disabled="@(_zoom >= MaxZoom)"
+                           Class="zoom-btn"
+                           aria-label="Zoom in" />
+            <MudIconButton Icon="@Icons.Material.Outlined.FitScreen"
+                           Size="Size.Small"
+                           OnClick="ResetZoom"
+                           Class="zoom-btn"
+                           aria-label="Fit to screen" />
+        </div>
+
+        <div class="image-viewport"
+             @onwheel="HandleWheel"
+             @onmousedown="HandleMouseDown"
+             @onmousemove="HandleMouseMove"
+             @onmouseup="HandleMouseUp"
+             @onmouseleave="HandleMouseUp">
+            <img src="@ContentUrl"
+                 alt="@FileName"
+                 class="citation-image @(_isDragging ? "dragging" : "")"
+                 style="transform: scale(@_zoom) translate(@(_offsetX)px, @(_offsetY)px);"
+                 @onload="HandleImageLoaded"
+                 @onerror="HandleImageError" />
+        </div>
+
+        @if (_imageError)
+        {
+            <div class="image-error-overlay">
+                <MudIcon Icon="@Icons.Material.Outlined.BrokenImage" Size="Size.Large" Color="Color.Error" />
+                <MudText Typo="Typo.body1" Class="mt-2">Failed to load image</MudText>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="image-placeholder">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        </div>
+    }
+</div>
+
+<style>
+    .image-viewer-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        background-color: #1a1a1a;
+    }
+
+    .image-viewer-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px;
+        background-color: rgba(0, 0, 0, 0.5);
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 8px;
+        z-index: 10;
+        backdrop-filter: blur(4px);
+    }
+
+    .zoom-btn {
+        color: white;
+    }
+
+    .zoom-btn:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .zoom-level {
+        color: white;
+        font-size: 0.875rem;
+        min-width: 50px;
+        text-align: center;
+    }
+
+    .image-viewport {
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: grab;
+        user-select: none;
+    }
+
+    .image-viewport:active {
+        cursor: grabbing;
+    }
+
+    .citation-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        transition: transform 0.1s ease;
+        transform-origin: center center;
+    }
+
+    .citation-image.dragging {
+        transition: none;
+    }
+
+    .image-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+    }
+
+    .image-error-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(0, 0, 0, 0.8);
+    }
+</style>
+
+@code {
+    [Parameter]
+    public string? ContentUrl { get; set; }
+
+    [Parameter]
+    public string? FileName { get; set; }
+
+    private const double MinZoom = 0.25;
+    private const double MaxZoom = 4.0;
+    private const double ZoomStep = 0.25;
+
+    private double _zoom = 1.0;
+    private double _offsetX = 0;
+    private double _offsetY = 0;
+    private bool _isDragging;
+    private double _dragStartX;
+    private double _dragStartY;
+    private double _dragOffsetX;
+    private double _dragOffsetY;
+    private bool _imageError;
+
+    private void ZoomIn()
+    {
+        _zoom = Math.Min(_zoom + ZoomStep, MaxZoom);
+    }
+
+    private void ZoomOut()
+    {
+        _zoom = Math.Max(_zoom - ZoomStep, MinZoom);
+        // Reset offset if zoomed out beyond original size
+        if (_zoom <= 1.0)
+        {
+            _offsetX = 0;
+            _offsetY = 0;
+        }
+    }
+
+    private void ResetZoom()
+    {
+        _zoom = 1.0;
+        _offsetX = 0;
+        _offsetY = 0;
+    }
+
+    private void HandleWheel(WheelEventArgs e)
+    {
+        if (e.DeltaY < 0)
+        {
+            ZoomIn();
+        }
+        else
+        {
+            ZoomOut();
+        }
+    }
+
+    private void HandleMouseDown(MouseEventArgs e)
+    {
+        if (_zoom > 1.0)
+        {
+            _isDragging = true;
+            _dragStartX = e.ClientX;
+            _dragStartY = e.ClientY;
+            _dragOffsetX = _offsetX;
+            _dragOffsetY = _offsetY;
+        }
+    }
+
+    private void HandleMouseMove(MouseEventArgs e)
+    {
+        if (_isDragging)
+        {
+            var deltaX = e.ClientX - _dragStartX;
+            var deltaY = e.ClientY - _dragStartY;
+            _offsetX = _dragOffsetX + deltaX / _zoom;
+            _offsetY = _dragOffsetY + deltaY / _zoom;
+        }
+    }
+
+    private void HandleMouseUp(MouseEventArgs e)
+    {
+        _isDragging = false;
+    }
+
+    private void HandleImageLoaded()
+    {
+        _imageError = false;
+    }
+
+    private void HandleImageError()
+    {
+        _imageError = true;
+    }
+}
