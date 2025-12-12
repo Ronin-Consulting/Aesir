@@ -19,7 +19,8 @@ public class ApiClient : IApiClient
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            // Don't set PropertyNamingPolicy - rely on [JsonPropertyName] attributes on models
+            // which use snake_case (e.g., "chat_inference_engine_id")
             Converters = { new JsonStringEnumConverter() }
         };
     }

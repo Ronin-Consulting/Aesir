@@ -109,7 +109,7 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
     /// <summary>
     /// Determines the tool call type based on function name and plugin patterns.
     /// </summary>
-    private static ToolCallType DetermineToolType(string functionName, string? pluginName)
+    internal static ToolCallType DetermineToolType(string functionName, string? pluginName)
     {
         var nameLower = functionName.ToLowerInvariant();
 
@@ -177,7 +177,7 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
     /// <summary>
     /// Serializes an argument value for display.
     /// </summary>
-    private static string SerializeArgument(object? value)
+    internal static string SerializeArgument(object? value)
     {
         if (value == null) return "null";
         if (value is string s) return s;
@@ -197,7 +197,7 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
     /// <summary>
     /// Truncates the result for UI preview.
     /// </summary>
-    private static string? TruncateResult(object? result)
+    internal static string? TruncateResult(object? result)
     {
         if (result == null) return null;
 

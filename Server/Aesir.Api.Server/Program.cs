@@ -46,6 +46,13 @@ public class Program
 
             // Register controllers and explicitly add module assemblies to ApplicationPartManager
             builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    // Use case-insensitive property matching to handle both camelCase and snake_case
+                    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+                    // Add enum converter
+                    options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+                })
                 .ConfigureApplicationPartManager(apm =>
                 {
                     var moduleAssemblies = ModuleExtensions.GetModuleAssemblies();

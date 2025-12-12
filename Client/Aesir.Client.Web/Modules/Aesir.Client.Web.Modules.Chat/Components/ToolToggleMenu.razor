@@ -1,0 +1,347 @@
+@using Aesir.Common.Models
+
+<div class="tool-toggle-menu-container">
+    <div class="@ButtonWrapperClass">
+        <MudIconButton Icon="@Icons.Material.Filled.Tune"
+                       Size="Size.Small"
+                       Color="@ButtonColor"
+                       Disabled="@(IsDisabled || !HasToggleableTools)"
+                       Title="@ButtonTooltip"
+                       OnClick="@ToggleMenu" />
+    </div>
+
+    <MudPopover Open="@_isOpen"
+                AnchorOrigin="Origin.TopCenter"
+                TransformOrigin="Origin.BottomCenter"
+                Paper="false"
+                Class="tool-toggle-popover">
+        <MudPaper Elevation="8" Class="tool-toggle-menu">
+            @if (ToggleableTools.Any())
+            {
+                <MudList T="AesirToolBase" Dense="true" Class="tool-list">
+                    @foreach (var tool in ToggleableTools)
+                    {
+                        <MudListItem T="AesirToolBase" Class="tool-item">
+                            <div class="tool-item-content">
+                                <div class="tool-info">
+                                    <MudIcon Icon="@GetToolIcon(tool)"
+                                             Size="Size.Small"
+                                             Color="@GetToolIconColor(tool)"
+                                             Class="tool-icon" />
+                                    <MudText Typo="Typo.body2" Class="tool-name">@GetToolDisplayName(tool)</MudText>
+                                </div>
+                                <MudSwitch T="bool"
+                                           Value="@IsToolEnabled(tool)"
+                                           ValueChanged="@((bool value) => HandleToolToggle(tool, value))"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           Class="tool-switch" />
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+            else
+            {
+                <div class="no-tools-message">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        No toggleable tools available
+                    </MudText>
+                </div>
+            }
+        </MudPaper>
+    </MudPopover>
+</div>
+
+@if (_isOpen)
+{
+    <div class="tool-toggle-backdrop" @onclick="CloseMenu"></div>
+}
+
+<style>
+    .tool-toggle-menu-container {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .tool-toggle-popover {
+        z-index: 1400;
+    }
+
+    .tool-toggle-menu {
+        min-width: 240px;
+        max-width: 320px;
+        border-radius: 12px;
+        overflow: hidden;
+        background-color: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .tool-list {
+        padding: 8px 0;
+    }
+
+    .tool-item {
+        padding: 4px 12px !important;
+    }
+
+    .tool-item-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        gap: 12px;
+    }
+
+    .tool-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .tool-icon {
+        flex-shrink: 0;
+    }
+
+    .tool-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .tool-switch {
+        flex-shrink: 0;
+        margin: 0 !important;
+    }
+
+    .no-tools-message {
+        padding: 16px;
+        text-align: center;
+    }
+
+    .tool-toggle-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1300;
+    }
+
+    /* Visual indicator when tools are available */
+    .tool-button-wrapper {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .tool-button-wrapper.has-tools::after {
+        content: '';
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 8px;
+        height: 8px;
+        background-color: var(--mud-palette-primary);
+        border-radius: 50%;
+        box-shadow: 0 0 4px 1px var(--mud-palette-primary);
+        animation: tool-indicator-pulse 2s ease-in-out infinite;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    @@keyframes tool-indicator-pulse {
+        0%, 100% {
+            opacity: 1;
+            box-shadow: 0 0 4px 1px var(--mud-palette-primary);
+        }
+        50% {
+            opacity: 0.8;
+            box-shadow: 0 0 6px 2px var(--mud-palette-primary);
+        }
+    }
+
+    /* Dim when disabled */
+    .tool-toggle-menu-container .mud-icon-button:disabled {
+        opacity: 0.4;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The list of available tools for the current agent.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<AesirToolBase> Tools { get; set; } = [];
+
+    /// <summary>
+    /// The set of tool IDs that are currently disabled.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<Guid> DisabledToolIds { get; set; } = new HashSet<Guid>();
+
+    /// <summary>
+    /// Event callback when a tool is toggled.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(Guid ToolId, bool Enabled)> OnToolToggled { get; set; }
+
+    /// <summary>
+    /// Whether the menu is disabled (e.g., during streaming).
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    private bool _isOpen;
+
+    /// <summary>
+    /// Gets tools that can be toggled (excludes RAG tool which is always on).
+    /// </summary>
+    private IEnumerable<AesirToolBase> ToggleableTools =>
+        Tools.Where(t => t.Id.HasValue && !IsRagTool(t));
+
+    /// <summary>
+    /// Whether there are any toggleable tools.
+    /// </summary>
+    private bool HasToggleableTools => ToggleableTools.Any();
+
+    /// <summary>
+    /// Count of enabled tools.
+    /// </summary>
+    private int EnabledToolCount => ToggleableTools.Count(t => t.Id.HasValue && !DisabledToolIds.Contains(t.Id.Value));
+
+    /// <summary>
+    /// Whether at least one tool is enabled.
+    /// </summary>
+    private bool HasEnabledTools => EnabledToolCount > 0;
+
+    /// <summary>
+    /// Button color based on state - shows primary color when tools are enabled.
+    /// </summary>
+    private Color ButtonColor => HasEnabledTools ? Color.Primary : Color.Default;
+
+    /// <summary>
+    /// Button tooltip text.
+    /// </summary>
+    private string ButtonTooltip => HasToggleableTools
+        ? (HasEnabledTools ? $"Toggle tools ({EnabledToolCount} enabled)" : "Toggle tools (all disabled)")
+        : "No tools available to toggle";
+
+    /// <summary>
+    /// Button wrapper CSS class for the indicator dot.
+    /// Shows the dot when at least one tool is enabled.
+    /// </summary>
+    private string ButtonWrapperClass => HasEnabledTools
+        ? "tool-button-wrapper has-tools"
+        : "tool-button-wrapper";
+
+    private void ToggleMenu()
+    {
+        if (!IsDisabled && HasToggleableTools)
+        {
+            _isOpen = !_isOpen;
+        }
+    }
+
+    private void CloseMenu()
+    {
+        _isOpen = false;
+    }
+
+    private bool IsToolEnabled(AesirToolBase tool)
+    {
+        return tool.Id.HasValue && !DisabledToolIds.Contains(tool.Id.Value);
+    }
+
+    private async Task HandleToolToggle(AesirToolBase tool, bool enabled)
+    {
+        if (tool.Id.HasValue && OnToolToggled.HasDelegate)
+        {
+            await OnToolToggled.InvokeAsync((tool.Id.Value, enabled));
+        }
+    }
+
+    private static bool IsRagTool(AesirToolBase tool)
+    {
+        return tool.ToolName == AesirTools.RagToolName ||
+               string.Equals(tool.Name, "RAG", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsWebTool(AesirToolBase tool)
+    {
+        return tool.ToolName == AesirTools.WebToolName ||
+               string.Equals(tool.Name, "Web", StringComparison.OrdinalIgnoreCase) ||
+               (tool.Name?.Contains("Web", StringComparison.OrdinalIgnoreCase) ?? false);
+    }
+
+    private static string GetToolIcon(AesirToolBase tool)
+    {
+        // Web search tool
+        if (IsWebTool(tool))
+        {
+            return Icons.Material.Filled.Public;
+        }
+
+        // MCP Server tool
+        if (tool.Type == ToolType.McpServer)
+        {
+            return Icons.Material.Filled.Extension;
+        }
+
+        // Default internal tool
+        return Icons.Material.Filled.Build;
+    }
+
+    private static Color GetToolIconColor(AesirToolBase tool)
+    {
+        // Web search tool - blue
+        if (IsWebTool(tool))
+        {
+            return Color.Info;
+        }
+
+        // MCP Server tool - orange/warning
+        if (tool.Type == ToolType.McpServer)
+        {
+            return Color.Warning;
+        }
+
+        // Default internal tool - gray
+        return Color.Default;
+    }
+
+    private static string GetToolDisplayName(AesirToolBase tool)
+    {
+        // Prefer display name, fall back to tool name
+        if (!string.IsNullOrWhiteSpace(tool.Name))
+        {
+            return tool.Name;
+        }
+
+        if (!string.IsNullOrWhiteSpace(tool.ToolName))
+        {
+            // Convert tool name to readable format (e.g., "WebTool" -> "Web Tool")
+            return AddSpacesToPascalCase(tool.ToolName);
+        }
+
+        return "Unknown Tool";
+    }
+
+    private static string AddSpacesToPascalCase(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return text;
+
+        var result = new System.Text.StringBuilder();
+        foreach (char c in text)
+        {
+            if (char.IsUpper(c) && result.Length > 0)
+            {
+                result.Append(' ');
+            }
+            result.Append(c);
+        }
+        return result.ToString();
+    }
+}

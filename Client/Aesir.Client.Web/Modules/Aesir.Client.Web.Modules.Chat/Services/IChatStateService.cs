@@ -76,4 +76,91 @@ public interface IChatStateService
     /// Notifies that the conversation has changed.
     /// </summary>
     void NotifyConversationChanged();
+
+    #region Tool Toggle State
+
+    /// <summary>
+    /// Gets the set of tool IDs that are currently disabled for the current conversation.
+    /// </summary>
+    IReadOnlySet<Guid> DisabledToolIds { get; }
+
+    /// <summary>
+    /// Event raised when tool toggle state changes.
+    /// </summary>
+    event Action? OnToolTogglesChanged;
+
+    /// <summary>
+    /// Sets whether a tool is enabled or disabled.
+    /// </summary>
+    /// <param name="toolId">The tool ID.</param>
+    /// <param name="enabled">True to enable, false to disable.</param>
+    void SetToolEnabled(Guid toolId, bool enabled);
+
+    /// <summary>
+    /// Checks if a tool is currently enabled.
+    /// </summary>
+    /// <param name="toolId">The tool ID.</param>
+    /// <returns>True if enabled (not in disabled set), false otherwise.</returns>
+    bool IsToolEnabled(Guid toolId);
+
+    /// <summary>
+    /// Clears all tool toggle state for the current conversation.
+    /// </summary>
+    void ClearToolToggles();
+
+    /// <summary>
+    /// Gets the disabled tool IDs for a specific conversation.
+    /// </summary>
+    /// <param name="sessionId">The conversation session ID.</param>
+    /// <returns>Set of disabled tool IDs, or empty set if none.</returns>
+    IReadOnlySet<Guid> GetDisabledToolIdsForSession(Guid sessionId);
+
+    /// <summary>
+    /// Restores tool toggle state for a specific conversation.
+    /// </summary>
+    /// <param name="sessionId">The conversation session ID.</param>
+    void RestoreToolTogglesForSession(Guid sessionId);
+
+    #endregion
+
+    #region Think Level State
+
+    /// <summary>
+    /// Gets the currently selected think level for the current conversation.
+    /// </summary>
+    ThinkValue? SelectedThinkLevel { get; }
+
+    /// <summary>
+    /// Event raised when the think level changes.
+    /// </summary>
+    event Action? OnThinkLevelChanged;
+
+    /// <summary>
+    /// Sets the think level for the current conversation.
+    /// </summary>
+    /// <param name="level">The think level to set (null, false, "low", "medium", "high").</param>
+    /// <returns>A task representing the async operation (includes localStorage persistence).</returns>
+    Task SetThinkLevelAsync(ThinkValue? level);
+
+    /// <summary>
+    /// Clears the think level for the current conversation (resets to default).
+    /// </summary>
+    /// <returns>A task representing the async operation (includes localStorage cleanup).</returns>
+    Task ClearThinkLevelAsync();
+
+    /// <summary>
+    /// Gets the think level for a specific conversation from memory or localStorage.
+    /// </summary>
+    /// <param name="sessionId">The conversation session ID.</param>
+    /// <returns>The stored think level, or null if not set.</returns>
+    Task<ThinkValue?> GetThinkLevelForSessionAsync(Guid sessionId);
+
+    /// <summary>
+    /// Restores think level state for a specific conversation from memory or localStorage.
+    /// </summary>
+    /// <param name="sessionId">The conversation session ID.</param>
+    /// <returns>A task representing the async operation.</returns>
+    Task RestoreThinkLevelForSessionAsync(Guid sessionId);
+
+    #endregion
 }

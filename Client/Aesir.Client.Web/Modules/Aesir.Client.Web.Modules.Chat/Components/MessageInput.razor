@@ -1,5 +1,6 @@
 @using Aesir.Client.Web.Modules.Chat.Services
 @using Aesir.Client.Web.Modules.Chat.Models
+@using Aesir.Client.Web.Modules.Chat.Components
 @using Aesir.Common.Models
 @using Microsoft.AspNetCore.Components.Forms
 @inject IChatStateService ChatState
@@ -98,11 +99,17 @@
                                   OnFileSelected="@HandleFileSelected"
                                   OnError="@HandleFileError"
                                   @ref="_fileUploadButton" />
-                <MudIconButton Icon="@Icons.Material.Filled.Tune"
-                               Size="Size.Small"
-                               Color="Color.Default"
-                               Disabled="true"
-                               Title="Adjust settings" />
+                <ToolToggleMenu Tools="@AvailableTools"
+                                DisabledToolIds="@DisabledToolIds"
+                                OnToolToggled="@HandleToolToggled"
+                                IsDisabled="@IsLoading" />
+                @if (AllowThinking)
+                {
+                    <ThinkMenu SelectedLevel="@SelectedThinkLevel"
+                               DefaultLevel="@DefaultThinkLevel"
+                               OnLevelChanged="@HandleThinkLevelChanged"
+                               IsDisabled="@IsLoading" />
+                }
                 <MudIconButton Icon="@Icons.Material.Filled.History"
                                Size="Size.Small"
                                Color="Color.Default"
@@ -372,6 +379,48 @@
     [Parameter]
     public Func<Guid>? GetConversationId { get; set; }
 
+    /// <summary>
+    /// The list of available tools for the current agent.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<AesirToolBase> AvailableTools { get; set; } = [];
+
+    /// <summary>
+    /// The set of tool IDs that are currently disabled.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<Guid> DisabledToolIds { get; set; } = new HashSet<Guid>();
+
+    /// <summary>
+    /// Event callback when a tool is toggled on/off.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(Guid ToolId, bool Enabled)> OnToolToggled { get; set; }
+
+    /// <summary>
+    /// Whether the agent supports thinking mode.
+    /// </summary>
+    [Parameter]
+    public bool AllowThinking { get; set; }
+
+    /// <summary>
+    /// The currently selected think level.
+    /// </summary>
+    [Parameter]
+    public ThinkValue? SelectedThinkLevel { get; set; }
+
+    /// <summary>
+    /// The agent's default think level.
+    /// </summary>
+    [Parameter]
+    public ThinkValue? DefaultThinkLevel { get; set; }
+
+    /// <summary>
+    /// Event callback when the think level changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<ThinkValue?> OnThinkLevelChanged { get; set; }
+
     private string _message = string.Empty;
     private MudTextField<string>? _textField;
     private FileUploadButton? _fileUploadButton;
@@ -461,6 +510,22 @@
         if (OnAgentSelected.HasDelegate)
         {
             await OnAgentSelected.InvokeAsync(agent);
+        }
+    }
+
+    private async Task HandleToolToggled((Guid ToolId, bool Enabled) args)
+    {
+        if (OnToolToggled.HasDelegate)
+        {
+            await OnToolToggled.InvokeAsync(args);
+        }
+    }
+
+    private async Task HandleThinkLevelChanged(ThinkValue? level)
+    {
+        if (OnThinkLevelChanged.HasDelegate)
+        {
+            await OnThinkLevelChanged.InvokeAsync(level);
         }
     }
 

@@ -715,3 +715,4 @@ public partial class ChatPage
 ### Branding
 - Use the stylized Æ ligature (ÆSIR) in prominent areas where appropriate
 - The application name is "Aesir" or "ÆSIR" for stylized display
+- When testing the web app use http://localhost:5173/ as the url.

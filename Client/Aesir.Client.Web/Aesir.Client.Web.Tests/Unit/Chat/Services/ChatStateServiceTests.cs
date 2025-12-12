@@ -1,15 +1,18 @@
 using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Common.Models;
+using Microsoft.JSInterop;
 
 namespace Aesir.Client.Web.Tests.Unit.Chat.Services;
 
 public class ChatStateServiceTests
 {
     private readonly ChatStateService _service;
+    private readonly Mock<IJSRuntime> _jsRuntime;
 
     public ChatStateServiceTests()
     {
-        _service = new ChatStateService();
+        _jsRuntime = new Mock<IJSRuntime>();
+        _service = new ChatStateService(_jsRuntime.Object);
     }
 
     [Fact]

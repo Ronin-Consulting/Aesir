@@ -319,8 +319,12 @@ public class ConfigurationController(
     [HttpPut("agents/{id:guid}")]
     public async Task<IActionResult> UpdateAgentAsync([FromRoute] Guid id, [FromBody] AesirAgent agent)
     {
+        logger.LogDebug("UpdateAgentAsync called - Route ID: {RouteId}, Body ID: {BodyId}, Agent: {Agent}",
+            id, agent.Id, JsonSerializer.Serialize(agent));
+
         if (id != agent.Id)
         {
+            logger.LogWarning("ID mismatch - Route: {RouteId}, Body: {BodyId}", id, agent.Id);
             return BadRequest("The ID in the URL does not match the ID in the request body.");
         }
 

@@ -87,9 +87,9 @@
     <Target Name="BuildAllModules" BeforeTargets="Build">
         <Message Text="[Api.Server] Discovering module projects..." Importance="high" />
 
-        <!-- Find all module projects matching the pattern -->
+        <!-- Find all module projects matching the pattern (excluding test projects) -->
         <ItemGroup>
-            <ModuleProjects Include="../Modules/Aesir.Modules.*/*.csproj" />
+            <ModuleProjects Include="../Modules/Aesir.Modules.*/*.csproj" Exclude="../Modules/Aesir.Modules.*.Tests/*.csproj" />
         </ItemGroup>
 
         <!-- Build each discovered module -->
@@ -107,9 +107,9 @@
     <Target Name="PublishAllModules" AfterTargets="Publish">
         <Message Text="[Api.Server] Publishing modules for $(RuntimeIdentifier)..." Importance="high" />
 
-        <!-- Find all module projects -->
+        <!-- Find all module projects (excluding test projects) -->
         <ItemGroup>
-            <ModuleProjectsForPublish Include="../Modules/Aesir.Modules.*/*.csproj" />
+            <ModuleProjectsForPublish Include="../Modules/Aesir.Modules.*/*.csproj" Exclude="../Modules/Aesir.Modules.*.Tests/*.csproj" />
         </ItemGroup>
 
         <!-- Publish each module with the same configuration and RID -->

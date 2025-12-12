@@ -1,0 +1,305 @@
+@using Aesir.Common.Models
+
+<div class="think-menu-container">
+    <div class="@ButtonWrapperClass">
+        <MudIconButton Icon="@Icons.Material.Filled.Psychology"
+                       Size="Size.Small"
+                       Color="@ButtonColor"
+                       Disabled="@IsDisabled"
+                       Title="@ButtonTooltip"
+                       OnClick="@ToggleMenu" />
+    </div>
+
+    <MudPopover Open="@_isOpen"
+                AnchorOrigin="Origin.TopCenter"
+                TransformOrigin="Origin.BottomCenter"
+                Paper="false"
+                Class="think-menu-popover">
+        <MudPaper Elevation="8" Class="think-menu">
+            <div class="think-menu-header">
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Thinking Level</MudText>
+            </div>
+            <MudRadioGroup T="string" Value="@SelectedLevelString" ValueChanged="@HandleLevelChanged">
+                <MudList T="string" Dense="true" Class="think-list">
+                    <MudListItem T="string" Class="think-item">
+                        <div class="think-item-content">
+                            <MudRadio T="string" Value="@OffValue" Color="Color.Default" Dense="true">
+                                <div class="think-option">
+                                    <MudIcon Icon="@Icons.Material.Filled.DoNotDisturb" Size="Size.Small" Color="Color.Default" />
+                                    <div class="think-option-text">
+                                        <MudText Typo="Typo.body2">Off</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Disabled</MudText>
+                                    </div>
+                                </div>
+                            </MudRadio>
+                        </div>
+                    </MudListItem>
+                    <MudListItem T="string" Class="think-item">
+                        <div class="think-item-content">
+                            <MudRadio T="string" Value="@ThinkValue.Low" Color="Color.Info" Dense="true">
+                                <div class="think-option">
+                                    <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" Color="Color.Info" />
+                                    <div class="think-option-text">
+                                        <MudText Typo="Typo.body2">Low</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Quick reasoning</MudText>
+                                    </div>
+                                </div>
+                            </MudRadio>
+                        </div>
+                    </MudListItem>
+                    <MudListItem T="string" Class="think-item">
+                        <div class="think-item-content">
+                            <MudRadio T="string" Value="@ThinkValue.Medium" Color="Color.Primary" Dense="true">
+                                <div class="think-option">
+                                    <MudIcon Icon="@Icons.Material.Filled.Balance" Size="Size.Small" Color="Color.Primary" />
+                                    <div class="think-option-text">
+                                        <MudText Typo="Typo.body2">Medium</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Balanced (Default)</MudText>
+                                    </div>
+                                </div>
+                            </MudRadio>
+                        </div>
+                    </MudListItem>
+                    <MudListItem T="string" Class="think-item">
+                        <div class="think-item-content">
+                            <MudRadio T="string" Value="@ThinkValue.High" Color="Color.Warning" Dense="true">
+                                <div class="think-option">
+                                    <MudIcon Icon="@Icons.Material.Filled.Lightbulb" Size="Size.Small" Color="Color.Warning" />
+                                    <div class="think-option-text">
+                                        <MudText Typo="Typo.body2">High</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Deep analysis</MudText>
+                                    </div>
+                                </div>
+                            </MudRadio>
+                        </div>
+                    </MudListItem>
+                </MudList>
+            </MudRadioGroup>
+        </MudPaper>
+    </MudPopover>
+</div>
+
+@if (_isOpen)
+{
+    <div class="think-menu-backdrop" @onclick="CloseMenu"></div>
+}
+
+<style>
+    .think-menu-container {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .think-menu-popover {
+        z-index: 1400;
+    }
+
+    .think-menu {
+        min-width: 200px;
+        max-width: 280px;
+        border-radius: 12px;
+        overflow: hidden;
+        background-color: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .think-menu-header {
+        padding: 12px 16px 4px 16px;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .think-list {
+        padding: 8px 0;
+    }
+
+    .think-item {
+        padding: 2px 8px !important;
+    }
+
+    .think-item-content {
+        width: 100%;
+    }
+
+    .think-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 4px 0;
+    }
+
+    .think-option-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .think-menu-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1300;
+    }
+
+    /* Visual indicator when thinking is enabled */
+    .think-button-wrapper {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .think-button-wrapper.thinking-enabled::after {
+        content: '';
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 8px;
+        height: 8px;
+        background-color: var(--mud-palette-warning);
+        border-radius: 50%;
+        box-shadow: 0 0 4px 1px var(--mud-palette-warning);
+        animation: think-indicator-pulse 2s ease-in-out infinite;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    @@keyframes think-indicator-pulse {
+        0%, 100% {
+            opacity: 1;
+            box-shadow: 0 0 4px 1px var(--mud-palette-warning);
+        }
+        50% {
+            opacity: 0.8;
+            box-shadow: 0 0 6px 2px var(--mud-palette-warning);
+        }
+    }
+
+    /* Dim when disabled */
+    .think-menu-container .mud-icon-button:disabled {
+        opacity: 0.4;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Value representing "Off" (thinking disabled).
+    /// </summary>
+    private const string OffValue = "false";
+
+    /// <summary>
+    /// The currently selected think level.
+    /// </summary>
+    [Parameter]
+    public ThinkValue? SelectedLevel { get; set; }
+
+    /// <summary>
+    /// The agent's default think level (used when no level is selected).
+    /// </summary>
+    [Parameter]
+    public ThinkValue? DefaultLevel { get; set; }
+
+    /// <summary>
+    /// Event callback when the think level changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<ThinkValue?> OnLevelChanged { get; set; }
+
+    /// <summary>
+    /// Whether the menu is disabled (e.g., during streaming).
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    private bool _isOpen;
+
+    /// <summary>
+    /// Gets the effective think level (selected or default).
+    /// </summary>
+    private ThinkValue EffectiveLevel => SelectedLevel ?? DefaultLevel ?? new ThinkValue(ThinkValue.Medium);
+
+    /// <summary>
+    /// Gets the selected level as a string for the radio group.
+    /// Maps "true" to "medium" since the radio group doesn't have a "true" option.
+    /// </summary>
+    private string SelectedLevelString
+    {
+        get
+        {
+            var level = EffectiveLevel.ToString() ?? ThinkValue.Medium;
+            // Map boolean "true" to "medium" for the radio selection
+            return string.Equals(level, "true", StringComparison.OrdinalIgnoreCase)
+                ? ThinkValue.Medium
+                : level;
+        }
+    }
+
+    /// <summary>
+    /// Whether the user has explicitly selected a think level (shows indicator dot).
+    /// Only shows the dot when user has made a selection, not when using agent's default.
+    /// </summary>
+    private bool HasExplicitSelection => SelectedLevel.HasValue;
+
+    /// <summary>
+    /// Button color based on state - shows warning color when user has made an explicit selection.
+    /// </summary>
+    private Color ButtonColor => HasExplicitSelection ? Color.Warning : Color.Default;
+
+    /// <summary>
+    /// Button tooltip text - shows current effective level.
+    /// </summary>
+    private string ButtonTooltip => $"Thinking: {GetLevelDisplayName(EffectiveLevel)}";
+
+    /// <summary>
+    /// Button wrapper CSS class for the indicator dot.
+    /// Only shows the dot when user has explicitly selected a level.
+    /// </summary>
+    private string ButtonWrapperClass => HasExplicitSelection
+        ? "think-button-wrapper thinking-enabled"
+        : "think-button-wrapper";
+
+    private void ToggleMenu()
+    {
+        if (!IsDisabled)
+        {
+            _isOpen = !_isOpen;
+        }
+    }
+
+    private void CloseMenu()
+    {
+        _isOpen = false;
+    }
+
+    private async Task HandleLevelChanged(string value)
+    {
+        ThinkValue? newLevel = value switch
+        {
+            "false" => new ThinkValue(false),
+            ThinkValue.Low => new ThinkValue(ThinkValue.Low),
+            ThinkValue.Medium => new ThinkValue(ThinkValue.Medium),
+            ThinkValue.High => new ThinkValue(ThinkValue.High),
+            _ => new ThinkValue(ThinkValue.Medium)
+        };
+
+        if (OnLevelChanged.HasDelegate)
+        {
+            await OnLevelChanged.InvokeAsync(newLevel);
+        }
+
+        CloseMenu();
+    }
+
+    private static string GetLevelDisplayName(ThinkValue level)
+    {
+        var value = level.ToString();
+        return value switch
+        {
+            "false" => "Off",
+            ThinkValue.Low => "Low",
+            ThinkValue.Medium => "Medium",
+            ThinkValue.High => "High",
+            "true" => "On",
+            _ => value ?? "Unknown"
+        };
+    }
+}

@@ -42,7 +42,14 @@
                      OnAgentSelected="@HandleAgentSelected"
                      OnSend="@SendMessageAsync"
                      OnSendWithFiles="@SendMessageWithFilesAsync"
-                     GetConversationId="@GetOrCreateConversationId" />
+                     GetConversationId="@GetOrCreateConversationId"
+                     AvailableTools="@_agentTools"
+                     DisabledToolIds="@ChatState.DisabledToolIds"
+                     OnToolToggled="@HandleToolToggled"
+                     AllowThinking="@(ChatState.SelectedAgent?.AllowThinking ?? false)"
+                     SelectedThinkLevel="@_selectedThinkLevel"
+                     DefaultThinkLevel="@ChatState.SelectedAgent?.ThinkValue"
+                     OnThinkLevelChanged="@HandleThinkLevelChanged" />
     }
     else
     {
@@ -109,7 +116,14 @@
                       OnSendWithFiles="@SendMessageWithFilesAsync"
                       IsDisabled="@(_isStreaming || _isThinking || ChatState.SelectedAgent == null || _isLoadingSession || _isUploadingFiles)"
                       IsLoading="@(_isStreaming || _isThinking || _isUploadingFiles)"
-                      GetConversationId="@GetOrCreateConversationId" />
+                      GetConversationId="@GetOrCreateConversationId"
+                      AvailableTools="@_agentTools"
+                      DisabledToolIds="@ChatState.DisabledToolIds"
+                      OnToolToggled="@HandleToolToggled"
+                      AllowThinking="@(ChatState.SelectedAgent?.AllowThinking ?? false)"
+                      SelectedThinkLevel="@_selectedThinkLevel"
+                      DefaultThinkLevel="@ChatState.SelectedAgent?.ThinkValue"
+                      OnThinkLevelChanged="@HandleThinkLevelChanged" />
     }
 
     @* Drop Zone Overlay *@
@@ -206,6 +220,10 @@
     // Agent tools state - tools are converted to ToolRequest for use in chat requests
     private HashSet<ToolRequest> _agentToolRequests = new();
     private IReadOnlyList<AesirMcpServerBase>? _mcpServers;
+    private List<AesirToolBase> _agentTools = new(); // Raw tool objects for UI display
+
+    // Think level state - user can override agent's default at runtime
+    private ThinkValue? _selectedThinkLevel;
 
     // Tool call state - populated during streaming from IToolCallStateService
     private IReadOnlyList<AesirToolCallInfo> _currentToolCalls = [];
@@ -285,6 +303,10 @@
                 _sessionTitle = session.Title;
                 ChatState.SetCurrentSession(sessionId, _sessionTitle);
 
+                // Restore think level for this session from localStorage (or use agent's default if not set)
+                await ChatState.RestoreThinkLevelForSessionAsync(sessionId);
+                _selectedThinkLevel = ChatState.SelectedThinkLevel ?? ChatState.SelectedAgent?.ThinkValue;
+
                 await ScrollToBottomAsync();
             }
             else
@@ -326,6 +348,7 @@
     private async Task LoadAgentToolsAsync()
     {
         _agentToolRequests.Clear();
+        _agentTools.Clear();
 
         if (ChatState.SelectedAgent?.Id == null)
             return;
@@ -341,6 +364,9 @@
             var tools = await toolsTask;
             var mcpServersResult = await mcpServersTask;
             _mcpServers = mcpServersResult.IsSuccess ? mcpServersResult.Value : null;
+
+            // Store raw tools for UI display
+            _agentTools = tools.ToList();
 
             // Convert AesirToolBase to ToolRequest (same logic as Avalonia client)
             foreach (var tool in tools)
@@ -363,6 +389,18 @@
 
                 _agentToolRequests.Add(toolRequest);
             }
+
+            // Clear tool toggles when agent changes (fresh state for new agent)
+            ChatState.ClearToolToggles();
+
+            // Only update local think level from ChatState if we have a stored value
+            // If null, leave _selectedThinkLevel as null so ThinkMenu uses DefaultLevel (agent's default)
+            // This ensures the indicator dot only appears when user has made an explicit selection
+            if (ChatState.SelectedThinkLevel != null)
+            {
+                _selectedThinkLevel = ChatState.SelectedThinkLevel;
+            }
+            // If no stored level, leave _selectedThinkLevel as null (don't set to agent default)
         }
         catch (Exception ex)
         {
@@ -371,7 +409,41 @@
         }
     }
 
-    private void HandleNewChat()
+    /// <summary>
+    /// Gets the effective think level to use in requests.
+    /// Returns the user-selected level if set, otherwise the agent's default.
+    /// </summary>
+    private ThinkValue? GetEffectiveThinkLevel()
+    {
+        // Use selected level if set, otherwise fall back to agent's default
+        return _selectedThinkLevel ?? ChatState.SelectedAgent?.ThinkValue;
+    }
+
+    /// <summary>
+    /// Determines if thinking should be enabled based on the effective think level.
+    /// </summary>
+    private bool? GetEffectiveThinkingEnabled()
+    {
+        var level = GetEffectiveThinkLevel();
+
+        // If no level is set, use agent's AllowThinking setting
+        if (level == null)
+        {
+            return ChatState.SelectedAgent?.AllowThinking;
+        }
+
+        // Check if the level indicates thinking should be disabled
+        var levelString = level.Value.ToString();
+        if (string.Equals(levelString, "false", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // Any other value (low, medium, high, true) means thinking is enabled
+        return true;
+    }
+
+    private async void HandleNewChat()
     {
         _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
         _hasMessages = false;
@@ -384,7 +456,24 @@
         ToolCallStateService.Clear();
         _currentToolCalls = [];
         ChatState.SetCurrentSession(null);
+
+        // Reset tool toggles for new chat - all tools enabled by default
+        ChatState.ClearToolToggles();
+
+        // Reset think level for new chat - use null to indicate "use agent default"
+        // This way the ThinkMenu shows no indicator dot until user makes an explicit selection
+        _selectedThinkLevel = null;
+        _ = ChatState.ClearThinkLevelAsync(); // Fire-and-forget since we're resetting
+
         UpdateSystemPrompt();
+
+        // Load agent tools if an agent is already selected
+        // This ensures tools are available when starting new chat from another page (e.g., ChatsPage)
+        if (ChatState.SelectedAgent != null)
+        {
+            await LoadAgentToolsAsync();
+        }
+
         StateHasChanged();
     }
 
@@ -413,6 +502,19 @@
         ChatState.SelectAgent(agent);
         // Load tools for the newly selected agent
         await LoadAgentToolsAsync();
+    }
+
+    private void HandleToolToggled((Guid ToolId, bool Enabled) args)
+    {
+        ChatState.SetToolEnabled(args.ToolId, args.Enabled);
+        StateHasChanged();
+    }
+
+    private async Task HandleThinkLevelChanged(ThinkValue? level)
+    {
+        _selectedThinkLevel = level;
+        await ChatState.SetThinkLevelAsync(level);
+        StateHasChanged();
     }
 
     private async Task HandleSuggestion(string suggestion)
@@ -468,16 +570,25 @@
                 ChatSessionId = conversationGuid ?? ChatState.CurrentSessionId,
                 User = UserId,
                 Conversation = _conversation,
-                EnableThinking = ChatState.SelectedAgent.AllowThinking,
-                ThinkValue = ChatState.SelectedAgent.ThinkValue,
+                EnableThinking = GetEffectiveThinkingEnabled(),
+                ThinkValue = GetEffectiveThinkLevel(),
                 Title = _sessionTitle ?? string.Empty
             };
 
-            // Add all agent tools to the request (enables RAG, web search, MCP tools)
+            // Add enabled agent tools to the request (enables RAG, web search, MCP tools)
             // The backend checks request.Tools for RagTool to enable document search
+            // Filter out tools that are disabled by the user in the toggle menu
             foreach (var toolRequest in _agentToolRequests)
             {
-                request.WithTool(toolRequest);
+                // Find the matching tool to check if it's disabled
+                var tool = _agentTools.FirstOrDefault(t =>
+                    (t.Type == ToolType.McpServer ? t.Name : t.ToolName) == toolRequest.ToolName);
+
+                // Only add tool if it's not in the disabled set
+                if (tool?.Id == null || !ChatState.DisabledToolIds.Contains(tool.Id.Value))
+                {
+                    request.WithTool(toolRequest);
+                }
             }
 
             // Create cancellation token for streaming
