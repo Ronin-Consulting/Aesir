@@ -6,6 +6,7 @@ using RichardSzalay.MockHttp;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Aesir.Client.Web.Infrastructure.Http;
 using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.Settings.Services;
@@ -37,11 +38,15 @@ public abstract class IntegrationTestBase : TestContext
         JsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            PropertyNameCaseInsensitive = true
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
         };
 
         SetupServices();
         SetupDefaultApiResponses();
+
+        // Add fallback for unmatched requests - throws to help diagnose URL matching issues
+        MockHttp.Fallback.Throw(new InvalidOperationException("UNMATCHED_REQUEST"));
     }
 
     private void SetupServices()
@@ -64,6 +69,12 @@ public abstract class IntegrationTestBase : TestContext
         Services.AddSingleton<IMarkdownService, MarkdownService>();
         Services.AddSingleton<IGeneralSettingsService, GeneralSettingsService>();
         Services.AddSingleton<IWizardStateService, WizardStateService>();
+
+        // Additional chat services (added for new components)
+        Services.AddSingleton<IDocumentApiService, DocumentApiService>();
+        Services.AddSingleton<IToolCallStateService, ToolCallStateService>();
+        Services.AddSingleton<ICitationStateService, CitationStateService>();
+        Services.AddSingleton<IAgentToolsService, AgentToolsService>();
 
         // MudBlazor services
         Services.AddMudServices();
@@ -102,33 +113,33 @@ public abstract class IntegrationTestBase : TestContext
                     : new HttpResponseMessage(HttpStatusCode.NotFound));
             });
 
-        // POST - Returns Guid
+        // POST - Returns Guid (use sync read to avoid async deadlock in tests)
         MockHttp.When(HttpMethod.Post, "https://aesir.localhost/configuration/inferenceengines")
-            .Respond(async request =>
+            .Respond(request =>
             {
-                var content = await request.Content!.ReadAsStringAsync();
+                var content = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
                 var engine = JsonSerializer.Deserialize<AesirInferenceEngineBase>(content, JsonOptions)!;
                 var newId = Guid.NewGuid();
                 engine.Id = newId;
                 InferenceEngines.Add(engine);
-                return CreateJsonResponse(newId);
+                return Task.FromResult(CreateJsonResponse(newId));
             });
 
-        // PUT
+        // PUT (use sync read to avoid async deadlock in tests)
         MockHttp.When(HttpMethod.Put, "https://aesir.localhost/configuration/inferenceengines/*")
-            .Respond(async request =>
+            .Respond(request =>
             {
                 var id = Guid.Parse(request.RequestUri!.Segments.Last());
-                var content = await request.Content!.ReadAsStringAsync();
+                var content = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
                 var updated = JsonSerializer.Deserialize<AesirInferenceEngineBase>(content, JsonOptions)!;
                 var index = InferenceEngines.FindIndex(e => e.Id == id);
                 if (index >= 0)
                 {
                     updated.Id = id;
                     InferenceEngines[index] = updated;
-                    return CreateJsonResponse<object?>(null);
+                    return Task.FromResult(CreateJsonResponse<object?>(null));
                 }
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
             });
 
         // DELETE
@@ -147,14 +158,14 @@ public abstract class IntegrationTestBase : TestContext
             .Respond(() => Task.FromResult(CreateJsonResponse(McpServers)));
 
         MockHttp.When(HttpMethod.Post, "https://aesir.localhost/configuration/mcpservers")
-            .Respond(async request =>
+            .Respond(request =>
             {
-                var content = await request.Content!.ReadAsStringAsync();
+                var content = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
                 var server = JsonSerializer.Deserialize<AesirMcpServerBase>(content, JsonOptions)!;
                 var newId = Guid.NewGuid();
                 server.Id = newId;
                 McpServers.Add(server);
-                return CreateJsonResponse(newId);
+                return Task.FromResult(CreateJsonResponse(newId));
             });
 
         MockHttp.When(HttpMethod.Delete, "https://aesir.localhost/configuration/mcpservers/*")
@@ -172,14 +183,14 @@ public abstract class IntegrationTestBase : TestContext
             .Respond(() => Task.FromResult(CreateJsonResponse(Tools)));
 
         MockHttp.When(HttpMethod.Post, "https://aesir.localhost/configuration/tools")
-            .Respond(async request =>
+            .Respond(request =>
             {
-                var content = await request.Content!.ReadAsStringAsync();
+                var content = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
                 var tool = JsonSerializer.Deserialize<AesirToolBase>(content, JsonOptions)!;
                 var newId = Guid.NewGuid();
                 tool.Id = newId;
                 Tools.Add(tool);
-                return CreateJsonResponse(newId);
+                return Task.FromResult(CreateJsonResponse(newId));
             });
 
         MockHttp.When(HttpMethod.Delete, "https://aesir.localhost/configuration/tools/*")
@@ -213,36 +224,36 @@ public abstract class IntegrationTestBase : TestContext
             });
 
         MockHttp.When(HttpMethod.Post, "https://aesir.localhost/configuration/agents")
-            .Respond(async request =>
+            .Respond(request =>
             {
-                var content = await request.Content!.ReadAsStringAsync();
+                var content = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
                 var agent = JsonSerializer.Deserialize<AesirAgentBase>(content, JsonOptions)!;
                 var newId = Guid.NewGuid();
                 agent.Id = newId;
                 Agents.Add(agent);
-                return CreateJsonResponse(newId);
+                return Task.FromResult(CreateJsonResponse(newId));
             });
 
         MockHttp.When(HttpMethod.Put, "https://aesir.localhost/configuration/agents/*/tools")
             .Respond(() => Task.FromResult(CreateJsonResponse<object?>(null)));
 
         MockHttp.When(HttpMethod.Put, "https://aesir.localhost/configuration/agents/*")
-            .Respond(async request =>
+            .Respond(request =>
             {
                 var segments = request.RequestUri!.Segments;
                 var idSegment = segments[^1].TrimEnd('/');
-                if (idSegment == "tools") return CreateJsonResponse<object?>(null);
+                if (idSegment == "tools") return Task.FromResult(CreateJsonResponse<object?>(null));
                 var id = Guid.Parse(idSegment);
-                var content = await request.Content!.ReadAsStringAsync();
+                var content = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
                 var updated = JsonSerializer.Deserialize<AesirAgentBase>(content, JsonOptions)!;
                 var index = Agents.FindIndex(a => a.Id == id);
                 if (index >= 0)
                 {
                     updated.Id = id;
                     Agents[index] = updated;
-                    return CreateJsonResponse<object?>(null);
+                    return Task.FromResult(CreateJsonResponse<object?>(null));
                 }
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
             });
 
         MockHttp.When(HttpMethod.Delete, "https://aesir.localhost/configuration/agents/*")
@@ -310,12 +321,12 @@ public abstract class IntegrationTestBase : TestContext
 
         // PUT general settings
         MockHttp.When(HttpMethod.Put, "https://aesir.localhost/configuration/generalsettings")
-            .Respond(async request =>
+            .Respond(request =>
             {
-                var content = await request.Content!.ReadAsStringAsync();
+                var content = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
                 var settings = JsonSerializer.Deserialize<AesirGeneralSettingsBase>(content, JsonOptions)!;
                 GeneralSettings = settings;
-                return CreateJsonResponse<object?>(null);
+                return Task.FromResult(CreateJsonResponse<object?>(null));
             });
     }
 

@@ -651,7 +651,8 @@
     private void StartNewChat()
     {
         ChatState.StartNewChat();
-        NavigationManager.NavigateTo("/chat", forceLoad: false);
+        // Use replace: true to clear URL history and prevent back button returning to old session
+        NavigationManager.NavigateTo("/chat", forceLoad: false, replace: true);
     }
 
     private static string TruncateTitle(string title, int maxLength)

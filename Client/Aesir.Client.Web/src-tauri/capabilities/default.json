@@ -8,6 +8,7 @@
   "permissions": [
     "core:default",
     "core:path:default",
+    "core:window:allow-set-theme",
     "shell:allow-open",
     "dialog:allow-save",
     "dialog:allow-open",

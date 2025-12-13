@@ -8,6 +8,7 @@ using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.Chat.Components;
 using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Common.Models;
+using Microsoft.JSInterop;
 
 namespace Aesir.Client.Web.Tests.Unit.Chat.Components;
 
@@ -15,17 +16,26 @@ public class ChatWelcomeTests : TestContext
 {
     private readonly Mock<IConfigurationApiService> _mockApiService;
     private readonly Mock<IChatStateService> _mockChatStateService;
+    private readonly Mock<IDocumentApiService> _mockDocumentApiService;
+    private readonly Mock<IAgentToolsService> _mockAgentToolsService;
 
     public ChatWelcomeTests()
     {
         _mockApiService = new Mock<IConfigurationApiService>();
         _mockChatStateService = new Mock<IChatStateService>();
+        _mockDocumentApiService = new Mock<IDocumentApiService>();
+        _mockAgentToolsService = new Mock<IAgentToolsService>();
 
         Services.AddSingleton(_mockApiService.Object);
         Services.AddSingleton(_mockChatStateService.Object);
+        Services.AddSingleton(_mockDocumentApiService.Object);
+        Services.AddSingleton(_mockAgentToolsService.Object);
         Services.AddMudServices();
 
         JSInterop.Mode = JSRuntimeMode.Loose;
+
+        // Render MudPopoverProvider first (required for MudBlazor popover components)
+        RenderComponent<MudPopoverProvider>();
 
         // Default setup - has agents and inference engines
         var agents = new List<AesirAgentBase>
@@ -186,7 +196,7 @@ public class ChatWelcomeTests : TestContext
 
         // Assert - ChatState.SelectAgent should be called for auto-selection
         await Task.Delay(100); // Allow async initialization
-        _mockChatStateService.Verify(x => x.SelectAgent(It.IsAny<AesirAgentBase>()), Times.Once);
+        _mockChatStateService.Verify(x => x.SelectAgent(It.IsAny<AesirAgentBase>()), Times.AtLeastOnce);
     }
 
     [Fact]

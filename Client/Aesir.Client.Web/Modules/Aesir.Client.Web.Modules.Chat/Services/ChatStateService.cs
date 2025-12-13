@@ -1,4 +1,5 @@
 using Aesir.Common.Models;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace Aesir.Client.Web.Modules.Chat.Services;
@@ -12,10 +13,12 @@ public class ChatStateService : IChatStateService
     private const string ThinkLevelKeyPrefix = "aesir_think_level_";
 
     private readonly IJSRuntime _jsRuntime;
+    private readonly ILogger<ChatStateService>? _logger;
 
-    public ChatStateService(IJSRuntime jsRuntime)
+    public ChatStateService(IJSRuntime jsRuntime, ILogger<ChatStateService>? logger = null)
     {
         _jsRuntime = jsRuntime;
+        _logger = logger;
     }
 
     // Tool toggle state: maps session ID to set of disabled tool IDs
@@ -162,6 +165,12 @@ public class ChatStateService : IChatStateService
     /// <inheritdoc />
     public IReadOnlySet<Guid> GetDisabledToolIdsForSession(Guid sessionId)
     {
+        if (sessionId == Guid.Empty)
+        {
+            _logger?.LogWarning("GetDisabledToolIdsForSession called with empty Guid");
+            return EmptyGuidSet;
+        }
+
         return _sessionToolToggles.TryGetValue(sessionId, out var disabledIds)
             ? disabledIds
             : EmptyGuidSet;
@@ -170,6 +179,14 @@ public class ChatStateService : IChatStateService
     /// <inheritdoc />
     public void RestoreToolTogglesForSession(Guid sessionId)
     {
+        if (sessionId == Guid.Empty)
+        {
+            _logger?.LogWarning("RestoreToolTogglesForSession called with empty Guid");
+            _currentDisabledToolIds = new HashSet<Guid>();
+            OnToolTogglesChanged?.Invoke();
+            return;
+        }
+
         if (_sessionToolToggles.TryGetValue(sessionId, out var disabledIds))
         {
             _currentDisabledToolIds = new HashSet<Guid>(disabledIds);
@@ -240,6 +257,12 @@ public class ChatStateService : IChatStateService
     /// <inheritdoc />
     public async Task<ThinkValue?> GetThinkLevelForSessionAsync(Guid sessionId)
     {
+        if (sessionId == Guid.Empty)
+        {
+            _logger?.LogWarning("GetThinkLevelForSessionAsync called with empty Guid");
+            return null;
+        }
+
         // First check in-memory cache
         if (_sessionThinkLevels.TryGetValue(sessionId, out var level))
         {
@@ -260,6 +283,14 @@ public class ChatStateService : IChatStateService
     /// <inheritdoc />
     public async Task RestoreThinkLevelForSessionAsync(Guid sessionId)
     {
+        if (sessionId == Guid.Empty)
+        {
+            _logger?.LogWarning("RestoreThinkLevelForSessionAsync called with empty Guid");
+            _currentThinkLevel = null;
+            OnThinkLevelChanged?.Invoke();
+            return;
+        }
+
         var level = await GetThinkLevelForSessionAsync(sessionId);
         _currentThinkLevel = level;
         OnThinkLevelChanged?.Invoke();
@@ -276,9 +307,9 @@ public class ChatStateService : IChatStateService
             var value = level.ToString();
             await _jsRuntime.InvokeVoidAsync("localStorage.setItem", key, value);
         }
-        catch
+        catch (Exception ex)
         {
-            // localStorage not available, continue without persistence
+            _logger?.LogWarning(ex, "Failed to save think level to localStorage for session {SessionId}", sessionId);
         }
     }
 
@@ -292,9 +323,9 @@ public class ChatStateService : IChatStateService
             var key = $"{ThinkLevelKeyPrefix}{sessionId}";
             await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", key);
         }
-        catch
+        catch (Exception ex)
         {
-            // localStorage not available, continue without persistence
+            _logger?.LogWarning(ex, "Failed to remove think level from localStorage for session {SessionId}", sessionId);
         }
     }
 
@@ -322,9 +353,9 @@ public class ChatStateService : IChatStateService
             if (lowerValue == ThinkValue.High) return new ThinkValue(ThinkValue.High);
             return null;
         }
-        catch
+        catch (Exception ex)
         {
-            // localStorage not available, return null
+            _logger?.LogWarning(ex, "Failed to load think level from localStorage for session {SessionId}", sessionId);
             return null;
         }
     }

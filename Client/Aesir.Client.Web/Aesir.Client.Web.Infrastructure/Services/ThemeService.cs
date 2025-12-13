@@ -38,6 +38,9 @@ public class ThemeService : IThemeService
             // localStorage not available (SSR or restricted), use default
         }
 
+        // Set initial Tauri window theme if running in Tauri
+        await SyncTauriThemeAsync(_isDarkMode);
+
         _isInitialized = true;
     }
 
@@ -61,6 +64,25 @@ public class ThemeService : IThemeService
             // localStorage not available, continue without persistence
         }
 
+        // Sync Tauri window theme if running in Tauri
+        await SyncTauriThemeAsync(isDarkMode);
+
         ThemeChanged?.Invoke(this, isDarkMode);
+    }
+
+    /// <summary>
+    /// Synchronizes the Tauri window theme with the application theme.
+    /// Does nothing if not running in Tauri.
+    /// </summary>
+    private async Task SyncTauriThemeAsync(bool isDarkMode)
+    {
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("aesirPlatform.setTauriTheme", isDarkMode);
+        }
+        catch
+        {
+            // Not running in Tauri or function not available, ignore
+        }
     }
 }

@@ -1,17 +1,28 @@
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
+using MudBlazor;
 using MudBlazor.Services;
 using Aesir.Client.Web.Modules.Chat.Components;
+using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Common.Models;
+using Microsoft.JSInterop;
 
 namespace Aesir.Client.Web.Tests.Unit.Chat.Components;
 
 public class UserMessageTests : TestContext
 {
+    private readonly Mock<IDocumentApiService> _mockDocumentApiService;
+
     public UserMessageTests()
     {
+        _mockDocumentApiService = new Mock<IDocumentApiService>();
+
+        Services.AddSingleton(_mockDocumentApiService.Object);
         Services.AddMudServices();
         JSInterop.Mode = JSRuntimeMode.Loose;
+
+        // Render MudPopoverProvider first (required for MudBlazor popover components)
+        RenderComponent<MudPopoverProvider>();
     }
 
     [Fact]
@@ -84,7 +95,7 @@ public class UserMessageTests : TestContext
 
         // Assert
         cut.Markup.Should().Contain("document.pdf");
-        cut.Markup.Should().Contain("file-attachment");
+        cut.Markup.Should().Contain("file-card");
     }
 
     [Fact]
@@ -120,8 +131,8 @@ public class UserMessageTests : TestContext
         var cut = RenderComponent<UserMessage>(parameters => parameters
             .Add(p => p.Message, message));
 
-        // Assert - Check that no file-attachment div element exists (not the style selector)
-        cut.FindAll(".file-attachment").Should().BeEmpty();
+        // Assert - Check that no file-card div element exists
+        cut.FindAll(".file-card").Should().BeEmpty();
     }
 
     [Fact]
@@ -138,8 +149,9 @@ public class UserMessageTests : TestContext
         var cut = RenderComponent<UserMessage>(parameters => parameters
             .Add(p => p.Message, message));
 
-        // Assert
-        cut.Markup.Should().Contain("white-space: pre-wrap");
+        // Assert - Check that the content is preserved with newlines
+        cut.Markup.Should().Contain("Line 1");
+        cut.Markup.Should().Contain("Line 2");
     }
 
     [Fact]

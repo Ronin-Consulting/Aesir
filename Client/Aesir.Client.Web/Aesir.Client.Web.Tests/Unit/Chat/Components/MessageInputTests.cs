@@ -7,6 +7,7 @@ using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Infrastructure.Http;
 using Aesir.Common.Models;
+using Microsoft.JSInterop;
 
 namespace Aesir.Client.Web.Tests.Unit.Chat.Components;
 
@@ -14,11 +15,15 @@ public class MessageInputTests : TestContext
 {
     private readonly Mock<IChatStateService> _mockChatStateService;
     private readonly Mock<IConfigurationApiService> _mockConfigurationApiService;
+    private readonly Mock<IDocumentApiService> _mockDocumentApiService;
+    private readonly Mock<IAgentToolsService> _mockAgentToolsService;
 
     public MessageInputTests()
     {
         _mockChatStateService = new Mock<IChatStateService>();
         _mockConfigurationApiService = new Mock<IConfigurationApiService>();
+        _mockDocumentApiService = new Mock<IDocumentApiService>();
+        _mockAgentToolsService = new Mock<IAgentToolsService>();
 
         // Setup agents list for AgentSelectorCompact
         var emptyAgentsList = Array.Empty<AesirAgentBase>() as IReadOnlyList<AesirAgentBase>;
@@ -27,9 +32,14 @@ public class MessageInputTests : TestContext
 
         Services.AddSingleton(_mockChatStateService.Object);
         Services.AddSingleton(_mockConfigurationApiService.Object);
+        Services.AddSingleton(_mockDocumentApiService.Object);
+        Services.AddSingleton(_mockAgentToolsService.Object);
         Services.AddMudServices();
 
         JSInterop.Mode = JSRuntimeMode.Loose;
+
+        // Render MudPopoverProvider first (required for MudBlazor popover components)
+        RenderComponent<MudPopoverProvider>();
     }
 
     [Fact]

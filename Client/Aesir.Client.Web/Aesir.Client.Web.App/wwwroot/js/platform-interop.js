@@ -28,6 +28,27 @@ window.aesirPlatform = {
             isMobile: isMobile,
             operatingSystem: os
         };
+    },
+
+    /**
+     * Set the Tauri window theme to match the application theme
+     * @param {boolean} isDarkMode - True for dark theme, false for light theme
+     * @returns {Promise<boolean>} True if successful, false if not in Tauri or failed
+     */
+    setTauriTheme: async function (isDarkMode) {
+        if (typeof window.__TAURI__ === 'undefined') {
+            return false;
+        }
+
+        try {
+            // With withGlobalTauri: true, window API is at window.__TAURI__.window
+            const currentWindow = window.__TAURI__.window.getCurrentWindow();
+            await currentWindow.setTheme(isDarkMode ? 'dark' : 'light');
+            return true;
+        } catch (error) {
+            console.warn('Failed to set Tauri window theme:', error);
+            return false;
+        }
     }
 };
 

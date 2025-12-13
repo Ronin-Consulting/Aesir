@@ -10,6 +10,7 @@ using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Common.Models;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using MudBlazor.Interop;
 
 namespace Aesir.Client.Web.Tests.Unit.Chat.Components;
 
@@ -20,6 +21,10 @@ public class ChatPageTests : TestContext
     private readonly Mock<INavigationRegistry> _mockNavigationRegistry;
     private readonly Mock<IChatApiService> _mockChatApiService;
     private readonly Mock<IChatHistoryService> _mockChatHistoryService;
+    private readonly Mock<IToolCallStateService> _mockToolCallStateService;
+    private readonly Mock<ICitationStateService> _mockCitationStateService;
+    private readonly Mock<IAgentToolsService> _mockAgentToolsService;
+    private readonly Mock<IDocumentApiService> _mockDocumentApiService;
 
     public ChatPageTests()
     {
@@ -28,17 +33,28 @@ public class ChatPageTests : TestContext
         _mockNavigationRegistry = new Mock<INavigationRegistry>();
         _mockChatApiService = new Mock<IChatApiService>();
         _mockChatHistoryService = new Mock<IChatHistoryService>();
+        _mockToolCallStateService = new Mock<IToolCallStateService>();
+        _mockCitationStateService = new Mock<ICitationStateService>();
+        _mockAgentToolsService = new Mock<IAgentToolsService>();
+        _mockDocumentApiService = new Mock<IDocumentApiService>();
 
         Services.AddSingleton(_mockApiService.Object);
         Services.AddSingleton(_mockChatStateService.Object);
         Services.AddSingleton(_mockNavigationRegistry.Object);
         Services.AddSingleton(_mockChatApiService.Object);
         Services.AddSingleton(_mockChatHistoryService.Object);
+        Services.AddSingleton(_mockToolCallStateService.Object);
+        Services.AddSingleton(_mockCitationStateService.Object);
+        Services.AddSingleton(_mockAgentToolsService.Object);
+        Services.AddSingleton(_mockDocumentApiService.Object);
         Services.AddSingleton<IMarkdownService, MarkdownService>();
         Services.AddMudServices();
 
         JSInterop.Mode = JSRuntimeMode.Loose;
         JSInterop.SetupVoid("scrollToBottom", _ => true);
+
+        // Render MudPopoverProvider first (required for MudBlazor popover components)
+        RenderComponent<MudPopoverProvider>();
 
         // Default setup
         _mockNavigationRegistry.Setup(x => x.GetItems()).Returns(new List<NavigationItem>());
@@ -120,7 +136,7 @@ public class ChatPageTests : TestContext
         var cut = RenderComponent<ChatPage>();
 
         // Assert - Welcome view with input area is present
-        cut.Markup.Should().Contain("welcome-input");
+        cut.Markup.Should().Contain("message-input-wrapper");
     }
 
     [Fact]
@@ -197,14 +213,22 @@ public class ChatPageTests : TestContext
     [Fact]
     public void ShowsAgentSelector_InWelcomeView()
     {
-        // Arrange
-        _mockChatStateService.Setup(x => x.SelectedAgent).Returns((AesirAgentBase?)null);
+        // Arrange - Setup with an agent and inference engine so the welcome view shows the input area
+        var agent = new AesirAgentBase { Id = Guid.NewGuid(), Name = "Test Agent", ChatModel = "gpt-4" };
+        _mockChatStateService.Setup(x => x.SelectedAgent).Returns(agent);
+        _mockApiService.Setup(x => x.GetAgentsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirAgentBase>>.Success(new List<AesirAgentBase> { agent }));
+        _mockApiService.Setup(x => x.GetInferenceEnginesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirInferenceEngineBase>>.Success(new List<AesirInferenceEngineBase>
+            {
+                new AesirInferenceEngineBase { Id = Guid.NewGuid(), Name = "Test Engine", Type = InferenceEngineType.OpenAICompatible }
+            }));
 
         // Act
         var cut = RenderComponent<ChatPage>();
 
-        // Assert - Agent selector button is present in welcome view
-        cut.Markup.Should().Contain("agent-selector-btn");
+        // Assert - Agent selector compact is present in welcome view
+        cut.Markup.Should().Contain("agent-selector-compact");
     }
 
     [Fact]

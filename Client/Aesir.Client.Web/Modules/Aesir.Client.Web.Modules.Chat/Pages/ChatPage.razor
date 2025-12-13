@@ -236,6 +236,12 @@
         ThoughtsContent = _currentThinkingContent
     };
 
+    /// <summary>
+    /// Returns true if the component is actively processing a message (streaming, waiting, or thinking).
+    /// Used to guard against state resets during active operations.
+    /// </summary>
+    private bool IsActivelyProcessing => _isStreaming || _isWaitingForResponse || _isThinking;
+
     protected override void OnInitialized()
     {
         ChatState.OnAgentChanged += HandleAgentChanged;
@@ -259,28 +265,82 @@
         if (Guid.TryParse(SessionId, out var sessionId) && sessionId != _previousSessionId)
         {
             _previousSessionId = sessionId;
-            await LoadSessionAsync(sessionId);
+
+            // CRITICAL: Don't reload the session if we're actively streaming/processing
+            // When a new session is created during streaming, the URL is updated which triggers this.
+            // We already have the live data in memory, so reloading would overwrite the streaming content.
+            if (!IsActivelyProcessing)
+            {
+                await LoadSessionAsync(sessionId);
+            }
+            else
+            {
+                // Just update ChatState with the new session ID, but don't reload from server
+                ChatState.SetCurrentSession(sessionId, _sessionTitle);
+            }
         }
-        else if (string.IsNullOrEmpty(SessionId) && _previousSessionId.HasValue)
+        else if (string.IsNullOrEmpty(SessionId))
         {
-            // Query param was cleared, start new chat
-            _previousSessionId = null;
-            HandleNewChat();
+            // No session in URL - ensure we're in new chat state
+            // This handles both: 1) navigating away from a session, 2) direct navigation to /chat
+            // CRITICAL: Do NOT reset if actively processing (streaming, waiting, or thinking)
+            // This prevents the conversation from going blank during message streaming
+            if (!IsActivelyProcessing && (_previousSessionId.HasValue || _hasMessages))
+            {
+                _previousSessionId = null;
+                ResetToNewChatState();
+            }
         }
+    }
+
+    /// <summary>
+    /// Synchronously resets to a clean new chat state.
+    /// Used by OnParametersSetAsync when navigating to /chat without a session.
+    /// </summary>
+    private void ResetToNewChatState()
+    {
+        _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
+        _hasMessages = false;
+        _streamingContent = string.Empty;
+        _currentThinkingContent = null;
+        _errorMessage = null;
+        _sessionTitle = null;
+        _isStarred = false;
+        ToolCallStateService.Clear();
+        _currentToolCalls = [];
+        ChatState.SetCurrentSession(null);
+        ChatState.ClearToolToggles();
+        _selectedThinkLevel = null;
+        _ = ChatState.ClearThinkLevelAsync();
+        UpdateSystemPrompt();
+        StateHasChanged();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !_jsDropZoneInitialized)
+        if (firstRender)
         {
-            try
+            // Initialize drop zone JS interop
+            if (!_jsDropZoneInitialized)
             {
-                await JSRuntime.InvokeVoidAsync("initializeDropZone", "chat-page-container", _dropZoneInputId);
-                _jsDropZoneInitialized = true;
+                try
+                {
+                    await JSRuntime.InvokeVoidAsync("initializeDropZone", "chat-page-container", _dropZoneInputId);
+                    _jsDropZoneInitialized = true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to initialize drop zone: {ex.Message}");
+                }
             }
-            catch (Exception ex)
+
+            // Load agent tools if an agent is pre-selected but tools haven't been loaded yet
+            // This handles the case where AgentSelector auto-selects an agent before ChatPage subscribes
+            // to the OnAgentChanged event (initialization timing issue)
+            if (ChatState.SelectedAgent != null && !_agentTools.Any())
             {
-                Console.WriteLine($"Failed to initialize drop zone: {ex.Message}");
+                await LoadAgentToolsAsync();
+                StateHasChanged();
             }
         }
     }
@@ -445,36 +505,41 @@
 
     private async void HandleNewChat()
     {
-        _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
-        _hasMessages = false;
-        _streamingContent = string.Empty;
-        _currentThinkingContent = null;
-        _errorMessage = null;
-        _previousSessionId = null;
-        _sessionTitle = null;
-        _isStarred = false;
-        ToolCallStateService.Clear();
-        _currentToolCalls = [];
-        ChatState.SetCurrentSession(null);
-
-        // Reset tool toggles for new chat - all tools enabled by default
-        ChatState.ClearToolToggles();
-
-        // Reset think level for new chat - use null to indicate "use agent default"
-        // This way the ThinkMenu shows no indicator dot until user makes an explicit selection
-        _selectedThinkLevel = null;
-        _ = ChatState.ClearThinkLevelAsync(); // Fire-and-forget since we're resetting
-
-        UpdateSystemPrompt();
-
-        // Load agent tools if an agent is already selected
-        // This ensures tools are available when starting new chat from another page (e.g., ChatsPage)
-        if (ChatState.SelectedAgent != null)
+        // Use InvokeAsync to ensure UI updates run on the correct synchronization context
+        // This is necessary because this event handler is called from ChatStateService
+        await InvokeAsync(async () =>
         {
-            await LoadAgentToolsAsync();
-        }
+            _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
+            _hasMessages = false;
+            _streamingContent = string.Empty;
+            _currentThinkingContent = null;
+            _errorMessage = null;
+            _previousSessionId = null;
+            _sessionTitle = null;
+            _isStarred = false;
+            ToolCallStateService.Clear();
+            _currentToolCalls = [];
+            ChatState.SetCurrentSession(null);
 
-        StateHasChanged();
+            // Reset tool toggles for new chat - all tools enabled by default
+            ChatState.ClearToolToggles();
+
+            // Reset think level for new chat - use null to indicate "use agent default"
+            // This way the ThinkMenu shows no indicator dot until user makes an explicit selection
+            _selectedThinkLevel = null;
+            _ = ChatState.ClearThinkLevelAsync(); // Fire-and-forget since we're resetting
+
+            UpdateSystemPrompt();
+
+            // Load agent tools if an agent is already selected
+            // This ensures tools are available when starting new chat from another page (e.g., ChatsPage)
+            if (ChatState.SelectedAgent != null)
+            {
+                await LoadAgentToolsAsync();
+            }
+
+            StateHasChanged();
+        });
     }
 
     private void UpdateSystemPrompt()
@@ -600,8 +665,11 @@
             {
                 if (_streamingCts.IsCancellationRequested) break;
 
-                // First chunk received - no longer waiting
+                // First chunk received - no longer waiting, now streaming
+                // CRITICAL: Set _isStreaming = true BEFORE any state operations that might trigger re-renders
+                // This ensures IsActivelyProcessing remains true to prevent state resets during the streaming loop
                 _isWaitingForResponse = false;
+                _isStreaming = true;
 
                 // Update session ID if this is a new session
                 if (chunk.ChatSessionId.HasValue && !ChatState.CurrentSessionId.HasValue)
