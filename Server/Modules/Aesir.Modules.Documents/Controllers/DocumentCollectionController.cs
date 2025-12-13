@@ -19,7 +19,8 @@ public class DocumentCollectionController(
     IFileStorageService fileStorageService,
     IDocumentCollectionService documentCollectionService,
     IConfigurationService configurationService,
-    IPdfThumbnailService pdfThumbnailService)
+    IPdfThumbnailService pdfThumbnailService,
+    IChatHistoryService chatHistoryService)
     : ControllerBase
 {
     /// <summary>
@@ -153,15 +154,49 @@ public class DocumentCollectionController(
 
     #region Conversation Files
 
+    // TODO: Replace with claims-based user ID from authentication context
+    private const string CurrentUserId = "blangford@gmail.com";
+
     /// <summary>
-    /// Retrieves a list of files from all conversations.
+    /// Retrieves a list of files from the current user's conversations only.
+    /// This ensures users can only see documents from their own chat sessions.
     /// </summary>
-    /// <param name="conversationId">The unique identifier of the conversation.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the action result with the list of files.</returns>
     [HttpGet("conversations/files")]
     public async Task<IActionResult> GetConversationFilesAsync()
     {
-        return await GetFilesAllFoldersAsync(FolderType.Conversation);
+        try
+        {
+            // Get the user's chat sessions to extract conversation IDs
+            // TODO: Get userId from claims when authentication is implemented
+            var userId = CurrentUserId;
+
+            var userSessions = await chatHistoryService.GetChatSessionsAsync(userId);
+            var conversationIds = userSessions
+                .Select(s => s.Conversation.Id)
+                .Where(id => Guid.TryParse(id, out _))
+                .Select(Guid.Parse)
+                .ToList();
+
+            if (conversationIds.Count == 0)
+            {
+                logger.LogDebug("No conversations found for user {UserId}", userId);
+                return Ok(Array.Empty<object>());
+            }
+
+            // Get files only for the user's conversations
+            var files = await fileStorageService.GetFilesByConversationIdsAsync(conversationIds);
+
+            logger.LogDebug("Retrieved {Count} files for user {UserId} across {ConversationCount} conversations",
+                files.Count(), userId, conversationIds.Count);
+
+            return Ok(files);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving files for current user");
+            return StatusCode(500, "An error occurred while retrieving files.");
+        }
     }
 
     /// <summary>

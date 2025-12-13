@@ -1,9 +1,10 @@
 #!/bin/bash
 # run-server.sh - Build and start the AESIR API server via Docker Compose
-# Usage: ./run-server.sh [--rebuild]
+# Usage: ./run-server.sh [--rebuild] [--prune]
 #
 # Options:
 #   --rebuild    Force rebuild of the API image (no cache)
+#   --prune      Clean up all unused images, build cache, and volumes before building
 #
 # The script will automatically tail the API logs after startup.
 # Press Ctrl+C to stop following logs (containers keep running).
@@ -13,12 +14,20 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose-api-dev.yml"
 
+# Enable BuildKit for more efficient layer caching
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+
 # Parse arguments
 REBUILD=false
+PRUNE=false
 for arg in "$@"; do
     case $arg in
         --rebuild)
             REBUILD=true
+            ;;
+        --prune)
+            PRUNE=true
             ;;
     esac
 done
@@ -38,6 +47,18 @@ cd "$SCRIPT_DIR"
 echo "Stopping existing containers..."
 docker compose -f "$COMPOSE_FILE" down 2>/dev/null || true
 
+# Prune if requested (aggressive cleanup)
+if [ "$PRUNE" = true ]; then
+    echo ""
+    echo "Pruning Docker resources (--prune specified)..."
+    echo "Removing dangling images..."
+    docker image prune -f 2>/dev/null || true
+    echo "Removing build cache..."
+    docker builder prune -f 2>/dev/null || true
+    echo "Pruning complete."
+    echo ""
+fi
+
 # Build and start
 if [ "$REBUILD" = true ]; then
     echo "Rebuilding API image (--rebuild specified)..."
@@ -46,6 +67,10 @@ else
     echo "Building API image (use --rebuild to force full rebuild)..."
     docker compose -f "$COMPOSE_FILE" build aesir-api
 fi
+
+# Clean up dangling images after build (lightweight cleanup)
+echo "Cleaning up dangling images..."
+docker image prune -f 2>/dev/null || true
 
 echo "Starting services..."
 docker compose -f "$COMPOSE_FILE" up -d
@@ -65,6 +90,9 @@ echo "API:      https://aesir.localhost"
 echo "Qdrant:   https://qdrant.localhost (or http://localhost:6333)"
 echo "Traefik:  http://localhost:8080 (dashboard)"
 echo "Postgres: localhost:5432"
+echo ""
+echo "Tip: Use --prune to clean up Docker resources before building"
+echo "     For deep cleanup: docker system prune -a --volumes"
 echo ""
 echo "Following API logs (Ctrl+C to stop)..."
 echo "==========================================="

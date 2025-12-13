@@ -98,4 +98,12 @@ public interface IFileStorageService
     /// <param name="thumbnailMimeType">The MIME type of the thumbnail.</param>
     /// <returns>A task representing the asynchronous operation that returns true if the thumbnail was updated.</returns>
     Task<bool> UpdateFileThumbnailAsync(string filename, byte[] thumbnailContent, string thumbnailMimeType);
+
+    /// <summary>
+    /// Retrieves files that belong to the specified conversation IDs.
+    /// Used to filter files by user's conversations for security.
+    /// </summary>
+    /// <param name="conversationIds">The conversation IDs to filter by.</param>
+    /// <returns>A task representing the asynchronous operation that returns a collection of file information.</returns>
+    Task<IEnumerable<AesirFileInfo>> GetFilesByConversationIdsAsync(IEnumerable<Guid> conversationIds);
 }

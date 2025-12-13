@@ -104,6 +104,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Modules.Chat.Tests", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Modules.Configuration.Tests", "Server\Modules\Aesir.Modules.Configuration.Tests\Aesir.Modules.Configuration.Tests.csproj", "{FBD23504-827E-4D6F-B995-52DBC1783507}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Modules.Storage.Tests", "Server\Modules\Aesir.Modules.Storage.Tests\Aesir.Modules.Storage.Tests.csproj", "{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -426,6 +428,18 @@ Global
 		{FBD23504-827E-4D6F-B995-52DBC1783507}.Release|x64.Build.0 = Release|Any CPU
 		{FBD23504-827E-4D6F-B995-52DBC1783507}.Release|x86.ActiveCfg = Release|Any CPU
 		{FBD23504-827E-4D6F-B995-52DBC1783507}.Release|x86.Build.0 = Release|Any CPU
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}.Debug|x64.Build.0 = Debug|Any CPU
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}.Debug|x86.Build.0 = Debug|Any CPU
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}.Release|x64.ActiveCfg = Release|Any CPU
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}.Release|x64.Build.0 = Release|Any CPU
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}.Release|x86.ActiveCfg = Release|Any CPU
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -462,5 +476,6 @@ Global
 		{0D4ABC67-3B4C-4C71-B6FE-AEE028DCA940} = {F19752C3-6DB2-4011-AF99-30730D2CDFA0}
 		{F5F1114B-BB2F-4C08-9B11-E7DCADF23BAF} = {F19752C3-6DB2-4011-AF99-30730D2CDFA0}
 		{FBD23504-827E-4D6F-B995-52DBC1783507} = {F19752C3-6DB2-4011-AF99-30730D2CDFA0}
+		{EEFF5B15-3DEF-4756-A721-EF48F2B9DB92} = {F19752C3-6DB2-4011-AF99-30730D2CDFA0}
 	EndGlobalSection
 EndGlobal

@@ -73,6 +73,19 @@ public class DocumentApiService : IDocumentApiService
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<ConversationFile>> GetAllFilesAsync(CancellationToken ct = default)
+    {
+        // Server-side filtering ensures only the current user's documents are returned
+        var endpoint = "/document/collections/conversations/files";
+
+        var response = await _httpClient.GetAsync(endpoint, ct);
+        response.EnsureSuccessStatusCode();
+
+        var files = await response.Content.ReadFromJsonAsync<List<ConversationFile>>(ct);
+        return files?.AsReadOnly() ?? (IReadOnlyList<ConversationFile>)Array.Empty<ConversationFile>();
+    }
+
+    /// <inheritdoc />
     public async Task<bool> DeleteFileAsync(
         Guid conversationId,
         string filename,

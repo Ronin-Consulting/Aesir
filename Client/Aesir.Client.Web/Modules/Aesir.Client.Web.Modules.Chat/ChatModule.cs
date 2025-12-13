@@ -43,6 +43,9 @@ public class ChatModule : ClientModuleBase
         // Register agent tools service as scoped (depends on scoped IApiClient)
         services.AddScoped<IAgentToolsService, AgentToolsService>();
 
+        // Register documents view service for the Documents panel
+        services.AddScoped<IDocumentsViewService, DocumentsViewService>();
+
         // Note: IDocumentApiService is registered in Program.cs with a typed HttpClient
         // that has the proper base URL configured (same as IApiClient)
     }

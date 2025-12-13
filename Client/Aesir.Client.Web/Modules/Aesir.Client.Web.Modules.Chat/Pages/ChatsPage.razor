@@ -8,77 +8,99 @@
 @inject IDialogService DialogService
 @implements IDisposable
 
-<PageTitle>Chats - AESIR</PageTitle>
+<PageTitle>@(_currentView == ViewType.Chats ? "Chats" : "Attachments") - AESIR</PageTitle>
 
 <div class="chats-page">
     <div class="chats-content">
-        @if (HistoryService.IsLoading)
-        {
-            <div class="d-flex flex-column align-center justify-center" style="flex: 1;">
-                <MudProgressCircular Indeterminate="true" Size="Size.Large" />
-                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">Loading chats...</MudText>
-            </div>
-        }
-        else if (!_sessions.Any())
-        {
-            @* No Chats - Show New Chat CTA *@
-            <div class="empty-state">
-                <img src="images/logo-blue.svg"
-                     alt="AESIR"
-                     class="empty-logo" />
-
-                <MudText Typo="Typo.h5" Align="Align.Center" Class="mt-4">
-                    No conversations yet
-                </MudText>
-
-                <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Class="mt-2">
-                    Start a new chat to begin exploring with ÆSIR
-                </MudText>
-
-                <MudButton Variant="Variant.Filled"
+        @* View Toggle Header - Always visible *@
+        <div class="view-toggle-header">
+            <MudButtonGroup OverrideStyles="false" Class="view-toggle-group">
+                <MudButton Variant="@(_currentView == ViewType.Chats ? Variant.Filled : Variant.Outlined)"
                            Color="Color.Primary"
-                           Size="Size.Large"
-                           StartIcon="@Icons.Material.Filled.Add"
-                           OnClick="@StartNewChat"
-                           Class="mt-6">
-                    New Chat
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Chat"
+                           OnClick="@(() => SwitchView(ViewType.Chats))">
+                    Chats
                 </MudButton>
-            </div>
-        }
-        else
+                <MudButton Variant="@(_currentView == ViewType.Documents ? Variant.Filled : Variant.Outlined)"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.AttachFile"
+                           OnClick="@(() => SwitchView(ViewType.Documents))">
+                    Attachments
+                </MudButton>
+            </MudButtonGroup>
+        </div>
+
+        @if (_currentView == ViewType.Chats)
         {
-            @* Search Header *@
-            <div class="search-header">
-                <MudTextField @bind-Value="_searchTerm"
-                              Placeholder="Search conversations..."
-                              Variant="Variant.Outlined"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              Immediate="true"
-                              DebounceInterval="300"
-                              OnDebounceIntervalElapsed="@HandleSearchChanged"
-                              Clearable="true"
-                              OnClearButtonClick="@HandleClearSearch"
-                              Class="search-input" />
-            </div>
-
-            @* Starred Chats Section - Always visible *@
-            @if (StarredSessions.Any() && string.IsNullOrEmpty(_searchTerm))
+            @* Chats View *@
+            @if (HistoryService.IsLoading)
             {
-                <div class="chats-section starred-section">
-                    <div class="starred-header">
-                        <MudIcon Icon="@Icons.Material.Filled.Star"
-                                 Size="Size.Small"
-                                 Color="Color.Warning" />
-                        <span class="section-label">Starred</span>
-                    </div>
+                <div class="d-flex flex-column align-center justify-center" style="flex: 1;">
+                    <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+                    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">Loading chats...</MudText>
+                </div>
+            }
+            else if (!_sessions.Any())
+            {
+                @* No Chats - Show New Chat CTA *@
+                <div class="empty-state">
+                    <img src="images/logo-blue.svg"
+                         alt="AESIR"
+                         class="empty-logo" />
 
-                    <div class="chats-list starred-list">
-                        @foreach (var session in StarredSessions)
-                        {
-                            <MudPaper Elevation="0" Class="chat-item" @onclick="@(() => OpenChat(session))">
-                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
-                                    <MudStack Spacing="1" Style="flex: 1; min-width: 0;">
+                    <MudText Typo="Typo.h5" Align="Align.Center" Class="mt-4">
+                        No conversations yet
+                    </MudText>
+
+                    <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Class="mt-2">
+                        Start a new chat to begin exploring with ÆSIR
+                    </MudText>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="@StartNewChat"
+                               Class="mt-6">
+                        New Chat
+                    </MudButton>
+                </div>
+            }
+            else
+            {
+                @* Search Header *@
+                <div class="search-header">
+                    <MudTextField @bind-Value="_searchTerm"
+                                  Placeholder="Search conversations..."
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Immediate="true"
+                                  DebounceInterval="300"
+                                  OnDebounceIntervalElapsed="@HandleSearchChanged"
+                                  Clearable="true"
+                                  OnClearButtonClick="@HandleClearSearch"
+                                  Class="search-input" />
+                </div>
+
+                @* Starred Chats Section - Always visible *@
+                @if (StarredSessions.Any() && string.IsNullOrEmpty(_searchTerm))
+                {
+                    <div class="chats-section starred-section">
+                        <div class="starred-header">
+                            <MudIcon Icon="@Icons.Material.Filled.Star"
+                                     Size="Size.Small"
+                                     Color="Color.Warning" />
+                            <span class="section-label">Starred</span>
+                        </div>
+
+                        <div class="chats-list starred-list">
+                            @foreach (var session in StarredSessions)
+                            {
+                                <MudPaper Elevation="0" Class="chat-item starred" Style="position: relative; min-height: 80px;" @onclick="@(() => OpenChat(session))">
+                                    <MudStack Spacing="1" Style="flex: 1; min-width: 0; padding-right: 40px;">
                                         <MudText Typo="Typo.subtitle1" Class="chat-title">
                                             @(session.Title ?? "New Chat")
                                         </MudText>
@@ -86,14 +108,15 @@
                                             @FormatTimeAgo(session.UpdatedAt)
                                         </MudText>
                                     </MudStack>
-
-                                    <div class="item-actions">
+                                    <div class="top-action">
                                         <MudIconButton Icon="@Icons.Material.Filled.Star"
                                                        Size="Size.Small"
                                                        Color="Color.Warning"
                                                        OnClick="@(e => ToggleStar(session, e))"
                                                        Title="Unstar"
                                                        Class="star-btn visible" />
+                                    </div>
+                                    <div class="bottom-action">
                                         <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                        Size="Size.Small"
                                                        Color="Color.Default"
@@ -101,42 +124,40 @@
                                                        Title="Delete"
                                                        Class="delete-btn" />
                                     </div>
-                                </MudStack>
-                            </MudPaper>
-                        }
+                                </MudPaper>
+                            }
+                        </div>
                     </div>
-                </div>
-            }
+                }
 
-            @* Recent Chats Section - Collapsible with Hide/Show toggle *@
-            <div class="chats-section">
-                <div class="recents-header">
-                    <div class="recents-header-left">
-                        <span class="section-label">@(string.IsNullOrEmpty(_searchTerm) ? "Recents" : "Search Results")</span>
-                        @if (string.IsNullOrEmpty(_searchTerm))
-                        {
-                            <span class="hide-show-toggle @(_recentsSectionCollapsed ? "collapsed" : "")" @onclick="ToggleRecentsSection">
-                                @(_recentsSectionCollapsed ? "Show" : "Hide")
-                            </span>
-                        }
+                @* Recent Chats Section - Collapsible with Hide/Show toggle *@
+                <div class="chats-section">
+                    <div class="recents-header">
+                        <div class="recents-header-left">
+                            <span class="section-label">@(string.IsNullOrEmpty(_searchTerm) ? "Recents" : "Search Results")</span>
+                            @if (string.IsNullOrEmpty(_searchTerm))
+                            {
+                                <span class="hide-show-toggle @(_recentsSectionCollapsed ? "collapsed" : "")" @onclick="ToggleRecentsSection">
+                                    @(_recentsSectionCollapsed ? "Show" : "Hide")
+                                </span>
+                            }
+                        </div>
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="@StartNewChat"
+                                   Size="Size.Small">
+                            New Chat
+                        </MudButton>
                     </div>
-                    <MudButton Variant="Variant.Text"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Add"
-                               OnClick="@StartNewChat"
-                               Size="Size.Small">
-                        New Chat
-                    </MudButton>
-                </div>
 
-                @if (!_recentsSectionCollapsed || !string.IsNullOrEmpty(_searchTerm))
-                {
-                    <div class="chats-list recents-list">
-                        @foreach (var session in SessionsToShow.Take(_displayCount))
-                        {
-                            <MudPaper Elevation="0" Class="chat-item" @onclick="@(() => OpenChat(session))">
-                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
-                                    <MudStack Spacing="1" Style="flex: 1; min-width: 0;">
+                    @if (!_recentsSectionCollapsed || !string.IsNullOrEmpty(_searchTerm))
+                    {
+                        <div class="chats-list recents-list">
+                            @foreach (var session in SessionsToShow.Take(_displayCount))
+                            {
+                                <MudPaper Elevation="0" Class="chat-item" Style="position: relative; min-height: 80px;" @onclick="@(() => OpenChat(session))">
+                                    <MudStack Spacing="1" Style="flex: 1; min-width: 0; padding-right: 40px;">
                                         <MudText Typo="Typo.subtitle1" Class="chat-title">
                                             @(session.Title ?? "New Chat")
                                         </MudText>
@@ -144,14 +165,15 @@
                                             @FormatTimeAgo(session.UpdatedAt)
                                         </MudText>
                                     </MudStack>
-
-                                    <div class="item-actions">
+                                    <div class="top-action">
                                         <MudIconButton Icon="@(session.IsStarred ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
                                                        Size="Size.Small"
                                                        Color="@(session.IsStarred ? Color.Warning : Color.Default)"
                                                        OnClick="@(e => ToggleStar(session, e))"
                                                        Title="@(session.IsStarred ? "Unstar" : "Star")"
                                                        Class="star-btn" />
+                                    </div>
+                                    <div class="bottom-action">
                                         <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                        Size="Size.Small"
                                                        Color="Color.Default"
@@ -159,24 +181,29 @@
                                                        Title="Delete"
                                                        Class="delete-btn" />
                                     </div>
-                                </MudStack>
-                            </MudPaper>
-                        }
-                    </div>
-
-                    @* Load More Button *@
-                    @if (SessionsToShow.Count > _displayCount)
-                    {
-                        <div class="d-flex justify-center mt-4">
-                            <MudButton Variant="Variant.Text"
-                                       Color="Color.Primary"
-                                       OnClick="@LoadMore">
-                                Load More (@(SessionsToShow.Count - _displayCount) remaining)
-                            </MudButton>
+                                </MudPaper>
+                            }
                         </div>
+
+                        @* Load More Button *@
+                        @if (SessionsToShow.Count > _displayCount)
+                        {
+                            <div class="d-flex justify-center mt-4">
+                                <MudButton Variant="Variant.Text"
+                                           Color="Color.Primary"
+                                           OnClick="@LoadMore">
+                                    Load More (@(SessionsToShow.Count - _displayCount) remaining)
+                                </MudButton>
+                            </div>
+                        }
                     }
-                }
-            </div>
+                </div>
+            }
+        }
+        else
+        {
+            @* Documents View *@
+            <DocumentsPanel />
         }
     </div>
 </div>
@@ -198,6 +225,30 @@
         width: 100%;
         padding: 24px;
         overflow-y: auto;
+    }
+
+    /* View Toggle Header */
+    .view-toggle-header {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 24px;
+    }
+
+    .view-toggle-group {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .view-toggle-group .mud-button {
+        border-radius: 0;
+    }
+
+    .view-toggle-group .mud-button:first-child {
+        border-radius: 8px 0 0 8px;
+    }
+
+    .view-toggle-group .mud-button:last-child {
+        border-radius: 0 8px 8px 0;
     }
 
     .empty-state {
@@ -239,12 +290,20 @@
     }
 
     .chat-item {
+        position: relative !important;
         padding: 16px;
+        padding-right: 48px;
         border-radius: 12px;
         background-color: var(--mud-palette-background-grey);
         cursor: pointer;
-        transition: background-color 0.2s ease, transform 0.1s ease;
+        transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
         border: 1px solid transparent;
+        min-height: 80px !important;
+        box-sizing: border-box;
+    }
+
+    .chat-item > .mud-stack {
+        gap: 8px;
     }
 
     .chat-item:hover {
@@ -254,6 +313,14 @@
 
     .chat-item:active {
         transform: scale(0.99);
+    }
+
+    .chat-item.starred {
+        border-color: rgba(255, 193, 7, 0.3);
+    }
+
+    .chat-item.starred:hover {
+        border-color: rgba(255, 193, 7, 0.5);
     }
 
     .chat-title {
@@ -270,30 +337,47 @@
         max-width: 100%;
     }
 
-    .item-actions {
-        display: flex;
-        gap: 4px;
-        align-items: center;
-    }
-
     .star-btn,
     .delete-btn {
         opacity: 0;
-        transition: opacity 0.2s ease;
+        visibility: hidden;
+        transition: opacity 0.2s ease, visibility 0.2s ease;
+        color: var(--mud-palette-text-secondary);
     }
 
     .star-btn.visible {
         opacity: 1;
+        visibility: visible;
     }
 
     .chat-item:hover .star-btn,
     .chat-item:hover .delete-btn {
         opacity: 0.6;
+        visibility: visible;
     }
 
     .star-btn:hover,
     .delete-btn:hover {
         opacity: 1 !important;
+        visibility: visible !important;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .delete-btn:hover {
+        color: var(--mud-palette-error) !important;
+    }
+
+    /* Action positioning classes */
+    .top-action {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+    }
+
+    .bottom-action {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
     }
 
     /* Section Label Styles */
@@ -371,9 +455,16 @@
 </style>
 
 @code {
+    private enum ViewType
+    {
+        Chats,
+        Documents
+    }
+
     [CascadingParameter(Name = "IsDarkMode")]
     private bool _isDarkMode { get; set; } = true;
 
+    private ViewType _currentView = ViewType.Chats;
     private List<AesirChatSessionItem> _sessions = new();
     private string? _searchTerm;
     private int _displayCount = 5;
@@ -391,6 +482,11 @@
         // Load sessions
         await HistoryService.LoadSessionsAsync();
         _sessions = HistoryService.Sessions.ToList();
+    }
+
+    private void SwitchView(ViewType view)
+    {
+        _currentView = view;
     }
 
     private void HandleSessionsChanged()

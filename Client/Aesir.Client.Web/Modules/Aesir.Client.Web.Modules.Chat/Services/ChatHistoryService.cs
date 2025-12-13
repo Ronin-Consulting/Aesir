@@ -9,7 +9,8 @@ namespace Aesir.Client.Web.Modules.Chat.Services;
 /// </summary>
 public class ChatHistoryService : IChatHistoryService
 {
-    private const string UserId = "blangford@gmail.com"; // Hardcoded user ID per spec
+    // TODO: Replace with claims-based user ID from authentication context
+    private const string UserIdValue = "blangford@gmail.com";
 
     private readonly IChatApiService _chatApiService;
     private List<AesirChatSessionItem> _sessions = [];
@@ -20,6 +21,9 @@ public class ChatHistoryService : IChatHistoryService
     {
         _chatApiService = chatApiService;
     }
+
+    /// <inheritdoc />
+    public string UserId => UserIdValue;
 
     /// <inheritdoc />
     public IReadOnlyList<AesirChatSessionItem> Sessions => _sessions.AsReadOnly();

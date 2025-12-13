@@ -346,4 +346,48 @@ public class FileStorageService : IFileStorageService
 
         return result;
     }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<AesirFileInfo>> GetFilesByConversationIdsAsync(IEnumerable<Guid> conversationIds)
+    {
+        var conversationIdList = conversationIds.ToList();
+
+        if (conversationIdList.Count == 0)
+        {
+            _logger.LogDebug("No conversation IDs provided, returning empty result");
+            return [];
+        }
+
+        _logger.LogDebug("Getting files for {Count} conversations", conversationIdList.Count);
+
+        // Build folder patterns for each conversation ID
+        // Files are stored as /{conversationId}/{filename}
+        var folderPatterns = conversationIdList.Select(id => $"/{id}/%").ToArray();
+
+        // Build dynamic SQL with OR conditions for each pattern
+        var conditions = string.Join(" OR ", folderPatterns.Select((_, i) => $"file_name LIKE @Pattern{i}"));
+
+        var sql = $@"
+            SELECT id, file_name as FileName, mime_type as MimeType,
+                file_size as FileSize, has_thumbnail as HasThumbnail,
+                created_at as CreatedAt, updated_at as UpdatedAt
+            FROM aesir.aesir_file_storage
+            WHERE {conditions}
+        ";
+
+        // Build parameters dynamically
+        var parameters = new DynamicParameters();
+        for (var i = 0; i < folderPatterns.Length; i++)
+        {
+            parameters.Add($"Pattern{i}", folderPatterns[i]);
+        }
+
+        var files = await _dbContext.UnitOfWorkAsync(async (connection) =>
+            await connection.QueryAsync<AesirFileInfo>(sql, parameters));
+
+        _logger.LogDebug("Retrieved {Count} files for {ConversationCount} conversations",
+            files.Count(), conversationIdList.Count);
+
+        return files;
+    }
 }

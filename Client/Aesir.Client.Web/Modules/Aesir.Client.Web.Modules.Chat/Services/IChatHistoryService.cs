@@ -10,6 +10,11 @@ namespace Aesir.Client.Web.Modules.Chat.Services;
 public interface IChatHistoryService
 {
     /// <summary>
+    /// Gets the current user ID.
+    /// </summary>
+    string UserId { get; }
+
+    /// <summary>
     /// Gets the current list of cached sessions.
     /// </summary>
     IReadOnlyList<AesirChatSessionItem> Sessions { get; }

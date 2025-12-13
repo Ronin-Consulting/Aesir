@@ -47,6 +47,14 @@ public interface IDocumentApiService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Gets all files for the current user's conversations.
+    /// Server-side filtering ensures only the user's documents are returned.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>List of files from the user's conversations.</returns>
+    Task<IReadOnlyList<ConversationFile>> GetAllFilesAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Deletes a file from a conversation.
     /// </summary>
     /// <param name="conversationId">The conversation ID.</param>
