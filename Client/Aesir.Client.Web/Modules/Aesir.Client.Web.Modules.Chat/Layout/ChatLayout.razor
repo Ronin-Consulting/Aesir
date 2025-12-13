@@ -21,7 +21,7 @@
                Class="chat-drawer">
         @* Navigation Items with New Chat Button *@
         <div class="nav-header pt-3 px-2">
-            <div class="chats-nav-item @(IsChatsActive ? "active" : "")" @onclick="NavigateToChats">
+            <div class="chats-nav-item @(IsOnChatsPage ? "active" : "")" @onclick="NavigateToChats">
                 <div class="nav-item-content">
                     <MudIcon Icon="@Icons.Material.Filled.Chat" Size="Size.Small" />
                     <span>Chats</span>
@@ -638,8 +638,8 @@
         ChatState.CurrentSessionId.HasValue &&
         _recentSessions.FirstOrDefault(s => s.Id == ChatState.CurrentSessionId.Value)?.IsStarred == true;
 
-    // Compute if Chats nav item should show active state
-    private bool IsChatsActive => NavigationManager.Uri.Contains("/chat");
+    // Only highlight Chats nav item when on /chats page (not /chat or /chat?session=...)
+    private bool IsOnChatsPage => NavigationManager.Uri.TrimEnd('/').EndsWith("/chats", StringComparison.OrdinalIgnoreCase);
 
     protected override async Task OnInitializedAsync()
     {
