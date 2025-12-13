@@ -1,0 +1,64 @@
+@using Aesir.Client.Web.Modules.Chat.Models
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Class="mr-2" />
+            Delete Document
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>Delete <strong>@DocumentName</strong>?</MudText>
+        @if (!string.IsNullOrEmpty(ChatTitle))
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+                Part of: "@ChatTitle"
+            </MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="DeleteDocumentOnly">
+            Document Only
+        </MudButton>
+        @if (!string.IsNullOrEmpty(ChatTitle))
+        {
+            <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="DeleteDocumentAndChat">
+                Document & Chat
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    /// <summary>
+    /// The name of the document being deleted.
+    /// </summary>
+    [Parameter]
+    public string DocumentName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The title of the chat this document belongs to.
+    /// Null if the chat no longer exists.
+    /// </summary>
+    [Parameter]
+    public string? ChatTitle { get; set; }
+
+    private void DeleteDocumentOnly()
+    {
+        MudDialog.Close(DialogResult.Ok(DocumentDeleteOption.DocumentOnly));
+    }
+
+    private void DeleteDocumentAndChat()
+    {
+        MudDialog.Close(DialogResult.Ok(DocumentDeleteOption.DocumentAndChat));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}
