@@ -3,51 +3,53 @@
 @inject IMarkdownService MarkdownService
 @inject IJSRuntime JSRuntime
 
-<div class="assistant-message">
-    @* Collapsible Tool Calls Section *@
-    @if (ShowToolCalls && ToolCalls?.Count > 0)
-    {
-        <ToolCallsSection ToolCalls="ToolCalls" IsStreaming="IsStreaming" AutoExpandWhenActive="true" />
-    }
-    @* Collapsible Thinking Section (Claude-style) *@
-    @if (ShowThinking && !string.IsNullOrEmpty(Message.ThoughtsContent))
-    {
-        <div class="thinking-section">
-            <div class="thinking-toggle @(_thinkingExpanded ? "expanded" : "")" @onclick="ToggleThinking">
-                <MudIcon Icon="@(_thinkingExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
-                         Size="Size.Small" Class="toggle-icon" />
-                <span class="thinking-summary">@GetThinkingSummary()</span>
-            </div>
-            @if (_thinkingExpanded)
+<div class="assistant-message @ThemeClass">
+    <div class="message-container">
+            @* Collapsible Tool Calls Section *@
+            @if (ShowToolCalls && ToolCalls?.Count > 0)
             {
-                <div class="thinking-content">
-                    @((MarkupString)MarkdownService.ToHtml(Message.ThoughtsContent))
+                <ToolCallsSection ToolCalls="ToolCalls" IsStreaming="IsStreaming" AutoExpandWhenActive="true" />
+            }
+            @* Collapsible Thinking Section (Claude-style) *@
+            @if (ShowThinking && !string.IsNullOrEmpty(Message.ThoughtsContent))
+            {
+                <div class="thinking-section">
+                    <div class="thinking-toggle @(_thinkingExpanded ? "expanded" : "")" @onclick="ToggleThinking">
+                        <MudIcon Icon="@(_thinkingExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                 Size="Size.Small" Class="toggle-icon" />
+                        <span class="thinking-summary">@GetThinkingSummary()</span>
+                    </div>
+                    @if (_thinkingExpanded)
+                    {
+                        <div class="thinking-content">
+                            @((MarkupString)MarkdownService.ToHtml(Message.ThoughtsContent))
+                        </div>
+                    }
                 </div>
             }
-        </div>
-    }
-    @* Main Message Content (clean, minimal style like Claude) *@
-    <div class="message-content markdown-body">
-        @((MarkupString)MarkdownService.ToHtml(Message.Content))
-    </div>
-    @* Response Footer with Actions - Claude style: right-aligned icons *@
-    <div class="response-footer">
-        <div class="response-actions">
-            <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
-                           Size="Size.Small"
-                           Class="action-btn"
-                           Title="Copy response"
-                           OnClick="CopyToClipboard" />
-            <MudIconButton Icon="@Icons.Material.Outlined.ThumbUpOffAlt"
-                           Size="Size.Small"
-                           Class="action-btn"
-                           Title="Good response" />
-            <MudIconButton Icon="@Icons.Material.Outlined.ThumbDownOffAlt"
-                           Size="Size.Small"
-                           Class="action-btn"
-                           Title="Bad response" />
-            <MudText Typo="Typo.body2" Class="action-text" @onclick="HandleRetry" title="Retry">Retry</MudText>
-        </div>
+            @* Main Message Content (clean, minimal style like Claude) *@
+            <div class="message-content markdown-body">
+                @((MarkupString)MarkdownService.ToHtml(Message.Content))
+            </div>
+            @* Response Footer with Actions - Claude style: right-aligned icons *@
+            <div class="response-footer">
+                <div class="response-actions">
+                    <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
+                                   Size="Size.Small"
+                                   Class="action-btn"
+                                   Title="Copy response"
+                                   OnClick="CopyToClipboard" />
+                    <MudIconButton Icon="@Icons.Material.Outlined.ThumbUpOffAlt"
+                                   Size="Size.Small"
+                                   Class="action-btn"
+                                   Title="Good response" />
+                    <MudIconButton Icon="@Icons.Material.Outlined.ThumbDownOffAlt"
+                                   Size="Size.Small"
+                                   Class="action-btn"
+                                   Title="Bad response" />
+                    <MudText Typo="Typo.body2" Class="action-text" @onclick="HandleRetry" title="Retry">Retry</MudText>
+                </div>
+            </div>
     </div>
     @* AESIR Brand Icon - Only shows on latest message, large and prominent with ready message *@
     @if (IsLatestMessage)
@@ -74,6 +76,26 @@
         margin-bottom: 8px;
         padding: 0 48px;
         max-width: 100%;
+    }
+
+    /* Message Container with subtle background */
+    .assistant-message .message-container {
+        background-color: rgba(84, 169, 255, 0.03);
+        border: 1px solid rgba(84, 169, 255, 0.1);
+        border-radius: 12px;
+        padding: 16px;
+        width: 100%;
+    }
+
+    /* Theme variations for container */
+    .assistant-message.theme-dark .message-container {
+        background-color: rgba(84, 169, 255, 0.04);
+        border-color: rgba(84, 169, 255, 0.12);
+    }
+
+    .assistant-message.theme-light .message-container {
+        background-color: rgba(84, 169, 255, 0.025);
+        border-color: rgba(84, 169, 255, 0.1);
     }
 
     /* Collapsible Thinking Section */
@@ -612,6 +634,11 @@
 
     [Parameter]
     public string? AgentName { get; set; }
+
+    [CascadingParameter(Name = "IsDarkMode")]
+    private bool IsDarkMode { get; set; }
+
+    private string ThemeClass => IsDarkMode ? "theme-dark" : "theme-light";
 
     [Parameter]
     public bool ShowThinking { get; set; } = true;
