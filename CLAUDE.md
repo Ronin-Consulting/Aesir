@@ -716,3 +716,6 @@ public partial class ChatPage
 - Use the stylized Æ ligature (ÆSIR) in prominent areas where appropriate
 - The application name is "Aesir" or "ÆSIR" for stylized display
 - When testing the web app use http://localhost:5173/ as the url.
+- When running tests, always include a timeout that makes sense based on the test.
+- when developing fixs or features always make sure tests are ran afterwards and if needed update or create unit tests.
+- always run unit tests after each code change made.

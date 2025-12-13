@@ -58,6 +58,13 @@ public interface IChatStateService
     void SelectAgent(AesirAgentBase? agent);
 
     /// <summary>
+    /// Refreshes the currently selected agent by fetching updated data from the server.
+    /// This should be called when configuration changes (e.g., inference engine settings).
+    /// </summary>
+    /// <param name="agents">The updated list of agents from the server.</param>
+    void RefreshSelectedAgent(IEnumerable<AesirAgentBase> agents);
+
+    /// <summary>
     /// Sets the current session ID and optionally its title.
     /// </summary>
     void SetCurrentSession(Guid? sessionId, string? title = null);

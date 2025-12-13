@@ -65,6 +65,21 @@ public class ChatStateService : IChatStateService
     }
 
     /// <inheritdoc />
+    public void RefreshSelectedAgent(IEnumerable<AesirAgentBase> agents)
+    {
+        if (SelectedAgent == null)
+            return;
+
+        // Find the updated agent with the same ID
+        var updatedAgent = agents.FirstOrDefault(a => a.Id == SelectedAgent.Id);
+        if (updatedAgent != null)
+        {
+            SelectedAgent = updatedAgent;
+            OnAgentChanged?.Invoke();
+        }
+    }
+
+    /// <inheritdoc />
     public void SetCurrentSession(Guid? sessionId, string? title = null)
     {
         var sessionChanged = CurrentSessionId != sessionId;

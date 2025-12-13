@@ -53,6 +53,12 @@
                             Enables thinking/reasoning capabilities for models that support it (e.g., DeepSeek, QwQ).
                             Agent-level settings can further control thinking behavior per agent.
                         </MudText>
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true" Class="mt-n1 mb-2">
+                            <MudText Typo="Typo.caption">
+                                <strong>Note:</strong> Some models (e.g., gpt-oss) always use thinking and cannot disable it.
+                                When this setting is off, thinking content will be hidden even if the model produces it.
+                            </MudText>
+                        </MudAlert>
                     }
                     else if (_model.Type == InferenceEngineType.OpenAICompatible)
                     {

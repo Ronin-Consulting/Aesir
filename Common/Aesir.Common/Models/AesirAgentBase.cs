@@ -76,7 +76,14 @@ public class AesirAgentBase
     /// </summary>
     [JsonPropertyName("think_value")]
     public ThinkValue? ThinkValue { get; set; }
-    
+
+    /// <summary>
+    /// Gets or sets whether thinking is actually available for this agent.
+    /// Computed server-side based on AllowThinking AND the inference engine's EnableChatModelThinking setting.
+    /// </summary>
+    [JsonPropertyName("is_thinking_available")]
+    public bool IsThinkingAvailable { get; set; }
+
     protected bool Equals(AesirAgentBase other)
     {
         return Nullable.Equals(Id, other.Id);

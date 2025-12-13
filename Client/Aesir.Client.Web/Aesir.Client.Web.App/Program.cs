@@ -20,6 +20,9 @@ builder.Services.AddMudServices();
 // Add theme service
 builder.Services.AddScoped<IThemeService, ThemeService>();
 
+// Add configuration change notifier (singleton to share across all components)
+builder.Services.AddSingleton<IConfigurationChangedNotifier, ConfigurationChangedNotifier>();
+
 // Add platform services (Tauri detection, native file operations)
 builder.Services.AddPlatformServices();
 

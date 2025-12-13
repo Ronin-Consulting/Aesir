@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Aesir.Infrastructure.Data;
 using Aesir.Infrastructure.Models;
 using Aesir.Common.Models;
@@ -5,6 +6,8 @@ using Aesir.Infrastructure.Services;
 using Dapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+
+[assembly: InternalsVisibleTo("Aesir.Modules.Configuration.Tests")]
 
 namespace Aesir.Modules.Configuration.Services;
 
@@ -38,6 +41,33 @@ public class ConfigurationService(
     /// Determines whether the configuration is being loaded from a database or from a file.
     /// </summary>
     public bool DatabaseMode => configuration.GetValue("Configuration:LoadFromDatabase", false);
+
+    /// <summary>
+    /// Computes whether thinking is available for the given agent based on agent settings
+    /// and the inference engine's master switch setting.
+    /// </summary>
+    /// <param name="agent">The agent to evaluate.</param>
+    /// <returns>True if thinking is available, false otherwise.</returns>
+    internal async Task<bool> ComputeIsThinkingAvailableAsync(AesirAgent agent)
+    {
+        // If agent doesn't allow thinking, return false
+        if (!(agent.AllowThinking ?? false))
+            return false;
+
+        // If no inference engine, can't determine - default to agent setting
+        if (!agent.ChatInferenceEngineId.HasValue)
+            return agent.AllowThinking ?? false;
+
+        var engine = await GetInferenceEngineAsync(agent.ChatInferenceEngineId.Value);
+
+        // Only apply master switch for Ollama engines
+        if (engine.Type != InferenceEngineType.Ollama)
+            return agent.AllowThinking ?? false;
+
+        // Check the master switch
+        return engine.Configuration?.TryGetValue("EnableChatModelThinking", out var value) == true
+            && bool.TryParse(value, out var enabled) && enabled;
+    }
 
     /// <summary>
     /// Prepares the database configuration by ensuring the completeness and readiness
@@ -443,6 +473,8 @@ public class ConfigurationService(
     /// </returns>
     public async Task<IEnumerable<AesirAgent>> GetAgentsAsync()
     {
+        IEnumerable<AesirAgent> agents;
+
         if (DatabaseMode)
         {
             const string sql = @"
@@ -453,16 +485,22 @@ public class ConfigurationService(
                 FROM aesir.aesir_agent
             ";
 
-            return await dbContext.UnitOfWorkAsync(async connection =>
+            agents = await dbContext.UnitOfWorkAsync(async connection =>
                 await connection.QueryAsync<AesirAgent>(sql));
         }
         else
         {
-            var agents = configuration.GetSection("Agents")
+            agents = configuration.GetSection("Agents")
                 .Get<AesirAgent[]>() ?? [];
-
-            return await Task.FromResult(agents);
         }
+
+        // Compute IsThinkingAvailable for each agent based on agent settings and inference engine master switch
+        foreach (var agent in agents)
+        {
+            agent.IsThinkingAvailable = await ComputeIsThinkingAvailableAsync(agent);
+        }
+
+        return agents;
     }
 
     /// <summary>
@@ -476,6 +514,8 @@ public class ConfigurationService(
     /// </returns>
     public async Task<AesirAgent> GetAgentAsync(Guid id)
     {
+        AesirAgent? agent;
+
         if (DatabaseMode)
         {
             const string sql = @"
@@ -487,16 +527,24 @@ public class ConfigurationService(
                 WHERE id = @Id::uuid
             ";
 
-            return (await dbContext.UnitOfWorkAsync(async connection =>
-                await connection.QueryFirstOrDefaultAsync<AesirAgent>(sql, new { Id = id })))!;
+            agent = await dbContext.UnitOfWorkAsync(async connection =>
+                await connection.QueryFirstOrDefaultAsync<AesirAgent>(sql, new { Id = id }));
         }
         else
         {
             var agents = configuration.GetSection("Agents")
                 .Get<AesirAgent[]>() ?? [];
 
-            return (await Task.FromResult(agents.FirstOrDefault(a => a.Id == id)))!;
+            agent = agents.FirstOrDefault(a => a.Id == id);
         }
+
+        // Compute IsThinkingAvailable based on agent settings and inference engine master switch
+        if (agent != null)
+        {
+            agent.IsThinkingAvailable = await ComputeIsThinkingAvailableAsync(agent);
+        }
+
+        return agent!;
     }
 
     /// <summary>

@@ -52,13 +52,6 @@ public class ChatService : BaseChatService
     private readonly ILoggerFactory _loggerFactory;
 
     /// <summary>
-    /// Indicates whether the "thinking" mode is enabled for chat interactions.
-    /// When set to true, the service utilizes an extended processing mode to deliver
-    /// intermediate responses or signal ongoing operations in chat sessions.
-    /// </summary>
-    private readonly bool _enableThinking;
-
-    /// <summary>
     /// Defines the maximum number of tokens that can be used to generate a title
     /// for a chat completion. This constant sets a limit on the token usage for
     /// creating succinct and relevant titles based on the conversational context.
@@ -92,16 +85,13 @@ public class ChatService : BaseChatService
         IToolCallBroadcaster toolCallBroadcaster,
         string inferenceEngineId,
         IChatHistoryService chatHistoryService,
-        IConversationDocumentCollectionService? conversationDocumentCollectionService,
-        bool enableThinking = false)
+        IConversationDocumentCollectionService? conversationDocumentCollectionService)
         : base(logger, chatHistoryService, kernel, serviceProvider, toolCallBroadcaster, inferenceEngineId)
     {
-        _enableThinking = enableThinking;
         _loggerFactory = loggerFactory;
         _api = api;
         _conversationDocumentCollectionService = conversationDocumentCollectionService;
         _kernelPluginService = kernelPluginService;
-        _enableThinking = enableThinking;
     }
 
     /// <summary>

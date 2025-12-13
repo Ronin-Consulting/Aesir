@@ -191,10 +191,6 @@ public class OllamaInferenceModule : ModuleBase
                 sp.GetService<IConversationDocumentCollectionService>();
 
             var ollamaApiClient = sp.GetRequiredKeyedService<OllamaApiClient>(inferenceEngineIdKey);
-
-            var enableThinking = inferenceEngine.Configuration.TryGetValue("EnableChatModelThinking", out var thinkingValue)
-                && bool.TryParse(thinkingValue, out var thinking) && thinking;
-
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
 
             return new ChatService(
@@ -207,8 +203,7 @@ public class OllamaInferenceModule : ModuleBase
                 toolCallBroadcaster,
                 inferenceEngineIdKey,
                 chatHistoryService,
-                conversationDocumentCollectionService,
-                enableThinking
+                conversationDocumentCollectionService
             );
         });
 

@@ -46,7 +46,7 @@
                      AvailableTools="@_agentTools"
                      DisabledToolIds="@ChatState.DisabledToolIds"
                      OnToolToggled="@HandleToolToggled"
-                     AllowThinking="@(ChatState.SelectedAgent?.AllowThinking ?? false)"
+                     AllowThinking="@(ChatState.SelectedAgent?.IsThinkingAvailable ?? false)"
                      SelectedThinkLevel="@_selectedThinkLevel"
                      DefaultThinkLevel="@ChatState.SelectedAgent?.ThinkValue"
                      OnThinkLevelChanged="@HandleThinkLevelChanged" />
@@ -72,7 +72,7 @@
                 {
                     <AssistantMessage Message="message"
                                       AgentName="@ChatState.SelectedAgent?.Name"
-                                      ShowThinking="@(ChatState.SelectedAgent?.AllowThinking ?? false)"
+                                      ShowThinking="@(ChatState.SelectedAgent?.IsThinkingAvailable ?? false)"
                                       IsLatestMessage="@(message == lastAssistantMessage && !isCurrentlyStreaming)"
                                       ToolCalls="@message.ToolCalls" />
                 }
@@ -89,7 +89,7 @@
                     <div class="streaming-message">
                         <AssistantMessage Message="@_streamingMessage"
                                           AgentName="@ChatState.SelectedAgent?.Name"
-                                          ShowThinking="@(ChatState.SelectedAgent?.AllowThinking ?? false)"
+                                          ShowThinking="@(ChatState.SelectedAgent?.IsThinkingAvailable ?? false)"
                                           IsLatestMessage="true"
                                           ToolCalls="@_currentToolCalls"
                                           IsStreaming="true" />
@@ -120,7 +120,7 @@
                       AvailableTools="@_agentTools"
                       DisabledToolIds="@ChatState.DisabledToolIds"
                       OnToolToggled="@HandleToolToggled"
-                      AllowThinking="@(ChatState.SelectedAgent?.AllowThinking ?? false)"
+                      AllowThinking="@(ChatState.SelectedAgent?.IsThinkingAvailable ?? false)"
                       SelectedThinkLevel="@_selectedThinkLevel"
                       DefaultThinkLevel="@ChatState.SelectedAgent?.ThinkValue"
                       OnThinkLevelChanged="@HandleThinkLevelChanged" />
@@ -336,6 +336,24 @@
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Failed to initialize drop zone: {ex.Message}");
+                }
+            }
+
+            // Refresh selected agent with fresh data from server on page load
+            // This ensures we have the latest IsThinkingAvailable value after config changes
+            if (ChatState.SelectedAgent != null)
+            {
+                try
+                {
+                    var result = await ConfigurationService.GetAgentsAsync();
+                    if (result.IsSuccess && result.Value != null)
+                    {
+                        ChatState.RefreshSelectedAgent(result.Value);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to refresh agent on page load: {ex.Message}");
                 }
             }
 
