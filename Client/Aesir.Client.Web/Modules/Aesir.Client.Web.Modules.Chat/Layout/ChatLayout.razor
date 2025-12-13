@@ -19,32 +19,24 @@
                Elevation="0"
                Width="280px"
                Class="chat-drawer">
-        @* Sidebar Header - Logo + New Chat Button *@
-        <div class="sidebar-header pt-3" style="padding-left: 24px; padding-right: 12px;">
-            <div class="brand-section">
-                <img src="images/logo-blue.svg"
-                     alt="AESIR"
-                     class="brand-logo" />
-                <span class="brand-text">ÆSIR</span>
-            </div>
+        @* Navigation Items with New Chat Button *@
+        <div class="nav-header pt-3 px-2">
+            <MudNavMenu Dense="true" Class="nav-menu-inline">
+                <MudNavLink Href="/chats"
+                            Icon="@Icons.Material.Filled.Chat"
+                            Match="NavLinkMatch.Prefix"
+                            Class="nav-item">
+                    Chats
+                </MudNavLink>
+            </MudNavMenu>
             <MudIconButton Icon="@Icons.Material.Filled.Add"
                            Size="Size.Small"
                            Color="Color.Primary"
                            Variant="Variant.Filled"
                            OnClick="@StartNewChat"
                            Title="New chat"
-                           Class="new-chat-btn" />
+                           Class="new-chat-btn-small" />
         </div>
-
-        @* Navigation Items *@
-        <MudNavMenu Dense="true" Class="nav-menu px-2">
-            <MudNavLink Href="/chats"
-                        Icon="@Icons.Material.Filled.Chat"
-                        Match="NavLinkMatch.Prefix"
-                        Class="nav-item">
-                Chats
-            </MudNavLink>
-        </MudNavMenu>
 
         @* Recents Section - Show starred chats first, then recent chats grouped by date *@
         @if (_recentSessions.Any())
@@ -428,38 +420,26 @@
         opacity: 1;
     }
 
-    .sidebar-header {
+    .nav-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 12px;
-        padding-left: 16px !important;
-        padding-right: 12px !important;
+        padding-right: 8px !important;
     }
 
-    .brand-section {
-        display: flex;
-        align-items: center;
-        gap: 8px;
+    .nav-menu-inline {
+        flex: 1;
     }
 
-    .brand-logo {
-        width: 24px;
-        height: 24px;
-        object-fit: contain;
-    }
-
-    .brand-text {
-        font-size: 1.1rem;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-    }
-
-    .new-chat-btn {
+    .new-chat-btn-small {
         border-radius: 50% !important;
-        width: 32px !important;
-        height: 32px !important;
-        min-width: 32px !important;
+        width: 26px !important;
+        height: 26px !important;
+        min-width: 26px !important;
+    }
+
+    .new-chat-btn-small .mud-icon-root {
+        font-size: 1rem !important;
     }
 
     .nav-menu {

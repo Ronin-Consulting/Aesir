@@ -719,3 +719,4 @@ public partial class ChatPage
 - When running tests, always include a timeout that makes sense based on the test.
 - when developing fixs or features always make sure tests are ran afterwards and if needed update or create unit tests.
 - always run unit tests after each code change made.
+- when testing testing client via the browser always check to see if there is a currently running server for the client and if so kill it.
