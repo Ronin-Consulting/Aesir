@@ -306,7 +306,7 @@ public class UserMessageTests : TestContext
     }
 
     [Fact]
-    public void TimestampAlwaysIncludesDate()
+    public void TimestampShowsTimeOnly_ForTodayMessages()
     {
         // Arrange
         var message = new AesirChatMessage
@@ -320,8 +320,49 @@ public class UserMessageTests : TestContext
         var cut = RenderComponent<UserMessage>(parameters => parameters
             .Add(p => p.Message, message));
 
-        // Assert - Should contain year in timestamp even for today's date
-        var year = DateTime.Now.Year.ToString();
-        cut.Markup.Should().Contain(year);
+        // Assert - Today's messages should show time only (AM or PM)
+        cut.Markup.Should().Match("*message-timestamp*");
+        // Should contain AM or PM for time-only format
+        var hasTimeFormat = cut.Markup.Contains("AM") || cut.Markup.Contains("PM");
+        hasTimeFormat.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TimestampShowsYesterday_ForYesterdayMessages()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Test message",
+            CreatedAt = DateTimeOffset.Now.AddDays(-1) // Yesterday
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert - Yesterday's messages should show "Yesterday" with time
+        cut.Markup.Should().Contain("Yesterday");
+    }
+
+    [Fact]
+    public void TimestampShowsDateOnly_ForOlderMessages()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Test message",
+            CreatedAt = DateTimeOffset.Now.AddDays(-5) // 5 days ago (same year)
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert - Older messages should show month and day (e.g., "Dec 8")
+        var expectedMonth = DateTimeOffset.Now.AddDays(-5).ToString("MMM");
+        cut.Markup.Should().Contain(expectedMonth);
     }
 }

@@ -182,9 +182,9 @@
 
     /* Timestamp styling */
     .assistant-message .message-timestamp {
-        font-size: 0.75rem;
+        font-size: 0.65rem;
         color: var(--mud-palette-text-secondary);
-        opacity: 0.7;
+        opacity: 0.6;
     }
 
     /* Response Actions */
@@ -720,8 +720,8 @@
     }
 
     /// <summary>
-    /// Formats the message timestamp for display.
-    /// Always includes the date: "Dec 13, 2024 2:30 PM"
+    /// Formats the message timestamp for display using humanized format.
+    /// Today: "11:39 AM", Yesterday: "Yesterday 11:39 AM", This year: "Dec 12", Older: "Dec 12, 2024"
     /// </summary>
     private string FormatTimestamp()
     {
@@ -729,6 +729,23 @@
             return string.Empty;
 
         var local = Message.CreatedAt.Value.ToLocalTime();
-        return local.ToString("MMM d, yyyy h:mm tt");
+        var now = DateTimeOffset.Now;
+        var today = now.Date;
+        var messageDate = local.Date;
+
+        // Today: just show time
+        if (messageDate == today)
+            return local.ToString("h:mm tt");
+
+        // Yesterday: show "Yesterday" with time
+        if (messageDate == today.AddDays(-1))
+            return $"Yesterday {local.ToString("h:mm tt")}";
+
+        // This year: month and day only
+        if (local.Year == now.Year)
+            return local.ToString("MMM d");
+
+        // Different year: include year
+        return local.ToString("MMM d, yyyy");
     }
 }
