@@ -171,4 +171,157 @@ public class UserMessageTests : TestContext
         // Assert
         cut.Markup.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public void ShowsTimestamp_WhenCreatedAtIsSet()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Test message",
+            CreatedAt = DateTimeOffset.Now.AddMinutes(-5)
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.Markup.Should().Contain("message-timestamp");
+    }
+
+    [Fact]
+    public void DoesNotShowTimestamp_WhenCreatedAtIsNull()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Test message",
+            CreatedAt = null
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.FindAll(".message-timestamp").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void HasEditButton()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Test message"
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.Markup.Should().Contain("message-actions");
+        cut.Markup.Should().Contain("Edit");
+    }
+
+    [Fact]
+    public void HasCopyButton()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Test message"
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.Markup.Should().Contain("message-actions");
+        cut.Markup.Should().Contain("Copy");
+    }
+
+    [Fact]
+    public void DisablesEditButton_WhenStreaming()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Test message"
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message)
+            .Add(p => p.IsStreaming, true));
+
+        // Assert - The edit button should be disabled
+        var editButton = cut.FindAll("button").FirstOrDefault(b => b.GetAttribute("title")?.Contains("Edit") == true);
+        editButton.Should().NotBeNull();
+        editButton!.HasAttribute("disabled").Should().BeTrue();
+    }
+
+    [Fact]
+    public void HasRerunButton()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Test message"
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.Markup.Should().Contain("Re-run");
+    }
+
+    [Fact]
+    public void HasMessageMetadata()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Test message"
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.Markup.Should().Contain("message-metadata");
+    }
+
+    [Fact]
+    public void TimestampAlwaysIncludesDate()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Test message",
+            CreatedAt = DateTimeOffset.Now // Today's date
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert - Should contain year in timestamp even for today's date
+        var year = DateTime.Now.Year.ToString();
+        cut.Markup.Should().Contain(year);
+    }
 }

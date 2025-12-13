@@ -6,79 +6,155 @@
 @inject IJSRuntime JSRuntime
 
 <div class="user-message @ThemeClass">
-    <div class="message-bubble">
-        @* User Avatar with Initials - Inside the bubble *@
-        <div class="user-avatar" title="@UserDisplayName">
-            <span class="initials">@UserInitials</span>
-        </div>
-        <div class="message-content">
-            @if (Message.HasFile())
-            {
-                @* Image attachments displayed as thumbnails *@
-                @if (ImageFiles.Any())
+    <div class="message-wrapper">
+        <div class="message-bubble">
+            @* Main content row: Avatar + Message *@
+            <div class="message-main">
+            <div class="user-avatar" title="@UserDisplayName">
+                <span class="initials">@UserInitials</span>
+            </div>
+            <div class="message-content">
+                @if (_isEditing)
                 {
-                    <div class="attached-images @(ImageFiles.Count == 1 ? "single" : ImageFiles.Count == 2 ? "double" : "grid")">
-                        @foreach (var fileName in ImageFiles)
+                    @* Edit Mode *@
+                    <div class="edit-mode">
+                        <MudTextField @bind-Value="_editedContent"
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      AutoGrow="true"
+                                      MaxLines="10"
+                                      FullWidth="true"
+                                      Immediate="true"
+                                      Class="edit-textarea"
+                                      OnKeyDown="HandleEditKeyDown" />
+                        <div class="edit-actions">
+                            <MudButton Size="Size.Small"
+                                       Color="Color.Default"
+                                       Variant="Variant.Text"
+                                       OnClick="CancelEdit">
+                                Cancel
+                            </MudButton>
+                            <MudButton Size="Size.Small"
+                                       Color="Color.Primary"
+                                       Variant="Variant.Filled"
+                                       OnClick="SubmitEdit"
+                                       Disabled="@string.IsNullOrWhiteSpace(_editedContent)">
+                                Submit
+                            </MudButton>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    @* Display Mode *@
+                    @if (Message.HasFile())
+                    {
+                        @* Image attachments displayed as thumbnails *@
+                        @if (ImageFiles.Any())
                         {
-                            var isDeleted = IsFileDeleted(fileName);
-                            <div class="image-attachment @(isDeleted ? "deleted" : "")">
-                                @if (!isDeleted && ConversationId.HasValue)
+                            <div class="attached-images @(ImageFiles.Count == 1 ? "single" : ImageFiles.Count == 2 ? "double" : "grid")">
+                                @foreach (var fileName in ImageFiles)
                                 {
-                                    <ImageThumbnail FileName="@fileName"
-                                                    ImageUrl="@DocumentService.GetDownloadUrl(ConversationId.Value, fileName)"
-                                                    Size="ImageThumbnail.ThumbnailSize.Large"
-                                                    OnClick="@(() => HandleFileClick(fileName))" />
-                                }
-                                else
-                                {
-                                    <div class="deleted-image-placeholder">
-                                        <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="MudBlazor.Size.Medium" />
-                                        <span class="deleted-text">Deleted</span>
+                                    var isDeleted = IsFileDeleted(fileName);
+                                    <div class="image-attachment @(isDeleted ? "deleted" : "")">
+                                        @if (!isDeleted && ConversationId.HasValue)
+                                        {
+                                            <ImageThumbnail FileName="@fileName"
+                                                            ImageUrl="@DocumentService.GetDownloadUrl(ConversationId.Value, fileName)"
+                                                            Size="ImageThumbnail.ThumbnailSize.Large"
+                                                            OnClick="@(() => HandleFileClick(fileName))" />
+                                        }
+                                        else
+                                        {
+                                            <div class="deleted-image-placeholder">
+                                                <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="MudBlazor.Size.Medium" />
+                                                <span class="deleted-text">Deleted</span>
+                                            </div>
+                                        }
                                     </div>
                                 }
                             </div>
                         }
-                    </div>
-                }
 
-                @* Non-image files displayed as cards *@
-                @if (OtherFiles.Any())
-                {
-                    <div class="attached-files">
-                        @foreach (var fileName in OtherFiles)
+                        @* Non-image files displayed as cards *@
+                        @if (OtherFiles.Any())
                         {
-                            var thumbnailUrl = GetThumbnailUrl(fileName);
-                            <FileCard FileName="@fileName"
-                                      Size="FileCard.FileCardSize.Compact"
-                                      ShowFileSize="false"
-                                      IsDeleted="@IsFileDeleted(fileName)"
-                                      ThumbnailUrl="@thumbnailUrl"
-                                      ShowThumbnail="@(!string.IsNullOrEmpty(thumbnailUrl))"
-                                      OnClick="@(() => HandleFileClick(fileName))" />
+                            <div class="attached-files">
+                                @foreach (var fileName in OtherFiles)
+                                {
+                                    var thumbnailUrl = GetThumbnailUrl(fileName);
+                                    <FileCard FileName="@fileName"
+                                              Size="FileCard.FileCardSize.Compact"
+                                              ShowFileSize="false"
+                                              IsDeleted="@IsFileDeleted(fileName)"
+                                              ThumbnailUrl="@thumbnailUrl"
+                                              ShowThumbnail="@(!string.IsNullOrEmpty(thumbnailUrl))"
+                                              OnClick="@(() => HandleFileClick(fileName))" />
+                                }
+                            </div>
                         }
-                    </div>
+                    }
+                    <span class="message-text">@GetDisplayContent()</span>
                 }
-            }
-            <span class="message-text">@GetDisplayContent()</span>
+            </div>
         </div>
+    </div>
+    @* Message metadata - outside bubble, right-aligned, visible on row hover *@
+    @if (!_isEditing)
+    {
+        <div class="message-metadata">
+            @if (Message.CreatedAt.HasValue)
+            {
+                <span class="message-timestamp">@FormatTimestamp()</span>
+            }
+            <div class="message-actions">
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                               Size="Size.Small"
+                               Class="action-btn"
+                               Title="Edit message"
+                               Disabled="@IsStreaming"
+                               OnClick="StartEdit" />
+                <MudIconButton Icon="@(_copied ? Icons.Material.Filled.Check : Icons.Material.Outlined.ContentCopy)"
+                               Size="Size.Small"
+                               Class="@GetCopyButtonClass()"
+                               Title="@(_copied ? "Copied!" : "Copy message")"
+                               OnClick="CopyToClipboard" />
+                <MudText Typo="Typo.body2" Class="action-text" @onclick="HandleRerun" title="Re-run">Re-run</MudText>
+            </div>
+        </div>
+    }
     </div>
 </div>
 
 <style>
     .user-message {
         display: flex;
-        justify-content: flex-start;
+        flex-direction: column;
+        align-items: flex-start;
         margin-bottom: 16px;
         padding: 0 48px;
     }
 
+    /* Wrapper constrains both bubble and metadata to same width */
+    .user-message .message-wrapper {
+        display: flex;
+        flex-direction: column;
+        max-width: 85%;
+    }
+
     .user-message .message-bubble {
         display: flex;
-        align-items: center;
-        gap: 12px;
+        flex-direction: column;
         border-radius: 28px;
         padding: 8px 20px 8px 8px;
-        max-width: 85%;
+        position: relative;
+    }
+
+    /* Main content row: Avatar + Message */
+    .user-message .message-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
     }
 
     /* Dark theme styles */
@@ -205,6 +281,82 @@
         word-wrap: break-word;
         overflow-wrap: break-word;
     }
+
+    /* Message metadata - outside bubble, right-aligned, visible on row hover */
+    .user-message .message-metadata {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+        padding-right: 8px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    /* Show metadata on row hover (not just bubble hover) */
+    .user-message:hover .message-metadata {
+        opacity: 1;
+    }
+
+    /* Timestamp styling */
+    .user-message .message-timestamp {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+        opacity: 0.7;
+    }
+
+    /* Message Actions */
+    .user-message .message-actions {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .user-message .action-btn {
+        color: var(--mud-palette-text-secondary);
+        width: 32px;
+        height: 32px;
+    }
+
+    .user-message .action-btn:hover {
+        background-color: rgba(0, 0, 0, 0.08);
+    }
+
+    .user-message .action-btn.copied {
+        color: #10B981 !important;
+    }
+
+    /* Re-run text button */
+    .user-message .action-text {
+        cursor: pointer;
+        padding: 4px 8px;
+        font-size: 0.875rem;
+        color: var(--mud-palette-text-secondary);
+        border-radius: 4px;
+    }
+
+    .user-message .action-text:hover {
+        color: var(--mud-palette-primary);
+        background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    /* Edit mode styling */
+    .user-message .edit-mode {
+        width: 100%;
+        min-width: 300px;
+    }
+
+    .user-message .edit-textarea {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .user-message .edit-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 8px;
+    }
 </style>
 
 @code {
@@ -224,10 +376,51 @@
     [Parameter]
     public IReadOnlyList<ConversationFile> ExistingFiles { get; set; } = [];
 
+    /// <summary>
+    /// Index of this message in the conversation (used for edit operations).
+    /// </summary>
+    [Parameter]
+    public int MessageIndex { get; set; }
+
+    /// <summary>
+    /// Event callback when user wants to edit this message.
+    /// Returns the message index and new content.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(int Index, string NewContent)> OnEdit { get; set; }
+
+    /// <summary>
+    /// Event callback when user wants to re-run this message without editing.
+    /// Returns the message index.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnRerun { get; set; }
+
+    /// <summary>
+    /// Whether a response is currently streaming (disables edit/re-run).
+    /// </summary>
+    [Parameter]
+    public bool IsStreaming { get; set; }
+
     [CascadingParameter(Name = "IsDarkMode")]
     private bool IsDarkMode { get; set; }
 
     private string ThemeClass => IsDarkMode ? "theme-dark" : "theme-light";
+
+    /// <summary>
+    /// Whether this message is currently in edit mode.
+    /// </summary>
+    private bool _isEditing;
+
+    /// <summary>
+    /// The edited content while in edit mode.
+    /// </summary>
+    private string _editedContent = string.Empty;
+
+    /// <summary>
+    /// Whether the copy action succeeded (for visual feedback).
+    /// </summary>
+    private bool _copied;
 
     private string UserInitials => GetInitials(UserDisplayName);
 
@@ -332,6 +525,111 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to download file: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Formats the message timestamp for display.
+    /// Always includes the date: "Dec 13, 2024 2:30 PM"
+    /// </summary>
+    private string FormatTimestamp()
+    {
+        if (!Message.CreatedAt.HasValue)
+            return string.Empty;
+
+        var local = Message.CreatedAt.Value.ToLocalTime();
+
+        // Always include date: "Dec 13, 2024 2:30 PM"
+        return local.ToString("MMM d, yyyy h:mm tt");
+    }
+
+    /// <summary>
+    /// Enters edit mode with current message content.
+    /// </summary>
+    private void StartEdit()
+    {
+        _editedContent = GetDisplayContent();
+        _isEditing = true;
+    }
+
+    /// <summary>
+    /// Cancels edit mode without saving.
+    /// </summary>
+    private void CancelEdit()
+    {
+        _isEditing = false;
+        _editedContent = string.Empty;
+    }
+
+    /// <summary>
+    /// Submits the edited message.
+    /// </summary>
+    private async Task SubmitEdit()
+    {
+        if (string.IsNullOrWhiteSpace(_editedContent))
+            return;
+
+        _isEditing = false;
+
+        if (OnEdit.HasDelegate)
+        {
+            await OnEdit.InvokeAsync((MessageIndex, _editedContent.Trim()));
+        }
+
+        _editedContent = string.Empty;
+    }
+
+    /// <summary>
+    /// Handles keyboard events in edit mode.
+    /// </summary>
+    private async Task HandleEditKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            CancelEdit();
+        }
+        else if (e.Key == "Enter" && e.CtrlKey && !string.IsNullOrWhiteSpace(_editedContent))
+        {
+            await SubmitEdit();
+        }
+    }
+
+    /// <summary>
+    /// Gets the CSS class for the copy button.
+    /// </summary>
+    private string GetCopyButtonClass()
+    {
+        return _copied ? "action-btn copied" : "action-btn";
+    }
+
+    /// <summary>
+    /// Copies the message content to clipboard.
+    /// </summary>
+    private async Task CopyToClipboard()
+    {
+        var content = GetDisplayContent();
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", content);
+
+        _copied = true;
+        StateHasChanged();
+
+        // Reset after 2 seconds
+        await Task.Delay(2000);
+        _copied = false;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Re-runs this message without editing.
+    /// </summary>
+    private async Task HandleRerun()
+    {
+        if (IsStreaming)
+            return;
+
+        if (OnRerun.HasDelegate)
+        {
+            await OnRerun.InvokeAsync(MessageIndex);
         }
     }
 }

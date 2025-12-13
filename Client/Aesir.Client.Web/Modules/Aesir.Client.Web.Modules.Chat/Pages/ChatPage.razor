@@ -60,13 +60,20 @@
                 var lastAssistantMessage = nonSystemMessages.LastOrDefault(m => m.Role == "assistant");
                 var isCurrentlyStreaming = _isWaitingForResponse || _isThinking || _isStreaming;
             }
-            @foreach (var message in nonSystemMessages)
+            @for (var i = 0; i < nonSystemMessages.Count; i++)
             {
+                var message = nonSystemMessages[i];
+                var index = i;
+
                 @if (message.Role == "user")
                 {
                     <UserMessage Message="message"
+                                 MessageIndex="@index"
                                  ConversationId="@ChatState.CurrentSessionId"
-                                 ExistingFiles="@ConversationFiles" />
+                                 ExistingFiles="@ConversationFiles"
+                                 IsStreaming="@isCurrentlyStreaming"
+                                 OnEdit="@HandleEditMessage"
+                                 OnRerun="@HandleRerunMessage" />
                 }
                 else if (message.Role == "assistant")
                 {
@@ -627,6 +634,105 @@
     private async Task HandleSuggestion(string suggestion)
     {
         await SendMessageAsync(suggestion);
+    }
+
+    /// <summary>
+    /// Handles editing a user message and re-running the conversation from that point.
+    /// Removes the edited message and all following messages, then submits the new content.
+    /// </summary>
+    private async Task HandleEditMessage((int Index, string NewContent) args)
+    {
+        if (string.IsNullOrWhiteSpace(args.NewContent) || ChatState.SelectedAgent == null)
+            return;
+
+        // Get the non-system messages to find the correct index
+        var nonSystemMessages = _conversation.Messages
+            .Where(m => m.Role != "system")
+            .ToList();
+
+        if (args.Index < 0 || args.Index >= nonSystemMessages.Count)
+            return;
+
+        // Find the original message being edited
+        var originalMessage = nonSystemMessages[args.Index];
+
+        // Find the index in the full message list (including system)
+        var fullIndex = _conversation.Messages.IndexOf(originalMessage);
+        if (fullIndex < 0)
+            return;
+
+        // Remove all messages from this index onwards
+        // This removes: the edited user message + the following assistant response + any subsequent messages
+        var messagesToRemove = _conversation.Messages.Skip(fullIndex).ToList();
+        foreach (var msg in messagesToRemove)
+        {
+            _conversation.Messages.Remove(msg);
+        }
+
+        // Update hasMessages flag
+        _hasMessages = _conversation.Messages.Any(m => m.Role != "system");
+
+        // Create new user message with edited content
+        var newUserMessage = AesirChatMessage.NewUserMessage(args.NewContent);
+
+        // Preserve file attachments from original message
+        var fileNames = originalMessage.GetFileNames();
+        foreach (var fileName in fileNames)
+        {
+            newUserMessage.AddFile(fileName);
+        }
+
+        // Send the new message (this adds it to conversation and streams response)
+        await SendMessageWithFileAsync(newUserMessage);
+    }
+
+    /// <summary>
+    /// Handles re-running a user message without editing.
+    /// Removes the message and all following messages, then re-submits with the same content.
+    /// </summary>
+    private async Task HandleRerunMessage(int index)
+    {
+        if (ChatState.SelectedAgent == null)
+            return;
+
+        // Get the non-system messages to find the correct index
+        var nonSystemMessages = _conversation.Messages
+            .Where(m => m.Role != "system")
+            .ToList();
+
+        if (index < 0 || index >= nonSystemMessages.Count)
+            return;
+
+        // Find the original message
+        var originalMessage = nonSystemMessages[index];
+
+        // Find the index in the full message list (including system)
+        var fullIndex = _conversation.Messages.IndexOf(originalMessage);
+        if (fullIndex < 0)
+            return;
+
+        // Remove all messages from this index onwards
+        var messagesToRemove = _conversation.Messages.Skip(fullIndex).ToList();
+        foreach (var msg in messagesToRemove)
+        {
+            _conversation.Messages.Remove(msg);
+        }
+
+        // Update hasMessages flag
+        _hasMessages = _conversation.Messages.Any(m => m.Role != "system");
+
+        // Create new message with same content (preserving files)
+        var newUserMessage = AesirChatMessage.NewUserMessage(
+            originalMessage.GetContentWithoutFileName() ?? originalMessage.Content);
+
+        // Preserve file attachments from original message
+        foreach (var fileName in originalMessage.GetFileNames())
+        {
+            newUserMessage.AddFile(fileName);
+        }
+
+        // Send the new message
+        await SendMessageWithFileAsync(newUserMessage);
     }
 
     private async Task SendMessageAsync(string message)

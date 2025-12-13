@@ -29,6 +29,13 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     /// </summary>
     [JsonPropertyName("tool_calls")]
     public IReadOnlyList<AesirToolCallInfo>? ToolCalls { get; set; }
+
+    /// <summary>
+    /// Gets or sets when the message was created (UTC).
+    /// Nullable to handle migration of existing data without timestamps.
+    /// </summary>
+    [JsonPropertyName("created_at")]
+    public DateTimeOffset? CreatedAt { get; set; }
     
     /// <summary>
     /// Determines if the message content contains a file reference.
@@ -216,7 +223,8 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         return new AesirChatMessage()
         {
             Role = "system",
-            Content = content
+            Content = content,
+            CreatedAt = DateTimeOffset.UtcNow
         };
     }
 
@@ -230,7 +238,8 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         return new AesirChatMessage()
         {
             Role = "assistant",
-            Content = content
+            Content = content,
+            CreatedAt = DateTimeOffset.UtcNow
         };
     }
 
@@ -244,7 +253,8 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
         return new AesirChatMessage()
         {
             Role = "user",
-            Content = NormalizeContent(content)
+            Content = NormalizeContent(content),
+            CreatedAt = DateTimeOffset.UtcNow
         };
     }
 

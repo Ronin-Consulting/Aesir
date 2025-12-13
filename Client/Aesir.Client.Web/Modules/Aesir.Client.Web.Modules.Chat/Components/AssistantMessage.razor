@@ -31,25 +31,29 @@
             <div class="message-content markdown-body">
                 @((MarkupString)MarkdownService.ToHtml(Message.Content))
             </div>
-            @* Response Footer with Actions - Claude style: right-aligned icons *@
-            <div class="response-footer">
-                <div class="response-actions">
-                    <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
-                                   Size="Size.Small"
-                                   Class="action-btn"
-                                   Title="Copy response"
-                                   OnClick="CopyToClipboard" />
-                    <MudIconButton Icon="@Icons.Material.Outlined.ThumbUpOffAlt"
-                                   Size="Size.Small"
-                                   Class="action-btn"
-                                   Title="Good response" />
-                    <MudIconButton Icon="@Icons.Material.Outlined.ThumbDownOffAlt"
-                                   Size="Size.Small"
-                                   Class="action-btn"
-                                   Title="Bad response" />
-                    <MudText Typo="Typo.body2" Class="action-text" @onclick="HandleRetry" title="Retry">Retry</MudText>
-                </div>
-            </div>
+    </div>
+    @* Message metadata - outside container, right-aligned, visible on row hover *@
+    <div class="message-metadata">
+        @if (Message.CreatedAt.HasValue)
+        {
+            <span class="message-timestamp">@FormatTimestamp()</span>
+        }
+        <div class="response-actions">
+            <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
+                           Size="Size.Small"
+                           Class="action-btn"
+                           Title="Copy response"
+                           OnClick="CopyToClipboard" />
+            <MudIconButton Icon="@Icons.Material.Outlined.ThumbUpOffAlt"
+                           Size="Size.Small"
+                           Class="action-btn"
+                           Title="Good response" />
+            <MudIconButton Icon="@Icons.Material.Outlined.ThumbDownOffAlt"
+                           Size="Size.Small"
+                           Class="action-btn"
+                           Title="Bad response" />
+            <MudText Typo="Typo.body2" Class="action-text" @onclick="HandleRetry" title="Retry">Retry</MudText>
+        </div>
     </div>
     @* AESIR Brand Icon - Only shows on latest message, large and prominent with ready message *@
     @if (IsLatestMessage)
@@ -158,13 +162,29 @@
         color: var(--mud-palette-text-primary);
     }
 
-    /* Response Footer */
-    .assistant-message .response-footer {
+    /* Message metadata - outside container, right-aligned, visible on row hover */
+    .assistant-message .message-metadata {
         display: flex;
         justify-content: flex-end;
         align-items: center;
-        margin-top: 8px;
+        gap: 8px;
+        margin-top: 4px;
+        padding-right: 8px;
         width: 100%;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    /* Show metadata on row hover */
+    .assistant-message:hover .message-metadata {
+        opacity: 1;
+    }
+
+    /* Timestamp styling */
+    .assistant-message .message-timestamp {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+        opacity: 0.7;
     }
 
     /* Response Actions */
@@ -172,12 +192,6 @@
         display: flex;
         align-items: center;
         gap: 2px;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-    }
-
-    .assistant-message:hover .response-actions {
-        opacity: 1;
     }
 
     .assistant-message .action-btn {
@@ -703,5 +717,18 @@
         {
             await OnRetry.InvokeAsync();
         }
+    }
+
+    /// <summary>
+    /// Formats the message timestamp for display.
+    /// Always includes the date: "Dec 13, 2024 2:30 PM"
+    /// </summary>
+    private string FormatTimestamp()
+    {
+        if (!Message.CreatedAt.HasValue)
+            return string.Empty;
+
+        var local = Message.CreatedAt.Value.ToLocalTime();
+        return local.ToString("MMM d, yyyy h:mm tt");
     }
 }
