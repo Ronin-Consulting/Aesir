@@ -1,0 +1,344 @@
+@* Documents Panel - Shows all documents across conversations in a list view *@
+@using Aesir.Client.Web.Modules.Chat.Models
+@using Aesir.Client.Web.Modules.Chat.Services
+@inject IDocumentsViewService DocumentsService
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<div class="documents-panel">
+    @if (DocumentsService.IsLoading && !_documents.Any())
+    {
+        <div class="d-flex flex-column align-center justify-center" style="flex: 1;">
+            <MudProgressCircular Indeterminate="true" Size="Size.Large" />
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">Loading documents...</MudText>
+        </div>
+    }
+    else if (!_documents.Any() && string.IsNullOrEmpty(_searchTerm))
+    {
+        @* No Documents - Empty State *@
+        <div class="empty-state">
+            <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Large" Color="Color.Secondary" Style="font-size: 64px; opacity: 0.4;" />
+
+            <MudText Typo="Typo.h5" Align="Align.Center" Class="mt-4">
+                No documents yet
+            </MudText>
+
+            <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Class="mt-2">
+                Upload documents in your chats to see them here
+            </MudText>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Large"
+                       StartIcon="@Icons.Material.Filled.Chat"
+                       OnClick="@GoToChats"
+                       Class="mt-6">
+                Start a Chat
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        @* Search Header *@
+        <div class="search-header">
+            <MudTextField @bind-Value="_searchTerm"
+                          Placeholder="Search documents..."
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          OnDebounceIntervalElapsed="@HandleSearchChanged"
+                          Clearable="true"
+                          OnClearButtonClick="@HandleClearSearch"
+                          Class="search-input" />
+        </div>
+
+        @if (!_documents.Any())
+        {
+            @* No Search Results *@
+            <div class="empty-search">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" Style="opacity: 0.5;" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-2">
+                    No documents found for "@_searchTerm"
+                </MudText>
+            </div>
+        }
+        else
+        {
+            @* Starred Documents Section *@
+            @if (StarredDocuments.Any() && string.IsNullOrEmpty(_searchTerm))
+            {
+                <div class="documents-section starred-section">
+                    <div class="section-header">
+                        <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Color="Color.Warning" />
+                        <span class="section-label">From Starred Chats</span>
+                    </div>
+
+                    <div class="documents-list">
+                        @foreach (var doc in StarredDocuments.Take(_displayCount))
+                        {
+                            <DocumentCard Document="doc"
+                                          ThumbnailUrl="@GetThumbnailUrl(doc)"
+                                          OnClick="@(() => JumpToChat(doc))"
+                                          OnDownload="@(() => DownloadDocument(doc))"
+                                          OnDelete="@(() => DeleteDocument(doc))" />
+                        }
+                    </div>
+                </div>
+            }
+
+            @* Recent Documents Section *@
+            <div class="documents-section">
+                <div class="section-header">
+                    <span class="section-label">@(string.IsNullOrEmpty(_searchTerm) ? "Recent Documents" : "Search Results")</span>
+                    @if (string.IsNullOrEmpty(_searchTerm) && RecentDocuments.Any())
+                    {
+                        <span class="hide-show-toggle @(_recentsSectionCollapsed ? "collapsed" : "")" @onclick="ToggleRecentsSection">
+                            @(_recentsSectionCollapsed ? "Show" : "Hide")
+                        </span>
+                    }
+                </div>
+
+                @if (!_recentsSectionCollapsed || !string.IsNullOrEmpty(_searchTerm))
+                {
+                    <div class="documents-list">
+                        @foreach (var doc in DocumentsToShow.Take(_displayCount))
+                        {
+                            <DocumentCard Document="doc"
+                                          ThumbnailUrl="@GetThumbnailUrl(doc)"
+                                          OnClick="@(() => JumpToChat(doc))"
+                                          OnDownload="@(() => DownloadDocument(doc))"
+                                          OnDelete="@(() => DeleteDocument(doc))" />
+                        }
+                    </div>
+
+                    @* Load More Button *@
+                    @if (DocumentsToShow.Count > _displayCount)
+                    {
+                        <div class="d-flex justify-center mt-4">
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       OnClick="@LoadMore">
+                                Load More (@(DocumentsToShow.Count - _displayCount) remaining)
+                            </MudButton>
+                        </div>
+                    }
+                }
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .documents-panel {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .empty-state,
+    .empty-search {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        flex: 1;
+        text-align: center;
+        padding: 24px;
+    }
+
+    .search-header {
+        margin-bottom: 24px;
+    }
+
+    .search-input {
+        width: 100%;
+    }
+
+    .documents-section {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 24px;
+    }
+
+    .starred-section {
+        margin-bottom: 32px;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .section-label {
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .hide-show-toggle {
+        font-size: 0.875rem;
+        color: var(--mud-palette-text-secondary);
+        cursor: pointer;
+        user-select: none;
+        transition: opacity 0.15s ease, color 0.15s ease;
+        opacity: 0;
+        margin-left: auto;
+    }
+
+    .hide-show-toggle.collapsed {
+        opacity: 0.3;
+    }
+
+    .section-header:hover .hide-show-toggle,
+    .hide-show-toggle:hover {
+        opacity: 1;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .documents-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        animation: slideDown 0.2s ease;
+    }
+
+    @@keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+@code {
+    private List<DocumentWithChatInfo> _documents = [];
+    private string? _searchTerm;
+    private int _displayCount = 20;
+    private bool _recentsSectionCollapsed;
+
+    // Computed properties for document filtering
+    private List<DocumentWithChatInfo> StarredDocuments =>
+        _documents.Where(d => d.IsChatStarred).ToList();
+
+    private List<DocumentWithChatInfo> RecentDocuments =>
+        _documents.Where(d => !d.IsChatStarred).ToList();
+
+    private List<DocumentWithChatInfo> DocumentsToShow =>
+        string.IsNullOrEmpty(_searchTerm) ? RecentDocuments : _documents;
+
+    protected override async Task OnInitializedAsync()
+    {
+        DocumentsService.OnDocumentsChanged += HandleDocumentsChanged;
+
+        // Load documents
+        _documents = (await DocumentsService.LoadDocumentsAsync()).ToList();
+    }
+
+    private void HandleDocumentsChanged()
+    {
+        _documents = DocumentsService.Documents.ToList();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleSearchChanged(string value)
+    {
+        _searchTerm = value;
+        _displayCount = 20; // Reset display count on new search
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            await DocumentsService.ClearSearchAsync();
+        }
+        else
+        {
+            await DocumentsService.SearchDocumentsAsync(value);
+        }
+        _documents = DocumentsService.Documents.ToList();
+    }
+
+    private async Task HandleClearSearch()
+    {
+        _searchTerm = null;
+        _displayCount = 20;
+        await DocumentsService.ClearSearchAsync();
+        _documents = DocumentsService.Documents.ToList();
+    }
+
+    private void GoToChats()
+    {
+        NavigationManager.NavigateTo("/chats", forceLoad: false);
+    }
+
+    private void JumpToChat(DocumentWithChatInfo document)
+    {
+        if (document.HasValidChat)
+        {
+            NavigationManager.NavigateTo($"/chat?session={document.ConversationId}", forceLoad: false);
+        }
+    }
+
+    private void DownloadDocument(DocumentWithChatInfo document)
+    {
+        var downloadUrl = DocumentsService.GetDownloadUrl(document);
+        NavigationManager.NavigateTo(downloadUrl, forceLoad: true);
+    }
+
+    private async Task DeleteDocument(DocumentWithChatInfo document)
+    {
+        var parameters = new DialogParameters<DocumentDeleteDialog>
+        {
+            { x => x.DocumentName, document.File.DisplayName },
+            { x => x.ChatTitle, document.ChatTitle }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<DocumentDeleteDialog>("Delete Document", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: DocumentDeleteOption option })
+        {
+            var success = await DocumentsService.DeleteDocumentAsync(document, option);
+            if (success)
+            {
+                _documents = DocumentsService.Documents.ToList();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private string? GetThumbnailUrl(DocumentWithChatInfo document)
+    {
+        return DocumentsService.GetThumbnailUrl(document);
+    }
+
+    private void LoadMore()
+    {
+        _displayCount += 20;
+    }
+
+    private void ToggleRecentsSection()
+    {
+        _recentsSectionCollapsed = !_recentsSectionCollapsed;
+    }
+
+    public void Dispose()
+    {
+        DocumentsService.OnDocumentsChanged -= HandleDocumentsChanged;
+    }
+}

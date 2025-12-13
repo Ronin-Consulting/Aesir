@@ -21,21 +21,21 @@
                Class="chat-drawer">
         @* Navigation Items with New Chat Button *@
         <div class="nav-header pt-3 px-2">
-            <MudNavMenu Dense="true" Class="nav-menu-inline">
-                <MudNavLink Href="/chats"
-                            Icon="@Icons.Material.Filled.Chat"
-                            Match="NavLinkMatch.Prefix"
-                            Class="nav-item">
-                    Chats
-                </MudNavLink>
-            </MudNavMenu>
-            <MudIconButton Icon="@Icons.Material.Filled.Add"
-                           Size="Size.Small"
-                           Color="Color.Primary"
-                           Variant="Variant.Filled"
-                           OnClick="@StartNewChat"
-                           Title="New chat"
-                           Class="new-chat-btn-small" />
+            <div class="chats-nav-item @(IsChatsActive ? "active" : "")" @onclick="NavigateToChats">
+                <div class="nav-item-content">
+                    <MudIcon Icon="@Icons.Material.Filled.Chat" Size="Size.Small" />
+                    <span>Chats</span>
+                </div>
+                <div class="new-chat-btn-wrapper" @onclick:stopPropagation>
+                    <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   OnClick="@StartNewChat"
+                                   Title="New chat"
+                                   Class="new-chat-btn-small" />
+                </div>
+            </div>
         </div>
 
         @* Recents Section - Show starred chats first, then recent chats grouped by date *@
@@ -421,14 +421,38 @@
     }
 
     .nav-header {
+        padding-right: 4px !important;
+    }
+
+    .chats-nav-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding-right: 8px !important;
+        padding: 8px 8px 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        text-decoration: none;
+        color: var(--mud-palette-text-primary);
     }
 
-    .nav-menu-inline {
-        flex: 1;
+    .chats-nav-item:hover {
+        background-color: var(--mud-palette-action-default-hover);
+    }
+
+    .chats-nav-item.active {
+        background-color: var(--mud-palette-action-default-hover);
+    }
+
+    .nav-item-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .new-chat-btn-wrapper {
+        display: flex;
+        align-items: center;
     }
 
     .new-chat-btn-small {
@@ -440,15 +464,6 @@
 
     .new-chat-btn-small .mud-icon-root {
         font-size: 1rem !important;
-    }
-
-    .nav-menu {
-        margin-top: 0;
-    }
-
-    .nav-item {
-        border-radius: 8px;
-        margin-bottom: 2px;
     }
 
     .recents-section {
@@ -623,6 +638,9 @@
         ChatState.CurrentSessionId.HasValue &&
         _recentSessions.FirstOrDefault(s => s.Id == ChatState.CurrentSessionId.Value)?.IsStarred == true;
 
+    // Compute if Chats nav item should show active state
+    private bool IsChatsActive => NavigationManager.Uri.Contains("/chat");
+
     protected override async Task OnInitializedAsync()
     {
         HistoryService.OnSessionsChanged += HandleSessionsChanged;
@@ -740,6 +758,11 @@
     private void ToggleDrawer()
     {
         _drawerOpen = !_drawerOpen;
+    }
+
+    private void NavigateToChats()
+    {
+        NavigationManager.NavigateTo("/chats", forceLoad: false);
     }
 
     private void StartNewChat()

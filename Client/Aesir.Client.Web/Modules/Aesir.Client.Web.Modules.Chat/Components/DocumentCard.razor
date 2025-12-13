@@ -1,0 +1,296 @@
+@* Document Card Component - Displays a document with its associated chat info (list view) *@
+@using Aesir.Client.Web.Modules.Chat.Models
+@using Aesir.Client.Web.Modules.Chat.Services
+
+<div class="document-card @(Document.IsChatStarred ? "starred" : "")"
+     @onmouseenter="() => _isHovered = true"
+     @onmouseleave="() => _isHovered = false"
+     @onclick="HandleClick">
+
+    @* Thumbnail on left *@
+    <div class="thumbnail-container" style="background-color: @_style.BackgroundColor;">
+        @if (!string.IsNullOrEmpty(ThumbnailUrl))
+        {
+            <img src="@ThumbnailUrl" alt="@Document.File.DisplayName" class="thumbnail-image" loading="lazy" />
+        }
+        else
+        {
+            <MudIcon Icon="@_style.Icon" Size="Size.Small" Style="@($"color: {_style.AccentColor};")" />
+        }
+    </div>
+
+    @* Content in middle *@
+    <div class="card-content">
+        <div class="content-main">
+            <span class="file-name" title="@Document.File.DisplayName">
+                @FileTypeHelper.TruncateFileName(Document.File.DisplayName, 30)
+            </span>
+        </div>
+        <div class="content-secondary">
+            <span class="chat-title" title="@(Document.ChatTitle ?? "Unknown Chat")">
+                @(Document.HasValidChat ? TruncateChatTitle(Document.ChatTitle!, 25) : "Unknown Chat")
+            </span>
+            <span class="dot-separator"></span>
+            <span class="file-meta">@Document.File.FormattedSize</span>
+            <span class="dot-separator"></span>
+            <span class="file-date">@FormatDate(Document.File.CreatedAt)</span>
+        </div>
+    </div>
+
+    @* Actions on right *@
+    <div class="card-actions">
+        <div class="top-actions">
+            @if (Document.IsChatStarred)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Star"
+                               Size="Size.Small"
+                               Color="Color.Warning"
+                               Title="From starred chat"
+                               Class="star-btn visible" />
+            }
+        </div>
+        <div class="bottom-actions" @onclick:stopPropagation="true">
+            <MudIconButton Icon="@Icons.Material.Filled.Download"
+                           Size="Size.Small"
+                           OnClick="HandleDownload"
+                           Title="Download"
+                           Class="action-btn" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                           Size="Size.Small"
+                           OnClick="HandleDelete"
+                           Title="Delete"
+                           Class="action-btn delete-btn" />
+        </div>
+    </div>
+</div>
+
+<style>
+    .document-card {
+        display: flex;
+        align-items: stretch;
+        padding: 16px;
+        gap: 12px;
+        background-color: var(--mud-palette-background-grey);
+        border: 1px solid transparent;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+        min-height: 80px;
+        box-sizing: border-box;
+    }
+
+    .document-card:hover {
+        background-color: var(--mud-palette-action-default-hover);
+        border-color: var(--mud-palette-lines-default);
+    }
+
+    .document-card:active {
+        transform: scale(0.99);
+    }
+
+    .document-card.starred {
+        border-color: rgba(255, 193, 7, 0.3);
+    }
+
+    .document-card.starred:hover {
+        border-color: rgba(255, 193, 7, 0.5);
+    }
+
+    .thumbnail-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        flex-shrink: 0;
+        overflow: hidden;
+        align-self: center;
+    }
+
+    .thumbnail-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 6px;
+    }
+
+    .card-content {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        align-self: center;
+    }
+
+    .content-main {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .file-name {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--mud-palette-text-primary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .content-secondary {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .chat-title {
+        color: var(--mud-palette-info);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 300px;
+    }
+
+    .dot-separator {
+        width: 3px;
+        height: 3px;
+        background-color: var(--mud-palette-text-secondary);
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .file-meta,
+    .file-date {
+        white-space: nowrap;
+    }
+
+    .card-actions {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: flex-end;
+        flex-shrink: 0;
+        min-width: 80px;
+    }
+
+    .top-actions,
+    .bottom-actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    .star-btn,
+    .action-btn {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease, visibility 0.2s ease;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .star-btn.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .document-card:hover .star-btn,
+    .document-card:hover .action-btn {
+        opacity: 0.6;
+        visibility: visible;
+    }
+
+    .star-btn:hover,
+    .action-btn:hover {
+        opacity: 1 !important;
+        visibility: visible !important;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .delete-btn:hover {
+        color: var(--mud-palette-error) !important;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The document with chat info to display.
+    /// </summary>
+    [Parameter]
+    public required DocumentWithChatInfo Document { get; set; }
+
+    /// <summary>
+    /// The thumbnail URL for this document (if available).
+    /// </summary>
+    [Parameter]
+    public string? ThumbnailUrl { get; set; }
+
+    /// <summary>
+    /// Callback when the card is clicked (navigates to chat).
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    /// <summary>
+    /// Callback when "Download" is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnDownload { get; set; }
+
+    /// <summary>
+    /// Callback when "Delete" is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnDelete { get; set; }
+
+    private bool _isHovered;
+    private FileTypeHelper.FileTypeStyle _style = null!;
+
+    protected override void OnParametersSet()
+    {
+        _style = FileTypeHelper.GetStyle(Document.File.DisplayName);
+    }
+
+    private async Task HandleClick()
+    {
+        await OnClick.InvokeAsync();
+    }
+
+    private async Task HandleDownload()
+    {
+        await OnDownload.InvokeAsync();
+    }
+
+    private async Task HandleDelete()
+    {
+        await OnDelete.InvokeAsync();
+    }
+
+    private static string TruncateChatTitle(string title, int maxLength)
+    {
+        if (string.IsNullOrEmpty(title) || title.Length <= maxLength)
+            return title;
+
+        return title[..(maxLength - 3)] + "...";
+    }
+
+    private static string FormatDate(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime.ToUniversalTime();
+
+        if (timeSpan.TotalMinutes < 1)
+            return "Just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)}w ago";
+
+        return dateTime.ToString("MMM d, yyyy");
+    }
+}
