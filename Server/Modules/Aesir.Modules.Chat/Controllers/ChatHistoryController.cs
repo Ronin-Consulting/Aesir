@@ -37,6 +37,7 @@ namespace Aesir.Modules.Chat.Controllers
                         Id = chatSession.Id,
                         Title = chatSession.Title,
                         UpdatedAt = chatSession.UpdatedAt,
+                        IsStarred = chatSession.IsStarred,
                     }
                 ).ToList();
 
@@ -61,6 +62,7 @@ namespace Aesir.Modules.Chat.Controllers
                         Id = chatSession.Id,
                         Title = chatSession.Title,
                         UpdatedAt = chatSession.UpdatedAt,
+                        IsStarred = chatSession.IsStarred,
                     }
                 ).ToList();
 
@@ -88,6 +90,7 @@ namespace Aesir.Modules.Chat.Controllers
                         Id = chatSession.Id,
                         Title = chatSession.Title,
                         UpdatedAt = chatSession.UpdatedAt,
+                        IsStarred = chatSession.IsStarred,
                     }
                 ).ToList();
 
@@ -141,6 +144,23 @@ namespace Aesir.Modules.Chat.Controllers
 
             await chatHistoryService.UpsertChatSessionAsync(found);
 
+            return Ok();
+        }
+
+        /// <summary>
+        /// Updates the starred status of a specified chat session.
+        /// </summary>
+        /// <param name="id">The unique identifier of the chat session to update.</param>
+        /// <param name="isStarred">The new starred status.</param>
+        /// <returns>
+        /// An <see cref="IActionResult"/> indicating whether the operation was successful.
+        /// Returns Ok if the update is successful.
+        /// </returns>
+        [HttpPut("{id:guid}/star/{isStarred:bool}")]
+        public async Task<IActionResult> UpdateStarredAsync([FromRoute] Guid id, [FromRoute] bool isStarred)
+        {
+            await chatHistoryService.UpdateIsStarredAsync(id, isStarred);
+            logger.LogInformation("Updated starred status for session {SessionId} to {IsStarred}", id, isStarred);
             return Ok();
         }
 

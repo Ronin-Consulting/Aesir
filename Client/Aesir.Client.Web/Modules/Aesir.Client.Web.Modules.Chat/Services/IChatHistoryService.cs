@@ -55,6 +55,11 @@ public interface IChatHistoryService
     Task<ApiResult> UpdateSessionTitleAsync(Guid sessionId, string title, CancellationToken ct = default);
 
     /// <summary>
+    /// Updates the starred status of a chat session.
+    /// </summary>
+    Task<ApiResult> UpdateSessionStarredAsync(Guid sessionId, bool isStarred, CancellationToken ct = default);
+
+    /// <summary>
     /// Searches sessions by term.
     /// </summary>
     Task<ApiResult<IReadOnlyList<AesirChatSessionItem>>> SearchSessionsAsync(string searchTerm, CancellationToken ct = default);

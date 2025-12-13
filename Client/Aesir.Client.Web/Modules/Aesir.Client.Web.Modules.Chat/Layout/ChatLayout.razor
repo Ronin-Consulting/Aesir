@@ -46,33 +46,77 @@
             </MudNavLink>
         </MudNavMenu>
 
-        @* Recents Section - Show recent chats grouped by date *@
+        @* Recents Section - Show starred chats first, then recent chats grouped by date *@
         @if (_recentSessions.Any())
         {
             <div class="recents-section px-2 mt-2">
                 <div class="recents-list">
                     @{
-                        var displayedSessions = _recentSessions.Take(_displayCount).ToList();
-                        var groupedSessions = GroupSessionsByDate(displayedSessions);
+                        var starredSessions = _recentSessions.Where(s => s.IsStarred).ToList();
+                        var nonStarredSessions = _recentSessions.Where(s => !s.IsStarred).Take(_displayCount).ToList();
+                        var groupedSessions = GroupSessionsByDate(nonStarredSessions);
                     }
-                    @foreach (var group in groupedSessions)
+                    @* Starred Section - Always visible *@
+                    @if (starredSessions.Any())
                     {
-                        <MudText Typo="Typo.overline" Class="px-2 py-1 mt-2 mud-text-secondary date-group-header">
-                            @group.Key
-                        </MudText>
-                        @foreach (var session in group.Value)
+                        <div class="starred-section-header px-2 py-1 mt-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Star"
+                                     Size="Size.Small"
+                                     Color="Color.Warning"
+                                     Class="starred-icon" />
+                            <span class="section-label">Starred</span>
+                        </div>
+                        <div class="starred-items">
+                            @foreach (var session in starredSessions)
+                            {
+                                <ChatHistoryItem Session="session"
+                                                 IsSelected="@(ChatState.CurrentSessionId == session.Id)"
+                                                 IsStarred="@session.IsStarred"
+                                                 ShowTimestamp="false"
+                                                 OnClick="HandleSessionClick"
+                                                 OnDelete="HandleSessionDelete"
+                                                 OnRename="HandleSessionRename"
+                                                 OnStarChanged="HandleSessionStarChanged" />
+                            }
+                        </div>
+                    }
+                    @* Recents Section - Collapsible with Hide/Show toggle *@
+                    @if (nonStarredSessions.Any())
+                    {
+                        <div class="recents-section-header px-2 py-1 mt-2">
+                            <span class="section-label">Recents</span>
+                            <span class="hide-show-toggle @(_recentsSectionCollapsed ? "collapsed" : "")" @onclick="ToggleRecentsSection">
+                                @(_recentsSectionCollapsed ? "Show" : "Hide")
+                            </span>
+                        </div>
+                        @if (!_recentsSectionCollapsed)
                         {
-                            <ChatHistoryItem Session="session"
-                                             IsSelected="@(ChatState.CurrentSessionId == session.Id)"
-                                             ShowTimestamp="false"
-                                             OnClick="HandleSessionClick"
-                                             OnDelete="HandleSessionDelete"
-                                             OnRename="HandleSessionRename"
-                                             OnStarChanged="HandleSessionStarChanged" />
+                            <div class="recents-items">
+                                @foreach (var group in groupedSessions)
+                                {
+                                    <MudText Typo="Typo.overline" Class="px-2 py-1 mt-2 mud-text-secondary date-group-header">
+                                        @group.Key
+                                    </MudText>
+                                    @foreach (var session in group.Value)
+                                    {
+                                        <ChatHistoryItem Session="session"
+                                                         IsSelected="@(ChatState.CurrentSessionId == session.Id)"
+                                                         IsStarred="@session.IsStarred"
+                                                         ShowTimestamp="false"
+                                                         OnClick="HandleSessionClick"
+                                                         OnDelete="HandleSessionDelete"
+                                                         OnRename="HandleSessionRename"
+                                                         OnStarChanged="HandleSessionStarChanged" />
+                                    }
+                                }
+                            </div>
                         }
                     }
                 </div>
-                @if (_recentSessions.Count > _displayCount)
+                @{
+                    var totalNonStarred = _recentSessions.Count(s => !s.IsStarred);
+                }
+                @if (totalNonStarred > _displayCount)
                 {
                     <div class="load-more-container">
                         <MudButton Variant="Variant.Text"
@@ -80,7 +124,7 @@
                                    Size="Size.Small"
                                    OnClick="@LoadMore"
                                    Class="load-more-btn">
-                            Load More (@(_recentSessions.Count - _displayCount) more)
+                            Load More (@(totalNonStarred - _displayCount) more)
                         </MudButton>
                     </div>
                 }
@@ -165,10 +209,10 @@
                     <ChildContent>
                         <MudMenuItem OnClick="@ToggleCurrentSessionStar" Class="menu-item">
                             <div class="menu-item-content">
-                                <MudIcon Icon="@(_isCurrentSessionStarred ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
+                                <MudIcon Icon="@(IsCurrentSessionStarred ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
                                          Size="Size.Small"
-                                         Color="@(_isCurrentSessionStarred ? Color.Warning : Color.Default)" />
-                                <span>@(_isCurrentSessionStarred ? "Unstar" : "Star")</span>
+                                         Color="@(IsCurrentSessionStarred ? Color.Warning : Color.Default)" />
+                                <span>@(IsCurrentSessionStarred ? "Unstar" : "Star")</span>
                             </div>
                         </MudMenuItem>
                         <MudMenuItem OnClick="@ShowRenameDialog" Class="menu-item">
@@ -465,6 +509,71 @@
         margin-top: 0 !important;
     }
 
+    /* Section Header Styles */
+    .section-label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    /* Starred Section Styles */
+    .starred-section-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .starred-icon {
+        flex-shrink: 0;
+    }
+
+    .starred-items {
+        animation: slideDown 0.2s ease;
+        margin-bottom: 16px;
+    }
+
+    /* Recents Section Styles */
+    .recents-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .hide-show-toggle {
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-secondary);
+        cursor: pointer;
+        user-select: none;
+        transition: opacity 0.15s ease, color 0.15s ease;
+        opacity: 0;
+    }
+
+    /* When collapsed (showing "Show"), make it barely visible */
+    .hide-show-toggle.collapsed {
+        opacity: 0.3;
+    }
+
+    .recents-section-header:hover .hide-show-toggle,
+    .hide-show-toggle:hover {
+        opacity: 1;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .recents-items {
+        animation: slideDown 0.2s ease;
+    }
+
+    @@keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
     .recent-item {
         border-radius: 6px;
         padding: 6px 8px !important;
@@ -526,8 +635,13 @@
     private string _userId = "blangford@gmail.com";
     private List<AesirChatSessionItem> _recentSessions = new();
     private int _displayCount = InitialDisplayCount;
-    private bool _isCurrentSessionStarred;
+    private bool _recentsSectionCollapsed;
     private ConversationDocumentsList? _documentsListRef;
+
+    // Compute IsStarred from the actual session data
+    private bool IsCurrentSessionStarred =>
+        ChatState.CurrentSessionId.HasValue &&
+        _recentSessions.FirstOrDefault(s => s.Id == ChatState.CurrentSessionId.Value)?.IsStarred == true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -686,18 +800,23 @@
         await HistoryService.UpdateSessionTitleAsync(args.Session.Id, args.NewTitle);
     }
 
-    private Task HandleSessionStarChanged((AesirChatSessionItem Session, bool IsStarred) args)
+    private async Task HandleSessionStarChanged((AesirChatSessionItem Session, bool IsStarred) args)
     {
-        // TODO: Implement star persistence when API supports it
-        return Task.CompletedTask;
+        await HistoryService.UpdateSessionStarredAsync(args.Session.Id, args.IsStarred);
+    }
+
+    private void ToggleRecentsSection()
+    {
+        _recentsSectionCollapsed = !_recentsSectionCollapsed;
     }
 
     // Title dropdown menu actions for current session
-    private void ToggleCurrentSessionStar()
+    private async Task ToggleCurrentSessionStar()
     {
-        _isCurrentSessionStarred = !_isCurrentSessionStarred;
-        // TODO: Implement star persistence when API supports it
-        StateHasChanged();
+        if (!ChatState.CurrentSessionId.HasValue) return;
+
+        var newStarredState = !IsCurrentSessionStarred;
+        await HistoryService.UpdateSessionStarredAsync(ChatState.CurrentSessionId.Value, newStarredState);
     }
 
     private async Task ShowRenameDialog()

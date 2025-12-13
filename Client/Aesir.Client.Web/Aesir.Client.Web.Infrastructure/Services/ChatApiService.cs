@@ -94,6 +94,20 @@ public class ChatApiService : IChatApiService
         });
     }
 
+    public async Task<ApiResult> UpdateSessionStarredAsync(
+        Guid sessionId,
+        bool isStarred,
+        CancellationToken ct = default)
+    {
+        return await ExecuteVoidAsync(async () =>
+        {
+            await _apiClient.PutAsync<object>(
+                $"{HistoryBaseUrl}/{sessionId}/star/{isStarred.ToString().ToLowerInvariant()}",
+                new { }, // Empty body, isStarred is in URL
+                ct);
+        });
+    }
+
     // Helper methods
 
     private static async Task<ApiResult<T>> ExecuteAsync<T>(Func<Task<T>> action)

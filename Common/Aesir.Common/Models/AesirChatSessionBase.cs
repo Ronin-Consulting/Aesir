@@ -36,4 +36,10 @@ public abstract class AesirChatSessionBase
     /// </summary>
     [JsonPropertyName("title")]
     public string Title { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets whether the chat session is starred/pinned.
+    /// </summary>
+    [JsonPropertyName("is_starred")]
+    public bool IsStarred { get; set; }
 }

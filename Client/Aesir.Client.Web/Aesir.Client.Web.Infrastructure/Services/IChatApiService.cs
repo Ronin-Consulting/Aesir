@@ -68,6 +68,17 @@ public interface IChatApiService
         string userId,
         string searchTerm,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates the starred status of a chat session.
+    /// </summary>
+    /// <param name="sessionId">The session ID.</param>
+    /// <param name="isStarred">The new starred status.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<ApiResult> UpdateSessionStarredAsync(
+        Guid sessionId,
+        bool isStarred,
+        CancellationToken ct = default);
 }
 
 /// <summary>

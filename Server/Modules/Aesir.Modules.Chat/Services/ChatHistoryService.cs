@@ -44,13 +44,14 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
     public async Task UpsertChatSessionAsync(AesirChatSessionBase chatSession)
     {
         const string sql = @"
-            INSERT INTO aesir.aesir_chat_session (id, user_id, updated_at, conversation, title)
-            VALUES (@Id, @UserId, @UpdatedAt, @Conversation::jsonb, @Title)
+            INSERT INTO aesir.aesir_chat_session (id, user_id, updated_at, conversation, title, is_starred)
+            VALUES (@Id, @UserId, @UpdatedAt, @Conversation::jsonb, @Title, @IsStarred)
             ON CONFLICT (id) DO UPDATE SET
                 user_id = @UserId,
                 updated_at = @UpdatedAt,
                 conversation = @Conversation::jsonb,
-                title = @Title      
+                title = @Title,
+                is_starred = @IsStarred
         ";
 
         await dbContext.UnitOfWorkAsync(async connection =>
@@ -67,7 +68,7 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
     public async Task<AesirChatSessionBase?> GetChatSessionAsync(Guid id)
     {
         const string sql = @"
-            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title
+            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title, is_starred as IsStarred
             FROM aesir.aesir_chat_session
             WHERE id = @Id::uuid
         ";
@@ -87,10 +88,10 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
     public async Task<IEnumerable<AesirChatSessionBase>> GetChatSessionsAsync(string userId)
     {
         const string sql = @"
-            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title
+            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title, is_starred as IsStarred
             FROM aesir.aesir_chat_session
             WHERE user_id = @UserId
-            ORDER BY updated_at DESC
+            ORDER BY is_starred DESC, updated_at DESC
         ";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
@@ -117,10 +118,10 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
         {
             var list = string.Join("','", chatIds);
 
-            string sql2 = "SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title "+
+            string sql2 = "SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title, is_starred as IsStarred "+
                 "FROM aesir.aesir_chat_session "+
                 "WHERE conversation->>'Id' in ('"+list+"') "+
-                "ORDER BY updated_at DESC ";
+                "ORDER BY is_starred DESC, updated_at DESC ";
 
             return await dbContext.UnitOfWorkAsync(async connection =>
                 await connection.QueryAsync<AesirChatSession>(sql2, new { }));
@@ -141,12 +142,12 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
     public async Task<IEnumerable<AesirChatSessionBase>> GetChatSessionsAsync(string userId, DateTimeOffset from, DateTimeOffset to)
     {
         const string sql = @"
-            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title
+            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title, is_starred as IsStarred
             FROM aesir.aesir_chat_session
             WHERE user_id = @UserId
             AND updated_at >= @From
             AND updated_at <= @To
-            ORDER BY updated_at DESC
+            ORDER BY is_starred DESC, updated_at DESC
         ";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
@@ -184,7 +185,7 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
         var normalizedSearchTerm = searchTerm.Trim().Replace("'", "''");
 
         const string sql = @"
-        SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title
+        SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title, is_starred as IsStarred
         FROM aesir.aesir_chat_session
         WHERE user_id = @userId AND (
             -- Search in title
@@ -193,11 +194,29 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
             -- Search in conversation Messages content
             to_tsvector('english', jsonb_path_query_array(conversation, '$.Messages[*] ? (@.Role != ""system"").Content')::text) @@ to_tsquery('english', @searchQuery)
         )
-        ORDER BY updated_at DESC";
+        ORDER BY is_starred DESC, updated_at DESC";
 
         var searchQuery = string.Join(" & ", normalizedSearchTerm.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
         return await dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryAsync<AesirChatSession>(sql, new { userId, searchQuery }));
+    }
+
+    /// <summary>
+    /// Updates the starred status of a specific chat session.
+    /// </summary>
+    /// <param name="id">The unique identifier of the chat session to update.</param>
+    /// <param name="isStarred">The new starred status.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public async Task UpdateIsStarredAsync(Guid id, bool isStarred)
+    {
+        const string sql = @"
+            UPDATE aesir.aesir_chat_session
+            SET is_starred = @IsStarred
+            WHERE id = @Id::uuid
+        ";
+
+        await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.ExecuteAsync(sql, new { Id = id, IsStarred = isStarred }), withTransaction: true);
     }
 }

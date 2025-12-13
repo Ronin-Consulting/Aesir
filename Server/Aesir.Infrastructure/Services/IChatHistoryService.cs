@@ -59,4 +59,12 @@ public interface IChatHistoryService
     /// <param name="id">The unique identifier of the chat session to delete.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task DeleteChatSessionAsync(Guid id);
+
+    /// <summary>
+    /// Updates the starred status of a specific chat session.
+    /// </summary>
+    /// <param name="id">The unique identifier of the chat session to update.</param>
+    /// <param name="isStarred">The new starred status.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task UpdateIsStarredAsync(Guid id, bool isStarred);
 }

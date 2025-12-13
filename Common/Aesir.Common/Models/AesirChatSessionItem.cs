@@ -30,6 +30,12 @@ public class AesirChatSessionItem
     /// </summary>
     [JsonPropertyName("updated_at")]
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
-    
+
+    /// <summary>
+    /// Gets or sets whether the chat session is starred/pinned.
+    /// </summary>
+    [JsonPropertyName("is_starred")]
+    public bool IsStarred { get; set; }
+
     public string UpdatedAtDisplay=> UpdatedAt.ToString("g");
 }

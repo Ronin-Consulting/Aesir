@@ -102,6 +102,25 @@ public class ChatHistoryService : IChatHistoryService
     }
 
     /// <inheritdoc />
+    public async Task<ApiResult> UpdateSessionStarredAsync(Guid sessionId, bool isStarred, CancellationToken ct = default)
+    {
+        var result = await _chatApiService.UpdateSessionStarredAsync(sessionId, isStarred, ct).ConfigureAwait(false);
+
+        if (result.IsSuccess)
+        {
+            // Update in local cache
+            var session = _sessions.FirstOrDefault(s => s.Id == sessionId);
+            if (session != null)
+            {
+                session.IsStarred = isStarred;
+                NotifyChanged();
+            }
+        }
+
+        return result;
+    }
+
+    /// <inheritdoc />
     public async Task<ApiResult<IReadOnlyList<AesirChatSessionItem>>> SearchSessionsAsync(string searchTerm, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
