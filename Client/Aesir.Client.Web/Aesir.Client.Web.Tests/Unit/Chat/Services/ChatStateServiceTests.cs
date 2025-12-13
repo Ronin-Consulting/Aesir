@@ -562,34 +562,34 @@ public class ChatStateServiceTests
     }
 
     [Fact]
-    public void SetToolEnabled_AddsToDisabled_WhenFalse()
+    public async Task SetToolEnabledAsync_AddsToDisabled_WhenFalse()
     {
         // Arrange
         var toolId = Guid.NewGuid();
 
         // Act
-        _service.SetToolEnabled(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
 
         // Assert
         _service.DisabledToolIds.Should().Contain(toolId);
     }
 
     [Fact]
-    public void SetToolEnabled_RemovesFromDisabled_WhenTrue()
+    public async Task SetToolEnabledAsync_RemovesFromDisabled_WhenTrue()
     {
         // Arrange
         var toolId = Guid.NewGuid();
-        _service.SetToolEnabled(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
 
         // Act
-        _service.SetToolEnabled(toolId, enabled: true);
+        await _service.SetToolEnabledAsync(toolId, enabled: true);
 
         // Assert
         _service.DisabledToolIds.Should().NotContain(toolId);
     }
 
     [Fact]
-    public void SetToolEnabled_RaisesEvent_WhenChanged()
+    public async Task SetToolEnabledAsync_RaisesEvent_WhenChanged()
     {
         // Arrange
         var toolId = Guid.NewGuid();
@@ -597,30 +597,30 @@ public class ChatStateServiceTests
         _service.OnToolTogglesChanged += () => eventRaised = true;
 
         // Act
-        _service.SetToolEnabled(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
 
         // Assert
         eventRaised.Should().BeTrue();
     }
 
     [Fact]
-    public void SetToolEnabled_DoesNotRaiseEvent_WhenNoChange()
+    public async Task SetToolEnabledAsync_DoesNotRaiseEvent_WhenNoChange()
     {
         // Arrange
         var toolId = Guid.NewGuid();
-        _service.SetToolEnabled(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
         var eventRaised = false;
         _service.OnToolTogglesChanged += () => eventRaised = true;
 
         // Act - disable again (no change)
-        _service.SetToolEnabled(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
 
         // Assert
         eventRaised.Should().BeFalse();
     }
 
     [Fact]
-    public void SetToolEnabled_PersistsToSession_WithActiveSession()
+    public async Task SetToolEnabledAsync_PersistsToSession_WithActiveSession()
     {
         // Arrange
         var sessionId = Guid.NewGuid();
@@ -628,11 +628,49 @@ public class ChatStateServiceTests
         _service.SetCurrentSession(sessionId);
 
         // Act
-        _service.SetToolEnabled(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
 
         // Assert - check that session storage was updated
         var storedIds = _service.GetDisabledToolIdsForSession(sessionId);
         storedIds.Should().Contain(toolId);
+    }
+
+    [Fact]
+    public async Task SetToolEnabledAsync_PersistsToLocalStorage_WithSession()
+    {
+        // Arrange
+        var sessionId = Guid.NewGuid();
+        var toolId = Guid.NewGuid();
+        _service.SetCurrentSession(sessionId);
+
+        // Act
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
+
+        // Assert
+        _jsRuntime.Verify(js => js.InvokeAsync<object>(
+            "localStorage.setItem",
+            It.Is<object[]>(args => args.Length == 2 &&
+                args[0].ToString()!.Contains(sessionId.ToString()) &&
+                args[1].ToString()!.Contains(toolId.ToString()))),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task SetToolEnabledAsync_CachesInMemory_WithSession()
+    {
+        // Arrange
+        var sessionId = Guid.NewGuid();
+        var toolId = Guid.NewGuid();
+        _service.SetCurrentSession(sessionId);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
+
+        // Act - Get from cache (should not call localStorage.getItem)
+        var storedIds = _service.GetDisabledToolIdsForSession(sessionId);
+
+        // Assert
+        storedIds.Should().Contain(toolId);
+        // GetDisabledToolIdsForSession only reads from memory, not localStorage
+        _jsRuntime.Verify(js => js.InvokeAsync<string?>("localStorage.getItem", It.IsAny<object[]>()), Times.Never);
     }
 
     [Fact]
@@ -646,77 +684,96 @@ public class ChatStateServiceTests
     }
 
     [Fact]
-    public void IsToolEnabled_ReturnsFalse_WhenDisabled()
+    public async Task IsToolEnabled_ReturnsFalse_WhenDisabled()
     {
         // Arrange
         var toolId = Guid.NewGuid();
-        _service.SetToolEnabled(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
 
         // Assert
         _service.IsToolEnabled(toolId).Should().BeFalse();
     }
 
     [Fact]
-    public void ClearToolToggles_ClearsAllDisabled()
+    public async Task ClearToolTogglesAsync_ClearsAllDisabled()
     {
         // Arrange
         var toolId1 = Guid.NewGuid();
         var toolId2 = Guid.NewGuid();
-        _service.SetToolEnabled(toolId1, enabled: false);
-        _service.SetToolEnabled(toolId2, enabled: false);
+        await _service.SetToolEnabledAsync(toolId1, enabled: false);
+        await _service.SetToolEnabledAsync(toolId2, enabled: false);
 
         // Act
-        _service.ClearToolToggles();
+        await _service.ClearToolTogglesAsync();
 
         // Assert
         _service.DisabledToolIds.Should().BeEmpty();
     }
 
     [Fact]
-    public void ClearToolToggles_RaisesEvent_WhenHadDisabled()
+    public async Task ClearToolTogglesAsync_RaisesEvent_WhenHadDisabled()
     {
         // Arrange
         var toolId = Guid.NewGuid();
-        _service.SetToolEnabled(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
         var eventRaised = false;
         _service.OnToolTogglesChanged += () => eventRaised = true;
 
         // Act
-        _service.ClearToolToggles();
+        await _service.ClearToolTogglesAsync();
 
         // Assert
         eventRaised.Should().BeTrue();
     }
 
     [Fact]
-    public void ClearToolToggles_DoesNotRaiseEvent_WhenAlreadyEmpty()
+    public async Task ClearToolTogglesAsync_DoesNotRaiseEvent_WhenAlreadyEmpty()
     {
         // Arrange - default is empty
         var eventRaised = false;
         _service.OnToolTogglesChanged += () => eventRaised = true;
 
         // Act
-        _service.ClearToolToggles();
+        await _service.ClearToolTogglesAsync();
 
         // Assert
         eventRaised.Should().BeFalse();
     }
 
     [Fact]
-    public void ClearToolToggles_RemovesSessionStorage()
+    public async Task ClearToolTogglesAsync_RemovesSessionStorage()
     {
         // Arrange
         var sessionId = Guid.NewGuid();
         var toolId = Guid.NewGuid();
         _service.SetCurrentSession(sessionId);
-        _service.SetToolEnabled(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
 
         // Act
-        _service.ClearToolToggles();
+        await _service.ClearToolTogglesAsync();
 
         // Assert
         var storedIds = _service.GetDisabledToolIdsForSession(sessionId);
         storedIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ClearToolTogglesAsync_RemovesFromLocalStorage()
+    {
+        // Arrange
+        var sessionId = Guid.NewGuid();
+        var toolId = Guid.NewGuid();
+        _service.SetCurrentSession(sessionId);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
+
+        // Act
+        await _service.ClearToolTogglesAsync();
+
+        // Assert
+        _jsRuntime.Verify(js => js.InvokeAsync<object>(
+            "localStorage.removeItem",
+            It.Is<object[]>(args => args.Length == 1 && args[0].ToString()!.Contains(sessionId.ToString()))),
+            Times.Once);
     }
 
     [Fact]
@@ -740,13 +797,13 @@ public class ChatStateServiceTests
     }
 
     [Fact]
-    public void GetDisabledToolIdsForSession_ReturnsDisabledIds_ForKnownSession()
+    public async Task GetDisabledToolIdsForSession_ReturnsDisabledIds_ForKnownSession()
     {
         // Arrange
         var sessionId = Guid.NewGuid();
         var toolId = Guid.NewGuid();
         _service.SetCurrentSession(sessionId);
-        _service.SetToolEnabled(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
 
         // Act
         var result = _service.GetDisabledToolIdsForSession(sessionId);
@@ -758,11 +815,7 @@ public class ChatStateServiceTests
     [Fact]
     public void RestoreToolTogglesForSession_ResetsToEmpty_ForEmptyGuid()
     {
-        // Arrange
-        var toolId = Guid.NewGuid();
-        _service.SetToolEnabled(toolId, enabled: false);
-
-        // Act
+        // Arrange - use sync version (in-memory only)
         _service.RestoreToolTogglesForSession(Guid.Empty);
 
         // Assert
@@ -770,7 +823,7 @@ public class ChatStateServiceTests
     }
 
     [Fact]
-    public void RestoreToolTogglesForSession_RestoresFromSession()
+    public async Task RestoreToolTogglesForSession_RestoresFromSession()
     {
         // Arrange
         var sessionId1 = Guid.NewGuid();
@@ -779,7 +832,7 @@ public class ChatStateServiceTests
 
         // Set up session 1 with a disabled tool
         _service.SetCurrentSession(sessionId1);
-        _service.SetToolEnabled(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
 
         // Switch to session 2 (this will clear current disabled tools when restored)
         _service.SetCurrentSession(sessionId2);
@@ -796,11 +849,11 @@ public class ChatStateServiceTests
     }
 
     [Fact]
-    public void RestoreToolTogglesForSession_ClearsCurrentIfNoSessionData()
+    public async Task RestoreToolTogglesForSession_ClearsCurrentIfNoSessionData()
     {
         // Arrange
         var toolId = Guid.NewGuid();
-        _service.SetToolEnabled(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
         var unknownSessionId = Guid.NewGuid();
 
         // Act
@@ -825,7 +878,94 @@ public class ChatStateServiceTests
     }
 
     [Fact]
-    public void SessionIsolation_DifferentSessionsHaveDifferentToggles()
+    public async Task RestoreToolTogglesForSessionAsync_ResetsToEmpty_ForEmptyGuid()
+    {
+        // Arrange
+        var toolId = Guid.NewGuid();
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
+
+        // Act
+        await _service.RestoreToolTogglesForSessionAsync(Guid.Empty);
+
+        // Assert
+        _service.DisabledToolIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RestoreToolTogglesForSessionAsync_RaisesEvent()
+    {
+        // Arrange
+        var sessionId = Guid.NewGuid();
+        var eventRaised = false;
+        _service.OnToolTogglesChanged += () => eventRaised = true;
+
+        // Act
+        await _service.RestoreToolTogglesForSessionAsync(sessionId);
+
+        // Assert
+        eventRaised.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RestoreToolTogglesForSessionAsync_LoadsFromCache_WhenCached()
+    {
+        // Arrange
+        var sessionId = Guid.NewGuid();
+        var toolId = Guid.NewGuid();
+        _service.SetCurrentSession(sessionId);
+        await _service.SetToolEnabledAsync(toolId, enabled: false);
+
+        // Clear current disabled tools (simulate switching sessions)
+        _service.SetCurrentSession(Guid.NewGuid());
+        _service.RestoreToolTogglesForSession(Guid.NewGuid());
+        _service.DisabledToolIds.Should().BeEmpty();
+
+        // Act - restore from original session
+        await _service.RestoreToolTogglesForSessionAsync(sessionId);
+
+        // Assert
+        _service.DisabledToolIds.Should().Contain(toolId);
+        // Should not call localStorage.getItem because it's cached
+        _jsRuntime.Verify(js => js.InvokeAsync<string?>("localStorage.getItem", It.IsAny<object[]>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RestoreToolTogglesForSessionAsync_LoadsFromStorage_WhenNotCached()
+    {
+        // Arrange
+        var sessionId = Guid.NewGuid();
+        var toolId = Guid.NewGuid();
+        var json = System.Text.Json.JsonSerializer.Serialize(new HashSet<Guid> { toolId });
+        _jsRuntime.Setup(js => js.InvokeAsync<string?>("localStorage.getItem", It.IsAny<object[]>()))
+            .ReturnsAsync(json);
+
+        // Act
+        await _service.RestoreToolTogglesForSessionAsync(sessionId);
+
+        // Assert
+        _service.DisabledToolIds.Should().Contain(toolId);
+    }
+
+    [Fact]
+    public async Task RestoreToolTogglesForSessionAsync_CachesLoadedData()
+    {
+        // Arrange
+        var sessionId = Guid.NewGuid();
+        var toolId = Guid.NewGuid();
+        var json = System.Text.Json.JsonSerializer.Serialize(new HashSet<Guid> { toolId });
+        _jsRuntime.Setup(js => js.InvokeAsync<string?>("localStorage.getItem", It.IsAny<object[]>()))
+            .ReturnsAsync(json);
+
+        // Act - load from storage
+        await _service.RestoreToolTogglesForSessionAsync(sessionId);
+
+        // Assert - verify it's now cached
+        var cachedIds = _service.GetDisabledToolIdsForSession(sessionId);
+        cachedIds.Should().Contain(toolId);
+    }
+
+    [Fact]
+    public async Task SessionIsolation_DifferentSessionsHaveDifferentToggles()
     {
         // Arrange
         var sessionId1 = Guid.NewGuid();
@@ -835,12 +975,12 @@ public class ChatStateServiceTests
 
         // Set up session 1 with tool1 disabled
         _service.SetCurrentSession(sessionId1);
-        _service.SetToolEnabled(toolId1, enabled: false);
+        await _service.SetToolEnabledAsync(toolId1, enabled: false);
 
         // Switch to session 2 and disable tool2
         _service.SetCurrentSession(sessionId2);
         _service.RestoreToolTogglesForSession(sessionId2);
-        _service.SetToolEnabled(toolId2, enabled: false);
+        await _service.SetToolEnabledAsync(toolId2, enabled: false);
 
         // Act - get disabled IDs for each session
         var session1Disabled = _service.GetDisabledToolIdsForSession(sessionId1);

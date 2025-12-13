@@ -11,6 +11,7 @@ public class ChatStateService : IChatStateService
 {
     private const string SelectedAgentIdKey = "aesir_selected_agent_id";
     private const string ThinkLevelKeyPrefix = "aesir_think_level_";
+    private const string DisabledToolsKeyPrefix = "aesir_disabled_tools_";
 
     private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<ChatStateService>? _logger;
@@ -115,7 +116,7 @@ public class ChatStateService : IChatStateService
     public event Action? OnToolTogglesChanged;
 
     /// <inheritdoc />
-    public void SetToolEnabled(Guid toolId, bool enabled)
+    public async Task SetToolEnabledAsync(Guid toolId, bool enabled)
     {
         bool changed;
         if (enabled)
@@ -129,10 +130,11 @@ public class ChatStateService : IChatStateService
 
         if (changed)
         {
-            // Persist to session storage if we have an active session
+            // Persist to in-memory cache and localStorage if we have an active session
             if (CurrentSessionId.HasValue)
             {
                 _sessionToolToggles[CurrentSessionId.Value] = new HashSet<Guid>(_currentDisabledToolIds);
+                await SaveDisabledToolsToStorageAsync(CurrentSessionId.Value, _currentDisabledToolIds);
             }
 
             OnToolTogglesChanged?.Invoke();
@@ -146,18 +148,18 @@ public class ChatStateService : IChatStateService
     }
 
     /// <inheritdoc />
-    public void ClearToolToggles()
+    public async Task ClearToolTogglesAsync()
     {
         if (_currentDisabledToolIds.Count > 0)
         {
-            _currentDisabledToolIds.Clear();
-
-            // Clear session storage too if we have an active session
+            // Remove from localStorage before clearing if we have an active session
             if (CurrentSessionId.HasValue)
             {
+                await RemoveDisabledToolsFromStorageAsync(CurrentSessionId.Value);
                 _sessionToolToggles.Remove(CurrentSessionId.Value);
             }
 
+            _currentDisabledToolIds.Clear();
             OnToolTogglesChanged?.Invoke();
         }
     }
@@ -197,6 +199,102 @@ public class ChatStateService : IChatStateService
         }
 
         OnToolTogglesChanged?.Invoke();
+    }
+
+    /// <inheritdoc />
+    public async Task RestoreToolTogglesForSessionAsync(Guid sessionId)
+    {
+        if (sessionId == Guid.Empty)
+        {
+            _logger?.LogWarning("RestoreToolTogglesForSessionAsync called with empty Guid");
+            _currentDisabledToolIds = new HashSet<Guid>();
+            OnToolTogglesChanged?.Invoke();
+            return;
+        }
+
+        // First check in-memory cache
+        if (_sessionToolToggles.TryGetValue(sessionId, out var disabledIds))
+        {
+            _currentDisabledToolIds = new HashSet<Guid>(disabledIds);
+        }
+        else
+        {
+            // Try to load from localStorage
+            var storedIds = await LoadDisabledToolsFromStorageAsync(sessionId);
+            _currentDisabledToolIds = storedIds ?? new HashSet<Guid>();
+
+            // Cache it in memory if we loaded something
+            if (_currentDisabledToolIds.Count > 0)
+            {
+                _sessionToolToggles[sessionId] = new HashSet<Guid>(_currentDisabledToolIds);
+            }
+        }
+
+        OnToolTogglesChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Saves the disabled tool IDs to localStorage for a specific session.
+    /// </summary>
+    private async Task SaveDisabledToolsToStorageAsync(Guid sessionId, HashSet<Guid> disabledToolIds)
+    {
+        try
+        {
+            var key = $"{DisabledToolsKeyPrefix}{sessionId}";
+            if (disabledToolIds.Count == 0)
+            {
+                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", key);
+            }
+            else
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(disabledToolIds);
+                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", key, json);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to save disabled tools to localStorage for session {SessionId}", sessionId);
+        }
+    }
+
+    /// <summary>
+    /// Loads the disabled tool IDs from localStorage for a specific session.
+    /// </summary>
+    private async Task<HashSet<Guid>?> LoadDisabledToolsFromStorageAsync(Guid sessionId)
+    {
+        try
+        {
+            var key = $"{DisabledToolsKeyPrefix}{sessionId}";
+            var json = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", key);
+
+            if (string.IsNullOrEmpty(json))
+            {
+                return null;
+            }
+
+            return System.Text.Json.JsonSerializer.Deserialize<HashSet<Guid>>(json);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to load disabled tools from localStorage for session {SessionId}", sessionId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Removes the disabled tool IDs from localStorage for a specific session.
+    /// </summary>
+    private async Task RemoveDisabledToolsFromStorageAsync(Guid sessionId)
+    {
+        try
+        {
+            var key = $"{DisabledToolsKeyPrefix}{sessionId}";
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", key);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to remove disabled tools from localStorage for session {SessionId}", sessionId);
+        }
     }
 
     #endregion

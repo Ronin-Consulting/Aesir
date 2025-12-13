@@ -257,11 +257,15 @@ public abstract class BaseChatService : IChatService
         Task<string> titleTask,
         AesirChatMessage messageToSave)
     {
+        // Collect tool calls to persist with the message
+        var collectedToolCalls = new List<AesirToolCallInfo>();
+
         await foreach (var (content, isThinking, isComplete) in contentStream)
         {
             // Check for tool calls first (non-blocking) and yield any pending ones
             while (toolCallReader.TryRead(out var toolCall))
             {
+                collectedToolCalls.Add(toolCall);
                 yield return CreateToolCallResult(completionId, request, title, toolCall);
             }
 
@@ -301,7 +305,14 @@ public abstract class BaseChatService : IChatService
         // Drain any remaining tool calls after content stream completes
         while (toolCallReader.TryRead(out var toolCall))
         {
+            collectedToolCalls.Add(toolCall);
             yield return CreateToolCallResult(completionId, request, title, toolCall);
+        }
+
+        // Persist collected tool calls with the message
+        if (collectedToolCalls.Count > 0)
+        {
+            messageToSave.ToolCalls = collectedToolCalls;
         }
     }
 

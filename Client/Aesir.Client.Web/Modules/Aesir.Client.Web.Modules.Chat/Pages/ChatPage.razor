@@ -225,6 +225,10 @@
     // Think level state - user can override agent's default at runtime
     private ThinkValue? _selectedThinkLevel;
 
+    // Flag to track if tool toggles have been restored for the current session
+    // Prevents clearing restored toggles when HandleAgentChanged fires during page load
+    private bool _hasRestoredToolTogglesForSession;
+
     // Tool call state - populated during streaming from IToolCallStateService
     private IReadOnlyList<AesirToolCallInfo> _currentToolCalls = [];
 
@@ -309,7 +313,8 @@
         ToolCallStateService.Clear();
         _currentToolCalls = [];
         ChatState.SetCurrentSession(null);
-        ChatState.ClearToolToggles();
+        _ = ChatState.ClearToolTogglesAsync(); // Fire-and-forget since we're resetting
+        _hasRestoredToolTogglesForSession = false;
         _selectedThinkLevel = null;
         _ = ChatState.ClearThinkLevelAsync();
         UpdateSystemPrompt();
@@ -337,9 +342,10 @@
             // Load agent tools if an agent is pre-selected but tools haven't been loaded yet
             // This handles the case where AgentSelector auto-selects an agent before ChatPage subscribes
             // to the OnAgentChanged event (initialization timing issue)
+            // Pass clearToggles: false to preserve restored toggle state from LoadSessionAsync
             if (ChatState.SelectedAgent != null && !_agentTools.Any())
             {
-                await LoadAgentToolsAsync();
+                await LoadAgentToolsAsync(clearToggles: false);
                 StateHasChanged();
             }
         }
@@ -366,6 +372,10 @@
                 // Restore think level for this session from localStorage (or use agent's default if not set)
                 await ChatState.RestoreThinkLevelForSessionAsync(sessionId);
                 _selectedThinkLevel = ChatState.SelectedThinkLevel ?? ChatState.SelectedAgent?.ThinkValue;
+
+                // Restore tool toggles for this session from localStorage
+                await ChatState.RestoreToolTogglesForSessionAsync(sessionId);
+                _hasRestoredToolTogglesForSession = true;
 
                 await ScrollToBottomAsync();
             }
@@ -396,7 +406,15 @@
         UpdateSystemPrompt();
 
         // Load agent tools for use in chat requests
-        await LoadAgentToolsAsync();
+        // Don't clear toggles if we just restored them for the current session
+        // (handles case where HandleAgentChanged fires after LoadSessionAsync completes)
+        var shouldClearToggles = !_isLoadingSession && !_hasRestoredToolTogglesForSession;
+        if (_hasRestoredToolTogglesForSession)
+        {
+            // Reset the flag - future agent changes should clear toggles
+            _hasRestoredToolTogglesForSession = false;
+        }
+        await LoadAgentToolsAsync(clearToggles: shouldClearToggles);
 
         StateHasChanged();
     }
@@ -405,7 +423,8 @@
     /// Loads the tools assigned to the selected agent and converts them to ToolRequest objects.
     /// These are sent with each chat request to enable RAG, web search, and MCP tools.
     /// </summary>
-    private async Task LoadAgentToolsAsync()
+    /// <param name="clearToggles">If true, clears tool toggle state. Set to false when restoring session state.</param>
+    private async Task LoadAgentToolsAsync(bool clearToggles = true)
     {
         _agentToolRequests.Clear();
         _agentTools.Clear();
@@ -451,7 +470,11 @@
             }
 
             // Clear tool toggles when agent changes (fresh state for new agent)
-            ChatState.ClearToolToggles();
+            // Skip clearing when restoring session state (clearToggles = false)
+            if (clearToggles)
+            {
+                await ChatState.ClearToolTogglesAsync();
+            }
 
             // Only update local think level from ChatState if we have a stored value
             // If null, leave _selectedThinkLevel as null so ThinkMenu uses DefaultLevel (agent's default)
@@ -522,7 +545,8 @@
             ChatState.SetCurrentSession(null);
 
             // Reset tool toggles for new chat - all tools enabled by default
-            ChatState.ClearToolToggles();
+            _ = ChatState.ClearToolTogglesAsync(); // Fire-and-forget since we're resetting
+            _hasRestoredToolTogglesForSession = false;
 
             // Reset think level for new chat - use null to indicate "use agent default"
             // This way the ThinkMenu shows no indicator dot until user makes an explicit selection
@@ -569,9 +593,9 @@
         await LoadAgentToolsAsync();
     }
 
-    private void HandleToolToggled((Guid ToolId, bool Enabled) args)
+    private async Task HandleToolToggled((Guid ToolId, bool Enabled) args)
     {
-        ChatState.SetToolEnabled(args.ToolId, args.Enabled);
+        await ChatState.SetToolEnabledAsync(args.ToolId, args.Enabled);
         StateHasChanged();
     }
 

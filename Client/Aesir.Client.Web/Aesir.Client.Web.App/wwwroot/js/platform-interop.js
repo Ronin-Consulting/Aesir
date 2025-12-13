@@ -260,3 +260,31 @@ window.aesirNativeFile = {
         }
     }
 };
+
+// External link handler - opens URLs in system browser for Tauri
+// Used by markdown-rendered external links in chat messages
+window.aesirExternalLink = {
+    /**
+     * Handle external link click
+     * In Tauri: opens URL in system default browser
+     * In browser: lets target="_blank" handle it naturally
+     * @param {Event} event - The click event
+     * @param {string} url - The URL to open
+     */
+    open: async function (event, url) {
+        // Only intercept in Tauri - browsers handle target="_blank" natively
+        if (typeof window.__TAURI__ !== 'undefined') {
+            event.preventDefault();
+            try {
+                // Use shell plugin to open URL in system default browser
+                const { open } = window.__TAURI__.shell;
+                await open(url);
+            } catch (error) {
+                console.error('Failed to open URL in system browser:', error);
+                // Fallback: open in new window (will stay in webview but better than nothing)
+                window.open(url, '_blank');
+            }
+        }
+        // For browser: do nothing, let target="_blank" work naturally
+    }
+};

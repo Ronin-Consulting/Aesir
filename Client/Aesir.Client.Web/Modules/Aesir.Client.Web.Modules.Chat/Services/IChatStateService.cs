@@ -94,7 +94,8 @@ public interface IChatStateService
     /// </summary>
     /// <param name="toolId">The tool ID.</param>
     /// <param name="enabled">True to enable, false to disable.</param>
-    void SetToolEnabled(Guid toolId, bool enabled);
+    /// <returns>A task representing the async operation (includes localStorage persistence).</returns>
+    Task SetToolEnabledAsync(Guid toolId, bool enabled);
 
     /// <summary>
     /// Checks if a tool is currently enabled.
@@ -106,7 +107,8 @@ public interface IChatStateService
     /// <summary>
     /// Clears all tool toggle state for the current conversation.
     /// </summary>
-    void ClearToolToggles();
+    /// <returns>A task representing the async operation (includes localStorage cleanup).</returns>
+    Task ClearToolTogglesAsync();
 
     /// <summary>
     /// Gets the disabled tool IDs for a specific conversation.
@@ -116,10 +118,17 @@ public interface IChatStateService
     IReadOnlySet<Guid> GetDisabledToolIdsForSession(Guid sessionId);
 
     /// <summary>
-    /// Restores tool toggle state for a specific conversation.
+    /// Restores tool toggle state for a specific conversation (in-memory only).
     /// </summary>
     /// <param name="sessionId">The conversation session ID.</param>
     void RestoreToolTogglesForSession(Guid sessionId);
+
+    /// <summary>
+    /// Restores tool toggle state for a specific conversation from memory or localStorage.
+    /// </summary>
+    /// <param name="sessionId">The conversation session ID.</param>
+    /// <returns>A task representing the async operation.</returns>
+    Task RestoreToolTogglesForSessionAsync(Guid sessionId);
 
     #endregion
 

@@ -234,15 +234,21 @@
     }
 
     /// <summary>
-    /// Whether the user has explicitly selected a think level (shows indicator dot).
-    /// Only shows the dot when user has made a selection, not when using agent's default.
+    /// Whether thinking is enabled (not off/disabled). Shows indicator dot when thinking is active.
     /// </summary>
-    private bool HasExplicitSelection => SelectedLevel.HasValue;
+    private bool IsThinkingEnabled
+    {
+        get
+        {
+            var value = EffectiveLevel.ToString();
+            return !string.Equals(value, "false", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     /// <summary>
-    /// Button color based on state - shows warning color when user has made an explicit selection.
+    /// Button color based on state - shows warning color when thinking is enabled.
     /// </summary>
-    private Color ButtonColor => HasExplicitSelection ? Color.Warning : Color.Default;
+    private Color ButtonColor => IsThinkingEnabled ? Color.Warning : Color.Default;
 
     /// <summary>
     /// Button tooltip text - shows current effective level.
@@ -251,9 +257,9 @@
 
     /// <summary>
     /// Button wrapper CSS class for the indicator dot.
-    /// Only shows the dot when user has explicitly selected a level.
+    /// Shows the dot when thinking is enabled (not off).
     /// </summary>
-    private string ButtonWrapperClass => HasExplicitSelection
+    private string ButtonWrapperClass => IsThinkingEnabled
         ? "think-button-wrapper thinking-enabled"
         : "think-button-wrapper";
 

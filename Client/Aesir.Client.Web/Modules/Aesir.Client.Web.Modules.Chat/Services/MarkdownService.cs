@@ -27,6 +27,13 @@ public partial class MarkdownService : IMarkdownService
     [GeneratedRegex(@"#page=(\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex PageFragmentRegex();
 
+    // Regex to match anchor tags with http/https URLs (external links)
+    // Excludes file:// URLs which are handled separately by CitationLinkRegex
+    [GeneratedRegex(
+        @"<a\s+href=""(https?://[^""]+)"">([^<]*)</a>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase)]
+    private static partial Regex ExternalLinkRegex();
+
     public MarkdownService()
     {
         _pipeline = new MarkdownPipelineBuilder()
@@ -49,6 +56,9 @@ public partial class MarkdownService : IMarkdownService
 
         // Transform citation links (file:// URLs) to interactive elements
         html = TransformCitationLinks(html);
+
+        // Transform external links (http/https) to open in new tab
+        html = TransformExternalLinks(html);
 
         // Wrap code blocks with copy button container
         html = CodeBlockRegex().Replace(html, match =>
@@ -123,6 +133,23 @@ public partial class MarkdownService : IMarkdownService
 
             // Return transformed link with citation styling and file-type class
             return $@"<a href=""javascript:void(0)"" class=""citation-link citation-{fileCategory}"" {dataAttrs} onclick=""window.aesirCitationHandler?.openCitation(this)"" title=""View: {HttpUtility.HtmlEncode(fileName)}{(string.IsNullOrEmpty(pageNumber) ? "" : $" (page {pageNumber})")}"">{fileIcon}<span class=""citation-text"">{HttpUtility.HtmlEncode(linkText)}</span>{pageBadge}</a>";
+        });
+    }
+
+    /// <summary>
+    /// Transforms external http/https links to open in new tab with proper security attributes.
+    /// For Tauri, adds onclick handler to use system browser instead of webview navigation.
+    /// </summary>
+    private static string TransformExternalLinks(string html)
+    {
+        return ExternalLinkRegex().Replace(html, match =>
+        {
+            var url = match.Groups[1].Value;
+            var linkText = match.Groups[2].Value;
+
+            // Add target="_blank" for browser, onclick for Tauri to use system browser
+            // rel="noopener noreferrer" prevents tab-nabbing security issues
+            return $@"<a href=""{HttpUtility.HtmlEncode(url)}"" target=""_blank"" rel=""noopener noreferrer"" onclick=""window.aesirExternalLink?.open(event, this.href)"" class=""external-link"">{linkText}</a>";
         });
     }
 
