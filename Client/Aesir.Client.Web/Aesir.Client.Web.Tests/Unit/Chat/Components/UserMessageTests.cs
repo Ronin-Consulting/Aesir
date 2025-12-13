@@ -18,6 +18,7 @@ public class UserMessageTests : TestContext
         _mockDocumentApiService = new Mock<IDocumentApiService>();
 
         Services.AddSingleton(_mockDocumentApiService.Object);
+        Services.AddSingleton<IMarkdownService, MarkdownService>();
         Services.AddMudServices();
         JSInterop.Mode = JSRuntimeMode.Loose;
 
@@ -149,9 +150,10 @@ public class UserMessageTests : TestContext
         var cut = RenderComponent<UserMessage>(parameters => parameters
             .Add(p => p.Message, message));
 
-        // Assert - Check that the content is preserved with newlines
+        // Assert - Newlines should become <br> tags for visual preservation
         cut.Markup.Should().Contain("Line 1");
         cut.Markup.Should().Contain("Line 2");
+        cut.Markup.Should().Contain("<br");
     }
 
     [Fact]
@@ -365,4 +367,136 @@ public class UserMessageTests : TestContext
         var expectedMonth = DateTimeOffset.Now.AddDays(-5).ToString("MMM");
         cut.Markup.Should().Contain(expectedMonth);
     }
+
+    #region Markdown Rendering Tests
+
+    [Fact]
+    public void RendersMarkdown_BoldText()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "This is **bold** text"
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.Markup.Should().Contain("<strong>bold</strong>");
+    }
+
+    [Fact]
+    public void RendersMarkdown_ItalicText()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "This is *italic* text"
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.Markup.Should().Contain("<em>italic</em>");
+    }
+
+    [Fact]
+    public void RendersMarkdown_InlineCode()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Use `code` here"
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.Markup.Should().Contain("<code>code</code>");
+    }
+
+    [Fact]
+    public void RendersMarkdown_CodeBlock()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "```python\nprint('hello')\n```"
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.Markup.Should().Contain("<pre>");
+        cut.Markup.Should().Contain("<code");
+    }
+
+    [Fact]
+    public void RendersMarkdown_UnorderedList()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "- Item 1\n- Item 2"
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.Markup.Should().Contain("<ul>");
+        cut.Markup.Should().Contain("<li>");
+    }
+
+    [Fact]
+    public void RendersMarkdown_Link()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Check [this link](https://example.com)"
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.Markup.Should().Contain("<a href=\"https://example.com\"");
+    }
+
+    [Fact]
+    public void HasUserMarkdownClass()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "Test message"
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message));
+
+        // Assert
+        cut.Markup.Should().Contain("user-markdown");
+    }
+
+    #endregion
 }

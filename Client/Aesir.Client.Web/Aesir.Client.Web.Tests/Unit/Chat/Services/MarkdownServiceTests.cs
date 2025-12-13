@@ -248,4 +248,178 @@ public class MarkdownServiceTests
         // Assert
         result.Should().Contain("<del>strikethrough</del>");
     }
+
+    #region ToHtmlPreservingWhitespace Tests
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_ReturnsEmptyString_WhenInputIsNull()
+    {
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace(null);
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_ReturnsEmptyString_WhenInputIsEmpty()
+    {
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace("");
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_ConvertsSingleNewlineToBr()
+    {
+        // Arrange
+        var markdown = "Line 1\nLine 2";
+
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace(markdown);
+
+        // Assert - Single newline should become <br /> due to UseSoftlineBreakAsHardlineBreak
+        result.Should().Contain("<br");
+        result.Should().Contain("Line 1");
+        result.Should().Contain("Line 2");
+    }
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_PreservesMultipleSpaces()
+    {
+        // Arrange
+        var markdown = "Word    with    spaces";  // Multiple spaces
+
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace(markdown);
+
+        // Assert - Should contain non-breaking spaces to preserve spacing
+        result.Should().Contain("\u00A0");  // Non-breaking space
+    }
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_StillRendersBoldText()
+    {
+        // Arrange
+        var markdown = "This is **bold** text";
+
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace(markdown);
+
+        // Assert
+        result.Should().Contain("<strong>bold</strong>");
+    }
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_StillRendersItalicText()
+    {
+        // Arrange
+        var markdown = "This is *italic* text";
+
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace(markdown);
+
+        // Assert
+        result.Should().Contain("<em>italic</em>");
+    }
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_RendersCodeBlocks()
+    {
+        // Arrange
+        var markdown = "```\ncode here\n```";
+
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace(markdown);
+
+        // Assert
+        result.Should().Contain("<pre>");
+        result.Should().Contain("<code");
+    }
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_RendersInlineCode()
+    {
+        // Arrange
+        var markdown = "Use `code` here";
+
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace(markdown);
+
+        // Assert
+        result.Should().Contain("<code>code</code>");
+    }
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_RendersList()
+    {
+        // Arrange
+        var markdown = "- Item 1\n- Item 2";
+
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace(markdown);
+
+        // Assert
+        result.Should().Contain("<ul>");
+        result.Should().Contain("<li>");
+    }
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_RendersLinks()
+    {
+        // Arrange
+        var markdown = "Check [this link](https://example.com)";
+
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace(markdown);
+
+        // Assert
+        result.Should().Contain("<a href=\"https://example.com\"");
+    }
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_PreservesMultipleNewlines()
+    {
+        // Arrange
+        var markdown = "Line 1\n\n\nLine 2";  // Three newlines (double paragraph break)
+
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace(markdown);
+
+        // Assert - Should preserve the visual separation
+        result.Should().Contain("Line 1");
+        result.Should().Contain("Line 2");
+    }
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_RendersBlockquotes()
+    {
+        // Arrange
+        var markdown = "> This is a quote";
+
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace(markdown);
+
+        // Assert
+        result.Should().Contain("<blockquote>");
+    }
+
+    [Fact]
+    public void ToHtmlPreservingWhitespace_PreservesTabCharacters()
+    {
+        // Arrange
+        var markdown = "Column1\tColumn2";
+
+        // Act
+        var result = _sut.ToHtmlPreservingWhitespace(markdown);
+
+        // Assert - Tabs should be converted to non-breaking spaces
+        result.Should().Contain("\u00A0");  // Non-breaking space
+        result.Should().Contain("Column1");
+        result.Should().Contain("Column2");
+    }
+
+    #endregion
 }

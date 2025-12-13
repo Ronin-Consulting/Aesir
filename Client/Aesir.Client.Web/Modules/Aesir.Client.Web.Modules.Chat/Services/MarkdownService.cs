@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
 using Markdig;
@@ -10,10 +11,15 @@ namespace Aesir.Client.Web.Modules.Chat.Services;
 public partial class MarkdownService : IMarkdownService
 {
     private readonly MarkdownPipeline _pipeline;
+    private readonly MarkdownPipeline _whitespacePreservingPipeline;
 
     // Regex to match <pre><code> blocks and wrap them with copy functionality
     [GeneratedRegex(@"<pre><code(?:\s+class=""language-(\w+)"")?>([\s\S]*?)</code></pre>", RegexOptions.Compiled)]
     private static partial Regex CodeBlockRegex();
+
+    // Regex to match two or more consecutive spaces (for preserving in user messages)
+    [GeneratedRegex(@"  +", RegexOptions.Compiled)]
+    private static partial Regex MultipleSpacesRegex();
 
     // Regex to match anchor tags with file:// URLs (citation links)
     // Matches: <a href="file:///guid/filename#page=N">text</a>
@@ -36,11 +42,22 @@ public partial class MarkdownService : IMarkdownService
 
     public MarkdownService()
     {
+        // Standard pipeline for assistant messages
         _pipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
             .UseAutoLinks()
             .UseTaskLists()
             .UseEmojiAndSmiley()
+            .Build();
+
+        // Whitespace-preserving pipeline for user messages
+        // UseSoftlineBreakAsHardlineBreak converts single newlines to <br> tags
+        _whitespacePreservingPipeline = new MarkdownPipelineBuilder()
+            .UseAdvancedExtensions()
+            .UseAutoLinks()
+            .UseTaskLists()
+            .UseEmojiAndSmiley()
+            .UseSoftlineBreakAsHardlineBreak()
             .Build();
     }
 
@@ -84,6 +101,72 @@ public partial class MarkdownService : IMarkdownService
         });
 
         return html;
+    }
+
+    /// <inheritdoc />
+    public string ToHtmlPreservingWhitespace(string? markdown)
+    {
+        if (string.IsNullOrEmpty(markdown))
+        {
+            return string.Empty;
+        }
+
+        // Pre-process: convert tabs and multiple consecutive spaces to non-breaking spaces
+        var preprocessed = PreserveWhitespace(markdown);
+
+        var html = Markdown.ToHtml(preprocessed, _whitespacePreservingPipeline);
+
+        // Apply same transformations as standard pipeline
+        html = TransformCitationLinks(html);
+        html = TransformExternalLinks(html);
+
+        // Wrap code blocks with copy button container
+        html = CodeBlockRegex().Replace(html, match =>
+        {
+            var language = match.Groups[1].Success ? match.Groups[1].Value : "";
+            var code = match.Groups[2].Value;
+            var languageLabel = string.IsNullOrEmpty(language) ? "" : $"<span class=\"code-language\">{language}</span>";
+            var uniqueId = Guid.NewGuid().ToString("N")[..8];
+
+            return $@"<div class=""code-block-wrapper"">
+                <div class=""code-block-header"">
+                    {languageLabel}
+                    <button class=""code-copy-btn"" onclick=""copyCodeBlock('{uniqueId}')"" title=""Copy code"">
+                        <svg xmlns=""http://www.w3.org/2000/svg"" width=""16"" height=""16"" viewBox=""0 0 24 24"" fill=""none"" stroke=""currentColor"" stroke-width=""2"" stroke-linecap=""round"" stroke-linejoin=""round"">
+                            <rect x=""9"" y=""9"" width=""13"" height=""13"" rx=""2"" ry=""2""></rect>
+                            <path d=""M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1""></path>
+                        </svg>
+                        <span class=""copy-text"">Copy</span>
+                    </button>
+                </div>
+                <pre><code id=""code-{uniqueId}"" class=""{(string.IsNullOrEmpty(language) ? "" : $"language-{language}")}"">{code}</code></pre>
+            </div>";
+        });
+
+        return html;
+    }
+
+    /// <summary>
+    /// Preserves whitespace by converting tabs to spaces and multiple consecutive
+    /// spaces to alternating non-breaking spaces and regular spaces.
+    /// </summary>
+    private static string PreserveWhitespace(string text)
+    {
+        // First, convert tabs to 4 non-breaking spaces (standard tab width)
+        text = text.Replace("\t", "\u00A0\u00A0\u00A0\u00A0");
+
+        // Then, convert multiple consecutive spaces to alternating nbsp and regular space
+        return MultipleSpacesRegex().Replace(text, match =>
+        {
+            var spaces = match.Length;
+            var result = new StringBuilder(spaces);
+            for (var i = 0; i < spaces; i++)
+            {
+                // Alternate between non-breaking space and regular space
+                result.Append(i % 2 == 0 ? '\u00A0' : ' ');
+            }
+            return result.ToString();
+        });
     }
 
     /// <summary>

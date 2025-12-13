@@ -288,3 +288,72 @@ window.aesirExternalLink = {
         // For browser: do nothing, let target="_blank" work naturally
     }
 };
+
+// Text input utilities for enhanced editing functionality
+window.aesirTextInput = {
+    /**
+     * Insert a tab character at the current cursor position in a textarea
+     * @param {HTMLElement} element - The textarea or input element
+     * @returns {string} The new value of the element
+     */
+    insertTab: function (element) {
+        if (!element) return '';
+
+        // Find the actual textarea inside MudTextField
+        const textarea = element.querySelector('textarea') || element.querySelector('input');
+        if (!textarea) return '';
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const value = textarea.value;
+
+        // Insert tab character at cursor position
+        const newValue = value.substring(0, start) + '\t' + value.substring(end);
+        textarea.value = newValue;
+
+        // Move cursor after the inserted tab
+        textarea.selectionStart = textarea.selectionEnd = start + 1;
+
+        // Trigger input event so Blazor picks up the change
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        return newValue;
+    },
+
+    /**
+     * Set up tab key handling on a text element
+     * @param {HTMLElement} element - The element to attach the handler to
+     */
+    enableTabInsertion: function (element) {
+        if (!element) return;
+
+        const textarea = element.querySelector('textarea') || element.querySelector('input');
+        if (!textarea) return;
+
+        // Remove any existing handler first
+        textarea.removeEventListener('keydown', this._tabHandler);
+
+        // Create and store the handler
+        this._tabHandler = (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                this.insertTab(element);
+            }
+        };
+
+        textarea.addEventListener('keydown', this._tabHandler);
+    },
+
+    /**
+     * Remove tab key handling from a text element
+     * @param {HTMLElement} element - The element to remove the handler from
+     */
+    disableTabInsertion: function (element) {
+        if (!element) return;
+
+        const textarea = element.querySelector('textarea') || element.querySelector('input');
+        if (!textarea || !this._tabHandler) return;
+
+        textarea.removeEventListener('keydown', this._tabHandler);
+    }
+};

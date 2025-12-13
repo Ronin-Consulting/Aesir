@@ -3,6 +3,7 @@
 @using Aesir.Client.Web.Modules.Chat.Models
 @using Aesir.Client.Web.Modules.Chat.Services
 @inject IDocumentApiService DocumentService
+@inject IMarkdownService MarkdownService
 @inject IJSRuntime JSRuntime
 
 <div class="user-message @ThemeClass">
@@ -94,7 +95,9 @@
                             </div>
                         }
                     }
-                    <span class="message-text">@GetDisplayContent()</span>
+                    <div class="message-text markdown-body user-markdown">
+                        @((MarkupString)MarkdownService.ToHtmlPreservingWhitespace(GetDisplayContent()))
+                    </div>
                 }
             </div>
         </div>
@@ -280,6 +283,131 @@
         line-height: 1.5;
         word-wrap: break-word;
         overflow-wrap: break-word;
+    }
+
+    /* User message markdown styling */
+    .user-message .user-markdown p {
+        margin: 0 0 0.5em 0;
+    }
+
+    .user-message .user-markdown p:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Inline code */
+    .user-message .user-markdown code {
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 0.9em;
+    }
+
+    /* Code blocks */
+    .user-message .user-markdown pre {
+        background-color: rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        padding: 12px;
+        overflow-x: auto;
+        margin: 8px 0;
+    }
+
+    .user-message .user-markdown pre code {
+        background-color: transparent;
+        padding: 0;
+    }
+
+    /* Code block wrapper (from MarkdownService) */
+    .user-message .user-markdown .code-block-wrapper {
+        margin: 8px 0;
+        border-radius: 8px;
+        overflow: hidden;
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .user-message .user-markdown .code-block-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 12px;
+        background-color: rgba(0, 0, 0, 0.05);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .user-message .user-markdown .code-language {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+        text-transform: uppercase;
+    }
+
+    .user-message .user-markdown .code-copy-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        border: none;
+        background: transparent;
+        color: var(--mud-palette-text-secondary);
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+
+    .user-message .user-markdown .code-copy-btn:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    /* Lists */
+    .user-message .user-markdown ul,
+    .user-message .user-markdown ol {
+        margin: 4px 0;
+        padding-left: 20px;
+    }
+
+    .user-message .user-markdown li {
+        margin-bottom: 2px;
+    }
+
+    /* Links */
+    .user-message .user-markdown a {
+        color: var(--mud-palette-primary);
+        text-decoration: none;
+    }
+
+    .user-message .user-markdown a:hover {
+        text-decoration: underline;
+    }
+
+    /* Bold and italic */
+    .user-message .user-markdown strong {
+        font-weight: 600;
+    }
+
+    .user-message .user-markdown em {
+        font-style: italic;
+    }
+
+    /* Blockquotes */
+    .user-message .user-markdown blockquote {
+        border-left: 3px solid var(--mud-palette-primary);
+        margin: 8px 0;
+        padding: 4px 12px;
+        opacity: 0.9;
+    }
+
+    /* Theme-specific adjustments for dark mode */
+    .user-message.theme-dark .user-markdown code {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .user-message.theme-dark .user-markdown pre,
+    .user-message.theme-dark .user-markdown .code-block-wrapper {
+        background-color: rgba(0, 0, 0, 0.3);
+    }
+
+    .user-message.theme-dark .user-markdown .code-block-header {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-bottom-color: rgba(255, 255, 255, 0.1);
     }
 
     /* Message metadata - outside bubble, right-aligned, visible on row hover */

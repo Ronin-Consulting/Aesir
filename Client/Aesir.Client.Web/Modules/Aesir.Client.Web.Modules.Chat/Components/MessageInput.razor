@@ -77,19 +77,21 @@
         }
 
         @* Input Area - No outline, clean look *@
-        <MudTextField @bind-Value="_message"
-                      @ref="_textField"
-                      Placeholder="@Placeholder"
-                      Variant="Variant.Text"
-                      Lines="@Lines"
-                      AutoGrow="true"
-                      MaxLines="10"
-                      FullWidth="true"
-                      Immediate="true"
-                      Disabled="@IsDisabled"
-                      OnKeyDown="@HandleKeyDown"
-                      DisableUnderLine="true"
-                      Class="message-input" />
+        <div @ref="_textFieldWrapper" class="text-field-wrapper">
+            <MudTextField @bind-Value="_message"
+                          @ref="_textField"
+                          Placeholder="@Placeholder"
+                          Variant="Variant.Text"
+                          Lines="@Lines"
+                          AutoGrow="true"
+                          MaxLines="10"
+                          FullWidth="true"
+                          Immediate="true"
+                          Disabled="@IsDisabled"
+                          OnKeyDown="@HandleKeyDown"
+                          DisableUnderLine="true"
+                          Class="message-input" />
+        </div>
 
         @* Action Bar *@
         <div class="action-bar">
@@ -147,6 +149,11 @@
         border-radius: 16px;
         padding: 12px 16px;
         border: 1px solid var(--mud-palette-lines-default);
+    }
+
+    /* Text field wrapper for tab key handling */
+    .text-field-wrapper {
+        width: 100%;
     }
 
     /* Pending files horizontal scroll container */
@@ -438,11 +445,31 @@
         ? "Attach files"
         : "Assign RagTool to this agent to enable file uploads";
 
+    private ElementReference _textFieldWrapper;
+    private bool _tabInsertionEnabled;
+
     protected override void OnInitialized()
     {
         ChatState.OnAgentChanged += HandleAgentChangedAsync;
         // Check RAG status for currently selected agent
         _ = CheckRagEnabledAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_tabInsertionEnabled)
+        {
+            // Enable tab key insertion in the text field
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("aesirTextInput.enableTabInsertion", _textFieldWrapper);
+                _tabInsertionEnabled = true;
+            }
+            catch
+            {
+                // Silently ignore if we can't enable tab insertion
+            }
+        }
     }
 
     private async void HandleAgentChangedAsync()
@@ -712,6 +739,19 @@
     {
         ChatState.OnAgentChanged -= HandleAgentChangedAsync;
 
+        // Disable tab key insertion handler
+        if (_tabInsertionEnabled)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("aesirTextInput.disableTabInsertion", _textFieldWrapper);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+
         // Cancel any pending uploads and clean up object URLs
         foreach (var file in _pendingFiles)
         {
@@ -721,7 +761,5 @@
 
         // Clear the list
         _pendingFiles.Clear();
-
-        await Task.CompletedTask;
     }
 }
