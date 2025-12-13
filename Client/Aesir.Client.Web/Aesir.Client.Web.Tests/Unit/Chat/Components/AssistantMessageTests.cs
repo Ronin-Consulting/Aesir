@@ -187,7 +187,7 @@ public class AssistantMessageTests : TestContext
     }
 
     [Fact]
-    public void HasResponseFooter()
+    public void HasMessageMetadata()
     {
         // Arrange
         var message = new AesirChatMessage
@@ -201,7 +201,7 @@ public class AssistantMessageTests : TestContext
             .Add(p => p.Message, message));
 
         // Assert
-        cut.Markup.Should().Contain("response-footer");
+        cut.Markup.Should().Contain("message-metadata");
     }
 
     [Fact]

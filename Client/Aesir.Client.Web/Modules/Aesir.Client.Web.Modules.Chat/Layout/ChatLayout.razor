@@ -757,7 +757,7 @@
 
     private void HandleSessionClick(AesirChatSessionItem session)
     {
-        ChatState.SetCurrentSession(session.Id);
+        ChatState.SetCurrentSession(session.Id, session.Title);
         NavigationManager.NavigateTo($"/chat?session={session.Id}", forceLoad: false);
     }
 
