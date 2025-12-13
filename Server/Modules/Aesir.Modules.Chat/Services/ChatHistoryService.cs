@@ -182,24 +182,28 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
         if (string.IsNullOrWhiteSpace(searchTerm))
             return Array.Empty<AesirChatSessionBase>();
 
-        var normalizedSearchTerm = searchTerm.Trim().Replace("'", "''");
+        var normalizedSearchTerm = searchTerm.Trim();
 
         const string sql = @"
         SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title, is_starred as IsStarred
         FROM aesir.aesir_chat_session
         WHERE user_id = @userId AND (
-            -- Search in title
-            to_tsvector('english', title) @@ to_tsquery('english', @searchQuery)
+            -- Full-text search in title with proper stemming
+            to_tsvector('english', COALESCE(title, '')) @@ websearch_to_tsquery('english', @searchTerm)
             OR
-            -- Search in conversation Messages content
-            to_tsvector('english', jsonb_path_query_array(conversation, '$.Messages[*] ? (@.Role != ""system"").Content')::text) @@ to_tsquery('english', @searchQuery)
+            -- Full-text search in conversation messages content (excluding system messages)
+            to_tsvector('english', COALESCE(jsonb_path_query_array(conversation, '$.Messages[*] ? (@.Role <> ""system"").Content')::text, '')) @@ websearch_to_tsquery('english', @searchTerm)
+            OR
+            -- ILIKE fallback for exact substring matches (case-insensitive)
+            title ILIKE '%' || @searchTerm || '%'
+            OR
+            -- ILIKE fallback for message content search
+            jsonb_path_query_array(conversation, '$.Messages[*] ? (@.Role <> ""system"").Content')::text ILIKE '%' || @searchTerm || '%'
         )
         ORDER BY is_starred DESC, updated_at DESC";
 
-        var searchQuery = string.Join(" & ", normalizedSearchTerm.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-
         return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<AesirChatSession>(sql, new { userId, searchQuery }));
+            await connection.QueryAsync<AesirChatSession>(sql, new { userId, searchTerm = normalizedSearchTerm }));
     }
 
     /// <summary>
