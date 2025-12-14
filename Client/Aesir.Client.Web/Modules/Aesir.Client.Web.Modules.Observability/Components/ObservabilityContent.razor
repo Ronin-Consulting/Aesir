@@ -1,0 +1,331 @@
+@namespace Aesir.Client.Web.Modules.Observability.Components
+@inject IObservabilityService ObservabilityService
+@implements IDisposable
+
+<div class="observability-content">
+    <div class="content-header">
+        <div class="header-content">
+            <div class="header-text">
+                <MudText Typo="Typo.h5">Observability</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Monitor AI operations and function executions</MudText>
+            </div>
+        </div>
+        @if (ObservabilityService.CurrentResponse != null)
+        {
+            <div class="header-stats">
+                <span class="stat-item">
+                    <span class="stat-value">@ObservabilityService.CurrentResponse.TotalCount</span>
+                    <span class="stat-label">Total</span>
+                </span>
+                <span class="stat-item">
+                    <span class="stat-value">@ObservabilityService.CurrentResponse.Page</span>
+                    <span class="stat-label">of @ObservabilityService.CurrentResponse.TotalPages</span>
+                </span>
+            </div>
+        }
+    </div>
+
+    <FilterBar Filter="_filter"
+               FilterChanged="OnFilterChanged"
+               OnRefresh="OnRefresh"
+               OnClearFilters="OnClearFilters"
+               IsLoading="ObservabilityService.IsLoading" />
+
+    @if (ObservabilityService.IsLoading && ObservabilityService.GroupedLogs.Count == 0)
+    {
+        <div class="loading-state">
+            <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Primary" />
+            <p class="loading-text">Loading logs...</p>
+        </div>
+    }
+    else if (_error != null)
+    {
+        <MudAlert Severity="Severity.Error" Class="error-alert">
+            <MudText>@_error</MudText>
+            <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="OnRefresh" Class="mt-2">
+                Try Again
+            </MudButton>
+        </MudAlert>
+    }
+    else if (ObservabilityService.GroupedLogs.Count == 0)
+    {
+        <div class="empty-state">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="empty-icon" />
+            <h3 class="empty-title">No logs found</h3>
+            <p class="empty-text">
+                @if (HasActiveFilters)
+                {
+                    <span>No logs match your current filters. Try adjusting your filter criteria.</span>
+                }
+                else
+                {
+                    <span>No AI operation logs have been recorded yet. Start a chat to generate some logs!</span>
+                }
+            </p>
+            @if (HasActiveFilters)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="OnClearFilters" Class="mt-4">
+                    Clear Filters
+                </MudButton>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="timeline-container">
+            @foreach (var group in ObservabilityService.GroupedLogs)
+            {
+                <TimelineGroup Group="group" />
+            }
+        </div>
+
+        @if (ObservabilityService.CurrentResponse?.TotalPages > 1)
+        {
+            <div class="pagination-bar">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           OnClick="OnPreviousPage"
+                           Disabled="!ObservabilityService.CurrentResponse.HasPreviousPage || ObservabilityService.IsLoading"
+                           StartIcon="@Icons.Material.Filled.ChevronLeft">
+                    Previous
+                </MudButton>
+                <span class="pagination-info">
+                    Page @ObservabilityService.CurrentResponse.Page of @ObservabilityService.CurrentResponse.TotalPages
+                </span>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           OnClick="OnNextPage"
+                           Disabled="!ObservabilityService.CurrentResponse.HasNextPage || ObservabilityService.IsLoading"
+                           EndIcon="@Icons.Material.Filled.ChevronRight">
+                    Next
+                </MudButton>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .observability-content {
+        padding: 24px;
+        max-width: 100%;
+    }
+
+    .content-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .header-content {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .header-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .header-stats {
+        display: flex;
+        gap: 24px;
+    }
+
+    .stat-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .stat-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--mud-palette-primary);
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 20px;
+        gap: 16px;
+    }
+
+    .loading-text {
+        color: var(--mud-palette-text-secondary);
+        font-size: 0.95rem;
+    }
+
+    .error-alert {
+        margin-top: 20px;
+    }
+
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 20px;
+        text-align: center;
+    }
+
+    .empty-icon {
+        font-size: 4rem !important;
+        color: var(--mud-palette-text-secondary);
+        opacity: 0.5;
+        margin-bottom: 16px;
+    }
+
+    .empty-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-primary);
+        margin: 0 0 8px 0;
+    }
+
+    .empty-text {
+        font-size: 0.95rem;
+        color: var(--mud-palette-text-secondary);
+        max-width: 400px;
+        margin: 0;
+    }
+
+    .timeline-container {
+        position: relative;
+    }
+
+    .pagination-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 24px;
+        padding: 16px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .pagination-info {
+        font-size: 0.9rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .observability-content {
+            padding: 16px;
+        }
+
+        .content-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .header-stats {
+            width: 100%;
+            justify-content: flex-start;
+        }
+    }
+</style>
+
+@code {
+    private LogFilter _filter = new();
+    private string? _error;
+
+    private bool HasActiveFilters =>
+        _filter.Levels.Count > 0 ||
+        _filter.Types.Count > 0 ||
+        _filter.From.HasValue ||
+        _filter.To.HasValue ||
+        !string.IsNullOrWhiteSpace(_filter.FunctionName) ||
+        !string.IsNullOrWhiteSpace(_filter.PluginName);
+
+    protected override async Task OnInitializedAsync()
+    {
+        ObservabilityService.OnLogsChanged += OnLogsChanged;
+        await LoadLogsAsync();
+    }
+
+    private void OnLogsChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadLogsAsync()
+    {
+        _error = null;
+        var result = await ObservabilityService.LoadLogsAsync(_filter);
+        if (!result.IsSuccess)
+        {
+            _error = result.Error ?? "Failed to load logs";
+        }
+    }
+
+    private async Task OnFilterChanged(LogFilter newFilter)
+    {
+        _filter = newFilter;
+        _error = null;
+        var result = await ObservabilityService.ApplyFilterAsync(_filter);
+        if (!result.IsSuccess)
+        {
+            _error = result.Error ?? "Failed to apply filter";
+        }
+    }
+
+    private async Task OnRefresh()
+    {
+        _error = null;
+        var result = await ObservabilityService.RefreshAsync();
+        if (!result.IsSuccess)
+        {
+            _error = result.Error ?? "Failed to refresh logs";
+        }
+    }
+
+    private async Task OnClearFilters()
+    {
+        _filter = new LogFilter();
+        _error = null;
+        var result = await ObservabilityService.ClearFilterAsync();
+        if (!result.IsSuccess)
+        {
+            _error = result.Error ?? "Failed to clear filters";
+        }
+    }
+
+    private async Task OnNextPage()
+    {
+        _error = null;
+        var result = await ObservabilityService.LoadNextPageAsync();
+        if (!result.IsSuccess)
+        {
+            _error = result.Error ?? "Failed to load next page";
+        }
+    }
+
+    private async Task OnPreviousPage()
+    {
+        _error = null;
+        var result = await ObservabilityService.LoadPreviousPageAsync();
+        if (!result.IsSuccess)
+        {
+            _error = result.Error ?? "Failed to load previous page";
+        }
+    }
+
+    public void Dispose()
+    {
+        ObservabilityService.OnLogsChanged -= OnLogsChanged;
+    }
+}

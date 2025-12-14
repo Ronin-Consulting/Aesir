@@ -294,9 +294,12 @@
 
     .sidebar-toggle-container {
         position: absolute;
-        top: 12px;
+        top: 0;
         left: 16px;
         z-index: 10;
+        height: 48px;
+        display: flex;
+        align-items: center;
     }
 
     .sidebar-toggle-btn {
@@ -313,14 +316,17 @@
         height: 100vh;
         overflow: hidden;
         position: relative;
+        /* Reduce default MudBlazor padding-top by 25% (64px -> 48px) */
+        padding-top: 48px !important;
     }
 
     .title-container {
         position: absolute;
-        top: 8px;
+        top: 0;
         left: 50%;
         transform: translateX(-50%);
         z-index: 10;
+        height: 48px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -373,9 +379,10 @@
 
     .top-right-controls {
         position: absolute;
-        top: 12px;
+        top: 0;
         right: 16px;
         z-index: 10;
+        height: 48px;
         display: flex;
         gap: 4px;
         align-items: center;

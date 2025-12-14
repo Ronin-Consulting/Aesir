@@ -1,0 +1,102 @@
+@namespace Aesir.Client.Web.Modules.Settings.Components
+
+<div class="settings-tab-item @(IsSelected ? "selected" : "")" @onclick="HandleClick">
+    <MudIcon Icon="@GetIcon()" Size="Size.Small" Class="tab-icon" />
+    <span class="tab-label">@Label</span>
+</div>
+
+<style>
+    .settings-tab-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        color: var(--mud-palette-text-secondary);
+        margin-bottom: 2px;
+    }
+
+    .settings-tab-item:hover {
+        background-color: var(--mud-palette-action-default-hover);
+        color: var(--mud-palette-text-primary);
+    }
+
+    .settings-tab-item.selected {
+        background-color: var(--mud-palette-primary);
+        color: var(--mud-palette-primary-text);
+    }
+
+    .settings-tab-item.selected .tab-icon {
+        color: var(--mud-palette-primary-text);
+    }
+
+    .tab-icon {
+        flex-shrink: 0;
+        opacity: 0.8;
+    }
+
+    .settings-tab-item:hover .tab-icon,
+    .settings-tab-item.selected .tab-icon {
+        opacity: 1;
+    }
+
+    .tab-label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Material Design icon name (e.g., "Settings", "Memory", "SmartToy").
+    /// </summary>
+    [Parameter]
+    public string Icon { get; set; } = "Settings";
+
+    /// <summary>
+    /// Display label for the tab.
+    /// </summary>
+    [Parameter]
+    public required string Label { get; set; }
+
+    /// <summary>
+    /// Unique identifier for the tab (used in URL query parameter).
+    /// </summary>
+    [Parameter]
+    public required string TabId { get; set; }
+
+    /// <summary>
+    /// Whether this tab is currently selected.
+    /// </summary>
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    /// <summary>
+    /// Callback when the tab is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnClick { get; set; }
+
+    private async Task HandleClick()
+    {
+        await OnClick.InvokeAsync(TabId);
+    }
+
+    private string GetIcon() => Icon.ToLower() switch
+    {
+        "settings" => Icons.Material.Filled.Settings,
+        "memory" => Icons.Material.Filled.Memory,
+        "dns" => Icons.Material.Filled.Dns,
+        "build" => Icons.Material.Filled.Build,
+        "smarttoy" => Icons.Material.Filled.SmartToy,
+        "timeline" => Icons.Material.Filled.Timeline,
+        "tune" => Icons.Material.Filled.Tune,
+        "autoawesome" => Icons.Material.Filled.AutoAwesome,
+        _ => Icons.Material.Filled.Circle
+    };
+}

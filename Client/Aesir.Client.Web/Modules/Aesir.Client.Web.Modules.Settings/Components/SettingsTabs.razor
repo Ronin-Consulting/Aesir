@@ -1,0 +1,198 @@
+@namespace Aesir.Client.Web.Modules.Settings.Components
+
+<div class="settings-panel">
+    <div class="settings-tabs-container">
+        <div class="settings-tabs">
+            @* Configuration Group *@
+            <div class="tab-group">
+                <div class="tab-group-header">Configuration</div>
+                <SettingsTabItem Icon="Tune" Label="General" TabId="general"
+                                 IsSelected="@(SelectedTab == "general")"
+                                 OnClick="HandleTabClick" />
+                <SettingsTabItem Icon="Memory" Label="Inference Engines" TabId="inference-engines"
+                                 IsSelected="@(SelectedTab == "inference-engines")"
+                                 OnClick="HandleTabClick" />
+                <SettingsTabItem Icon="Dns" Label="MCP Servers" TabId="mcp-servers"
+                                 IsSelected="@(SelectedTab == "mcp-servers")"
+                                 OnClick="HandleTabClick" />
+                <SettingsTabItem Icon="Build" Label="Tools" TabId="tools"
+                                 IsSelected="@(SelectedTab == "tools")"
+                                 OnClick="HandleTabClick" />
+                <SettingsTabItem Icon="SmartToy" Label="Agents" TabId="agents"
+                                 IsSelected="@(SelectedTab == "agents")"
+                                 OnClick="HandleTabClick" />
+            </div>
+
+            @* Utilities Group *@
+            <div class="tab-group">
+                <div class="tab-group-header">Utilities</div>
+                <SettingsTabItem Icon="Timeline" Label="Observability" TabId="observability"
+                                 IsSelected="@(SelectedTab == "observability")"
+                                 OnClick="HandleTabClick" />
+            </div>
+
+            @* Setup Wizard Link *@
+            <div class="settings-footer">
+                <a href="/setup" class="wizard-link">
+                    <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Class="wizard-icon" />
+                    <span>Run Setup Wizard</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-content">
+        @ChildContent
+    </div>
+</div>
+
+<style>
+    .settings-panel {
+        display: flex;
+        height: 100%;
+        min-height: calc(100vh - 44px);
+        background-color: var(--mud-palette-surface);
+    }
+
+    .settings-tabs-container {
+        width: 220px;
+        flex-shrink: 0;
+        border-right: 1px solid var(--mud-palette-lines-default);
+        background-color: var(--mud-palette-surface);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .settings-tabs {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        padding: 12px 8px;
+        overflow-y: auto;
+    }
+
+    .tab-group {
+        margin-bottom: 20px;
+    }
+
+    .tab-group-header {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--mud-palette-text-secondary);
+        padding: 0 16px;
+        margin-bottom: 8px;
+        opacity: 0.7;
+    }
+
+    .settings-footer {
+        margin-top: auto;
+        padding: 12px 8px;
+    }
+
+    .wizard-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        color: var(--mud-palette-text-secondary);
+        text-decoration: none;
+        font-size: 0.8rem;
+        transition: all 0.15s ease;
+        opacity: 0.7;
+    }
+
+    .wizard-link:hover {
+        background-color: var(--mud-palette-action-default-hover);
+        color: var(--mud-palette-text-primary);
+        opacity: 1;
+    }
+
+    .wizard-icon {
+        opacity: 0.7;
+    }
+
+    .wizard-link:hover .wizard-icon {
+        opacity: 1;
+    }
+
+    .settings-content {
+        flex: 1;
+        overflow-y: auto;
+        background-color: var(--mud-palette-surface);
+    }
+
+    /* Responsive - collapse tabs on mobile */
+    @@media (max-width: 768px) {
+        .settings-panel {
+            flex-direction: column;
+        }
+
+        .settings-tabs-container {
+            width: 100%;
+            border-right: none;
+            border-bottom: 1px solid var(--mud-palette-lines-default);
+            max-height: 200px;
+        }
+
+        .settings-tabs {
+            flex-direction: row;
+            flex-wrap: wrap;
+            padding: 8px;
+            gap: 8px;
+        }
+
+        .tab-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .tab-group-header {
+            width: 100%;
+            padding: 0 8px;
+            margin-bottom: 4px;
+        }
+
+        .settings-footer {
+            margin-top: 0;
+            padding: 8px;
+        }
+
+        .wizard-link {
+            font-size: 0.75rem;
+        }
+
+        .settings-content {
+            min-height: 400px;
+        }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Currently selected tab identifier.
+    /// </summary>
+    [Parameter]
+    public string SelectedTab { get; set; } = "general";
+
+    /// <summary>
+    /// Callback when a tab is selected.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnTabChanged { get; set; }
+
+    /// <summary>
+    /// Content to display for the selected tab.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private async Task HandleTabClick(string tabId)
+    {
+        await OnTabChanged.InvokeAsync(tabId);
+    }
+}
