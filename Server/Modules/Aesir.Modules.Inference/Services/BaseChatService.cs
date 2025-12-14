@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Inference.Models;
+using Aesir.Modules.Logging.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
@@ -18,6 +19,7 @@ namespace Aesir.Modules.Inference.Services;
 /// <param name="chatHistoryService">The service responsible for persisting and retrieving chat session histories.</param>
 /// <param name="kernel">The semantic kernel utilized for processing chat completion requests and generating AI responses.</param>
 /// <param name="toolCallBroadcaster">The broadcaster for streaming tool call events to clients.</param>
+/// <param name="inferenceLogService">The service for persisting inference operation logs for observability.</param>
 /// <param name="inferenceEngineIdKey">The service key used to register this keyed service.</param>
 [Experimental("SKEXP0070")]
 public abstract class BaseChatService : IChatService
@@ -53,6 +55,11 @@ public abstract class BaseChatService : IChatService
     private readonly IToolCallBroadcaster _toolCallBroadcaster;
 
     /// <summary>
+    /// The inference log service for persisting observability data.
+    /// </summary>
+    private readonly IInferenceLogService? _inferenceLogService;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="BaseChatService"/> class.
     /// </summary>
     protected BaseChatService(
@@ -61,6 +68,7 @@ public abstract class BaseChatService : IChatService
         Kernel kernel,
         IServiceProvider serviceProvider,
         IToolCallBroadcaster toolCallBroadcaster,
+        IInferenceLogService? inferenceLogService,
         string inferenceEngineIdKey)
     {
         _logger = logger;
@@ -68,6 +76,7 @@ public abstract class BaseChatService : IChatService
         _kernel = kernel;
         _serviceProvider = serviceProvider;
         _toolCallBroadcaster = toolCallBroadcaster;
+        _inferenceLogService = inferenceLogService;
         _inferenceEngineIdKey = inferenceEngineIdKey;
     }
 
@@ -197,7 +206,20 @@ public abstract class BaseChatService : IChatService
         await using var toolCallScope = _toolCallBroadcaster.CreateScope();
         _kernel.Data[ToolCallBroadcaster.KernelDataKey] = toolCallScope;
 
-        _logger.LogWarning("[BaseChatService] About to call ExecuteStreamingChatCompletionAsync");
+        // Create inference log collector for observability and store in Kernel.Data
+        // This collects all tool calls and timing data for the inference log
+        IInferenceLogCollector? logCollector = null;
+        if (_inferenceLogService != null)
+        {
+            logCollector = new InferenceLogCollector();
+            var userQuery = request.Conversation.Messages
+                .LastOrDefault(m => m.Role == "user")?.Content ?? string.Empty;
+            Guid? conversationId = Guid.TryParse(request.Conversation.Id, out var parsedId) ? parsedId : null;
+            logCollector.Start(request.ChatSessionId, conversationId, userQuery);
+            InferenceLogCollector.StoreInKernel(_kernel, logCollector);
+        }
+
+        _logger.LogDebug("About to call ExecuteStreamingChatCompletionAsync");
 
         try
         {
@@ -211,6 +233,9 @@ public abstract class BaseChatService : IChatService
             request.Conversation.Messages.Add(errorMessage);
             title = await titleTask;
             await PersistChatSessionAsync(request, request.Conversation, title);
+
+            // Log failed inference
+            await PersistInferenceLogAsync(logCollector, null, ex.Message);
         }
 
         // Handle initialization errors outside the catch block
@@ -242,11 +267,15 @@ public abstract class BaseChatService : IChatService
             title = await titleTask;
 
             await PersistChatSessionAsync(request, request.Conversation, title);
+
+            // Log successful inference with assistant response
+            await PersistInferenceLogAsync(logCollector, messageToSave.Content, null);
         }
 
         // Signal that no more tool calls will come and clean up Kernel.Data
         toolCallScope.Complete();
         _kernel.Data.Remove(ToolCallBroadcaster.KernelDataKey);
+        InferenceLogCollector.RemoveFromKernel(_kernel);
     }
 
     /// <summary>
@@ -487,5 +516,44 @@ public abstract class BaseChatService : IChatService
         );
 
         systemPromptMessage.Content = systemPromptTemplate.Render(arguments);
+    }
+
+    /// <summary>
+    /// Persists the inference log to the database for observability.
+    /// </summary>
+    /// <param name="collector">The inference log collector (may be null if logging is disabled).</param>
+    /// <param name="assistantResponse">The assistant's response text (for successful completions).</param>
+    /// <param name="errorMessage">The error message (for failed completions).</param>
+    private async Task PersistInferenceLogAsync(
+        IInferenceLogCollector? collector,
+        string? assistantResponse,
+        string? errorMessage)
+    {
+        if (collector == null || _inferenceLogService == null)
+            return;
+
+        try
+        {
+            AesirInferenceLog inferenceLog;
+
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                inferenceLog = collector.Fail(errorMessage);
+            }
+            else
+            {
+                inferenceLog = collector.Complete(assistantResponse);
+            }
+
+            await _inferenceLogService.LogInferenceAsync(inferenceLog);
+
+            _logger.LogDebug("Persisted inference log {InferenceLogId} with {ToolCallCount} tool calls",
+                inferenceLog.Id, inferenceLog.ToolCallCount);
+        }
+        catch (Exception ex)
+        {
+            // Don't fail the request if logging fails - just log the error
+            _logger.LogError(ex, "Failed to persist inference log");
+        }
     }
 }

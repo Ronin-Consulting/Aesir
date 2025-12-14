@@ -3,6 +3,7 @@ using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Inference.Services;
+using Aesir.Modules.Logging.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -58,6 +59,7 @@ public class ChatService : BaseChatService
     /// <param name="kernelPluginService">Service for managing kernel plugins.</param>
     /// <param name="serviceProvider">Service provider for dependency resolution.</param>
     /// <param name="toolCallBroadcaster">Broadcaster for streaming tool call events to clients.</param>
+    /// <param name="inferenceLogService">Service for persisting inference logs for observability.</param>
     /// <param name="inferenceEngineIdKey">The service key used to register this keyed service.</param>
     /// <param name="chatHistoryService">Service for persisting and managing chat history.</param>
     /// <param name="conversationDocumentCollectionService">Service for handling access and search functionalities for documents within conversations.</param>
@@ -68,10 +70,11 @@ public class ChatService : BaseChatService
         IKernelPluginService kernelPluginService,
         IServiceProvider serviceProvider,
         IToolCallBroadcaster toolCallBroadcaster,
+        IInferenceLogService? inferenceLogService,
         string inferenceEngineIdKey,
         IChatHistoryService chatHistoryService,
         IConversationDocumentCollectionService? conversationDocumentCollectionService)
-        : base(logger, chatHistoryService, kernel, serviceProvider, toolCallBroadcaster, inferenceEngineIdKey)
+        : base(logger, chatHistoryService, kernel, serviceProvider, toolCallBroadcaster, inferenceLogService, inferenceEngineIdKey)
     {
         _conversationDocumentCollectionService = conversationDocumentCollectionService;
         _kernelPluginService = kernelPluginService;

@@ -1,10 +1,11 @@
 using Aesir.Client.Web.Infrastructure.Http;
+using Aesir.Common.Models;
 using Aesir.Client.Web.Modules.Observability.Models;
 
 namespace Aesir.Client.Web.Modules.Observability.Services;
 
 /// <summary>
-/// Service for fetching and managing observability log data.
+/// Service for fetching and managing observability inference log data.
 /// </summary>
 public interface IObservabilityService
 {
@@ -29,6 +30,11 @@ public interface IObservabilityService
     IReadOnlyList<TimeGroupedLogs> GroupedLogs { get; }
 
     /// <summary>
+    /// Gets the currently selected log detail (full log with all tool calls).
+    /// </summary>
+    AesirInferenceLog? SelectedLogDetail { get; }
+
+    /// <summary>
     /// Event raised when logs have been loaded or updated.
     /// </summary>
     event Action? OnLogsChanged;
@@ -37,6 +43,18 @@ public interface IObservabilityService
     /// Loads logs using the specified filter.
     /// </summary>
     Task<ApiResult<PagedLogResponse>> LoadLogsAsync(LogFilter filter, CancellationToken ct = default);
+
+    /// <summary>
+    /// Loads the full detail for a specific inference log.
+    /// </summary>
+    /// <param name="id">The inference log ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<ApiResult<AesirInferenceLog>> LoadLogDetailAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Clears the currently selected log detail.
+    /// </summary>
+    void ClearSelectedDetail();
 
     /// <summary>
     /// Refreshes the current logs using the existing filter.

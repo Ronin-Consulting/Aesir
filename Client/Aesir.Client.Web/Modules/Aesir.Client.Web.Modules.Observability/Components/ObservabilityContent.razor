@@ -1,4 +1,5 @@
 @namespace Aesir.Client.Web.Modules.Observability.Components
+@using Aesir.Client.Web.Modules.Observability.Models
 @inject IObservabilityService ObservabilityService
 @implements IDisposable
 
@@ -244,12 +245,11 @@
     private string? _error;
 
     private bool HasActiveFilters =>
-        _filter.Levels.Count > 0 ||
-        _filter.Types.Count > 0 ||
+        _filter.Statuses.Count > 0 ||
         _filter.From.HasValue ||
         _filter.To.HasValue ||
-        !string.IsNullOrWhiteSpace(_filter.FunctionName) ||
-        !string.IsNullOrWhiteSpace(_filter.PluginName);
+        _filter.HasToolCalls.HasValue ||
+        !string.IsNullOrWhiteSpace(_filter.SearchText);
 
     protected override async Task OnInitializedAsync()
     {

@@ -1,10 +1,11 @@
 using Aesir.Client.Web.Infrastructure.Http;
+using Aesir.Common.Models;
 using Aesir.Client.Web.Modules.Observability.Models;
 
 namespace Aesir.Client.Web.Modules.Observability.Services;
 
 /// <summary>
-/// Service for fetching and managing observability log data.
+/// Service for fetching and managing observability inference log data.
 /// </summary>
 public class ObservabilityService : IObservabilityService
 {
@@ -12,6 +13,7 @@ public class ObservabilityService : IObservabilityService
     private LogFilter _currentFilter = new();
     private PagedLogResponse? _currentResponse;
     private List<TimeGroupedLogs> _groupedLogs = [];
+    private AesirInferenceLog? _selectedLogDetail;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ObservabilityService"/> class.
@@ -34,6 +36,9 @@ public class ObservabilityService : IObservabilityService
     public IReadOnlyList<TimeGroupedLogs> GroupedLogs => _groupedLogs;
 
     /// <inheritdoc />
+    public AesirInferenceLog? SelectedLogDetail => _selectedLogDetail;
+
+    /// <inheritdoc />
     public event Action? OnLogsChanged;
 
     /// <inheritdoc />
@@ -46,7 +51,7 @@ public class ObservabilityService : IObservabilityService
         {
             _currentFilter = filter.Clone();
             var queryString = filter.ToQueryString();
-            var response = await _apiClient.GetAsync<PagedLogResponse>($"/logs/kernel/search?{queryString}", ct)
+            var response = await _apiClient.GetAsync<PagedLogResponse>($"/logs/inference/search?{queryString}", ct)
                 .ConfigureAwait(false);
 
             if (response != null)
@@ -56,7 +61,7 @@ public class ObservabilityService : IObservabilityService
                 return ApiResult<PagedLogResponse>.Success(response);
             }
 
-            return ApiResult<PagedLogResponse>.Failure("Failed to load logs");
+            return ApiResult<PagedLogResponse>.Failure("Failed to load inference logs");
         }
         catch (Exception ex)
         {
@@ -67,6 +72,43 @@ public class ObservabilityService : IObservabilityService
             IsLoading = false;
             NotifyChanged();
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<ApiResult<AesirInferenceLog>> LoadLogDetailAsync(Guid id, CancellationToken ct = default)
+    {
+        IsLoading = true;
+        NotifyChanged();
+
+        try
+        {
+            var log = await _apiClient.GetAsync<AesirInferenceLog>($"/logs/inference/{id}", ct)
+                .ConfigureAwait(false);
+
+            if (log != null)
+            {
+                _selectedLogDetail = log;
+                return ApiResult<AesirInferenceLog>.Success(log);
+            }
+
+            return ApiResult<AesirInferenceLog>.Failure("Inference log not found");
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<AesirInferenceLog>.FromException(ex);
+        }
+        finally
+        {
+            IsLoading = false;
+            NotifyChanged();
+        }
+    }
+
+    /// <inheritdoc />
+    public void ClearSelectedDetail()
+    {
+        _selectedLogDetail = null;
+        NotifyChanged();
     }
 
     /// <inheritdoc />

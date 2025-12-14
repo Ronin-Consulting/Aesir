@@ -2,7 +2,6 @@ using Aesir.Infrastructure.Modules;
 using Aesir.Modules.Logging.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.SemanticKernel;
 
 namespace Aesir.Modules.Logging;
 
@@ -26,17 +25,11 @@ public class LoggingModule : ModuleBase
     {
         Log("Registering logging services...");
 
-        // Register services
-        services.AddScoped<IKernelLogService, KernelLogService>();
+        // Register inference logging service
+        services.AddScoped<IInferenceLogService, InferenceLogService>();
 
-        services.AddSingleton<KernelLoggingFilterService>();
-        services.AddSingleton<IFunctionInvocationFilter, KernelLoggingFilterService>();
-        services.AddSingleton<IPromptRenderFilter, KernelLoggingFilterService>();
-        services.AddSingleton<IAutoFunctionInvocationFilter, KernelLoggingFilterService>();
-        services.AddSingleton<IKernelLogService, KernelLogService>();
-        
         Log("Logging services registered successfully");
-        
+
         return Task.CompletedTask;
     }
 }

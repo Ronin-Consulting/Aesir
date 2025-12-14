@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using Aesir.Client.Controls;
 using Aesir.Client.Models;
 using Aesir.Client.Services;
 using Aesir.Common;
@@ -12,7 +10,6 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
-using Ursa.Controls;
 
 namespace Aesir.Client.ViewModels;
 

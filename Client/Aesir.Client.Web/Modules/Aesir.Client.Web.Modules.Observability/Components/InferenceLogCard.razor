@@ -1,0 +1,511 @@
+@namespace Aesir.Client.Web.Modules.Observability.Components
+@using Aesir.Common.Models
+@inject NavigationManager NavigationManager
+
+<div class="inference-log-card @GetStatusClass()">
+    <div class="log-entry-header" @onclick="ToggleExpanded">
+        <div class="log-entry-time">
+            <span class="time-value">@GetTimeString()</span>
+        </div>
+        <div class="log-entry-status">
+            <StatusIndicator Status="Log.Status" />
+        </div>
+        <div class="log-entry-query">
+            <span class="query-text" title="@Log.UserQueryTruncated">@TruncateText(Log.UserQueryTruncated, 60)</span>
+        </div>
+        <div class="log-entry-tools">
+            @if (Log.ToolCallCount > 0)
+            {
+                <span class="tool-count" title="@GetToolCallsTooltip()">
+                    <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Small" Class="tool-icon" />
+                    @Log.ToolCallCount
+                </span>
+            }
+        </div>
+        <div class="log-entry-duration">
+            @if (Log.TotalDurationMs.HasValue)
+            {
+                <span class="duration-value">@FormatDuration(Log.TotalDurationMs.Value)</span>
+            }
+        </div>
+        <MudIcon Icon="@(_expanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                 Size="Size.Small" Class="expand-icon" />
+    </div>
+    @if (_expanded)
+    {
+        <div class="log-entry-details">
+            @if (!string.IsNullOrEmpty(Log.UserQueryTruncated))
+            {
+                <div class="detail-section">
+                    <span class="detail-label">User Query</span>
+                    <span class="detail-value message-full">@Log.UserQueryTruncated</span>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Log.AssistantResponse))
+            {
+                <div class="detail-section">
+                    <span class="detail-label">Assistant Response</span>
+                    <span class="detail-value message-full">@Log.AssistantResponse</span>
+                </div>
+            }
+            @if (Log.ToolCallSummaries?.Count > 0)
+            {
+                <div class="detail-section">
+                    <span class="detail-label">Tool Calls (@Log.ToolCallCount)</span>
+                    <div class="tool-calls-list">
+                        @foreach (var tool in Log.ToolCallSummaries)
+                        {
+                            <div class="tool-call-item @GetToolStatusClass(tool.Status)">
+                                <span class="tool-name">@tool.FunctionName</span>
+                                @if (!string.IsNullOrEmpty(tool.PluginName))
+                                {
+                                    <span class="plugin-badge">@tool.PluginName</span>
+                                }
+                                <span class="tool-type-badge @GetToolTypeClass(tool.ToolType)">@tool.ToolType</span>
+                                @if (tool.DurationMs.HasValue)
+                                {
+                                    <span class="tool-duration">@FormatDuration(tool.DurationMs.Value)</span>
+                                }
+                                <MudIcon Icon="@GetToolStatusIcon(tool.Status)"
+                                         Size="Size.Small"
+                                         Class="@($"tool-status-icon {GetToolStatusClass(tool.Status)}")" />
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Log.ErrorMessage))
+            {
+                <div class="detail-section error-section">
+                    <span class="detail-label">Error</span>
+                    <span class="detail-value error-message">@Log.ErrorMessage</span>
+                </div>
+            }
+            <div class="detail-section detail-footer">
+                <div class="footer-item">
+                    <span class="footer-label">Started:</span>
+                    <span class="footer-value">@Log.StartedAt.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff")</span>
+                </div>
+                @if (Log.CompletedAt.HasValue)
+                {
+                    <div class="footer-item">
+                        <span class="footer-label">Completed:</span>
+                        <span class="footer-value">@Log.CompletedAt.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff")</span>
+                    </div>
+                }
+                @if (Log.ChatSessionId.HasValue)
+                {
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Chat"
+                               OnClick="NavigateToChat"
+                               Class="view-chat-button">
+                        View Chat
+                    </MudButton>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .inference-log-card {
+        border-radius: 8px;
+        margin-bottom: 6px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .inference-log-card:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Status-based background colors */
+    .inference-log-card.status-completed {
+        background-color: rgba(84, 169, 255, 0.05);
+    }
+
+    .inference-log-card.status-failed {
+        background-color: rgba(239, 68, 68, 0.08);
+        border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    .inference-log-card.status-cancelled {
+        background-color: rgba(245, 158, 11, 0.08);
+        border-color: rgba(245, 158, 11, 0.2);
+    }
+
+    .inference-log-card.status-inprogress {
+        background-color: rgba(59, 130, 246, 0.08);
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .log-entry-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .log-entry-header:hover {
+        background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    .log-entry-time {
+        flex-shrink: 0;
+        width: 80px;
+    }
+
+    .time-value {
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-secondary);
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    .log-entry-status {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        width: 90px;
+    }
+
+    .log-entry-query {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .query-text {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+
+    .log-entry-tools {
+        flex-shrink: 0;
+        width: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .tool-count {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.8rem;
+        color: var(--mud-palette-primary);
+        padding: 2px 8px;
+        border-radius: 12px;
+        background-color: rgba(84, 169, 255, 0.15);
+    }
+
+    .tool-icon {
+        font-size: 0.9rem !important;
+    }
+
+    .log-entry-duration {
+        flex-shrink: 0;
+        width: 70px;
+        text-align: right;
+    }
+
+    .duration-value {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    .expand-icon {
+        color: var(--mud-palette-text-secondary);
+        flex-shrink: 0;
+        transition: transform 0.2s ease;
+    }
+
+    .log-entry-details {
+        padding: 14px 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        background-color: rgba(0, 0, 0, 0.15);
+        animation: slideDown 0.2s ease;
+    }
+
+    @@keyframes slideDown {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .detail-section {
+        margin-bottom: 12px;
+    }
+
+    .detail-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .detail-label {
+        display: block;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--mud-palette-text-secondary);
+        margin-bottom: 4px;
+    }
+
+    .detail-value {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-primary);
+        line-height: 1.5;
+    }
+
+    .message-full {
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .error-section .error-message {
+        color: var(--mud-palette-error);
+    }
+
+    .tool-calls-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .tool-call-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        background-color: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .tool-call-item.tool-status-completed {
+        border-left: 3px solid var(--mud-palette-success);
+    }
+
+    .tool-call-item.tool-status-failed {
+        border-left: 3px solid var(--mud-palette-error);
+    }
+
+    .tool-call-item.tool-status-started {
+        border-left: 3px solid var(--mud-palette-info);
+    }
+
+    .tool-name {
+        font-weight: 500;
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .plugin-badge {
+        font-size: 0.65rem;
+        padding: 1px 5px;
+        border-radius: 3px;
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--mud-palette-text-secondary);
+        white-space: nowrap;
+    }
+
+    .tool-type-badge {
+        font-size: 0.65rem;
+        padding: 1px 5px;
+        border-radius: 3px;
+        text-transform: uppercase;
+    }
+
+    .tool-type-badge.type-mcp {
+        background-color: rgba(147, 51, 234, 0.2);
+        color: #a855f7;
+    }
+
+    .tool-type-badge.type-web {
+        background-color: rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+    }
+
+    .tool-type-badge.type-document {
+        background-color: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+    }
+
+    .tool-type-badge.type-image {
+        background-color: rgba(236, 72, 153, 0.2);
+        color: #f472b6;
+    }
+
+    .tool-type-badge.type-summarize {
+        background-color: rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+    }
+
+    .tool-type-badge.type-other {
+        background-color: rgba(107, 114, 128, 0.2);
+        color: #9ca3af;
+    }
+
+    .tool-duration {
+        font-size: 0.7rem;
+        color: var(--mud-palette-text-secondary);
+        font-family: 'Consolas', 'Monaco', monospace;
+        margin-left: auto;
+    }
+
+    .tool-status-icon {
+        font-size: 0.9rem !important;
+    }
+
+    .tool-status-icon.tool-status-completed {
+        color: var(--mud-palette-success);
+    }
+
+    .tool-status-icon.tool-status-failed {
+        color: var(--mud-palette-error);
+    }
+
+    .tool-status-icon.tool-status-started {
+        color: var(--mud-palette-info);
+    }
+
+    .detail-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 16px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .footer-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .footer-label {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .footer-value {
+        font-size: 0.75rem;
+        font-family: 'Consolas', 'Monaco', monospace;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .view-chat-button {
+        font-size: 0.8rem !important;
+        margin-left: auto;
+    }
+</style>
+
+@code {
+    private bool _expanded = false;
+
+    /// <summary>
+    /// Gets or sets the inference log summary to display.
+    /// </summary>
+    [Parameter]
+    public required AesirInferenceLogSummary Log { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the card should be expanded by default.
+    /// </summary>
+    [Parameter]
+    public bool DefaultExpanded { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        _expanded = DefaultExpanded;
+    }
+
+    private void ToggleExpanded()
+    {
+        _expanded = !_expanded;
+    }
+
+    private string GetStatusClass() => Log.Status switch
+    {
+        InferenceStatus.Completed => "status-completed",
+        InferenceStatus.Failed => "status-failed",
+        InferenceStatus.Cancelled => "status-cancelled",
+        InferenceStatus.InProgress => "status-inprogress",
+        _ => "status-completed"
+    };
+
+    private string GetTimeString()
+    {
+        return Log.StartedAt.LocalDateTime.ToString("h:mm:ss tt");
+    }
+
+    private static string TruncateText(string? text, int maxLength = 80)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        var singleLine = text.Replace("\n", " ").Replace("\r", "");
+        return singleLine.Length <= maxLength ? singleLine : singleLine[..(maxLength - 3)] + "...";
+    }
+
+    private static string FormatDuration(long ms)
+    {
+        if (ms < 1000) return $"{ms}ms";
+        if (ms < 60000) return $"{ms / 1000.0:F1}s";
+        return $"{ms / 60000.0:F1}m";
+    }
+
+    private string GetToolCallsTooltip()
+    {
+        if (Log.ToolCallSummaries == null || Log.ToolCallSummaries.Count == 0)
+            return $"{Log.ToolCallCount} tool calls";
+
+        var names = Log.ToolCallSummaries.Select(t => t.FunctionName).Take(5);
+        var tooltip = string.Join(", ", names);
+        if (Log.ToolCallSummaries.Count > 5)
+            tooltip += $", +{Log.ToolCallSummaries.Count - 5} more";
+        return tooltip;
+    }
+
+    private static string GetToolStatusClass(ToolCallStatus status) => status switch
+    {
+        ToolCallStatus.Completed => "tool-status-completed",
+        ToolCallStatus.Failed => "tool-status-failed",
+        ToolCallStatus.Started => "tool-status-started",
+        _ => "tool-status-completed"
+    };
+
+    private static string GetToolStatusIcon(ToolCallStatus status) => status switch
+    {
+        ToolCallStatus.Completed => Icons.Material.Filled.CheckCircle,
+        ToolCallStatus.Failed => Icons.Material.Filled.Error,
+        ToolCallStatus.Started => Icons.Material.Filled.Autorenew,
+        _ => Icons.Material.Filled.CheckCircle
+    };
+
+    private static string GetToolTypeClass(ToolCallType type) => type switch
+    {
+        ToolCallType.McpServer => "type-mcp",
+        ToolCallType.WebSearch => "type-web",
+        ToolCallType.DocumentSearch => "type-document",
+        ToolCallType.ImageAnalysis => "type-image",
+        ToolCallType.Summarization => "type-summarize",
+        ToolCallType.Other => "type-other",
+        _ => "type-other"
+    };
+
+    private void NavigateToChat()
+    {
+        if (Log.ChatSessionId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/chats?highlight={Log.ChatSessionId}");
+        }
+    }
+}

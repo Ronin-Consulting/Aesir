@@ -3,7 +3,7 @@ using Aesir.Common.Models;
 namespace Aesir.Client.Web.Modules.Observability.Models;
 
 /// <summary>
-/// Client-side model for log filtering criteria.
+/// Client-side model for inference log filtering criteria.
 /// </summary>
 public class LogFilter
 {
@@ -38,29 +38,24 @@ public class LogFilter
     public Guid? ConversationId { get; set; }
 
     /// <summary>
-    /// Gets or sets the log levels to filter by.
+    /// Gets or sets the inference statuses to filter by.
     /// </summary>
-    public List<KernelLogLevel> Levels { get; set; } = [];
+    public List<InferenceStatus> Statuses { get; set; } = [];
 
     /// <summary>
-    /// Gets or sets the log types to filter by.
+    /// Gets or sets the minimum tool call count filter.
     /// </summary>
-    public List<KernelLogType> Types { get; set; } = [];
+    public int? MinToolCallCount { get; set; }
 
     /// <summary>
-    /// Gets or sets the function name search term (partial match).
+    /// Gets or sets whether to filter for logs with tool calls.
     /// </summary>
-    public string? FunctionName { get; set; }
+    public bool? HasToolCalls { get; set; }
 
     /// <summary>
-    /// Gets or sets the plugin name search term (partial match).
+    /// Gets or sets the search text for user query partial match.
     /// </summary>
-    public string? PluginName { get; set; }
-
-    /// <summary>
-    /// Gets or sets the message search term (partial match).
-    /// </summary>
-    public string? MessageSearch { get; set; }
+    public string? SearchText { get; set; }
 
     /// <summary>
     /// Gets or sets whether to sort ascending (default is descending).
@@ -78,11 +73,10 @@ public class LogFilter
         To = To,
         ChatSessionId = ChatSessionId,
         ConversationId = ConversationId,
-        Levels = [.. Levels],
-        Types = [.. Types],
-        FunctionName = FunctionName,
-        PluginName = PluginName,
-        MessageSearch = MessageSearch,
+        Statuses = [.. Statuses],
+        MinToolCallCount = MinToolCallCount,
+        HasToolCalls = HasToolCalls,
+        SearchText = SearchText,
         SortAscending = SortAscending
     };
 
@@ -97,11 +91,10 @@ public class LogFilter
         To = null;
         ChatSessionId = null;
         ConversationId = null;
-        Levels.Clear();
-        Types.Clear();
-        FunctionName = null;
-        PluginName = null;
-        MessageSearch = null;
+        Statuses.Clear();
+        MinToolCallCount = null;
+        HasToolCalls = null;
+        SearchText = null;
         SortAscending = false;
     }
 
@@ -128,20 +121,17 @@ public class LogFilter
         if (ConversationId.HasValue)
             parameters.Add($"conversationId={ConversationId.Value}");
 
-        foreach (var level in Levels)
-            parameters.Add($"levels={level}");
+        foreach (var status in Statuses)
+            parameters.Add($"statuses={status}");
 
-        foreach (var type in Types)
-            parameters.Add($"types={type}");
+        if (MinToolCallCount.HasValue)
+            parameters.Add($"minToolCallCount={MinToolCallCount.Value}");
 
-        if (!string.IsNullOrWhiteSpace(FunctionName))
-            parameters.Add($"functionName={Uri.EscapeDataString(FunctionName)}");
+        if (HasToolCalls.HasValue)
+            parameters.Add($"hasToolCalls={HasToolCalls.Value.ToString().ToLower()}");
 
-        if (!string.IsNullOrWhiteSpace(PluginName))
-            parameters.Add($"pluginName={Uri.EscapeDataString(PluginName)}");
-
-        if (!string.IsNullOrWhiteSpace(MessageSearch))
-            parameters.Add($"messageSearch={Uri.EscapeDataString(MessageSearch)}");
+        if (!string.IsNullOrWhiteSpace(SearchText))
+            parameters.Add($"searchText={Uri.EscapeDataString(SearchText)}");
 
         parameters.Add($"sortDirection={( SortAscending ? "Ascending" : "Descending")}");
 

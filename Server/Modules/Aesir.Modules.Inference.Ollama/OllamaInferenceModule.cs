@@ -5,6 +5,7 @@ using Aesir.Infrastructure.Modules;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Inference.Ollama.Services;
 using Aesir.Modules.Inference.Services;
+using Aesir.Modules.Logging.Services;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -187,6 +188,7 @@ public class OllamaInferenceModule : ModuleBase
             var kernelPluginService = sp.GetRequiredService<IKernelPluginService>();
             var chatHistoryService = sp.GetRequiredService<IChatHistoryService>();
             var toolCallBroadcaster = sp.GetRequiredService<IToolCallBroadcaster>();
+            var inferenceLogService = sp.GetService<IInferenceLogService>();
             var conversationDocumentCollectionService =
                 sp.GetService<IConversationDocumentCollectionService>();
 
@@ -201,6 +203,7 @@ public class OllamaInferenceModule : ModuleBase
                 kernelPluginService,
                 sp,
                 toolCallBroadcaster,
+                inferenceLogService,
                 inferenceEngineIdKey,
                 chatHistoryService,
                 conversationDocumentCollectionService

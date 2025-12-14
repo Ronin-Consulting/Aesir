@@ -104,7 +104,7 @@ public class ObservabilityServiceTests
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().Contain("Failed to load logs");
+        result.Error.Should().Contain("Failed to load");
     }
 
     [Fact]
@@ -204,8 +204,8 @@ public class ObservabilityServiceTests
         {
             Page = 2,
             PageSize = 25,
-            Levels = [KernelLogLevel.Error],
-            Types = [KernelLogType.FunctionInvocation]
+            Statuses = [InferenceStatus.Completed, InferenceStatus.Failed],
+            HasToolCalls = true
         };
         var response = CreateSampleResponse();
         string? capturedUrl = null;
@@ -220,8 +220,9 @@ public class ObservabilityServiceTests
         // Assert
         capturedUrl.Should().Contain("page=2");
         capturedUrl.Should().Contain("pageSize=25");
-        capturedUrl.Should().Contain("levels=Error");
-        capturedUrl.Should().Contain("types=FunctionInvocation");
+        capturedUrl.Should().Contain("statuses=Completed");
+        capturedUrl.Should().Contain("statuses=Failed");
+        capturedUrl.Should().Contain("hasToolCalls=true");
     }
 
     #endregion
@@ -284,8 +285,8 @@ public class ObservabilityServiceTests
         {
             Page = 3,
             PageSize = 100,
-            Levels = [KernelLogLevel.Error],
-            FunctionName = "test"
+            Statuses = [InferenceStatus.Failed],
+            SearchText = "test"
         };
         var response = CreateSampleResponse();
         _apiClientMock
@@ -300,8 +301,8 @@ public class ObservabilityServiceTests
         // Assert
         _service.CurrentFilter.Page.Should().Be(1);
         _service.CurrentFilter.PageSize.Should().Be(50);
-        _service.CurrentFilter.Levels.Should().BeEmpty();
-        _service.CurrentFilter.FunctionName.Should().BeNull();
+        _service.CurrentFilter.Statuses.Should().BeEmpty();
+        _service.CurrentFilter.SearchText.Should().BeNull();
     }
 
     #endregion
@@ -312,14 +313,14 @@ public class ObservabilityServiceTests
     public async Task LoadNextPageAsync_IncreasesPage()
     {
         // Arrange
+        // Create a response with Page=1, PageSize=50, TotalCount=100
+        // This means TotalPages=2, HasNextPage=true
         var response = new PagedLogResponse
         {
             Items = [],
             Page = 1,
             PageSize = 50,
-            TotalCount = 100,
-            TotalPages = 2,
-            HasNextPage = true
+            TotalCount = 100
         };
         _apiClientMock
             .Setup(x => x.GetAsync<PagedLogResponse>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -338,14 +339,14 @@ public class ObservabilityServiceTests
     public async Task LoadNextPageAsync_ReturnsFailure_WhenNoNextPage()
     {
         // Arrange
+        // Create a response with Page=2, PageSize=50, TotalCount=100
+        // This means TotalPages=2, HasNextPage=false (Page == TotalPages)
         var response = new PagedLogResponse
         {
             Items = [],
             Page = 2,
             PageSize = 50,
-            TotalCount = 100,
-            TotalPages = 2,
-            HasNextPage = false
+            TotalCount = 100
         };
         _apiClientMock
             .Setup(x => x.GetAsync<PagedLogResponse>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -365,14 +366,14 @@ public class ObservabilityServiceTests
     public async Task LoadPreviousPageAsync_DecreasesPage()
     {
         // Arrange
+        // Create a response with Page=2, PageSize=50, TotalCount=100
+        // This means TotalPages=2, HasPreviousPage=true (Page > 1)
         var response = new PagedLogResponse
         {
             Items = [],
             Page = 2,
             PageSize = 50,
-            TotalCount = 100,
-            TotalPages = 2,
-            HasPreviousPage = true
+            TotalCount = 100
         };
         _apiClientMock
             .Setup(x => x.GetAsync<PagedLogResponse>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -391,14 +392,14 @@ public class ObservabilityServiceTests
     public async Task LoadPreviousPageAsync_ReturnsFailure_WhenNoPreviousPage()
     {
         // Arrange
+        // Create a response with Page=1, PageSize=50, TotalCount=100
+        // This means HasPreviousPage=false (Page == 1)
         var response = new PagedLogResponse
         {
             Items = [],
             Page = 1,
             PageSize = 50,
-            TotalCount = 100,
-            TotalPages = 2,
-            HasPreviousPage = false
+            TotalCount = 100
         };
         _apiClientMock
             .Setup(x => x.GetAsync<PagedLogResponse>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -425,10 +426,7 @@ public class ObservabilityServiceTests
             Items = [],
             Page = 1,
             PageSize = 50,
-            TotalCount = 0,
-            TotalPages = 0,
-            HasNextPage = false,
-            HasPreviousPage = false
+            TotalCount = 0
         };
     }
 
@@ -438,25 +436,18 @@ public class ObservabilityServiceTests
         {
             Items =
             [
-                new AesirKernelLogBase
+                new AesirInferenceLogSummary
                 {
                     Id = Guid.NewGuid(),
-                    Level = KernelLogLevel.Info,
-                    Message = "Test log",
-                    CreatedAt = DateTimeOffset.Now,
-                    Details = new AesirKernelLogDetailsBase
-                    {
-                        Type = KernelLogType.FunctionInvocation,
-                        FunctionName = "test_function"
-                    }
+                    UserQueryTruncated = "Test query",
+                    StartedAt = DateTimeOffset.Now,
+                    Status = InferenceStatus.Completed,
+                    ToolCallCount = 1
                 }
             ],
             Page = 1,
             PageSize = 50,
-            TotalCount = 1,
-            TotalPages = 1,
-            HasNextPage = false,
-            HasPreviousPage = false
+            TotalCount = 1
         };
     }
 

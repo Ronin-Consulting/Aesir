@@ -11,7 +11,7 @@ public class TimeGroupedLogsTests
     public void GroupLogs_WithEmptyList_ReturnsEmptyGroups()
     {
         // Arrange
-        var logs = new List<AesirKernelLogBase>();
+        var logs = new List<AesirInferenceLogSummary>();
 
         // Act
         var groups = TimeGroupedLogs.GroupLogs(logs);
@@ -24,7 +24,7 @@ public class TimeGroupedLogsTests
     public void GroupLogs_WithSingleLog_ReturnsSingleGroup()
     {
         // Arrange
-        var logs = new List<AesirKernelLogBase>
+        var logs = new List<AesirInferenceLogSummary>
         {
             CreateLog(DateTimeOffset.Now)
         };
@@ -42,7 +42,7 @@ public class TimeGroupedLogsTests
     {
         // Arrange
         var today = DateTimeOffset.Now;
-        var logs = new List<AesirKernelLogBase>
+        var logs = new List<AesirInferenceLogSummary>
         {
             CreateLog(today),
             CreateLog(today.AddHours(-2)),
@@ -63,7 +63,7 @@ public class TimeGroupedLogsTests
         // Arrange
         var today = DateTimeOffset.Now;
         var yesterday = today.AddDays(-1);
-        var logs = new List<AesirKernelLogBase>
+        var logs = new List<AesirInferenceLogSummary>
         {
             CreateLog(today),
             CreateLog(yesterday)
@@ -83,7 +83,7 @@ public class TimeGroupedLogsTests
         var today = DateTimeOffset.Now;
         var yesterday = today.AddDays(-1);
         var twoDaysAgo = today.AddDays(-2);
-        var logs = new List<AesirKernelLogBase>
+        var logs = new List<AesirInferenceLogSummary>
         {
             CreateLog(twoDaysAgo),
             CreateLog(today),
@@ -105,7 +105,7 @@ public class TimeGroupedLogsTests
     {
         // Arrange
         var today = DateTimeOffset.Now;
-        var logs = new List<AesirKernelLogBase>
+        var logs = new List<AesirInferenceLogSummary>
         {
             CreateLog(today)
         };
@@ -122,7 +122,7 @@ public class TimeGroupedLogsTests
     {
         // Arrange
         var yesterday = DateTimeOffset.Now.AddDays(-1);
-        var logs = new List<AesirKernelLogBase>
+        var logs = new List<AesirInferenceLogSummary>
         {
             CreateLog(yesterday)
         };
@@ -160,7 +160,7 @@ public class TimeGroupedLogsTests
             }
         }
 
-        var logs = new List<AesirKernelLogBase>
+        var logs = new List<AesirInferenceLogSummary>
         {
             CreateLog(earlierThisWeek)
         };
@@ -176,15 +176,15 @@ public class TimeGroupedLogsTests
 
     #region Helper Methods
 
-    private static AesirKernelLogBase CreateLog(DateTimeOffset createdAt)
+    private static AesirInferenceLogSummary CreateLog(DateTimeOffset startedAt)
     {
-        return new AesirKernelLogBase
+        return new AesirInferenceLogSummary
         {
             Id = Guid.NewGuid(),
-            Level = KernelLogLevel.Info,
-            Message = "Test log",
-            CreatedAt = createdAt,
-            Details = new AesirKernelLogDetailsBase()
+            UserQueryTruncated = "Test query",
+            StartedAt = startedAt,
+            Status = InferenceStatus.Completed,
+            ToolCallCount = 0
         };
     }
 

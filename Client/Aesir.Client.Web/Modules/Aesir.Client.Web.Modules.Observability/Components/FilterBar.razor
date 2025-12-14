@@ -3,62 +3,54 @@
 @using Aesir.Client.Web.Modules.Observability.Models
 
 <div class="filter-bar">
-    <div class="filter-section filter-levels">
-        <span class="filter-label">Level</span>
+    <div class="filter-section filter-statuses">
+        <span class="filter-label">Status</span>
         <div class="filter-chips">
             <MudChip T="string"
-                     Color="@(IsLevelSelected(KernelLogLevel.Info) ? Color.Info : Color.Default)"
-                     Variant="@(IsLevelSelected(KernelLogLevel.Info) ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleLevel(KernelLogLevel.Info))"
+                     Color="@(IsStatusSelected(InferenceStatus.Completed) ? Color.Success : Color.Default)"
+                     Variant="@(IsStatusSelected(InferenceStatus.Completed) ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleStatus(InferenceStatus.Completed))"
                      Size="Size.Small"
                      Class="filter-chip">
-                Info
+                Completed
             </MudChip>
             <MudChip T="string"
-                     Color="@(IsLevelSelected(KernelLogLevel.Warning) ? Color.Warning : Color.Default)"
-                     Variant="@(IsLevelSelected(KernelLogLevel.Warning) ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleLevel(KernelLogLevel.Warning))"
+                     Color="@(IsStatusSelected(InferenceStatus.Failed) ? Color.Error : Color.Default)"
+                     Variant="@(IsStatusSelected(InferenceStatus.Failed) ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleStatus(InferenceStatus.Failed))"
                      Size="Size.Small"
                      Class="filter-chip">
-                Warning
+                Failed
             </MudChip>
             <MudChip T="string"
-                     Color="@(IsLevelSelected(KernelLogLevel.Error) ? Color.Error : Color.Default)"
-                     Variant="@(IsLevelSelected(KernelLogLevel.Error) ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleLevel(KernelLogLevel.Error))"
+                     Color="@(IsStatusSelected(InferenceStatus.Cancelled) ? Color.Warning : Color.Default)"
+                     Variant="@(IsStatusSelected(InferenceStatus.Cancelled) ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleStatus(InferenceStatus.Cancelled))"
                      Size="Size.Small"
                      Class="filter-chip">
-                Error
+                Cancelled
             </MudChip>
         </div>
     </div>
 
-    <div class="filter-section filter-types">
-        <span class="filter-label">Type</span>
+    <div class="filter-section filter-tools">
+        <span class="filter-label">Tool Calls</span>
         <div class="filter-chips">
             <MudChip T="string"
-                     Style="@(IsTypeSelected(KernelLogType.FunctionInvocation) ? "background-color: rgba(16, 185, 129, 0.2); color: #10B981;" : "")"
-                     Variant="@(IsTypeSelected(KernelLogType.FunctionInvocation) ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleType(KernelLogType.FunctionInvocation))"
+                     Color="@(_hasToolCallsFilter == true ? Color.Info : Color.Default)"
+                     Variant="@(_hasToolCallsFilter == true ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => SetHasToolCallsFilter(true))"
                      Size="Size.Small"
                      Class="filter-chip">
-                Function
+                With Tools
             </MudChip>
             <MudChip T="string"
-                     Style="@(IsTypeSelected(KernelLogType.AutoFunctionInvocation) ? "background-color: rgba(245, 158, 11, 0.2); color: #F59E0B;" : "")"
-                     Variant="@(IsTypeSelected(KernelLogType.AutoFunctionInvocation) ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleType(KernelLogType.AutoFunctionInvocation))"
+                     Color="@(_hasToolCallsFilter == false ? Color.Info : Color.Default)"
+                     Variant="@(_hasToolCallsFilter == false ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => SetHasToolCallsFilter(false))"
                      Size="Size.Small"
                      Class="filter-chip">
-                Auto Function
-            </MudChip>
-            <MudChip T="string"
-                     Style="@(IsTypeSelected(KernelLogType.PromptRender) ? "background-color: rgba(156, 39, 176, 0.2); color: #9C27B0;" : "")"
-                     Variant="@(IsTypeSelected(KernelLogType.PromptRender) ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleType(KernelLogType.PromptRender))"
-                     Size="Size.Small"
-                     Class="filter-chip">
-                Prompt
+                No Tools
             </MudChip>
         </div>
     </div>
@@ -77,7 +69,7 @@
     <div class="filter-section filter-search">
         <span class="filter-label">Search</span>
         <MudTextField @bind-Value="_searchText"
-                      Placeholder="Function or plugin name..."
+                      Placeholder="Search user queries..."
                       Variant="Variant.Outlined"
                       Margin="Margin.Dense"
                       Adornment="Adornment.Start"
@@ -199,6 +191,7 @@
 @code {
     private DateRange? _dateRange;
     private string? _searchText;
+    private bool? _hasToolCallsFilter;
 
     /// <summary>
     /// Gets or sets the current filter state.
@@ -231,12 +224,11 @@
     public EventCallback OnClearFilters { get; set; }
 
     private bool HasActiveFilters =>
-        Filter.Levels.Count > 0 ||
-        Filter.Types.Count > 0 ||
+        Filter.Statuses.Count > 0 ||
         Filter.From.HasValue ||
         Filter.To.HasValue ||
-        !string.IsNullOrWhiteSpace(Filter.FunctionName) ||
-        !string.IsNullOrWhiteSpace(Filter.PluginName);
+        Filter.HasToolCalls.HasValue ||
+        !string.IsNullOrWhiteSpace(Filter.SearchText);
 
     protected override void OnParametersSet()
     {
@@ -252,30 +244,38 @@
             _dateRange = null;
         }
 
-        _searchText = Filter.FunctionName ?? Filter.PluginName;
+        _searchText = Filter.SearchText;
+        _hasToolCallsFilter = Filter.HasToolCalls;
     }
 
-    private bool IsLevelSelected(KernelLogLevel level) => Filter.Levels.Contains(level);
-    private bool IsTypeSelected(KernelLogType type) => Filter.Types.Contains(type);
+    private bool IsStatusSelected(InferenceStatus status) => Filter.Statuses.Contains(status);
 
-    private async Task ToggleLevel(KernelLogLevel level)
+    private async Task ToggleStatus(InferenceStatus status)
     {
         var newFilter = Filter.Clone();
-        if (newFilter.Levels.Contains(level))
-            newFilter.Levels.Remove(level);
+        if (newFilter.Statuses.Contains(status))
+            newFilter.Statuses.Remove(status);
         else
-            newFilter.Levels.Add(level);
+            newFilter.Statuses.Add(status);
 
         await FilterChanged.InvokeAsync(newFilter);
     }
 
-    private async Task ToggleType(KernelLogType type)
+    private async Task SetHasToolCallsFilter(bool? hasTools)
     {
         var newFilter = Filter.Clone();
-        if (newFilter.Types.Contains(type))
-            newFilter.Types.Remove(type);
+
+        // Toggle off if clicking the same filter
+        if (_hasToolCallsFilter == hasTools)
+        {
+            newFilter.HasToolCalls = null;
+            _hasToolCallsFilter = null;
+        }
         else
-            newFilter.Types.Add(type);
+        {
+            newFilter.HasToolCalls = hasTools;
+            _hasToolCallsFilter = hasTools;
+        }
 
         await FilterChanged.InvokeAsync(newFilter);
     }
@@ -300,8 +300,7 @@
     private async Task OnSearchChanged(string? value)
     {
         var newFilter = Filter.Clone();
-        newFilter.FunctionName = string.IsNullOrWhiteSpace(value) ? null : value;
-        newFilter.PluginName = string.IsNullOrWhiteSpace(value) ? null : value;
+        newFilter.SearchText = string.IsNullOrWhiteSpace(value) ? null : value;
 
         await FilterChanged.InvokeAsync(newFilter);
     }
@@ -315,6 +314,7 @@
     {
         _dateRange = null;
         _searchText = null;
+        _hasToolCallsFilter = null;
         await OnClearFilters.InvokeAsync();
     }
 }

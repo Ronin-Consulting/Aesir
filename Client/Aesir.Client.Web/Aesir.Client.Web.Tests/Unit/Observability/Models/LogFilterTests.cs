@@ -20,11 +20,10 @@ public class LogFilterTests
         filter.To.Should().BeNull();
         filter.ChatSessionId.Should().BeNull();
         filter.ConversationId.Should().BeNull();
-        filter.Levels.Should().BeEmpty();
-        filter.Types.Should().BeEmpty();
-        filter.FunctionName.Should().BeNull();
-        filter.PluginName.Should().BeNull();
-        filter.MessageSearch.Should().BeNull();
+        filter.Statuses.Should().BeEmpty();
+        filter.MinToolCallCount.Should().BeNull();
+        filter.HasToolCalls.Should().BeNull();
+        filter.SearchText.Should().BeNull();
         filter.SortAscending.Should().BeFalse();
     }
 
@@ -43,10 +42,11 @@ public class LogFilterTests
             From = DateTimeOffset.Now.AddDays(-7),
             To = DateTimeOffset.Now,
             ChatSessionId = Guid.NewGuid(),
-            Levels = [KernelLogLevel.Error, KernelLogLevel.Warning],
-            Types = [KernelLogType.FunctionInvocation],
-            FunctionName = "test_func",
-            PluginName = "test_plugin"
+            ConversationId = Guid.NewGuid(),
+            Statuses = [InferenceStatus.Completed, InferenceStatus.Failed],
+            MinToolCallCount = 2,
+            HasToolCalls = true,
+            SearchText = "test query"
         };
 
         // Act
@@ -59,10 +59,11 @@ public class LogFilterTests
         clone.From.Should().Be(original.From);
         clone.To.Should().Be(original.To);
         clone.ChatSessionId.Should().Be(original.ChatSessionId);
-        clone.Levels.Should().BeEquivalentTo(original.Levels);
-        clone.Types.Should().BeEquivalentTo(original.Types);
-        clone.FunctionName.Should().Be(original.FunctionName);
-        clone.PluginName.Should().Be(original.PluginName);
+        clone.ConversationId.Should().Be(original.ConversationId);
+        clone.Statuses.Should().BeEquivalentTo(original.Statuses);
+        clone.MinToolCallCount.Should().Be(original.MinToolCallCount);
+        clone.HasToolCalls.Should().Be(original.HasToolCalls);
+        clone.SearchText.Should().Be(original.SearchText);
     }
 
     [Fact]
@@ -71,20 +72,20 @@ public class LogFilterTests
         // Arrange
         var original = new LogFilter
         {
-            Levels = [KernelLogLevel.Error],
-            Types = [KernelLogType.FunctionInvocation]
+            Statuses = [InferenceStatus.Completed],
+            HasToolCalls = true
         };
 
         // Act
         var clone = original.Clone();
-        clone.Levels.Add(KernelLogLevel.Warning);
-        clone.Types.Add(KernelLogType.PromptRender);
+        clone.Statuses.Add(InferenceStatus.Failed);
+        clone.HasToolCalls = false;
         clone.Page = 10;
 
         // Assert
-        original.Levels.Should().HaveCount(1);
-        original.Levels.Should().Contain(KernelLogLevel.Error);
-        original.Types.Should().HaveCount(1);
+        original.Statuses.Should().HaveCount(1);
+        original.Statuses.Should().Contain(InferenceStatus.Completed);
+        original.HasToolCalls.Should().BeTrue();
         original.Page.Should().Be(1);
     }
 
@@ -104,11 +105,10 @@ public class LogFilterTests
             To = DateTimeOffset.Now,
             ChatSessionId = Guid.NewGuid(),
             ConversationId = Guid.NewGuid(),
-            Levels = [KernelLogLevel.Error],
-            Types = [KernelLogType.FunctionInvocation],
-            FunctionName = "test",
-            PluginName = "plugin",
-            MessageSearch = "search",
+            Statuses = [InferenceStatus.Failed],
+            MinToolCallCount = 3,
+            HasToolCalls = true,
+            SearchText = "search",
             SortAscending = true
         };
 
@@ -122,11 +122,10 @@ public class LogFilterTests
         filter.To.Should().BeNull();
         filter.ChatSessionId.Should().BeNull();
         filter.ConversationId.Should().BeNull();
-        filter.Levels.Should().BeEmpty();
-        filter.Types.Should().BeEmpty();
-        filter.FunctionName.Should().BeNull();
-        filter.PluginName.Should().BeNull();
-        filter.MessageSearch.Should().BeNull();
+        filter.Statuses.Should().BeEmpty();
+        filter.MinToolCallCount.Should().BeNull();
+        filter.HasToolCalls.Should().BeNull();
+        filter.SearchText.Should().BeNull();
         filter.SortAscending.Should().BeFalse();
     }
 
@@ -170,37 +169,20 @@ public class LogFilterTests
     }
 
     [Fact]
-    public void ToQueryString_WithLevels_IncludesEachLevel()
+    public void ToQueryString_WithStatuses_IncludesEachStatus()
     {
         // Arrange
         var filter = new LogFilter
         {
-            Levels = [KernelLogLevel.Error, KernelLogLevel.Warning]
+            Statuses = [InferenceStatus.Completed, InferenceStatus.Failed]
         };
 
         // Act
         var query = filter.ToQueryString();
 
         // Assert
-        query.Should().Contain("levels=Error");
-        query.Should().Contain("levels=Warning");
-    }
-
-    [Fact]
-    public void ToQueryString_WithTypes_IncludesEachType()
-    {
-        // Arrange
-        var filter = new LogFilter
-        {
-            Types = [KernelLogType.FunctionInvocation, KernelLogType.PromptRender]
-        };
-
-        // Act
-        var query = filter.ToQueryString();
-
-        // Assert
-        query.Should().Contain("types=FunctionInvocation");
-        query.Should().Contain("types=PromptRender");
+        query.Should().Contain("statuses=Completed");
+        query.Should().Contain("statuses=Failed");
     }
 
     [Fact]
@@ -221,19 +203,67 @@ public class LogFilterTests
     }
 
     [Fact]
-    public void ToQueryString_WithFunctionName_IncludesEncodedName()
+    public void ToQueryString_WithHasToolCalls_IncludesBoolean()
     {
         // Arrange
         var filter = new LogFilter
         {
-            FunctionName = "test function"
+            HasToolCalls = true
         };
 
         // Act
         var query = filter.ToQueryString();
 
         // Assert
-        query.Should().Contain("functionName=test%20function");
+        query.Should().Contain("hasToolCalls=true");
+    }
+
+    [Fact]
+    public void ToQueryString_WithHasToolCallsFalse_IncludesFalse()
+    {
+        // Arrange
+        var filter = new LogFilter
+        {
+            HasToolCalls = false
+        };
+
+        // Act
+        var query = filter.ToQueryString();
+
+        // Assert
+        query.Should().Contain("hasToolCalls=false");
+    }
+
+    [Fact]
+    public void ToQueryString_WithMinToolCallCount_IncludesCount()
+    {
+        // Arrange
+        var filter = new LogFilter
+        {
+            MinToolCallCount = 5
+        };
+
+        // Act
+        var query = filter.ToQueryString();
+
+        // Assert
+        query.Should().Contain("minToolCallCount=5");
+    }
+
+    [Fact]
+    public void ToQueryString_WithSearchText_IncludesEncodedText()
+    {
+        // Arrange
+        var filter = new LogFilter
+        {
+            SearchText = "test query"
+        };
+
+        // Act
+        var query = filter.ToQueryString();
+
+        // Assert
+        query.Should().Contain("searchText=test%20query");
     }
 
     [Fact]
@@ -253,35 +283,35 @@ public class LogFilterTests
     }
 
     [Fact]
-    public void ToQueryString_WithEmptyFunctionName_DoesNotIncludeFunctionName()
+    public void ToQueryString_WithEmptySearchText_DoesNotIncludeSearchText()
     {
         // Arrange
         var filter = new LogFilter
         {
-            FunctionName = ""
+            SearchText = ""
         };
 
         // Act
         var query = filter.ToQueryString();
 
         // Assert
-        query.Should().NotContain("functionName=");
+        query.Should().NotContain("searchText=");
     }
 
     [Fact]
-    public void ToQueryString_WithWhitespaceFunctionName_DoesNotIncludeFunctionName()
+    public void ToQueryString_WithWhitespaceSearchText_DoesNotIncludeSearchText()
     {
         // Arrange
         var filter = new LogFilter
         {
-            FunctionName = "   "
+            SearchText = "   "
         };
 
         // Act
         var query = filter.ToQueryString();
 
         // Assert
-        query.Should().NotContain("functionName=");
+        query.Should().NotContain("searchText=");
     }
 
     #endregion

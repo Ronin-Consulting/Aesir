@@ -4,15 +4,15 @@ using Aesir.Common.Models;
 namespace Aesir.Client.Web.Modules.Observability.Models;
 
 /// <summary>
-/// Client-side model for paginated kernel log responses.
+/// Client-side model for paginated inference log responses.
 /// </summary>
 public class PagedLogResponse
 {
     /// <summary>
-    /// Gets or sets the log items for the current page.
+    /// Gets or sets the inference log summaries for the current page.
     /// </summary>
     [JsonPropertyName("items")]
-    public IEnumerable<AesirKernelLogBase> Items { get; set; } = [];
+    public IEnumerable<AesirInferenceLogSummary> Items { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the total count of items matching the filter.
@@ -35,18 +35,15 @@ public class PagedLogResponse
     /// <summary>
     /// Gets the total number of pages.
     /// </summary>
-    [JsonPropertyName("totalPages")]
-    public int TotalPages { get; set; }
+    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
 
     /// <summary>
     /// Gets whether there is a next page.
     /// </summary>
-    [JsonPropertyName("hasNextPage")]
-    public bool HasNextPage { get; set; }
+    public bool HasNextPage => Page < TotalPages;
 
     /// <summary>
     /// Gets whether there is a previous page.
     /// </summary>
-    [JsonPropertyName("hasPreviousPage")]
-    public bool HasPreviousPage { get; set; }
+    public bool HasPreviousPage => Page > 1;
 }

@@ -3,7 +3,7 @@ using Aesir.Common.Models;
 namespace Aesir.Client.Web.Modules.Observability.Models;
 
 /// <summary>
-/// Represents logs grouped by a time period for timeline display.
+/// Represents inference logs grouped by a time period for timeline display.
 /// </summary>
 public class TimeGroupedLogs
 {
@@ -18,14 +18,14 @@ public class TimeGroupedLogs
     public DateOnly Date { get; set; }
 
     /// <summary>
-    /// Gets or sets the logs in this group.
+    /// Gets or sets the inference logs in this group.
     /// </summary>
-    public List<AesirKernelLogBase> Logs { get; set; } = [];
+    public List<AesirInferenceLogSummary> Logs { get; set; } = [];
 
     /// <summary>
-    /// Groups logs by time period for timeline display.
+    /// Groups inference logs by time period for timeline display.
     /// </summary>
-    public static List<TimeGroupedLogs> GroupLogs(IEnumerable<AesirKernelLogBase> logs)
+    public static List<TimeGroupedLogs> GroupLogs(IEnumerable<AesirInferenceLogSummary> logs)
     {
         var now = DateTimeOffset.Now;
         var today = DateOnly.FromDateTime(now.LocalDateTime);
@@ -37,7 +37,7 @@ public class TimeGroupedLogs
 
         foreach (var log in logs)
         {
-            var logDate = DateOnly.FromDateTime(log.CreatedAt.LocalDateTime);
+            var logDate = DateOnly.FromDateTime(log.StartedAt.LocalDateTime);
 
             if (!groups.TryGetValue(logDate, out var group))
             {

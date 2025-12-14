@@ -220,7 +220,7 @@ public class SettingsPageTests : TestContext
     public void RendersObservabilityContent_WhenObservabilityTabSelected()
     {
         // Arrange
-        var logs = new PagedLogResponse { Items = new List<AesirKernelLogBase>(), TotalCount = 0 };
+        var logs = new PagedLogResponse { Items = new List<AesirInferenceLogSummary>(), TotalCount = 0 };
         _mockObservabilityService.Setup(x => x.LoadLogsAsync(It.IsAny<LogFilter>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<PagedLogResponse>.Success(logs));
         _mockObservabilityService.Setup(x => x.CurrentResponse).Returns(logs);
@@ -301,7 +301,7 @@ public class SettingsPageTests : TestContext
             .ReturnsAsync(ApiResult<IReadOnlyList<AesirToolBase>>.Success(new List<AesirToolBase>()));
 
         // Observability
-        var logs = new PagedLogResponse { Items = new List<AesirKernelLogBase>(), TotalCount = 0 };
+        var logs = new PagedLogResponse { Items = new List<AesirInferenceLogSummary>(), TotalCount = 0 };
         _mockObservabilityService.Setup(x => x.LoadLogsAsync(It.IsAny<LogFilter>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<PagedLogResponse>.Success(logs));
         _mockObservabilityService.Setup(x => x.CurrentResponse).Returns(logs);

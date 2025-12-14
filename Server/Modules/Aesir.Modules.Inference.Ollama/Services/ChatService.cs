@@ -3,6 +3,7 @@ using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Inference.Services;
+using Aesir.Modules.Logging.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -75,6 +76,17 @@ public class ChatService : BaseChatService
     /// <summary>
     /// Provides implementation for chat service operations, using Semantic Kernel and Ollama API.
     /// </summary>
+    /// <param name="logger">Logger for diagnostic information.</param>
+    /// <param name="loggerFactory">Factory for creating loggers for child services.</param>
+    /// <param name="api">Ollama API client for model communication.</param>
+    /// <param name="kernel">Semantic Kernel instance for AI operations.</param>
+    /// <param name="kernelPluginService">Service for managing kernel plugins.</param>
+    /// <param name="serviceProvider">Service provider for dependency resolution.</param>
+    /// <param name="toolCallBroadcaster">Broadcaster for streaming tool call events to clients.</param>
+    /// <param name="inferenceLogService">Service for persisting inference logs for observability.</param>
+    /// <param name="inferenceEngineId">The inference engine identifier.</param>
+    /// <param name="chatHistoryService">Service for persisting and managing chat history.</param>
+    /// <param name="conversationDocumentCollectionService">Service for handling access and search functionalities for documents within conversations.</param>
     public ChatService(
         ILogger<ChatService> logger,
         ILoggerFactory loggerFactory,
@@ -83,10 +95,11 @@ public class ChatService : BaseChatService
         IKernelPluginService kernelPluginService,
         IServiceProvider serviceProvider,
         IToolCallBroadcaster toolCallBroadcaster,
+        IInferenceLogService? inferenceLogService,
         string inferenceEngineId,
         IChatHistoryService chatHistoryService,
         IConversationDocumentCollectionService? conversationDocumentCollectionService)
-        : base(logger, chatHistoryService, kernel, serviceProvider, toolCallBroadcaster, inferenceEngineId)
+        : base(logger, chatHistoryService, kernel, serviceProvider, toolCallBroadcaster, inferenceLogService, inferenceEngineId)
     {
         _loggerFactory = loggerFactory;
         _api = api;

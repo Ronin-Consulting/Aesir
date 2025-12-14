@@ -6,6 +6,7 @@ using Aesir.Infrastructure.Modules;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Inference.OpenAI.Services;
 using Aesir.Modules.Inference.Services;
+using Aesir.Modules.Logging.Services;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -161,6 +162,7 @@ public class OpenAIInferenceModule : ModuleBase
             var kernelPluginService = sp.GetRequiredService<IKernelPluginService>();
             var chatHistoryService = sp.GetRequiredService<IChatHistoryService>();
             var toolCallBroadcaster = sp.GetRequiredService<IToolCallBroadcaster>();
+            var inferenceLogService = sp.GetService<IInferenceLogService>();
             var conversationDocumentCollectionService =
                 sp.GetService<IConversationDocumentCollectionService>();
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
@@ -172,6 +174,7 @@ public class OpenAIInferenceModule : ModuleBase
                 kernelPluginService,
                 sp,
                 toolCallBroadcaster,
+                inferenceLogService,
                 inferenceEngineIdKey,
                 chatHistoryService,
                 conversationDocumentCollectionService

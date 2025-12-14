@@ -81,6 +81,24 @@ public class AesirToolCallInfo
     /// </summary>
     [JsonPropertyName("error")]
     public string? Error { get; set; }
+
+    /// <summary>
+    /// The chat session ID this tool call belongs to (for logging/observability).
+    /// </summary>
+    [JsonPropertyName("chat_session_id")]
+    public Guid? ChatSessionId { get; set; }
+
+    /// <summary>
+    /// The conversation ID this tool call belongs to (for logging/observability).
+    /// </summary>
+    [JsonPropertyName("conversation_id")]
+    public Guid? ConversationId { get; set; }
+
+    /// <summary>
+    /// The underlying C# method name being called.
+    /// </summary>
+    [JsonPropertyName("underlying_method")]
+    public string? UnderlyingMethod { get; set; }
 }
 
 /// <summary>

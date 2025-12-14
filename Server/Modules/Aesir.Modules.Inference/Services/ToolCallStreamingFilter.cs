@@ -7,8 +7,10 @@ using Microsoft.SemanticKernel;
 namespace Aesir.Modules.Inference.Services;
 
 /// <summary>
-/// Semantic Kernel Auto Function Invocation Filter that broadcasts tool calls to the streaming response.
-/// Intercepts all tool/function calls made by SK and sends them to the active broadcaster scope.
+/// Semantic Kernel Auto Function Invocation Filter that broadcasts tool calls to the streaming response
+/// and collects them for observability logging.
+/// Intercepts all tool/function calls made by SK and sends them to the active broadcaster scope
+/// and inference log collector.
 /// </summary>
 public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
 {
@@ -34,20 +36,22 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
         AutoFunctionInvocationContext context,
         Func<AutoFunctionInvocationContext, Task> next)
     {
-        _logger.LogInformation("ToolCallStreamingFilter invoked for function: {FunctionName} (Plugin: {PluginName})",
+        _logger.LogDebug("ToolCallStreamingFilter invoked for function: {FunctionName} (Plugin: {PluginName})",
             context.Function.Name, context.Function.PluginName);
 
-        // Get the current broadcaster scope from Kernel.Data
-        var scope = ToolCallBroadcaster.GetScope(context.Kernel);
-        if (scope == null)
+        // Get the current broadcaster scope from Kernel.Data (for streaming to UI)
+        var broadcasterScope = ToolCallBroadcaster.GetScope(context.Kernel);
+
+        // Get the inference log collector from Kernel.Data (for observability persistence)
+        var logCollector = InferenceLogCollector.GetFromKernel(context.Kernel);
+
+        // If neither scope nor collector exists, just execute
+        if (broadcasterScope == null && logCollector == null)
         {
-            _logger.LogDebug("No broadcaster scope in Kernel.Data - tool call will not be surfaced to UI (this is normal for non-streaming requests)");
-            // No active scope - just execute the function without broadcasting
+            _logger.LogDebug("No broadcaster scope or log collector in Kernel.Data - executing without tracking");
             await next(context);
             return;
         }
-
-        _logger.LogDebug("Broadcaster scope found in Kernel.Data - will broadcast tool call events");
 
         var toolCallId = context.ToolCallId ?? Guid.NewGuid().ToString();
 
@@ -63,6 +67,7 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
             Description = context.Function.Description,
             ToolType = toolType,
             Arguments = ExtractArguments(context.Arguments),
+            UnderlyingMethod = context.Function.UnderlyingMethod?.Name,
             Status = ToolCallStatus.Started,
             StartedAt = DateTimeOffset.UtcNow
         };
@@ -70,17 +75,20 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
         // Start timer
         var stopwatch = Stopwatch.StartNew();
 
-        // Broadcast start event
-        _logger.LogDebug("Tool call started: {FunctionName} ({ToolCallId})",
-            context.Function.Name, toolCallId);
-        await scope.BroadcastStartAsync(toolCallInfo);
+        // Broadcast start event to UI (if broadcaster exists)
+        if (broadcasterScope != null)
+        {
+            _logger.LogDebug("Broadcasting tool call start: {FunctionName} ({ToolCallId})",
+                context.Function.Name, toolCallId);
+            await broadcasterScope.BroadcastStartAsync(toolCallInfo);
+        }
 
         try
         {
             // Execute the actual function
             await next(context);
 
-            // Broadcast completion
+            // Update tool call info with completion data
             stopwatch.Stop();
             toolCallInfo.Status = ToolCallStatus.Completed;
             toolCallInfo.CompletedAt = DateTimeOffset.UtcNow;
@@ -88,11 +96,22 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
 
             _logger.LogDebug("Tool call completed: {FunctionName} ({ToolCallId}) in {Duration}ms",
                 context.Function.Name, toolCallId, stopwatch.ElapsedMilliseconds);
-            await scope.BroadcastCompletionAsync(toolCallInfo);
+
+            // Broadcast completion to UI
+            if (broadcasterScope != null)
+            {
+                await broadcasterScope.BroadcastCompletionAsync(toolCallInfo);
+            }
+
+            // Add to inference log collector for persistence
+            if (logCollector != null)
+            {
+                logCollector.AddToolCall(toolCallInfo);
+            }
         }
         catch (Exception ex)
         {
-            // Broadcast failure
+            // Update tool call info with failure data
             stopwatch.Stop();
             toolCallInfo.Status = ToolCallStatus.Failed;
             toolCallInfo.CompletedAt = DateTimeOffset.UtcNow;
@@ -100,7 +119,18 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
 
             _logger.LogWarning(ex, "Tool call failed: {FunctionName} ({ToolCallId})",
                 context.Function.Name, toolCallId);
-            await scope.BroadcastCompletionAsync(toolCallInfo);
+
+            // Broadcast failure to UI
+            if (broadcasterScope != null)
+            {
+                await broadcasterScope.BroadcastCompletionAsync(toolCallInfo);
+            }
+
+            // Add failed tool call to collector for persistence
+            if (logCollector != null)
+            {
+                logCollector.AddToolCall(toolCallInfo);
+            }
 
             throw;
         }
