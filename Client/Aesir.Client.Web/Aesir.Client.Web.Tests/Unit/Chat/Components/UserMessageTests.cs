@@ -499,4 +499,108 @@ public class UserMessageTests : TestContext
     }
 
     #endregion
+
+    #region File Deleted State Tests
+
+    [Fact]
+    public void FileCard_DoesNotShowAsDeleted_WhenFilesNotLoaded()
+    {
+        // Arrange - File is in message but files haven't loaded yet
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "<file>document.pdf</file>What is in this file?"
+        };
+
+        // Act - FilesLoaded is false (default), ExistingFiles is empty
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message)
+            .Add(p => p.FilesLoaded, false)
+            .Add(p => p.ExistingFiles, Array.Empty<Aesir.Client.Web.Modules.Chat.Models.ConversationFile>()));
+
+        // Assert - File should NOT show as deleted (assume it exists until files load)
+        // Check the actual file-card element's class attribute, not just any markup containing the text
+        var fileCard = cut.Find(".file-card");
+        var classAttr = fileCard.GetAttribute("class");
+        classAttr.Should().NotContain("state-deleted");
+    }
+
+    [Fact]
+    public void FileCard_DoesNotShowAsDeleted_WhenFileExistsInList()
+    {
+        // Arrange - File is in message and exists in the files list
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "<file>document.pdf</file>What is in this file?"
+        };
+
+        var existingFiles = new List<Aesir.Client.Web.Modules.Chat.Models.ConversationFile>
+        {
+            new() { Id = Guid.NewGuid(), FileName = "/conversation-123/document.pdf" }
+        };
+
+        // Act - FilesLoaded is true, file exists in list
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message)
+            .Add(p => p.FilesLoaded, true)
+            .Add(p => p.ExistingFiles, existingFiles));
+
+        // Assert - File should NOT show as deleted
+        var fileCard = cut.Find(".file-card");
+        var classAttr = fileCard.GetAttribute("class");
+        classAttr.Should().NotContain("state-deleted");
+    }
+
+    [Fact]
+    public void FileCard_ShowsAsDeleted_WhenFileNotInList()
+    {
+        // Arrange - File is in message but doesn't exist in the files list
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "<file>document.pdf</file>What is in this file?"
+        };
+
+        var existingFiles = new List<Aesir.Client.Web.Modules.Chat.Models.ConversationFile>
+        {
+            new() { Id = Guid.NewGuid(), FileName = "/conversation-123/other-file.pdf" }
+        };
+
+        // Act - FilesLoaded is true, but file is not in the list
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message)
+            .Add(p => p.FilesLoaded, true)
+            .Add(p => p.ExistingFiles, existingFiles));
+
+        // Assert - File SHOULD show as deleted
+        var fileCard = cut.Find(".file-card");
+        var classAttr = fileCard.GetAttribute("class");
+        classAttr.Should().Contain("state-deleted");
+    }
+
+    [Fact]
+    public void FileCard_ShowsAsDeleted_WhenFilesLoadedButListEmpty()
+    {
+        // Arrange - This is the key bug fix test case:
+        // User deletes the ONLY document in a chat, so list becomes empty
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "<file>document.pdf</file>What is in this file?"
+        };
+
+        // Act - FilesLoaded is true (files have been loaded), but list is empty (all files deleted)
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message)
+            .Add(p => p.FilesLoaded, true)
+            .Add(p => p.ExistingFiles, Array.Empty<Aesir.Client.Web.Modules.Chat.Models.ConversationFile>()));
+
+        // Assert - File SHOULD show as deleted (this was the bug - previously returned false)
+        var fileCard = cut.Find(".file-card");
+        var classAttr = fileCard.GetAttribute("class");
+        classAttr.Should().Contain("state-deleted");
+    }
+
+    #endregion
 }

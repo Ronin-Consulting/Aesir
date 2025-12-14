@@ -505,6 +505,13 @@
     public IReadOnlyList<ConversationFile> ExistingFiles { get; set; } = [];
 
     /// <summary>
+    /// Whether the files list has been loaded from the API.
+    /// Used to distinguish between "not loaded yet" and "loaded but empty".
+    /// </summary>
+    [Parameter]
+    public bool FilesLoaded { get; set; }
+
+    /// <summary>
     /// Index of this message in the conversation (used for edit operations).
     /// </summary>
     [Parameter]
@@ -574,9 +581,9 @@
         if (string.IsNullOrEmpty(fileName))
             return false;
 
-        // If the existing files list is empty, assume files exist
-        // (the list may not have loaded yet from the API)
-        if (ExistingFiles.Count == 0)
+        // If the files list hasn't been loaded yet, assume files exist
+        // to avoid showing false "deleted" states during initial load
+        if (!FilesLoaded)
             return false;
 
         // File is deleted if it's not in the existing files list

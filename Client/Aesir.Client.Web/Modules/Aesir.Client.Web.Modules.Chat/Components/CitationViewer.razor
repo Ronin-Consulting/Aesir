@@ -371,8 +371,16 @@
             _metadata = await DocumentApiService.GetCitationMetadataAsync(
                 Citation.ConversationId, Citation.FileName);
 
+            // If metadata is null, the file doesn't exist (was deleted or never existed)
+            if (_metadata == null)
+            {
+                _error = "This document has been removed from the conversation. The file may have been deleted.";
+                _isLoading = false;
+                return;
+            }
+
             // Check if file is large and user hasn't accepted the warning
-            if (_metadata?.FileSize > LargeFileSizeThreshold && !_userAcceptedLargeFile)
+            if (_metadata.FileSize > LargeFileSizeThreshold && !_userAcceptedLargeFile)
             {
                 _showLargeFileWarning = true;
                 _isLoading = false;

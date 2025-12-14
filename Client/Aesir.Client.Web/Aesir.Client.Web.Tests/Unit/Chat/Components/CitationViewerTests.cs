@@ -388,4 +388,216 @@ public class CitationViewerTests : TestContext
     }
 
     #endregion
+
+    #region Deleted Document Tests
+
+    [Fact]
+    public async Task ShowsErrorMessage_WhenDocumentIsDeleted_Pdf()
+    {
+        // Arrange
+        var citation = CreateCitation(fileName: "deleted-document.pdf", fileType: CitationFileType.Pdf);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        // Metadata returns null when file doesn't exist (404)
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CitationFileMetadata?)null);
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act - Trigger the citation changed event on the correct thread
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for the error message to appear
+        cut.WaitForState(() => cut.Markup.Contains("citation-error"), TimeSpan.FromSeconds(2));
+
+        // Assert - Should show error message, not the PDF viewer
+        cut.Markup.Should().Contain("citation-error");
+        cut.Markup.Should().Contain("Unable to load document");
+        cut.Markup.Should().Contain("This document has been removed from the conversation");
+    }
+
+    [Fact]
+    public async Task ShowsErrorMessage_WhenDocumentIsDeleted_Image()
+    {
+        // Arrange
+        var citation = CreateCitation(fileName: "deleted-image.png", fileType: CitationFileType.Image);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        // Metadata returns null when file doesn't exist (404)
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CitationFileMetadata?)null);
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act - Trigger the citation changed event on the correct thread
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for the error message to appear
+        cut.WaitForState(() => cut.Markup.Contains("citation-error"), TimeSpan.FromSeconds(2));
+
+        // Assert - Should show error message, not the image viewer
+        cut.Markup.Should().Contain("citation-error");
+        cut.Markup.Should().Contain("This document has been removed from the conversation");
+    }
+
+    [Fact]
+    public async Task ShowsErrorMessage_WhenDocumentIsDeleted_TextFile()
+    {
+        // Arrange
+        var citation = CreateCitation(fileName: "deleted-file.txt", fileType: CitationFileType.Text);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        // Metadata returns null when file doesn't exist (404)
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CitationFileMetadata?)null);
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act - Trigger the citation changed event on the correct thread
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for the error message to appear
+        cut.WaitForState(() => cut.Markup.Contains("citation-error"), TimeSpan.FromSeconds(2));
+
+        // Assert - Should show error message, not the text viewer
+        cut.Markup.Should().Contain("citation-error");
+        cut.Markup.Should().Contain("This document has been removed from the conversation");
+    }
+
+    [Fact]
+    public async Task ShowsRetryButton_WhenDocumentIsDeleted()
+    {
+        // Arrange
+        var citation = CreateCitation(fileName: "deleted-document.pdf", fileType: CitationFileType.Pdf);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        // Metadata returns null when file doesn't exist (404)
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CitationFileMetadata?)null);
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act - Trigger the citation changed event on the correct thread
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for the error message to appear
+        cut.WaitForState(() => cut.Markup.Contains("citation-error"), TimeSpan.FromSeconds(2));
+
+        // Assert - Should show retry button
+        cut.Markup.Should().Contain("Retry");
+    }
+
+    [Fact]
+    public async Task DoesNotShowPdfViewer_WhenDocumentIsDeleted()
+    {
+        // Arrange
+        var citation = CreateCitation(fileName: "deleted-document.pdf", fileType: CitationFileType.Pdf);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        // Metadata returns null when file doesn't exist (404)
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CitationFileMetadata?)null);
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act - Trigger the citation changed event on the correct thread
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for the error message to appear
+        cut.WaitForState(() => cut.Markup.Contains("citation-error"), TimeSpan.FromSeconds(2));
+
+        // Assert - PDF viewer should NOT be rendered (no iframe)
+        cut.FindAll("iframe").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task LoadsContentSuccessfully_WhenDocumentExists()
+    {
+        // Arrange
+        var citation = CreateCitation(fileName: "existing-document.pdf", fileType: CitationFileType.Pdf);
+        var metadata = CreateMetadata(fileName: "existing-document.pdf", fileSize: 1024);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        // Metadata returns valid data when file exists
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(metadata);
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationViewUrl(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("https://api.example.com/document/existing-document.pdf");
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act - Trigger the citation changed event on the correct thread
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for loading to complete (either error or content loaded)
+        cut.WaitForState(() => !cut.Markup.Contains("Loading document"), TimeSpan.FromSeconds(2));
+
+        // Assert - Should NOT show error message
+        cut.FindAll(".citation-error").Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(CitationFileType.Pdf)]
+    [InlineData(CitationFileType.Image)]
+    [InlineData(CitationFileType.Text)]
+    [InlineData(CitationFileType.Json)]
+    [InlineData(CitationFileType.Markdown)]
+    [InlineData(CitationFileType.Csv)]
+    public async Task ShowsErrorMessage_WhenDocumentIsDeleted_AllFileTypes(CitationFileType fileType)
+    {
+        // Arrange
+        var fileName = fileType switch
+        {
+            CitationFileType.Pdf => "deleted.pdf",
+            CitationFileType.Image => "deleted.png",
+            CitationFileType.Text => "deleted.txt",
+            CitationFileType.Json => "deleted.json",
+            CitationFileType.Markdown => "deleted.md",
+            CitationFileType.Csv => "deleted.csv",
+            _ => "deleted.file"
+        };
+        var citation = CreateCitation(fileName: fileName, fileType: fileType);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        // Metadata returns null when file doesn't exist (404)
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CitationFileMetadata?)null);
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act - Trigger the citation changed event on the correct thread
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for the error message to appear
+        cut.WaitForState(() => cut.Markup.Contains("citation-error"), TimeSpan.FromSeconds(2));
+
+        // Assert - Should show error message for all file types
+        cut.Markup.Should().Contain("citation-error");
+        cut.Markup.Should().Contain("This document has been removed from the conversation");
+    }
+
+    #endregion
 }

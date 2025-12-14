@@ -497,5 +497,37 @@ public class FileCardTests : TestContext
         cut.Markup.Should().Contain($"title=\"{longFileName}\"");
     }
 
+    [Fact]
+    public void HasTitleAttribute_ShowsDeletedMessage_WhenIsDeleted()
+    {
+        // Arrange
+        var fileName = "document.pdf";
+
+        // Act
+        var cut = RenderComponent<FileCard>(parameters => parameters
+            .Add(p => p.FileName, fileName)
+            .Add(p => p.IsDeleted, true));
+
+        // Assert - title should show "Deleted from conversation" instead of filename
+        cut.Markup.Should().Contain("title=\"Deleted from conversation\"");
+        cut.Markup.Should().NotContain($"title=\"{fileName}\"");
+    }
+
+    [Fact]
+    public void HasTitleAttribute_ShowsFileName_WhenNotDeleted()
+    {
+        // Arrange
+        var fileName = "document.pdf";
+
+        // Act
+        var cut = RenderComponent<FileCard>(parameters => parameters
+            .Add(p => p.FileName, fileName)
+            .Add(p => p.IsDeleted, false));
+
+        // Assert - title should show the filename
+        cut.Markup.Should().Contain($"title=\"{fileName}\"");
+        cut.Markup.Should().NotContain("title=\"Deleted from conversation\"");
+    }
+
     #endregion
 }

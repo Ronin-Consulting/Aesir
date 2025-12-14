@@ -994,4 +994,71 @@ public class ChatStateServiceTests
     }
 
     #endregion
+
+    #region Document Deletion Tests
+
+    [Fact]
+    public void NotifyDocumentDeleted_RaisesOnDocumentDeletedEvent()
+    {
+        // Arrange
+        var documentId = Guid.NewGuid();
+        Guid? receivedDocumentId = null;
+        _service.OnDocumentDeleted += id => receivedDocumentId = id;
+
+        // Act
+        _service.NotifyDocumentDeleted(documentId);
+
+        // Assert
+        receivedDocumentId.Should().Be(documentId);
+    }
+
+    [Fact]
+    public void NotifyDocumentDeleted_DoesNotThrow_WhenNoSubscribers()
+    {
+        // Arrange
+        var documentId = Guid.NewGuid();
+
+        // Act
+        var action = () => _service.NotifyDocumentDeleted(documentId);
+
+        // Assert
+        action.Should().NotThrow();
+    }
+
+    [Fact]
+    public void NotifyDocumentDeleted_SupportsMultipleSubscribers()
+    {
+        // Arrange
+        var documentId = Guid.NewGuid();
+        var subscriber1Called = false;
+        var subscriber2Called = false;
+        _service.OnDocumentDeleted += _ => subscriber1Called = true;
+        _service.OnDocumentDeleted += _ => subscriber2Called = true;
+
+        // Act
+        _service.NotifyDocumentDeleted(documentId);
+
+        // Assert
+        subscriber1Called.Should().BeTrue();
+        subscriber2Called.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OnDocumentDeleted_CanBeUnsubscribed()
+    {
+        // Arrange
+        var documentId = Guid.NewGuid();
+        var eventRaised = false;
+        void Handler(Guid id) => eventRaised = true;
+        _service.OnDocumentDeleted += Handler;
+        _service.OnDocumentDeleted -= Handler;
+
+        // Act
+        _service.NotifyDocumentDeleted(documentId);
+
+        // Assert
+        eventRaised.Should().BeFalse();
+    }
+
+    #endregion
 }

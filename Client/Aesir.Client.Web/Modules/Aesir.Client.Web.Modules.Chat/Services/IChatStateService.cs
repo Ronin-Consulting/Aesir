@@ -53,6 +53,11 @@ public interface IChatStateService
     event Action? OnSessionChanged;
 
     /// <summary>
+    /// Event raised when a document is deleted from any location.
+    /// </summary>
+    event Action<Guid>? OnDocumentDeleted;
+
+    /// <summary>
     /// Selects an agent for the chat.
     /// </summary>
     void SelectAgent(AesirAgentBase? agent);
@@ -83,6 +88,12 @@ public interface IChatStateService
     /// Notifies that the conversation has changed.
     /// </summary>
     void NotifyConversationChanged();
+
+    /// <summary>
+    /// Notifies that a document has been deleted.
+    /// </summary>
+    /// <param name="documentId">The ID of the deleted document.</param>
+    void NotifyDocumentDeleted(Guid documentId);
 
     #region Tool Toggle State
 

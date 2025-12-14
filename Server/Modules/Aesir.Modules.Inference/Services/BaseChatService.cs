@@ -236,6 +236,11 @@ public abstract class BaseChatService : IChatService
             }
 
             request.Conversation.Messages.Add(messageToSave);
+
+            // Ensure title generation completes before persisting
+            // This prevents race condition where streaming finishes before title is ready
+            title = await titleTask;
+
             await PersistChatSessionAsync(request, request.Conversation, title);
         }
 

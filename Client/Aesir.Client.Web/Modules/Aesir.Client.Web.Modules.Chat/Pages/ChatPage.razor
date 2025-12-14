@@ -71,6 +71,7 @@
                                  MessageIndex="@index"
                                  ConversationId="@ChatState.CurrentSessionId"
                                  ExistingFiles="@ConversationFiles"
+                                 FilesLoaded="@ConversationFilesLoaded"
                                  IsStreaming="@isCurrentlyStreaming"
                                  OnEdit="@HandleEditMessage"
                                  OnRerun="@HandleRerunMessage" />
@@ -196,6 +197,13 @@
     /// </summary>
     [CascadingParameter(Name = "ConversationFiles")]
     private IReadOnlyList<ConversationFile> ConversationFiles { get; set; } = [];
+
+    /// <summary>
+    /// Whether the conversation files have been loaded from the API.
+    /// Used to distinguish between "not loaded yet" and "loaded but empty".
+    /// </summary>
+    [CascadingParameter(Name = "ConversationFilesLoaded")]
+    private bool ConversationFilesLoaded { get; set; }
 
     private ElementReference _messagesContainer;
     private MessageInput? _messageInput;

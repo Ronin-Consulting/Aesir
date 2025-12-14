@@ -55,6 +55,9 @@ public class ChatStateService : IChatStateService
     public event Action? OnSessionChanged;
 
     /// <inheritdoc />
+    public event Action<Guid>? OnDocumentDeleted;
+
+    /// <inheritdoc />
     public void SelectAgent(AesirAgentBase? agent)
     {
         if (SelectedAgent?.Id != agent?.Id)
@@ -120,6 +123,12 @@ public class ChatStateService : IChatStateService
     public void NotifyConversationChanged()
     {
         OnConversationChanged?.Invoke();
+    }
+
+    /// <inheritdoc />
+    public void NotifyDocumentDeleted(Guid documentId)
+    {
+        OnDocumentDeleted?.Invoke(documentId);
     }
 
     #region Tool Toggle State

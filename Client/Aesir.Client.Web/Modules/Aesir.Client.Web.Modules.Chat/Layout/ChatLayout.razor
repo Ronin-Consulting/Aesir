@@ -244,7 +244,9 @@
                            Class="control-btn" />
         </div>
         <CascadingValue Name="ConversationFiles" Value="_conversationFiles">
-            @Body
+            <CascadingValue Name="ConversationFilesLoaded" Value="_conversationFilesLoaded">
+                @Body
+            </CascadingValue>
         </CascadingValue>
     </MudMainContent>
 
@@ -647,6 +649,7 @@
         ChatState.OnConversationChanged += HandleConversationChanged;
         ChatState.OnAgentChanged += HandleAgentChangedAsync;
         ChatState.OnSessionChanged += HandleSessionChangedAsync;
+        ChatState.OnDocumentDeleted += HandleDocumentDeleted;
 
         // Load all sessions on startup for recents (pagination handled via _displayCount)
         await HistoryService.LoadSessionsAsync();
@@ -677,6 +680,7 @@
                 {
                     var files = await DocumentService.GetFilesAsync(ChatState.CurrentSessionId.Value);
                     _conversationFiles = files;
+                    _conversationFilesLoaded = true;
                 }
                 catch
                 {
@@ -898,11 +902,13 @@
             {
                 var files = await DocumentService.GetFilesAsync(ChatState.CurrentSessionId.Value);
                 _conversationFiles = files;
+                _conversationFilesLoaded = true;
             }
             catch
             {
                 // Failed to load files, keep existing list or empty
                 _conversationFiles = [];
+                _conversationFilesLoaded = false;
             }
 
             // Also refresh the drawer component if it's open
@@ -914,9 +920,18 @@
         else
         {
             _conversationFiles = [];
+            _conversationFilesLoaded = false;
         }
 
         await InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleDocumentDeleted(Guid documentId)
+    {
+        // Remove the deleted document from the cached files
+        var updatedFiles = _conversationFiles.Where(f => f.Id != documentId).ToList();
+        _conversationFiles = updatedFiles;
+        InvokeAsync(StateHasChanged);
     }
 
     private async Task UpdateDocumentsButtonVisibilityAsync()
@@ -953,10 +968,17 @@
     /// </summary>
     private IReadOnlyList<ConversationFile> _conversationFiles = [];
 
+    /// <summary>
+    /// Whether the conversation files have been loaded from the API.
+    /// Used to distinguish between "not loaded yet" and "loaded but empty".
+    /// </summary>
+    private bool _conversationFilesLoaded;
+
     private Task HandleFilesChanged(IReadOnlyList<ConversationFile> files)
     {
         // Update the cached files and notify children
         _conversationFiles = files;
+        _conversationFilesLoaded = true;
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -967,5 +989,6 @@
         ChatState.OnConversationChanged -= HandleConversationChanged;
         ChatState.OnAgentChanged -= HandleAgentChangedAsync;
         ChatState.OnSessionChanged -= HandleSessionChangedAsync;
+        ChatState.OnDocumentDeleted -= HandleDocumentDeleted;
     }
 }

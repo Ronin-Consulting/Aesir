@@ -10,6 +10,7 @@ public partial class DocumentsViewService : IDocumentsViewService
 {
     private readonly IDocumentApiService _documentApiService;
     private readonly IChatHistoryService _chatHistoryService;
+    private readonly IChatStateService _chatStateService;
     private List<DocumentWithChatInfo> _documents = [];
     private List<DocumentWithChatInfo> _allDocuments = []; // Cache for filtering
     private bool _isLoading;
@@ -17,10 +18,12 @@ public partial class DocumentsViewService : IDocumentsViewService
 
     public DocumentsViewService(
         IDocumentApiService documentApiService,
-        IChatHistoryService chatHistoryService)
+        IChatHistoryService chatHistoryService,
+        IChatStateService chatStateService)
     {
         _documentApiService = documentApiService;
         _chatHistoryService = chatHistoryService;
+        _chatStateService = chatStateService;
 
         // Subscribe to chat session changes to refresh document metadata
         _chatHistoryService.OnSessionsChanged += HandleSessionsChanged;
@@ -139,6 +142,9 @@ public partial class DocumentsViewService : IDocumentsViewService
             _allDocuments.RemoveAll(d => d.File.Id == document.File.Id);
             _documents.RemoveAll(d => d.File.Id == document.File.Id);
             NotifyChanged();
+
+            // Notify ChatStateService so ChatLayout updates its file list
+            _chatStateService.NotifyDocumentDeleted(document.File.Id);
 
             return true;
         }

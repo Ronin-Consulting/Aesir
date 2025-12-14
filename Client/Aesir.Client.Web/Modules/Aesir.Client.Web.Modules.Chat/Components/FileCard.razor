@@ -7,7 +7,7 @@
      @onmouseleave="() => _isHovered = false"
      role="@(IsClickable ? "button" : null)"
      tabindex="@(IsClickable ? 0 : -1)"
-     title="@FileName">
+     title="@(IsDeleted ? "Deleted from conversation" : FileName)">
 
     @* Left: Icon with colored background *@
     <div class="file-icon-wrapper" style="background-color: @_style.BackgroundColor;">

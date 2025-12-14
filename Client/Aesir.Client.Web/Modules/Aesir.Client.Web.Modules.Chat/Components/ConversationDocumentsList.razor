@@ -2,6 +2,7 @@
 @using Aesir.Client.Web.Modules.Chat.Models
 @using Aesir.Client.Web.Modules.Chat.Services
 @inject IDocumentApiService DocumentService
+@inject IChatStateService ChatState
 @inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
 
@@ -284,6 +285,9 @@
                 _files.Remove(file);
                 Snackbar.Add($"Deleted '{file.DisplayName}'", Severity.Success);
                 await OnFilesChanged.InvokeAsync(GetFiles());
+
+                // Notify globally so all components update
+                ChatState.NotifyDocumentDeleted(file.Id);
             }
             else
             {
