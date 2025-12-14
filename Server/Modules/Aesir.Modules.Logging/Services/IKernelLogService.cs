@@ -38,4 +38,14 @@ public interface IKernelLogService
     /// <param name="conversationId">The conversation identifier.</param>
     /// <returns>Collection of kernel logs for the conversation.</returns>
     Task<IEnumerable<KernelLog>> GetLogsByConversationAsync(Guid conversationId);
+
+    /// <summary>
+    /// Searches kernel logs with filtering, pagination, and text search.
+    /// </summary>
+    /// <param name="filter">Filter, pagination, and search parameters.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Paginated response containing kernel logs and metadata.</returns>
+    Task<PagedKernelLogResponse> SearchLogsAsync(
+        KernelLogFilterRequest filter,
+        CancellationToken cancellationToken = default);
 }

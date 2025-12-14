@@ -1,5 +1,6 @@
 using Aesir.Modules.Logging.Models;
 using Aesir.Modules.Logging.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -63,5 +64,32 @@ public class LogsController : ControllerBase
         _logger.LogDebug("GET /logs/kernel/conversation/{ConversationId}", conversationId);
 
         return await _kernelLogService.GetLogsByConversationAsync(conversationId);
+    }
+
+    /// <summary>
+    /// Searches kernel logs with filtering, pagination, and text search.
+    /// </summary>
+    /// <param name="filter">Filter, pagination, and search parameters.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Paginated collection of kernel logs.</returns>
+    /// <response code="200">Returns the paginated kernel logs.</response>
+    /// <response code="400">Invalid filter parameters.</response>
+    [HttpGet("kernel/search")]
+    [ProducesResponseType(typeof(PagedKernelLogResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PagedKernelLogResponse>> SearchKernelLogs(
+        [FromQuery] KernelLogFilterRequest filter,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug(
+            "GET /logs/kernel/search - Page: {Page}, PageSize: {PageSize}, Levels: {Levels}, Types: {Types}",
+            filter.Page,
+            filter.PageSize,
+            filter.Levels != null ? string.Join(",", filter.Levels) : "all",
+            filter.Types != null ? string.Join(",", filter.Types) : "all");
+
+        var result = await _kernelLogService.SearchLogsAsync(filter, cancellationToken);
+
+        return Ok(result);
     }
 }

@@ -9,6 +9,7 @@ using Aesir.Client.Web.Modules.Chat;
 using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Client.Web.Modules.Settings;
 using Aesir.Client.Web.Modules.Wizard;
+using Aesir.Client.Web.Modules.Observability;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -43,6 +44,7 @@ builder.Services.AddHttpClient<IDocumentApiService, DocumentApiService>(client =
 builder.Services.AddModule<ChatModule>();
 builder.Services.AddModule<SettingsModule>();
 builder.Services.AddModule<WizardModule>();
+builder.Services.AddModule<ObservabilityModule>();
 
 // Build the app
 var app = builder.Build();

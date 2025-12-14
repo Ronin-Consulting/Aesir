@@ -1,0 +1,346 @@
+@namespace Aesir.Client.Web.Modules.Observability.Components
+@using Aesir.Common.Models
+@inject NavigationManager NavigationManager
+
+<div class="log-entry-card @GetLevelClass()">
+    <div class="log-entry-header" @onclick="ToggleExpanded">
+        <div class="log-entry-time">
+            <span class="time-value">@GetTimeString()</span>
+        </div>
+        <div class="log-entry-level">
+            <LogLevelIndicator Level="Log.Level" />
+        </div>
+        <div class="log-entry-type">
+            <LogTypeChip Type="Log.Details?.Type" />
+        </div>
+        <div class="log-entry-function">
+            @if (!string.IsNullOrEmpty(Log.Details?.FunctionName))
+            {
+                <span class="function-name">@Log.Details.FunctionName</span>
+                @if (!string.IsNullOrEmpty(Log.Details.PluginName))
+                {
+                    <span class="plugin-badge">@Log.Details.PluginName</span>
+                }
+            }
+            else
+            {
+                <span class="no-function">@GetLogTypeLabel()</span>
+            }
+        </div>
+        <div class="log-entry-message">
+            <span class="message-text" title="@Log.Message">@TruncateMessage(Log.Message)</span>
+        </div>
+        <MudIcon Icon="@(_expanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                 Size="Size.Small" Class="expand-icon" />
+    </div>
+    @if (_expanded)
+    {
+        <div class="log-entry-details">
+            @if (!string.IsNullOrEmpty(Log.Message))
+            {
+                <div class="detail-section">
+                    <span class="detail-label">Message</span>
+                    <span class="detail-value message-full">@Log.Message</span>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Log.Details?.FunctionDescription))
+            {
+                <div class="detail-section">
+                    <span class="detail-label">Description</span>
+                    <span class="detail-value">@Log.Details.FunctionDescription</span>
+                </div>
+            }
+            @if (Log.Details?.Arguments?.Count > 0)
+            {
+                <div class="detail-section">
+                    <span class="detail-label">Arguments</span>
+                    <ArgumentsViewer Arguments="Log.Details.Arguments" />
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Log.Details?.UnderlyingMethod))
+            {
+                <div class="detail-section">
+                    <span class="detail-label">Method</span>
+                    <code class="detail-value method-value">@Log.Details.UnderlyingMethod</code>
+                </div>
+            }
+            <div class="detail-section detail-footer">
+                <div class="footer-item">
+                    <span class="footer-label">Timestamp:</span>
+                    <span class="footer-value">@Log.CreatedAt.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff")</span>
+                </div>
+                @if (Log.Details?.ChatSessionId.HasValue == true)
+                {
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Chat"
+                               OnClick="NavigateToChat"
+                               Class="view-chat-button">
+                        View Chat
+                    </MudButton>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .log-entry-card {
+        border-radius: 8px;
+        margin-bottom: 6px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .log-entry-card:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Level-based background colors */
+    .log-entry-card.level-info {
+        background-color: rgba(84, 169, 255, 0.05);
+    }
+
+    .log-entry-card.level-warning {
+        background-color: rgba(245, 158, 11, 0.08);
+        border-color: rgba(245, 158, 11, 0.2);
+    }
+
+    .log-entry-card.level-error {
+        background-color: rgba(239, 68, 68, 0.08);
+        border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    .log-entry-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .log-entry-header:hover {
+        background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    .log-entry-time {
+        flex-shrink: 0;
+        width: 70px;
+    }
+
+    .time-value {
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-secondary);
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    .log-entry-level {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+    }
+
+    .log-entry-type {
+        flex-shrink: 0;
+    }
+
+    .log-entry-function {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 150px;
+        max-width: 250px;
+    }
+
+    .function-name {
+        font-weight: 500;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .plugin-badge {
+        font-size: 0.65rem;
+        padding: 1px 5px;
+        border-radius: 3px;
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--mud-palette-text-secondary);
+        white-space: nowrap;
+    }
+
+    .no-function {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-secondary);
+        font-style: italic;
+    }
+
+    .log-entry-message {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .message-text {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+
+    .expand-icon {
+        color: var(--mud-palette-text-secondary);
+        flex-shrink: 0;
+        transition: transform 0.2s ease;
+    }
+
+    .log-entry-details {
+        padding: 14px 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        background-color: rgba(0, 0, 0, 0.15);
+        animation: slideDown 0.2s ease;
+    }
+
+    @@keyframes slideDown {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .detail-section {
+        margin-bottom: 12px;
+    }
+
+    .detail-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .detail-label {
+        display: block;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--mud-palette-text-secondary);
+        margin-bottom: 4px;
+    }
+
+    .detail-value {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-primary);
+        line-height: 1.5;
+    }
+
+    .message-full {
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .method-value {
+        font-family: 'Consolas', 'Monaco', monospace;
+        background-color: rgba(0, 0, 0, 0.2);
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.8rem;
+    }
+
+    .detail-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .footer-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .footer-label {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .footer-value {
+        font-size: 0.75rem;
+        font-family: 'Consolas', 'Monaco', monospace;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .view-chat-button {
+        font-size: 0.8rem !important;
+    }
+</style>
+
+@code {
+    private bool _expanded = false;
+
+    /// <summary>
+    /// Gets or sets the log entry to display.
+    /// </summary>
+    [Parameter]
+    public required AesirKernelLogBase Log { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the card should be expanded by default.
+    /// </summary>
+    [Parameter]
+    public bool DefaultExpanded { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        _expanded = DefaultExpanded;
+    }
+
+    private void ToggleExpanded()
+    {
+        _expanded = !_expanded;
+    }
+
+    private string GetLevelClass() => Log.Level switch
+    {
+        KernelLogLevel.Error => "level-error",
+        KernelLogLevel.Warning => "level-warning",
+        _ => "level-info"
+    };
+
+    private string GetTimeString()
+    {
+        return Log.CreatedAt.LocalDateTime.ToString("h:mm:ss tt");
+    }
+
+    private string GetLogTypeLabel() => Log.Details?.Type switch
+    {
+        KernelLogType.FunctionInvocation => "Function Invocation",
+        KernelLogType.AutoFunctionInvocation => "Auto Function",
+        KernelLogType.PromptRender => "Prompt Render",
+        _ => "Log Entry"
+    };
+
+    private static string TruncateMessage(string message, int maxLength = 80)
+    {
+        if (string.IsNullOrEmpty(message)) return "";
+        // Remove newlines for header display
+        var singleLine = message.Replace("\n", " ").Replace("\r", "");
+        return singleLine.Length <= maxLength ? singleLine : singleLine[..(maxLength - 3)] + "...";
+    }
+
+    private void NavigateToChat()
+    {
+        if (Log.Details?.ChatSessionId.HasValue == true)
+        {
+            // Navigate to the chats list with the session ID as a query parameter
+            // The chats page can highlight or scroll to the specific chat if it exists
+            NavigationManager.NavigateTo($"/chats?highlight={Log.Details.ChatSessionId}");
+        }
+    }
+}

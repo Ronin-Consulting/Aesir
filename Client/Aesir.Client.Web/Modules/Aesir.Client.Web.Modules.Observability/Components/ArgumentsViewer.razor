@@ -1,0 +1,91 @@
+@namespace Aesir.Client.Web.Modules.Observability.Components
+
+@if (Arguments?.Count > 0)
+{
+    <div class="arguments-viewer">
+        @foreach (var arg in Arguments)
+        {
+            <div class="argument-row">
+                <span class="arg-key">@arg.Key:</span>
+                <span class="arg-value">@FormatValue(arg.Value)</span>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <span class="no-arguments">No arguments</span>
+}
+
+<style>
+    .arguments-viewer {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-family: 'Consolas', 'Monaco', 'Fira Code', monospace;
+        font-size: 0.8rem;
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+        padding: 8px 12px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .argument-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        line-height: 1.4;
+    }
+
+    .arg-key {
+        color: #9CDCFE;
+        font-weight: 500;
+    }
+
+    .arg-value {
+        color: #CE9178;
+        word-break: break-word;
+    }
+
+    .no-arguments {
+        color: var(--mud-palette-text-secondary);
+        font-size: 0.85rem;
+        font-style: italic;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Gets or sets the arguments to display.
+    /// </summary>
+    [Parameter]
+    public List<KeyValuePair<string, string>>? Arguments { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum length for value truncation.
+    /// </summary>
+    [Parameter]
+    public int MaxValueLength { get; set; } = 200;
+
+    private string FormatValue(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return "\"\"";
+
+        // Try to detect and format JSON
+        if ((value.StartsWith('{') && value.EndsWith('}')) ||
+            (value.StartsWith('[') && value.EndsWith(']')))
+        {
+            // For JSON, truncate if too long
+            if (value.Length > MaxValueLength)
+                return value[..(MaxValueLength - 3)] + "...";
+            return value;
+        }
+
+        // For regular strings, add quotes and truncate
+        if (value.Length > MaxValueLength)
+            return $"\"{value[..(MaxValueLength - 3)]}...\"";
+
+        return $"\"{value}\"";
+    }
+}

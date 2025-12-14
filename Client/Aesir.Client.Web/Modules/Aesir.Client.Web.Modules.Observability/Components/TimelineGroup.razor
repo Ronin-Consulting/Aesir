@@ -1,0 +1,108 @@
+@namespace Aesir.Client.Web.Modules.Observability.Components
+@using Aesir.Client.Web.Modules.Observability.Models
+
+<div class="timeline-group">
+    <div class="timeline-header" @onclick="ToggleCollapsed">
+        <div class="timeline-marker"></div>
+        <h3 class="timeline-label">@Group.Label</h3>
+        <span class="timeline-count">@Group.Logs.Count @(Group.Logs.Count == 1 ? "entry" : "entries")</span>
+        <MudIcon Icon="@(_collapsed ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ExpandLess)"
+                 Size="Size.Small" Class="collapse-icon" />
+    </div>
+    @if (!_collapsed)
+    {
+        <div class="timeline-entries">
+            @foreach (var log in Group.Logs)
+            {
+                <LogEntryCard Log="log" />
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .timeline-group {
+        margin-bottom: 20px;
+    }
+
+    .timeline-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 0;
+        cursor: pointer;
+        user-select: none;
+        transition: opacity 0.2s ease;
+    }
+
+    .timeline-header:hover {
+        opacity: 0.8;
+    }
+
+    .timeline-marker {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: var(--mud-palette-primary);
+        flex-shrink: 0;
+        box-shadow: 0 0 0 4px rgba(84, 169, 255, 0.2);
+    }
+
+    .timeline-label {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-primary);
+        margin: 0;
+    }
+
+    .timeline-count {
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-secondary);
+        background-color: rgba(255, 255, 255, 0.05);
+        padding: 2px 8px;
+        border-radius: 12px;
+    }
+
+    .collapse-icon {
+        color: var(--mud-palette-text-secondary);
+        margin-left: auto;
+    }
+
+    .timeline-entries {
+        margin-left: 6px;
+        padding-left: 20px;
+        border-left: 2px solid rgba(84, 169, 255, 0.3);
+        animation: fadeIn 0.3s ease;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+</style>
+
+@code {
+    private bool _collapsed = false;
+
+    /// <summary>
+    /// Gets or sets the grouped logs to display.
+    /// </summary>
+    [Parameter]
+    public required TimeGroupedLogs Group { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the group should be collapsed by default.
+    /// </summary>
+    [Parameter]
+    public bool DefaultCollapsed { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        _collapsed = DefaultCollapsed;
+    }
+
+    private void ToggleCollapsed()
+    {
+        _collapsed = !_collapsed;
+    }
+}

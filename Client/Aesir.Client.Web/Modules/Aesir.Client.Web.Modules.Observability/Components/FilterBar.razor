@@ -1,0 +1,320 @@
+@namespace Aesir.Client.Web.Modules.Observability.Components
+@using Aesir.Common.Models
+@using Aesir.Client.Web.Modules.Observability.Models
+
+<div class="filter-bar">
+    <div class="filter-section filter-levels">
+        <span class="filter-label">Level</span>
+        <div class="filter-chips">
+            <MudChip T="string"
+                     Color="@(IsLevelSelected(KernelLogLevel.Info) ? Color.Info : Color.Default)"
+                     Variant="@(IsLevelSelected(KernelLogLevel.Info) ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleLevel(KernelLogLevel.Info))"
+                     Size="Size.Small"
+                     Class="filter-chip">
+                Info
+            </MudChip>
+            <MudChip T="string"
+                     Color="@(IsLevelSelected(KernelLogLevel.Warning) ? Color.Warning : Color.Default)"
+                     Variant="@(IsLevelSelected(KernelLogLevel.Warning) ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleLevel(KernelLogLevel.Warning))"
+                     Size="Size.Small"
+                     Class="filter-chip">
+                Warning
+            </MudChip>
+            <MudChip T="string"
+                     Color="@(IsLevelSelected(KernelLogLevel.Error) ? Color.Error : Color.Default)"
+                     Variant="@(IsLevelSelected(KernelLogLevel.Error) ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleLevel(KernelLogLevel.Error))"
+                     Size="Size.Small"
+                     Class="filter-chip">
+                Error
+            </MudChip>
+        </div>
+    </div>
+
+    <div class="filter-section filter-types">
+        <span class="filter-label">Type</span>
+        <div class="filter-chips">
+            <MudChip T="string"
+                     Style="@(IsTypeSelected(KernelLogType.FunctionInvocation) ? "background-color: rgba(16, 185, 129, 0.2); color: #10B981;" : "")"
+                     Variant="@(IsTypeSelected(KernelLogType.FunctionInvocation) ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleType(KernelLogType.FunctionInvocation))"
+                     Size="Size.Small"
+                     Class="filter-chip">
+                Function
+            </MudChip>
+            <MudChip T="string"
+                     Style="@(IsTypeSelected(KernelLogType.AutoFunctionInvocation) ? "background-color: rgba(245, 158, 11, 0.2); color: #F59E0B;" : "")"
+                     Variant="@(IsTypeSelected(KernelLogType.AutoFunctionInvocation) ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleType(KernelLogType.AutoFunctionInvocation))"
+                     Size="Size.Small"
+                     Class="filter-chip">
+                Auto Function
+            </MudChip>
+            <MudChip T="string"
+                     Style="@(IsTypeSelected(KernelLogType.PromptRender) ? "background-color: rgba(156, 39, 176, 0.2); color: #9C27B0;" : "")"
+                     Variant="@(IsTypeSelected(KernelLogType.PromptRender) ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => ToggleType(KernelLogType.PromptRender))"
+                     Size="Size.Small"
+                     Class="filter-chip">
+                Prompt
+            </MudChip>
+        </div>
+    </div>
+
+    <div class="filter-section filter-date">
+        <span class="filter-label">Time Range</span>
+        <MudDateRangePicker @bind-DateRange="_dateRange"
+                            @bind-DateRange:after="OnDateRangeChangedAsync"
+                            Label="Select Date Range"
+                            Variant="Variant.Outlined"
+                            Margin="Margin.Dense"
+                            Class="date-picker"
+                            Clearable="true" />
+    </div>
+
+    <div class="filter-section filter-search">
+        <span class="filter-label">Search</span>
+        <MudTextField @bind-Value="_searchText"
+                      Placeholder="Function or plugin name..."
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Class="search-field"
+                      Immediate="false"
+                      DebounceInterval="500"
+                      OnDebounceIntervalElapsed="OnSearchChanged" />
+    </div>
+
+    <div class="filter-actions">
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                       Color="Color.Primary"
+                       OnClick="OnRefreshClicked"
+                       Disabled="IsLoading"
+                       aria-label="Refresh logs" />
+        @if (HasActiveFilters)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff"
+                           Color="Color.Secondary"
+                           OnClick="OnClearFiltersClicked"
+                           aria-label="Clear filters" />
+        }
+    </div>
+</div>
+
+<style>
+    .filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 16px;
+        padding: 12px 16px;
+        background-color: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        margin-bottom: 16px;
+    }
+
+    .filter-section {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .filter-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .filter-chips {
+        display: flex;
+        gap: 6px;
+    }
+
+    .filter-chip {
+        cursor: pointer !important;
+    }
+
+    .filter-date {
+        min-width: 220px;
+    }
+
+    .date-picker {
+        font-size: 0.85rem;
+    }
+
+    .filter-search {
+        flex: 1;
+        min-width: 200px;
+        max-width: 350px;
+    }
+
+    .search-field {
+        font-size: 0.85rem;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        margin-left: auto;
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 1200px) {
+        .filter-bar {
+            gap: 12px;
+        }
+
+        .filter-search {
+            min-width: 150px;
+        }
+    }
+
+    @@media (max-width: 900px) {
+        .filter-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .filter-section {
+            width: 100%;
+        }
+
+        .filter-search {
+            max-width: none;
+        }
+
+        .filter-actions {
+            margin-left: 0;
+            justify-content: flex-end;
+        }
+    }
+</style>
+
+@code {
+    private DateRange? _dateRange;
+    private string? _searchText;
+
+    /// <summary>
+    /// Gets or sets the current filter state.
+    /// </summary>
+    [Parameter]
+    public LogFilter Filter { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets whether loading is in progress.
+    /// </summary>
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    /// <summary>
+    /// Event callback when filter changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<LogFilter> FilterChanged { get; set; }
+
+    /// <summary>
+    /// Event callback when refresh is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+
+    /// <summary>
+    /// Event callback when clear filters is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClearFilters { get; set; }
+
+    private bool HasActiveFilters =>
+        Filter.Levels.Count > 0 ||
+        Filter.Types.Count > 0 ||
+        Filter.From.HasValue ||
+        Filter.To.HasValue ||
+        !string.IsNullOrWhiteSpace(Filter.FunctionName) ||
+        !string.IsNullOrWhiteSpace(Filter.PluginName);
+
+    protected override void OnParametersSet()
+    {
+        // Sync local state with filter
+        if (Filter.From.HasValue && Filter.To.HasValue)
+        {
+            _dateRange = new DateRange(
+                Filter.From.Value.LocalDateTime,
+                Filter.To.Value.LocalDateTime);
+        }
+        else
+        {
+            _dateRange = null;
+        }
+
+        _searchText = Filter.FunctionName ?? Filter.PluginName;
+    }
+
+    private bool IsLevelSelected(KernelLogLevel level) => Filter.Levels.Contains(level);
+    private bool IsTypeSelected(KernelLogType type) => Filter.Types.Contains(type);
+
+    private async Task ToggleLevel(KernelLogLevel level)
+    {
+        var newFilter = Filter.Clone();
+        if (newFilter.Levels.Contains(level))
+            newFilter.Levels.Remove(level);
+        else
+            newFilter.Levels.Add(level);
+
+        await FilterChanged.InvokeAsync(newFilter);
+    }
+
+    private async Task ToggleType(KernelLogType type)
+    {
+        var newFilter = Filter.Clone();
+        if (newFilter.Types.Contains(type))
+            newFilter.Types.Remove(type);
+        else
+            newFilter.Types.Add(type);
+
+        await FilterChanged.InvokeAsync(newFilter);
+    }
+
+    private async Task OnDateRangeChangedAsync()
+    {
+        var newFilter = Filter.Clone();
+        if (_dateRange?.Start != null && _dateRange?.End != null)
+        {
+            newFilter.From = new DateTimeOffset(_dateRange.Start.Value, TimeSpan.Zero);
+            newFilter.To = new DateTimeOffset(_dateRange.End.Value.AddDays(1).AddSeconds(-1), TimeSpan.Zero);
+        }
+        else
+        {
+            newFilter.From = null;
+            newFilter.To = null;
+        }
+
+        await FilterChanged.InvokeAsync(newFilter);
+    }
+
+    private async Task OnSearchChanged(string? value)
+    {
+        var newFilter = Filter.Clone();
+        newFilter.FunctionName = string.IsNullOrWhiteSpace(value) ? null : value;
+        newFilter.PluginName = string.IsNullOrWhiteSpace(value) ? null : value;
+
+        await FilterChanged.InvokeAsync(newFilter);
+    }
+
+    private async Task OnRefreshClicked()
+    {
+        await OnRefresh.InvokeAsync();
+    }
+
+    private async Task OnClearFiltersClicked()
+    {
+        _dateRange = null;
+        _searchText = null;
+        await OnClearFilters.InvokeAsync();
+    }
+}

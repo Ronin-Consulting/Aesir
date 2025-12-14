@@ -1,0 +1,25 @@
+@namespace Aesir.Client.Web.Modules.Observability.Components
+@using Aesir.Common.Models
+
+<MudBadge Color="@GetColor()" Dot="true" Class="@Class" />
+
+@code {
+    /// <summary>
+    /// Gets or sets the log level to display.
+    /// </summary>
+    [Parameter]
+    public KernelLogLevel Level { get; set; }
+
+    /// <summary>
+    /// Gets or sets additional CSS classes.
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+
+    private Color GetColor() => Level switch
+    {
+        KernelLogLevel.Error => Color.Error,
+        KernelLogLevel.Warning => Color.Warning,
+        _ => Color.Info
+    };
+}
