@@ -146,29 +146,31 @@ public class DocumentApiService : IDocumentApiService
     #region Citation Viewer Methods
 
     /// <inheritdoc />
+    /// <exception cref="HttpRequestException">
+    /// Thrown when the request fails. Check StatusCode property:
+    /// - NotFound (404): Document doesn't exist
+    /// - Other status codes: Server or network error
+    /// </exception>
     public async Task<CitationFileMetadata?> GetCitationMetadataAsync(
         string conversationId,
         string filename,
         CancellationToken ct = default)
     {
-        try
+        var encodedFilename = Uri.EscapeDataString(filename);
+        var endpoint = $"/document/collections/conversations/{conversationId}/files/{encodedFilename}/info";
+
+        var response = await _httpClient.GetAsync(endpoint, ct);
+
+        if (!response.IsSuccessStatusCode)
         {
-            var encodedFilename = Uri.EscapeDataString(filename);
-            var endpoint = $"/document/collections/conversations/{conversationId}/files/{encodedFilename}/info";
-
-            var response = await _httpClient.GetAsync(endpoint, ct);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return null;
-            }
-
-            return await response.Content.ReadFromJsonAsync<CitationFileMetadata>(ct);
+            // Throw with status code so caller can distinguish 404 (not found) from other errors
+            throw new HttpRequestException(
+                $"Failed to get citation metadata: {response.StatusCode}",
+                inner: null,
+                statusCode: response.StatusCode);
         }
-        catch (HttpRequestException)
-        {
-            return null;
-        }
+
+        return await response.Content.ReadFromJsonAsync<CitationFileMetadata>(ct);
     }
 
     /// <inheritdoc />

@@ -362,32 +362,41 @@
         _error = null;
         _contentUrl = null;
         _textContent = null;
+        _metadata = null;
         _showLargeFileWarning = false;
         StateHasChanged();
 
         try
         {
-            // Try to get metadata first to check file size
-            _metadata = await DocumentApiService.GetCitationMetadataAsync(
-                Citation.ConversationId, Citation.FileName);
-
-            // If metadata is null, the file doesn't exist (was deleted or never existed)
-            if (_metadata == null)
+            // Try to get metadata for file size check (optional - we can proceed without it)
+            try
             {
+                _metadata = await DocumentApiService.GetCitationMetadataAsync(
+                    Citation.ConversationId, Citation.FileName);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // 404 means the file definitely doesn't exist
                 _error = "This document has been removed from the conversation. The file may have been deleted.";
                 _isLoading = false;
                 return;
             }
+            catch (HttpRequestException)
+            {
+                // Other HTTP errors - metadata unavailable but file might still exist
+                // Proceed without metadata (skip large file warning)
+                _metadata = null;
+            }
 
-            // Check if file is large and user hasn't accepted the warning
-            if (_metadata.FileSize > LargeFileSizeThreshold && !_userAcceptedLargeFile)
+            // Check if file is large and user hasn't accepted the warning (only if we have metadata)
+            if (_metadata != null && _metadata.FileSize > LargeFileSizeThreshold && !_userAcceptedLargeFile)
             {
                 _showLargeFileWarning = true;
                 _isLoading = false;
                 return;
             }
 
-            // Get content URL for images and PDFs
+            // Get content URL for images and PDFs (doesn't require metadata)
             _contentUrl = DocumentApiService.GetCitationViewUrl(Citation.ConversationId, Citation.FileName);
 
             // For text-based files, load the content directly
@@ -410,9 +419,9 @@
         {
             _error = "This file no longer exists or has been deleted.";
         }
-        catch (HttpRequestException ex)
+        catch (HttpRequestException)
         {
-            _error = $"Network error: Unable to load document. Please check your connection and try again.";
+            _error = "Network error: Unable to load document. Please check your connection and try again.";
         }
         catch (Exception ex)
         {

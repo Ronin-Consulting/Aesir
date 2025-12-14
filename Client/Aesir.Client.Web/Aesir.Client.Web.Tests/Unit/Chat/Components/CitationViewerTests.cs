@@ -400,10 +400,10 @@ public class CitationViewerTests : TestContext
         _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
         _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
 
-        // Metadata returns null when file doesn't exist (404)
+        // Metadata throws 404 when file doesn't exist
         _documentApiServiceMock
             .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((CitationFileMetadata?)null);
+            .ThrowsAsync(new HttpRequestException("Not found", null, System.Net.HttpStatusCode.NotFound));
 
         var cut = RenderComponent<CitationViewer>();
 
@@ -428,10 +428,10 @@ public class CitationViewerTests : TestContext
         _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
         _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
 
-        // Metadata returns null when file doesn't exist (404)
+        // Metadata throws 404 when file doesn't exist
         _documentApiServiceMock
             .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((CitationFileMetadata?)null);
+            .ThrowsAsync(new HttpRequestException("Not found", null, System.Net.HttpStatusCode.NotFound));
 
         var cut = RenderComponent<CitationViewer>();
 
@@ -455,10 +455,10 @@ public class CitationViewerTests : TestContext
         _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
         _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
 
-        // Metadata returns null when file doesn't exist (404)
+        // Metadata throws 404 when file doesn't exist
         _documentApiServiceMock
             .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((CitationFileMetadata?)null);
+            .ThrowsAsync(new HttpRequestException("Not found", null, System.Net.HttpStatusCode.NotFound));
 
         var cut = RenderComponent<CitationViewer>();
 
@@ -482,10 +482,10 @@ public class CitationViewerTests : TestContext
         _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
         _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
 
-        // Metadata returns null when file doesn't exist (404)
+        // Metadata throws 404 when file doesn't exist
         _documentApiServiceMock
             .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((CitationFileMetadata?)null);
+            .ThrowsAsync(new HttpRequestException("Not found", null, System.Net.HttpStatusCode.NotFound));
 
         var cut = RenderComponent<CitationViewer>();
 
@@ -508,10 +508,10 @@ public class CitationViewerTests : TestContext
         _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
         _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
 
-        // Metadata returns null when file doesn't exist (404)
+        // Metadata throws 404 when file doesn't exist
         _documentApiServiceMock
             .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((CitationFileMetadata?)null);
+            .ThrowsAsync(new HttpRequestException("Not found", null, System.Net.HttpStatusCode.NotFound));
 
         var cut = RenderComponent<CitationViewer>();
 
@@ -581,10 +581,10 @@ public class CitationViewerTests : TestContext
         _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
         _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
 
-        // Metadata returns null when file doesn't exist (404)
+        // Metadata throws 404 when file doesn't exist
         _documentApiServiceMock
             .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((CitationFileMetadata?)null);
+            .ThrowsAsync(new HttpRequestException("Not found", null, System.Net.HttpStatusCode.NotFound));
 
         var cut = RenderComponent<CitationViewer>();
 
@@ -597,6 +597,272 @@ public class CitationViewerTests : TestContext
         // Assert - Should show error message for all file types
         cut.Markup.Should().Contain("citation-error");
         cut.Markup.Should().Contain("This document has been removed from the conversation");
+    }
+
+    #endregion
+
+    #region Successful Content Display Tests
+
+    [Fact]
+    public async Task RendersPdfViewer_WhenDocumentExists()
+    {
+        // Arrange
+        var citation = CreateCitation(fileName: "existing-document.pdf", fileType: CitationFileType.Pdf);
+        var metadata = CreateMetadata(fileName: "existing-document.pdf", fileSize: 1024);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(metadata);
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationViewUrl(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("https://api.example.com/document/existing-document.pdf");
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for loading to complete
+        cut.WaitForState(() => !cut.Markup.Contains("Loading document"), TimeSpan.FromSeconds(2));
+
+        // Assert - PDF viewer should be rendered (iframe present)
+        cut.FindAll(".citation-error").Should().BeEmpty();
+        cut.FindAll("iframe").Should().NotBeEmpty();
+        cut.Markup.Should().Contain("pdf-viewer-container");
+    }
+
+    [Fact]
+    public async Task RendersImageViewer_WhenDocumentExists()
+    {
+        // Arrange
+        var citation = CreateCitation(fileName: "existing-image.png", fileType: CitationFileType.Image);
+        var metadata = CreateMetadata(fileName: "existing-image.png", fileSize: 1024);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(metadata);
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationViewUrl(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("https://api.example.com/document/existing-image.png");
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for loading to complete
+        cut.WaitForState(() => !cut.Markup.Contains("Loading document"), TimeSpan.FromSeconds(2));
+
+        // Assert - Image viewer should be rendered
+        cut.FindAll(".citation-error").Should().BeEmpty();
+        cut.Markup.Should().Contain("image-viewer-container");
+    }
+
+    [Fact]
+    public async Task RendersTextViewer_WhenDocumentExists()
+    {
+        // Arrange
+        var citation = CreateCitation(fileName: "existing-file.txt", fileType: CitationFileType.Text);
+        var metadata = CreateMetadata(fileName: "existing-file.txt", fileSize: 100);
+        var textContent = "Hello, this is test content.";
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(metadata);
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationViewUrl(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("https://api.example.com/document/existing-file.txt");
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(System.Text.Encoding.UTF8.GetBytes(textContent));
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for loading to complete
+        cut.WaitForState(() => !cut.Markup.Contains("Loading document"), TimeSpan.FromSeconds(2));
+
+        // Assert - Text viewer should be rendered with content
+        cut.FindAll(".citation-error").Should().BeEmpty();
+        cut.Markup.Should().Contain("text-viewer-container");
+        cut.Markup.Should().Contain(textContent);
+    }
+
+    [Fact]
+    public async Task PassesCorrectContentUrl_ToPdfViewer()
+    {
+        // Arrange
+        var citation = CreateCitation(fileName: "test.pdf", fileType: CitationFileType.Pdf);
+        var metadata = CreateMetadata(fileName: "test.pdf", fileSize: 1024);
+        var expectedUrl = "https://api.example.com/document/collections/file/conv-123/test.pdf";
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(metadata);
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationViewUrl(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(expectedUrl);
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for loading to complete
+        cut.WaitForState(() => !cut.Markup.Contains("Loading document"), TimeSpan.FromSeconds(2));
+
+        // Assert - iframe should have the correct URL
+        var iframe = cut.Find("iframe");
+        iframe.GetAttribute("src").Should().Contain(expectedUrl);
+    }
+
+    #endregion
+
+    #region Fallback Behavior Tests (Metadata Fails but Document May Exist)
+
+    [Fact]
+    public async Task ShowsViewer_WhenMetadataEndpointFails_Pdf()
+    {
+        // Arrange
+        var citation = CreateCitation(fileName: "document.pdf", fileType: CitationFileType.Pdf);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        // Metadata throws 500 (server error) - not a 404
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("Server error", null, System.Net.HttpStatusCode.InternalServerError));
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationViewUrl(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("https://api.example.com/document/document.pdf");
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for loading to complete
+        cut.WaitForState(() => !cut.Markup.Contains("Loading document"), TimeSpan.FromSeconds(2));
+
+        // Assert - Should show viewer, not deleted error
+        cut.FindAll(".citation-error").Should().BeEmpty();
+        cut.FindAll("iframe").Should().NotBeEmpty();
+        cut.Markup.Should().NotContain("This document has been removed");
+    }
+
+    [Fact]
+    public async Task ShowsViewer_WhenMetadataEndpointFails_Image()
+    {
+        // Arrange
+        var citation = CreateCitation(fileName: "image.png", fileType: CitationFileType.Image);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        // Metadata throws 500 (server error) - not a 404
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("Server error", null, System.Net.HttpStatusCode.InternalServerError));
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationViewUrl(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("https://api.example.com/document/image.png");
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for loading to complete
+        cut.WaitForState(() => !cut.Markup.Contains("Loading document"), TimeSpan.FromSeconds(2));
+
+        // Assert - Should show viewer, not deleted error
+        cut.FindAll(".citation-error").Should().BeEmpty();
+        cut.Markup.Should().Contain("image-viewer-container");
+        cut.Markup.Should().NotContain("This document has been removed");
+    }
+
+    [Fact]
+    public async Task ShowsViewer_WhenMetadataReturnsServerError()
+    {
+        // Arrange - 500 error should fallback, not show deleted
+        var citation = CreateCitation(fileName: "document.pdf", fileType: CitationFileType.Pdf);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        // Metadata throws generic HttpRequestException (e.g., network error)
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("Network error"));
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationViewUrl(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("https://api.example.com/document/document.pdf");
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for loading to complete
+        cut.WaitForState(() => !cut.Markup.Contains("Loading document"), TimeSpan.FromSeconds(2));
+
+        // Assert - Should show viewer, not deleted error (network errors shouldn't mean document is deleted)
+        cut.FindAll(".citation-error").Should().BeEmpty();
+        cut.Markup.Should().NotContain("This document has been removed");
+    }
+
+    [Fact]
+    public async Task SkipsLargeFileWarning_WhenMetadataUnavailable()
+    {
+        // Arrange - When metadata fails, we can't check file size, so skip the warning
+        var citation = CreateCitation(fileName: "document.pdf", fileType: CitationFileType.Pdf);
+
+        _citationStateServiceMock.Setup(x => x.IsViewerOpen).Returns(true);
+        _citationStateServiceMock.Setup(x => x.CurrentCitation).Returns(citation);
+
+        // Metadata throws 500 (server error) - can't get file size
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationMetadataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("Server error", null, System.Net.HttpStatusCode.InternalServerError));
+
+        _documentApiServiceMock
+            .Setup(x => x.GetCitationViewUrl(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns("https://api.example.com/document/document.pdf");
+
+        var cut = RenderComponent<CitationViewer>();
+
+        // Act
+        await cut.InvokeAsync(() => _citationStateServiceMock.Raise(x => x.OnCitationChanged += null));
+
+        // Wait for loading to complete
+        cut.WaitForState(() => !cut.Markup.Contains("Loading document"), TimeSpan.FromSeconds(2));
+
+        // Assert - Should NOT show large file warning (we couldn't check the size)
+        cut.Markup.Should().NotContain("Large File Warning");
+        cut.FindAll("iframe").Should().NotBeEmpty();
     }
 
     #endregion

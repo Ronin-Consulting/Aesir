@@ -261,6 +261,49 @@ public class DocumentCollectionController(
     }
 
     /// <summary>
+    /// Retrieves metadata information for a specific file associated with a conversation.
+    /// Returns file info without the actual file content.
+    /// </summary>
+    /// <param name="conversationId">The unique identifier of the conversation to which the file belongs.</param>
+    /// <param name="filename">The name of the file to retrieve metadata for.</param>
+    /// <returns>An <see cref="IActionResult"/> containing the file metadata, or NotFound if the file doesn't exist.</returns>
+    [HttpGet("conversations/{conversationId}/files/{filename}/info")]
+    public async Task<IActionResult> GetConversationFileInfoAsync(
+        [FromRoute] string conversationId,
+        [FromRoute] string filename)
+    {
+        if (string.IsNullOrWhiteSpace(conversationId))
+            return BadRequest("Conversation ID is required.");
+
+        if (string.IsNullOrWhiteSpace(filename))
+            return BadRequest("Filename is required.");
+
+        try
+        {
+            var virtualFilename = $"/{conversationId}/{Uri.UnescapeDataString(filename)}";
+            var fileInfo = await fileStorageService.GetFileInfoAsync(virtualFilename);
+
+            if (fileInfo == null)
+                return NotFound();
+
+            return Ok(new
+            {
+                fileName = Path.GetFileName(fileInfo.FileName),
+                mimeType = fileInfo.MimeType,
+                fileSize = fileInfo.FileSize,
+                hasThumbnail = fileInfo.HasThumbnail,
+                createdAt = fileInfo.CreatedAt
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving file info for {ConversationId}/{Filename}",
+                conversationId, filename);
+            return StatusCode(500, "An error occurred while retrieving file information.");
+        }
+    }
+
+    /// <summary>
     /// Deletes the specified file associated with a conversation.
     /// </summary>
     /// <param name="conversationId">The unique identifier of the conversation to which the file belongs.</param>

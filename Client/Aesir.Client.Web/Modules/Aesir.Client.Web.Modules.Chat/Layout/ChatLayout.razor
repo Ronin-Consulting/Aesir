@@ -227,7 +227,7 @@
 
         @* Top Right Controls *@
         <div class="top-right-controls">
-            @if (_showDocumentsButton || ChatState.CurrentSessionId.HasValue)
+            @if (_showDocumentsButton && ChatState.CurrentSessionId.HasValue)
             {
                 <MudIconButton Icon="@Icons.Material.Outlined.FolderOpen"
                                Color="Color.Default"
