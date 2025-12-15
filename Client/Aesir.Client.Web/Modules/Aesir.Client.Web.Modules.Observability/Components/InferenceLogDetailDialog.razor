@@ -1,0 +1,449 @@
+@namespace Aesir.Client.Web.Modules.Observability.Components
+@using Aesir.Common.Models
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <div class="dialog-header">
+            <MudText Typo="Typo.h6">Inference Log Details</MudText>
+            <div class="header-status">
+                <StatusIndicator Status="Log.Status" />
+                @if (Log.TotalDurationMs.HasValue)
+                {
+                    <span class="duration">@FormatDuration(Log.TotalDurationMs.Value)</span>
+                }
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="detail-content">
+            <!-- Timestamp -->
+            <div class="timestamp-row">
+                <span class="timestamp">@Log.StartedAt.LocalDateTime.ToString("MMMM d, yyyy h:mm:ss tt")</span>
+            </div>
+
+            <!-- User Query Section -->
+            <div class="detail-section">
+                <div class="section-header">
+                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                    <span class="section-title">User Query</span>
+                </div>
+                <div class="section-content query-content">
+                    <pre class="content-text">@Log.UserQuery</pre>
+                </div>
+            </div>
+
+            <!-- Assistant Response Section -->
+            @if (!string.IsNullOrEmpty(Log.AssistantResponseFull) || !string.IsNullOrEmpty(Log.AssistantResponse))
+            {
+                <div class="detail-section">
+                    <div class="section-header">
+                        <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" />
+                        <span class="section-title">Assistant Response</span>
+                    </div>
+                    <div class="section-content response-content">
+                        <pre class="content-text">@(Log.AssistantResponseFull ?? Log.AssistantResponse)</pre>
+                    </div>
+                </div>
+            }
+
+            <!-- Tool Calls Section -->
+            @if (Log.ToolCalls?.Count > 0)
+            {
+                <div class="detail-section">
+                    <div class="section-header">
+                        <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Small" />
+                        <span class="section-title">Tool Calls (@Log.ToolCallCount)</span>
+                    </div>
+                    <div class="tool-calls-container">
+                        @foreach (var toolCall in Log.ToolCalls)
+                        {
+                            <MudExpansionPanels Class="tool-expansion">
+                                <MudExpansionPanel>
+                                    <TitleContent>
+                                        <div class="tool-header">
+                                            <span class="tool-name">@toolCall.FunctionName</span>
+                                            @if (!string.IsNullOrEmpty(toolCall.PluginName))
+                                            {
+                                                <span class="plugin-badge">@toolCall.PluginName</span>
+                                            }
+                                            <span class="tool-type-badge @GetToolTypeClass(toolCall.ToolType)">@toolCall.ToolType</span>
+                                            <span class="tool-status @GetToolStatusClass(toolCall.Status)">@toolCall.Status</span>
+                                            @if (toolCall.DurationMs.HasValue)
+                                            {
+                                                <span class="tool-duration">@FormatDuration(toolCall.DurationMs.Value)</span>
+                                            }
+                                        </div>
+                                    </TitleContent>
+                                    <ChildContent>
+                                        <div class="tool-details">
+                                            @if (!string.IsNullOrEmpty(toolCall.Description))
+                                            {
+                                                <div class="tool-detail-row">
+                                                    <span class="detail-label">Description:</span>
+                                                    <span class="detail-value">@toolCall.Description</span>
+                                                </div>
+                                            }
+                                            @if (toolCall.Arguments?.Count > 0)
+                                            {
+                                                <div class="tool-detail-section">
+                                                    <span class="detail-label">Arguments:</span>
+                                                    <div class="arguments-table">
+                                                        @foreach (var arg in toolCall.Arguments)
+                                                        {
+                                                            <div class="argument-row">
+                                                                <span class="arg-key">@arg.Key:</span>
+                                                                <span class="arg-value">@arg.Value</span>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                            @if (!string.IsNullOrEmpty(toolCall.Result))
+                                            {
+                                                <div class="tool-detail-section">
+                                                    <span class="detail-label">Result:</span>
+                                                    <pre class="result-content">@toolCall.Result</pre>
+                                                </div>
+                                            }
+                                            @if (!string.IsNullOrEmpty(toolCall.Error))
+                                            {
+                                                <div class="tool-detail-section error-section">
+                                                    <span class="detail-label">Error:</span>
+                                                    <pre class="error-content">@toolCall.Error</pre>
+                                                </div>
+                                            }
+                                        </div>
+                                    </ChildContent>
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Error Section -->
+            @if (!string.IsNullOrEmpty(Log.ErrorMessage))
+            {
+                <div class="detail-section error-section">
+                    <div class="section-header">
+                        <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small" Color="Color.Error" />
+                        <span class="section-title error-title">Error</span>
+                    </div>
+                    <div class="section-content">
+                        <pre class="error-message">@Log.ErrorMessage</pre>
+                    </div>
+                </div>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        @if (Log.ChatSessionId.HasValue)
+        {
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Chat"
+                       OnClick="ViewChat">
+                View Chat
+            </MudButton>
+        }
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="Close">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .dialog-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        gap: 16px;
+    }
+
+    .header-status {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .duration {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-secondary);
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    .detail-content {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 600px;
+        max-width: 800px;
+    }
+
+    .timestamp-row {
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .timestamp {
+        font-size: 0.9rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .detail-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .section-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
+    .section-content {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+        padding: 12px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .query-content, .response-content {
+        max-height: 150px;
+    }
+
+    .content-text {
+        margin: 0;
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: var(--mud-palette-text-primary);
+        font-family: inherit;
+    }
+
+    .tool-calls-container {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .tool-expansion {
+        background-color: rgba(255, 255, 255, 0.03);
+        border-radius: 6px;
+    }
+
+    .tool-expansion .mud-expand-panel {
+        background-color: transparent;
+    }
+
+    .tool-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .tool-name {
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .plugin-badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .tool-type-badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-transform: uppercase;
+    }
+
+    .tool-type-badge.type-mcp { background-color: rgba(147, 51, 234, 0.2); color: #a855f7; }
+    .tool-type-badge.type-web { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .tool-type-badge.type-document { background-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
+    .tool-type-badge.type-image { background-color: rgba(236, 72, 153, 0.2); color: #f472b6; }
+    .tool-type-badge.type-summarize { background-color: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .tool-type-badge.type-other { background-color: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+
+    .tool-status {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+
+    .tool-status.status-completed { background-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
+    .tool-status.status-failed { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    .tool-status.status-started { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+
+    .tool-duration {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+        font-family: 'Consolas', 'Monaco', monospace;
+        margin-left: auto;
+    }
+
+    .tool-details {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 8px 0;
+    }
+
+    .tool-detail-row {
+        display: flex;
+        gap: 8px;
+    }
+
+    .tool-detail-section {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .detail-label {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .detail-value {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .arguments-table {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+        padding: 8px;
+    }
+
+    .argument-row {
+        display: flex;
+        gap: 8px;
+        padding: 4px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .argument-row:last-child {
+        border-bottom: none;
+    }
+
+    .arg-key {
+        font-weight: 500;
+        font-size: 0.8rem;
+        color: var(--mud-palette-primary);
+        min-width: 120px;
+    }
+
+    .arg-value {
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-primary);
+        word-break: break-all;
+    }
+
+    .result-content, .error-content {
+        margin: 0;
+        font-size: 0.8rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+        padding: 8px;
+        max-height: 150px;
+        overflow-y: auto;
+    }
+
+    .error-section .error-content {
+        color: var(--mud-palette-error);
+    }
+
+    .error-title {
+        color: var(--mud-palette-error);
+    }
+
+    .error-message {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--mud-palette-error);
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The inference log to display.
+    /// </summary>
+    [Parameter]
+    public required AesirInferenceLog Log { get; set; }
+
+    /// <summary>
+    /// MudBlazor dialog instance.
+    /// </summary>
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = null!;
+
+    private void Close()
+    {
+        MudDialog.Close();
+    }
+
+    private void ViewChat()
+    {
+        MudDialog.Close();
+        if (Log.ChatSessionId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/chats?highlight={Log.ChatSessionId}");
+        }
+    }
+
+    private static string FormatDuration(long ms)
+    {
+        if (ms < 1000) return $"{ms}ms";
+        if (ms < 60000) return $"{ms / 1000.0:F1}s";
+        return $"{ms / 60000.0:F1}m";
+    }
+
+    private static string GetToolTypeClass(ToolCallType type) => type switch
+    {
+        ToolCallType.McpServer => "type-mcp",
+        ToolCallType.WebSearch => "type-web",
+        ToolCallType.DocumentSearch => "type-document",
+        ToolCallType.ImageAnalysis => "type-image",
+        ToolCallType.Summarization => "type-summarize",
+        ToolCallType.Other => "type-other",
+        _ => "type-other"
+    };
+
+    private static string GetToolStatusClass(ToolCallStatus status) => status switch
+    {
+        ToolCallStatus.Completed => "status-completed",
+        ToolCallStatus.Failed => "status-failed",
+        ToolCallStatus.Started => "status-started",
+        _ => "status-completed"
+    };
+}

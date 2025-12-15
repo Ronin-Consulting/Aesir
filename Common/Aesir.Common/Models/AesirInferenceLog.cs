@@ -39,10 +39,17 @@ public class AesirInferenceLog
     public string? UserQueryTruncated { get; set; }
 
     /// <summary>
-    /// The AI assistant's response (truncated to 500 chars).
+    /// The AI assistant's response (truncated to 500 chars for list views).
     /// </summary>
     [JsonPropertyName("assistant_response")]
     public string? AssistantResponse { get; set; }
+
+    /// <summary>
+    /// The full AI assistant's response (complete, not truncated).
+    /// Only populated when fetching full details by ID.
+    /// </summary>
+    [JsonPropertyName("assistant_response_full")]
+    public string? AssistantResponseFull { get; set; }
 
     /// <summary>
     /// All tool calls made during this inference, with full details.

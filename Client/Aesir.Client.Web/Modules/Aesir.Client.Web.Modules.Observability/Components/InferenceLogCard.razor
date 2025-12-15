@@ -1,6 +1,9 @@
 @namespace Aesir.Client.Web.Modules.Observability.Components
 @using Aesir.Common.Models
+@using Aesir.Client.Web.Modules.Observability.Services
 @inject NavigationManager NavigationManager
+@inject IObservabilityService ObservabilityService
+@inject IDialogService DialogService
 
 <div class="inference-log-card @GetStatusClass()">
     <div class="log-entry-header" @onclick="ToggleExpanded">
@@ -93,17 +96,32 @@
                         <span class="footer-value">@Log.CompletedAt.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff")</span>
                     </div>
                 }
-                @if (Log.ChatSessionId.HasValue)
-                {
-                    <MudButton Variant="Variant.Text"
+                <div class="footer-buttons">
+                    <MudButton Variant="Variant.Outlined"
                                Color="Color.Primary"
                                Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.Chat"
-                               OnClick="NavigateToChat"
-                               Class="view-chat-button">
-                        View Chat
+                               StartIcon="@Icons.Material.Filled.OpenInNew"
+                               OnClick="ViewFullDetails"
+                               Disabled="_isLoadingDetails"
+                               Class="view-details-button">
+                        @if (_isLoadingDetails)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        View Full Details
                     </MudButton>
-                }
+                    @if (Log.ChatSessionId.HasValue)
+                    {
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Chat"
+                                   OnClick="NavigateToChat"
+                                   Class="view-chat-button">
+                            View Chat
+                        </MudButton>
+                    }
+                </div>
             </div>
         </div>
     }
@@ -403,14 +421,25 @@
         color: var(--mud-palette-text-primary);
     }
 
+    .footer-buttons {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+    }
+
+    .view-details-button {
+        font-size: 0.8rem !important;
+    }
+
     .view-chat-button {
         font-size: 0.8rem !important;
-        margin-left: auto;
     }
 </style>
 
 @code {
     private bool _expanded = false;
+    private bool _isLoadingDetails = false;
 
     /// <summary>
     /// Gets or sets the inference log summary to display.
@@ -506,6 +535,38 @@
         if (Log.ChatSessionId.HasValue)
         {
             NavigationManager.NavigateTo($"/chats?highlight={Log.ChatSessionId}");
+        }
+    }
+
+    private async Task ViewFullDetails()
+    {
+        _isLoadingDetails = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ObservabilityService.LoadLogDetailAsync(Log.Id);
+            if (result.IsSuccess && result.Value != null)
+            {
+                var parameters = new DialogParameters<InferenceLogDetailDialog>
+                {
+                    { x => x.Log, result.Value }
+                };
+
+                var options = new DialogOptions
+                {
+                    CloseButton = true,
+                    MaxWidth = MaxWidth.Large,
+                    FullWidth = false
+                };
+
+                await DialogService.ShowAsync<InferenceLogDetailDialog>("", parameters, options);
+            }
+        }
+        finally
+        {
+            _isLoadingDetails = false;
+            StateHasChanged();
         }
     }
 }

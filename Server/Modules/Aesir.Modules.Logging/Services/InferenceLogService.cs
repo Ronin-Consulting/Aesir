@@ -34,13 +34,13 @@ public class InferenceLogService : IInferenceLogService
         const string sql = @"
             INSERT INTO aesir.aesir_log_inference (
                 id, chat_session_id, conversation_id,
-                user_query, user_query_truncated, assistant_response,
+                user_query, user_query_truncated, assistant_response, assistant_response_full,
                 tool_calls, tool_call_count, total_duration_ms,
                 started_at, completed_at, status, error_message
             )
             VALUES (
                 @Id, @ChatSessionId, @ConversationId,
-                @UserQuery, @UserQueryTruncated, @AssistantResponse,
+                @UserQuery, @UserQueryTruncated, @AssistantResponse, @AssistantResponseFull,
                 @ToolCalls::jsonb, @ToolCallCount, @TotalDurationMs,
                 @StartedAt, @CompletedAt, @Status, @ErrorMessage
             )
@@ -57,6 +57,7 @@ public class InferenceLogService : IInferenceLogService
                     log.UserQuery,
                     log.UserQueryTruncated,
                     log.AssistantResponse,
+                    log.AssistantResponseFull,
                     log.ToolCalls,
                     log.ToolCallCount,
                     log.TotalDurationMs,
@@ -85,6 +86,7 @@ public class InferenceLogService : IInferenceLogService
                 user_query as UserQuery,
                 user_query_truncated as UserQueryTruncated,
                 assistant_response as AssistantResponse,
+                assistant_response_full as AssistantResponseFull,
                 tool_calls::jsonb as ToolCalls,
                 tool_call_count as ToolCallCount,
                 total_duration_ms as TotalDurationMs,
@@ -196,6 +198,7 @@ public class InferenceLogService : IInferenceLogService
                 user_query as UserQuery,
                 user_query_truncated as UserQueryTruncated,
                 assistant_response as AssistantResponse,
+                assistant_response_full as AssistantResponseFull,
                 tool_calls::jsonb as ToolCalls,
                 tool_call_count as ToolCallCount,
                 total_duration_ms as TotalDurationMs,
@@ -336,6 +339,7 @@ public class InferenceLogService : IInferenceLogService
             UserQuery = row.UserQuery ?? row.UserQueryTruncated ?? string.Empty,
             UserQueryTruncated = row.UserQueryTruncated,
             AssistantResponse = row.AssistantResponse,
+            AssistantResponseFull = row.AssistantResponseFull,
             ToolCalls = row.ToolCalls ?? new List<AesirToolCallInfo>(),
             ToolCallCount = row.ToolCallCount,
             TotalDurationMs = row.TotalDurationMs,
@@ -385,6 +389,7 @@ public class InferenceLogService : IInferenceLogService
         public string? UserQuery { get; set; }
         public string? UserQueryTruncated { get; set; }
         public string? AssistantResponse { get; set; }
+        public string? AssistantResponseFull { get; set; }
         public List<AesirToolCallInfo>? ToolCalls { get; set; }
         public int ToolCallCount { get; set; }
         public long? TotalDurationMs { get; set; }

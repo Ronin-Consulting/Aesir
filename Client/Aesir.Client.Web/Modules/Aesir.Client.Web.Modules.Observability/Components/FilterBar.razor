@@ -3,71 +3,8 @@
 @using Aesir.Client.Web.Modules.Observability.Models
 
 <div class="filter-bar">
-    <div class="filter-section filter-statuses">
-        <span class="filter-label">Status</span>
-        <div class="filter-chips">
-            <MudChip T="string"
-                     Color="@(IsStatusSelected(InferenceStatus.Completed) ? Color.Success : Color.Default)"
-                     Variant="@(IsStatusSelected(InferenceStatus.Completed) ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleStatus(InferenceStatus.Completed))"
-                     Size="Size.Small"
-                     Class="filter-chip">
-                Completed
-            </MudChip>
-            <MudChip T="string"
-                     Color="@(IsStatusSelected(InferenceStatus.Failed) ? Color.Error : Color.Default)"
-                     Variant="@(IsStatusSelected(InferenceStatus.Failed) ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleStatus(InferenceStatus.Failed))"
-                     Size="Size.Small"
-                     Class="filter-chip">
-                Failed
-            </MudChip>
-            <MudChip T="string"
-                     Color="@(IsStatusSelected(InferenceStatus.Cancelled) ? Color.Warning : Color.Default)"
-                     Variant="@(IsStatusSelected(InferenceStatus.Cancelled) ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => ToggleStatus(InferenceStatus.Cancelled))"
-                     Size="Size.Small"
-                     Class="filter-chip">
-                Cancelled
-            </MudChip>
-        </div>
-    </div>
-
-    <div class="filter-section filter-tools">
-        <span class="filter-label">Tool Calls</span>
-        <div class="filter-chips">
-            <MudChip T="string"
-                     Color="@(_hasToolCallsFilter == true ? Color.Info : Color.Default)"
-                     Variant="@(_hasToolCallsFilter == true ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => SetHasToolCallsFilter(true))"
-                     Size="Size.Small"
-                     Class="filter-chip">
-                With Tools
-            </MudChip>
-            <MudChip T="string"
-                     Color="@(_hasToolCallsFilter == false ? Color.Info : Color.Default)"
-                     Variant="@(_hasToolCallsFilter == false ? Variant.Filled : Variant.Outlined)"
-                     OnClick="@(() => SetHasToolCallsFilter(false))"
-                     Size="Size.Small"
-                     Class="filter-chip">
-                No Tools
-            </MudChip>
-        </div>
-    </div>
-
-    <div class="filter-section filter-date">
-        <span class="filter-label">Time Range</span>
-        <MudDateRangePicker @bind-DateRange="_dateRange"
-                            @bind-DateRange:after="OnDateRangeChangedAsync"
-                            Label="Select Date Range"
-                            Variant="Variant.Outlined"
-                            Margin="Margin.Dense"
-                            Class="date-picker"
-                            Clearable="true" />
-    </div>
-
-    <div class="filter-section filter-search">
-        <span class="filter-label">Search</span>
+    <!-- Row 1: Search (full width) -->
+    <div class="filter-row filter-row-search">
         <MudTextField @bind-Value="_searchText"
                       Placeholder="Search user queries..."
                       Variant="Variant.Outlined"
@@ -80,28 +17,88 @@
                       OnDebounceIntervalElapsed="OnSearchChanged" />
     </div>
 
-    <div class="filter-actions">
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
-                       Color="Color.Primary"
-                       OnClick="OnRefreshClicked"
-                       Disabled="IsLoading"
-                       aria-label="Refresh logs" />
-        @if (HasActiveFilters)
-        {
-            <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff"
-                           Color="Color.Secondary"
-                           OnClick="OnClearFiltersClicked"
-                           aria-label="Clear filters" />
-        }
+    <!-- Row 2: Status Chips, Tool Chips, Date Range, Actions -->
+    <div class="filter-row filter-row-filters">
+        <div class="filter-group">
+            <span class="filter-label">Status</span>
+            <div class="filter-chips">
+                <MudChip T="string"
+                         Color="@(IsStatusSelected(InferenceStatus.Completed) ? Color.Success : Color.Default)"
+                         Variant="@(IsStatusSelected(InferenceStatus.Completed) ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => ToggleStatus(InferenceStatus.Completed))"
+                         Size="Size.Small"
+                         Class="filter-chip">
+                    Completed
+                </MudChip>
+                <MudChip T="string"
+                         Color="@(IsStatusSelected(InferenceStatus.Failed) ? Color.Error : Color.Default)"
+                         Variant="@(IsStatusSelected(InferenceStatus.Failed) ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => ToggleStatus(InferenceStatus.Failed))"
+                         Size="Size.Small"
+                         Class="filter-chip">
+                    Failed
+                </MudChip>
+                <MudChip T="string"
+                         Color="@(IsStatusSelected(InferenceStatus.Cancelled) ? Color.Warning : Color.Default)"
+                         Variant="@(IsStatusSelected(InferenceStatus.Cancelled) ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => ToggleStatus(InferenceStatus.Cancelled))"
+                         Size="Size.Small"
+                         Class="filter-chip">
+                    Cancelled
+                </MudChip>
+            </div>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Tools</span>
+            <div class="filter-chips">
+                <MudChip T="string"
+                         Color="@(_hasToolCallsFilter == true ? Color.Info : Color.Default)"
+                         Variant="@(_hasToolCallsFilter == true ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => SetHasToolCallsFilter(true))"
+                         Size="Size.Small"
+                         Class="filter-chip">
+                    With Tools
+                </MudChip>
+                <MudChip T="string"
+                         Color="@(_hasToolCallsFilter == false ? Color.Info : Color.Default)"
+                         Variant="@(_hasToolCallsFilter == false ? Variant.Filled : Variant.Outlined)"
+                         OnClick="@(() => SetHasToolCallsFilter(false))"
+                         Size="Size.Small"
+                         Class="filter-chip">
+                    No Tools
+                </MudChip>
+            </div>
+        </div>
+        <div class="date-picker-wrapper">
+            <MudDateRangePicker @bind-DateRange="_dateRange"
+                                @bind-DateRange:after="OnDateRangeChangedAsync"
+                                Label="Select Date Range"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Clearable="true" />
+        </div>
+        <div class="filter-actions">
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                           Color="Color.Primary"
+                           OnClick="OnRefreshClicked"
+                           Disabled="IsLoading"
+                           aria-label="Refresh logs" />
+            @if (HasActiveFilters)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff"
+                               Color="Color.Secondary"
+                               OnClick="OnClearFiltersClicked"
+                               aria-label="Clear filters" />
+            }
+        </div>
     </div>
 </div>
 
 <style>
     .filter-bar {
         display: flex;
-        flex-wrap: wrap;
-        align-items: flex-end;
-        gap: 16px;
+        flex-direction: column;
+        gap: 12px;
         padding: 12px 16px;
         background-color: rgba(255, 255, 255, 0.02);
         border-radius: 8px;
@@ -109,10 +106,26 @@
         margin-bottom: 16px;
     }
 
-    .filter-section {
+    /* Row 1: Search (full width) */
+    .filter-row-search {
         display: flex;
-        flex-direction: column;
-        gap: 6px;
+    }
+
+    .filter-row-search .search-field {
+        flex: 1;
+    }
+
+    /* Row 2: Filters + Date + Actions */
+    .filter-row-filters {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .filter-label {
@@ -131,22 +144,9 @@
         cursor: pointer !important;
     }
 
-    .filter-date {
-        min-width: 220px;
-    }
-
-    .date-picker {
-        font-size: 0.85rem;
-    }
-
-    .filter-search {
-        flex: 1;
-        min-width: 200px;
-        max-width: 350px;
-    }
-
-    .search-field {
-        font-size: 0.85rem;
+    .date-picker-wrapper {
+        width: 240px;
+        flex-shrink: 0;
     }
 
     .filter-actions {
@@ -156,34 +156,26 @@
         margin-left: auto;
     }
 
-    /* Responsive adjustments */
-    @@media (max-width: 1200px) {
-        .filter-bar {
+    /* Responsive: Stack on small screens */
+    @@media (max-width: 900px) {
+        .filter-row-filters {
+            flex-wrap: wrap;
             gap: 12px;
         }
 
-        .filter-search {
-            min-width: 150px;
+        .date-picker-wrapper {
+            margin-left: 0;
+            width: 200px;
         }
     }
 
-    @@media (max-width: 900px) {
-        .filter-bar {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .filter-section {
+    @@media (max-width: 600px) {
+        .date-picker-wrapper {
             width: 100%;
         }
 
-        .filter-search {
-            max-width: none;
-        }
-
         .filter-actions {
-            margin-left: 0;
-            justify-content: flex-end;
+            margin-left: auto;
         }
     }
 </style>

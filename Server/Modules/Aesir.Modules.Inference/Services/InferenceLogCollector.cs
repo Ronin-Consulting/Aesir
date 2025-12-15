@@ -155,6 +155,7 @@ public class InferenceLogCollector : IInferenceLogCollector
             UserQuery = _userQuery,
             UserQueryTruncated = TruncateText(_userQuery, 500),
             AssistantResponse = TruncateText(assistantResponse, 500),
+            AssistantResponseFull = assistantResponse, // Store full response for detail views
             ToolCalls = new List<AesirToolCallInfo>(_toolCalls),
             ToolCallCount = _toolCalls.Count,
             TotalDurationMs = _stopwatch.ElapsedMilliseconds,
