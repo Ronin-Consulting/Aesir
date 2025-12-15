@@ -411,6 +411,106 @@ public class ToolCallsSectionTests : TestContext
 
     #endregion
 
+    #region Deduplication Tests
+
+    [Fact]
+    public void Renders_CorrectCount_WhenDuplicateToolCallIds()
+    {
+        // Arrange - duplicate ToolCallIds (same ID with different statuses)
+        var toolCalls = new List<AesirToolCallInfo>
+        {
+            CreateToolCall("tc-1", ToolCallStatus.Started),
+            CreateToolCall("tc-1", ToolCallStatus.Completed), // Same ID, updated status
+            CreateToolCall("tc-2", ToolCallStatus.Completed)
+        };
+
+        var cut = RenderComponent<ToolCallsSection>(parameters => parameters
+            .Add(p => p.ToolCalls, toolCalls));
+
+        // Act - expand to see cards
+        cut.Find(".tool-calls-toggle").Click();
+
+        // Assert - should only render 2 cards (deduplicated by ToolCallId)
+        var cards = cut.FindAll(".tool-call-card");
+        cards.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ShowsSummary_UsesDeduplicatedCount()
+    {
+        // Arrange - 3 items but 2 unique ToolCallIds
+        var toolCalls = new List<AesirToolCallInfo>
+        {
+            CreateToolCall("tc-1", ToolCallStatus.Completed),
+            CreateToolCall("tc-1", ToolCallStatus.Completed), // Duplicate ID
+            CreateToolCall("tc-2", ToolCallStatus.Completed)
+        };
+
+        // Act
+        var cut = RenderComponent<ToolCallsSection>(parameters => parameters
+            .Add(p => p.ToolCalls, toolCalls));
+
+        // Assert - summary should say "Used 2 tools" (deduplicated count)
+        cut.Markup.Should().Contain("Used 2 tools");
+    }
+
+    [Fact]
+    public void UsesLatestStatus_WhenDuplicatesExist()
+    {
+        // Arrange - same ID with different statuses, last one is Completed
+        var toolCalls = new List<AesirToolCallInfo>
+        {
+            CreateToolCall("tc-1", ToolCallStatus.Started),
+            CreateToolCall("tc-1", ToolCallStatus.Completed) // Updated status - should be used
+        };
+
+        var cut = RenderComponent<ToolCallsSection>(parameters => parameters
+            .Add(p => p.ToolCalls, toolCalls));
+
+        // Assert - spinner should NOT be present (completed status, not started)
+        cut.FindAll(".active-spinner").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void DoesNotRender_WhenAllDuplicates()
+    {
+        // Arrange - single unique tool call repeated multiple times
+        var toolCalls = new List<AesirToolCallInfo>
+        {
+            CreateToolCall("tc-1", ToolCallStatus.Completed),
+            CreateToolCall("tc-1", ToolCallStatus.Completed),
+            CreateToolCall("tc-1", ToolCallStatus.Completed)
+        };
+
+        var cut = RenderComponent<ToolCallsSection>(parameters => parameters
+            .Add(p => p.ToolCalls, toolCalls));
+
+        // Assert - summary should say "Used 1 tool" (single unique tool call)
+        cut.Markup.Should().Contain("Used 1 tool");
+    }
+
+    [Fact]
+    public void HasActiveToolCalls_UsesDeduplicatedList()
+    {
+        // Arrange - duplicate IDs where one is Started and one is Completed
+        // The last occurrence (Completed) should be used for status
+        var toolCalls = new List<AesirToolCallInfo>
+        {
+            CreateToolCall("tc-1", ToolCallStatus.Started),
+            CreateToolCall("tc-1", ToolCallStatus.Completed) // Last occurrence - Completed
+        };
+
+        var cut = RenderComponent<ToolCallsSection>(parameters => parameters
+            .Add(p => p.ToolCalls, toolCalls)
+            .Add(p => p.IsStreaming, true)
+            .Add(p => p.AutoExpandWhenActive, true));
+
+        // Assert - no spinner because the deduplicated status is Completed
+        cut.FindAll(".active-spinner").Should().BeEmpty();
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static AesirToolCallInfo CreateToolCall(string id, ToolCallStatus status)

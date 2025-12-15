@@ -1,6 +1,6 @@
 @using Aesir.Common.Models
 
-@if (ToolCalls?.Count > 0)
+@if (DeduplicatedToolCalls.Count > 0)
 {
     <div class="tool-calls-section">
         <div class="tool-calls-toggle @(_expanded ? "expanded" : "")" @onclick="ToggleExpanded">
@@ -18,9 +18,9 @@
         @if (_expanded)
         {
             <div class="tool-calls-content">
-                @foreach (var toolCall in ToolCalls)
+                @foreach (var toolCall in DeduplicatedToolCalls)
                 {
-                    <ToolCallCard ToolCall="toolCall" DefaultExpanded="@ShouldExpandCard(toolCall)" />
+                    <ToolCallCard @key="toolCall.ToolCallId" ToolCall="toolCall" DefaultExpanded="@ShouldExpandCard(toolCall)" />
                 }
             </div>
         }
@@ -103,7 +103,17 @@
     [Parameter]
     public bool IsStreaming { get; set; } = false;
 
-    private bool HasActiveToolCalls => ToolCalls?.Any(tc => tc.Status == ToolCallStatus.Started) ?? false;
+    /// <summary>
+    /// Deduplicates tool calls by ToolCallId, keeping the last occurrence (most updated status).
+    /// This handles cases where duplicate tool calls may exist in persisted data.
+    /// </summary>
+    private IReadOnlyList<AesirToolCallInfo> DeduplicatedToolCalls =>
+        ToolCalls?
+            .GroupBy(tc => tc.ToolCallId)
+            .Select(g => g.Last())
+            .ToList() ?? [];
+
+    private bool HasActiveToolCalls => DeduplicatedToolCalls.Any(tc => tc.Status == ToolCallStatus.Started);
 
     protected override void OnParametersSet()
     {
@@ -122,13 +132,14 @@
 
     private string GetSummaryText()
     {
-        if (ToolCalls == null || ToolCalls.Count == 0)
+        var toolCalls = DeduplicatedToolCalls;
+        if (toolCalls.Count == 0)
             return "No tools used";
 
-        var total = ToolCalls.Count;
-        var completed = ToolCalls.Count(tc => tc.Status == ToolCallStatus.Completed);
-        var failed = ToolCalls.Count(tc => tc.Status == ToolCallStatus.Failed);
-        var inProgress = ToolCalls.Count(tc => tc.Status == ToolCallStatus.Started);
+        var total = toolCalls.Count;
+        var completed = toolCalls.Count(tc => tc.Status == ToolCallStatus.Completed);
+        var failed = toolCalls.Count(tc => tc.Status == ToolCallStatus.Failed);
+        var inProgress = toolCalls.Count(tc => tc.Status == ToolCallStatus.Started);
 
         if (inProgress > 0)
         {

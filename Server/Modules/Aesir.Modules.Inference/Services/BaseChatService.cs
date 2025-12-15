@@ -291,15 +291,16 @@ public abstract class BaseChatService : IChatService
         Task<string> titleTask,
         AesirChatMessage messageToSave)
     {
-        // Collect tool calls to persist with the message
-        var collectedToolCalls = new List<AesirToolCallInfo>();
+        // Collect tool calls to persist with the message, using Dictionary for deduplication by ToolCallId.
+        // This prevents duplicate tool calls if the same event is received multiple times.
+        var collectedToolCalls = new Dictionary<string, AesirToolCallInfo>();
 
         await foreach (var (content, isThinking, isComplete) in contentStream)
         {
             // Check for tool calls first (non-blocking) and yield any pending ones
             while (toolCallReader.TryRead(out var toolCall))
             {
-                collectedToolCalls.Add(toolCall);
+                collectedToolCalls[toolCall.ToolCallId] = toolCall;
                 yield return CreateToolCallResult(completionId, request, title, toolCall);
             }
 
@@ -339,14 +340,14 @@ public abstract class BaseChatService : IChatService
         // Drain any remaining tool calls after content stream completes
         while (toolCallReader.TryRead(out var toolCall))
         {
-            collectedToolCalls.Add(toolCall);
+            collectedToolCalls[toolCall.ToolCallId] = toolCall;
             yield return CreateToolCallResult(completionId, request, title, toolCall);
         }
 
-        // Persist collected tool calls with the message
+        // Persist collected tool calls with the message (deduplicated by ToolCallId)
         if (collectedToolCalls.Count > 0)
         {
-            messageToSave.ToolCalls = collectedToolCalls;
+            messageToSave.ToolCalls = collectedToolCalls.Values.ToList();
         }
     }
 
