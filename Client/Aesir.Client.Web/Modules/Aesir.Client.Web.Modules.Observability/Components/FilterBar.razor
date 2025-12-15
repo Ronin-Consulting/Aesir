@@ -119,7 +119,8 @@
     .filter-row-filters {
         display: flex;
         align-items: center;
-        gap: 20px;
+        flex-wrap: wrap;
+        gap: 12px 20px;
     }
 
     .filter-group {
@@ -156,15 +157,9 @@
         margin-left: auto;
     }
 
-    /* Responsive: Stack on small screens */
+    /* Responsive: Adjust for smaller screens */
     @@media (max-width: 900px) {
-        .filter-row-filters {
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
         .date-picker-wrapper {
-            margin-left: 0;
             width: 200px;
         }
     }
