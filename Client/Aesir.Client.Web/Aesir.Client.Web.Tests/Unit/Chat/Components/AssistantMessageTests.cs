@@ -275,4 +275,84 @@ public class AssistantMessageTests : TestContext
         // Assert
         cut.Markup.Should().Contain("<li>");
     }
+
+    [Fact]
+    public void WhenStreamingAndLatestMessage_ShouldNotShowBrandIcon()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "assistant",
+            Content = "Streaming content..."
+        };
+
+        // Act
+        var cut = RenderComponent<AssistantMessage>(parameters => parameters
+            .Add(p => p.Message, message)
+            .Add(p => p.IsLatestMessage, true)
+            .Add(p => p.IsStreaming, true));
+
+        // Assert - Brand icon section should NOT be present during streaming
+        cut.FindAll(".brand-section-large").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WhenNotStreamingAndLatestMessage_ShouldShowBrandIcon()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "assistant",
+            Content = "Completed message"
+        };
+
+        // Act
+        var cut = RenderComponent<AssistantMessage>(parameters => parameters
+            .Add(p => p.Message, message)
+            .Add(p => p.IsLatestMessage, true)
+            .Add(p => p.IsStreaming, false));
+
+        // Assert - Brand icon section should be present when not streaming and is latest message
+        cut.FindAll(".brand-section-large").Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void WhenStreamingAndNotLatestMessage_ShouldNotShowBrandIcon()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "assistant",
+            Content = "Some content"
+        };
+
+        // Act
+        var cut = RenderComponent<AssistantMessage>(parameters => parameters
+            .Add(p => p.Message, message)
+            .Add(p => p.IsLatestMessage, false)
+            .Add(p => p.IsStreaming, true));
+
+        // Assert - Brand icon section should NOT be present when not latest message
+        cut.FindAll(".brand-section-large").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void WhenNotLatestMessage_ShouldNotShowBrandIcon()
+    {
+        // Arrange
+        var message = new AesirChatMessage
+        {
+            Role = "assistant",
+            Content = "Earlier message"
+        };
+
+        // Act
+        var cut = RenderComponent<AssistantMessage>(parameters => parameters
+            .Add(p => p.Message, message)
+            .Add(p => p.IsLatestMessage, false)
+            .Add(p => p.IsStreaming, false));
+
+        // Assert - Brand icon section should NOT be present for non-latest messages
+        cut.FindAll(".brand-section-large").Should().BeEmpty();
+    }
 }

@@ -55,8 +55,8 @@
             <MudText Typo="Typo.body2" Class="action-text" @onclick="HandleRetry" title="Retry">Retry</MudText>
         </div>
     </div>
-    @* AESIR Brand Icon - Only shows on latest message, large and prominent with ready message *@
-    @if (IsLatestMessage)
+    @* AESIR Brand Icon - Only shows on latest message when NOT streaming, large and prominent with ready message *@
+    @if (IsLatestMessage && !IsStreaming)
     {
         <div class="brand-section-large">
             <AesirBrandIcon IconSize="AesirBrandIcon.BrandIconSize.ExtraLarge" ShowReadyMessage="true" />
