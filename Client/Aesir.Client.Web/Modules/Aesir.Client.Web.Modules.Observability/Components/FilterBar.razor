@@ -75,7 +75,8 @@
                                 Label="Select Date Range"
                                 Variant="Variant.Outlined"
                                 Margin="Margin.Dense"
-                                Clearable="true" />
+                                Clearable="true"
+                                Editable="true"/>
         </div>
         <div class="filter-actions">
             <MudIconButton Icon="@Icons.Material.Filled.Refresh"
@@ -146,7 +147,7 @@
     }
 
     .date-picker-wrapper {
-        width: 240px;
+        width: 200px;
         flex-shrink: 0;
     }
 
@@ -160,7 +161,7 @@
     /* Responsive: Adjust for smaller screens */
     @@media (max-width: 900px) {
         .date-picker-wrapper {
-            width: 200px;
+            width: 160px;
         }
     }
 

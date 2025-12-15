@@ -1,0 +1,532 @@
+@namespace Aesir.Client.Web.Modules.Observability.Components
+@using Aesir.Common.Models
+@using Aesir.Client.Web.Modules.Observability.Services
+@inject IObservabilityService ObservabilityService
+@inject IDialogService DialogService
+
+<div class="document-log-card @GetStatusClass()">
+    <div class="log-entry-header" @onclick="ToggleExpanded">
+        <div class="log-entry-time">
+            <span class="time-value">@GetTimeString()</span>
+        </div>
+        <div class="log-entry-status">
+            <StatusIndicator DocumentStatus="Log.Status" />
+        </div>
+        <div class="log-entry-icon">
+            <MudIcon Icon="@GetOperationIcon()" Size="Size.Small" Class="@($"operation-icon {GetOperationClass()}")" />
+        </div>
+        <div class="log-entry-filename">
+            <span class="filename-text" title="@Log.FileName">@TruncateText(Log.FileName, 50)</span>
+            @if (!string.IsNullOrEmpty(Log.ContentType))
+            {
+                <span class="content-type-badge">@GetShortContentType(Log.ContentType)</span>
+            }
+        </div>
+        <div class="log-entry-operation">
+            <span class="@($"operation-badge {GetOperationClass()}")">@GetOperationLabel()</span>
+        </div>
+        <div class="log-entry-duration">
+            @if (Log.ProcessingDurationMs.HasValue)
+            {
+                <span class="duration-value">@FormatDuration(Log.ProcessingDurationMs.Value)</span>
+            }
+        </div>
+        <MudIcon Icon="@(_expanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                 Size="Size.Small" Class="expand-icon" />
+    </div>
+    @if (_expanded)
+    {
+        <div class="log-entry-details">
+            <div class="detail-row">
+                <div class="detail-section">
+                    <span class="detail-label">Operation</span>
+                    <span class="detail-value">@Log.OperationType</span>
+                </div>
+                @if (Log.FileSizeBytes.HasValue)
+                {
+                    <div class="detail-section">
+                        <span class="detail-label">File Size</span>
+                        <span class="detail-value">@FormatFileSize(Log.FileSizeBytes.Value)</span>
+                    </div>
+                }
+            </div>
+
+            @if (Log.ChunkCount.HasValue || Log.EmbeddingCount.HasValue || Log.TokenCount.HasValue)
+            {
+                <div class="detail-row stats-row">
+                    @if (Log.ChunkCount.HasValue)
+                    {
+                        <div class="stat-item">
+                            <MudIcon Icon="@Icons.Material.Filled.ViewModule" Size="Size.Small" Class="stat-icon" />
+                            <span class="stat-label">Chunks:</span>
+                            <span class="stat-value">@Log.ChunkCount</span>
+                        </div>
+                    }
+                    @if (Log.EmbeddingCount.HasValue)
+                    {
+                        <div class="stat-item">
+                            <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Small" Class="stat-icon" />
+                            <span class="stat-label">Embeddings:</span>
+                            <span class="stat-value">@Log.EmbeddingCount</span>
+                        </div>
+                    }
+                    @if (Log.TokenCount.HasValue)
+                    {
+                        <div class="stat-item">
+                            <MudIcon Icon="@Icons.Material.Filled.Token" Size="Size.Small" Class="stat-icon" />
+                            <span class="stat-label">Tokens:</span>
+                            <span class="stat-value">@Log.TokenCount.Value.ToString("N0")</span>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(Log.ErrorMessage))
+            {
+                <div class="detail-section error-section">
+                    <span class="detail-label">Error</span>
+                    <span class="detail-value error-message">@Log.ErrorMessage</span>
+                </div>
+            }
+
+            <div class="detail-section detail-footer">
+                <div class="footer-item">
+                    <span class="footer-label">Started:</span>
+                    <span class="footer-value">@Log.StartedAt.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff")</span>
+                </div>
+                @if (Log.CompletedAt.HasValue)
+                {
+                    <div class="footer-item">
+                        <span class="footer-label">Completed:</span>
+                        <span class="footer-value">@Log.CompletedAt.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff")</span>
+                    </div>
+                }
+                <div class="footer-buttons">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.OpenInNew"
+                               OnClick="ViewFullDetails"
+                               Disabled="_isLoadingDetails"
+                               Class="view-details-button">
+                        @if (_isLoadingDetails)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        View Details
+                    </MudButton>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .document-log-card {
+        border-radius: 8px;
+        margin-bottom: 6px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .document-log-card:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Status-based background colors */
+    .document-log-card.status-completed {
+        background-color: rgba(34, 197, 94, 0.05);
+    }
+
+    .document-log-card.status-failed {
+        background-color: rgba(239, 68, 68, 0.08);
+        border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    .document-log-card.status-inprogress {
+        background-color: rgba(59, 130, 246, 0.08);
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .log-entry-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .log-entry-header:hover {
+        background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    .log-entry-time {
+        flex-shrink: 0;
+        width: 80px;
+    }
+
+    .time-value {
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-secondary);
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    .log-entry-status {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        width: 90px;
+    }
+
+    .log-entry-icon {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        width: 30px;
+    }
+
+    .operation-icon {
+        font-size: 1.2rem !important;
+    }
+
+    .operation-icon.op-upload { color: #60a5fa; }
+    .operation-icon.op-embed { color: #a855f7; }
+    .operation-icon.op-update { color: #fbbf24; }
+    .operation-icon.op-delete { color: #ef4444; }
+
+    .log-entry-filename {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .filename-text {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .content-type-badge {
+        font-size: 0.65rem;
+        padding: 1px 6px;
+        border-radius: 3px;
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--mud-palette-text-secondary);
+        white-space: nowrap;
+        text-transform: uppercase;
+    }
+
+    .log-entry-operation {
+        flex-shrink: 0;
+        width: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .operation-badge {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 12px;
+        text-transform: uppercase;
+        font-weight: 500;
+    }
+
+    .operation-badge.op-upload {
+        background-color: rgba(96, 165, 250, 0.15);
+        color: #60a5fa;
+    }
+
+    .operation-badge.op-embed {
+        background-color: rgba(168, 85, 247, 0.15);
+        color: #a855f7;
+    }
+
+    .operation-badge.op-update {
+        background-color: rgba(251, 191, 36, 0.15);
+        color: #fbbf24;
+    }
+
+    .operation-badge.op-delete {
+        background-color: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+
+    .log-entry-duration {
+        flex-shrink: 0;
+        width: 70px;
+        text-align: right;
+    }
+
+    .duration-value {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    .expand-icon {
+        color: var(--mud-palette-text-secondary);
+        flex-shrink: 0;
+        transition: transform 0.2s ease;
+    }
+
+    .log-entry-details {
+        padding: 14px 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        background-color: rgba(0, 0, 0, 0.15);
+        animation: slideDown 0.2s ease;
+    }
+
+    @@keyframes slideDown {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .detail-row {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 12px;
+    }
+
+    .stats-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        padding: 10px 12px;
+        background-color: rgba(255, 255, 255, 0.03);
+        border-radius: 6px;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .stat-icon {
+        font-size: 0.9rem !important;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .stat-value {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--mud-palette-text-primary);
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    .detail-section {
+        margin-bottom: 12px;
+    }
+
+    .detail-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .detail-label {
+        display: block;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--mud-palette-text-secondary);
+        margin-bottom: 4px;
+    }
+
+    .detail-value {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-primary);
+        line-height: 1.5;
+    }
+
+    .error-section .error-message {
+        color: var(--mud-palette-error);
+    }
+
+    .detail-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 16px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .footer-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .footer-label {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .footer-value {
+        font-size: 0.75rem;
+        font-family: 'Consolas', 'Monaco', monospace;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .footer-buttons {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+    }
+
+    .view-details-button {
+        font-size: 0.8rem !important;
+    }
+</style>
+
+@code {
+    private bool _expanded = false;
+    private bool _isLoadingDetails = false;
+
+    /// <summary>
+    /// Gets or sets the document log summary to display.
+    /// </summary>
+    [Parameter]
+    public required AesirDocumentLogSummary Log { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the card should be expanded by default.
+    /// </summary>
+    [Parameter]
+    public bool DefaultExpanded { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        _expanded = DefaultExpanded;
+    }
+
+    private void ToggleExpanded()
+    {
+        _expanded = !_expanded;
+    }
+
+    private string GetStatusClass() => Log.Status switch
+    {
+        DocumentLogStatus.Completed => "status-completed",
+        DocumentLogStatus.Failed => "status-failed",
+        DocumentLogStatus.InProgress => "status-inprogress",
+        _ => "status-completed"
+    };
+
+    private string GetOperationClass() => Log.OperationType switch
+    {
+        DocumentOperationType.FileUploaded => "op-upload",
+        DocumentOperationType.EmbeddingsGenerated => "op-embed",
+        DocumentOperationType.EmbeddingsUpdated => "op-update",
+        DocumentOperationType.FileDeleted => "op-delete",
+        _ => "op-upload"
+    };
+
+    private string GetOperationIcon() => Log.OperationType switch
+    {
+        DocumentOperationType.FileUploaded => Icons.Material.Filled.Upload,
+        DocumentOperationType.EmbeddingsGenerated => Icons.Material.Filled.Memory,
+        DocumentOperationType.EmbeddingsUpdated => Icons.Material.Filled.Refresh,
+        DocumentOperationType.FileDeleted => Icons.Material.Filled.Delete,
+        _ => Icons.Material.Filled.Description
+    };
+
+    private string GetOperationLabel() => Log.OperationType switch
+    {
+        DocumentOperationType.FileUploaded => "Uploaded",
+        DocumentOperationType.EmbeddingsGenerated => "Embedded",
+        DocumentOperationType.EmbeddingsUpdated => "Updated",
+        DocumentOperationType.FileDeleted => "Deleted",
+        _ => Log.OperationType.ToString()
+    };
+
+    private string GetTimeString()
+    {
+        return Log.StartedAt.LocalDateTime.ToString("h:mm:ss tt");
+    }
+
+    private static string TruncateText(string? text, int maxLength = 50)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        return text.Length <= maxLength ? text : text[..(maxLength - 3)] + "...";
+    }
+
+    private static string FormatDuration(long ms)
+    {
+        if (ms < 1000) return $"{ms}ms";
+        if (ms < 60000) return $"{ms / 1000.0:F1}s";
+        return $"{ms / 60000.0:F1}m";
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024.0):F1} MB";
+        return $"{bytes / (1024.0 * 1024.0 * 1024.0):F1} GB";
+    }
+
+    private static string GetShortContentType(string? contentType)
+    {
+        if (string.IsNullOrEmpty(contentType)) return "";
+
+        return contentType.ToLowerInvariant() switch
+        {
+            "application/pdf" => "PDF",
+            "text/plain" => "TXT",
+            "text/markdown" => "MD",
+            "text/html" => "HTML",
+            "application/json" => "JSON",
+            "application/xml" or "text/xml" => "XML",
+            "text/csv" => "CSV",
+            _ when contentType.StartsWith("image/") => contentType.Replace("image/", "").ToUpperInvariant(),
+            _ => contentType.Contains('/') ? contentType.Split('/')[1].ToUpperInvariant() : contentType
+        };
+    }
+
+    private async Task ViewFullDetails()
+    {
+        _isLoadingDetails = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ObservabilityService.LoadDocumentLogDetailAsync(Log.Id);
+            if (result.IsSuccess && result.Value != null)
+            {
+                var parameters = new DialogParameters<DocumentLogDetailDialog>
+                {
+                    { x => x.Log, result.Value }
+                };
+
+                var options = new DialogOptions
+                {
+                    CloseButton = true,
+                    MaxWidth = MaxWidth.Medium,
+                    FullWidth = false
+                };
+
+                await DialogService.ShowAsync<DocumentLogDetailDialog>("", parameters, options);
+            }
+        }
+        finally
+        {
+            _isLoadingDetails = false;
+            StateHasChanged();
+        }
+    }
+}

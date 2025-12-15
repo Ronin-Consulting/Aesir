@@ -28,6 +28,12 @@ public class LoggingModule : ModuleBase
         // Register inference logging service
         services.AddScoped<IInferenceLogService, InferenceLogService>();
 
+        // Register document logging service (Singleton to match document collection services)
+        services.AddSingleton<IDocumentLogService, DocumentLogService>();
+
+        // Register unified timeline service
+        services.AddScoped<IUnifiedTimelineService, UnifiedTimelineService>();
+
         Log("Logging services registered successfully");
 
         return Task.CompletedTask;

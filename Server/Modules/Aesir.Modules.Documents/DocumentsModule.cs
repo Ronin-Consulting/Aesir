@@ -223,6 +223,9 @@ public class DocumentsModule : ModuleBase
 
         services.AddSingleton<IConfiguredKernelFactory, ConfiguredKernelFactory>();
 
+        // Register document operation logger for observability (Singleton to match document collection services)
+        services.AddSingleton<Events.IDocumentOperationLogger, Events.DocumentOperationLogger>();
+
         Log("Document services registered successfully");
 
         return Task.CompletedTask;

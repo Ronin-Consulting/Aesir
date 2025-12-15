@@ -52,6 +52,7 @@
       <ProjectReference Include="..\..\Aesir.Infrastructure\Aesir.Infrastructure.csproj" />
       <ProjectReference Include="..\..\Aesir.Orchestration\Aesir.Orchestration.csproj" />
       <ProjectReference Include="..\Aesir.Modules.Storage\Aesir.Modules.Storage.csproj" />
+      <ProjectReference Include="..\Aesir.Modules.Logging\Aesir.Modules.Logging.csproj" />
     </ItemGroup>
 
     <!-- Copy all module files including dependencies, native binaries, and runtime assets -->

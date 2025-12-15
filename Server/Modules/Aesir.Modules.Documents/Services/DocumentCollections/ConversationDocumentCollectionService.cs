@@ -1,8 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Common.FileTypes;
+using Aesir.Common.Models;
 using Aesir.Infrastructure.Extensions;
 using Aesir.Infrastructure.Models;
 using Aesir.Infrastructure.Services;
+using Aesir.Modules.Documents.Events;
 using Aesir.Orchestration.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.VectorData;
@@ -124,6 +126,11 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     private readonly IConfigurationService _configurationService;
 
     /// <summary>
+    /// Logger for document operations to the observability system.
+    /// </summary>
+    private readonly IDocumentOperationLogger _documentOperationLogger;
+
+    /// <summary>
     /// Service responsible for managing conversation document collections, providing capabilities for vector-based search, optional keyword-based hybrid search,
     /// and managing data loading from diverse file formats, including PDF, image, and text files.
     /// </summary>
@@ -135,7 +142,8 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         Aesir.Modules.Documents.Services.DocumentLoaders.IImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>> imageDataLoader,
         Aesir.Modules.Documents.Services.DocumentLoaders.ITextFileLoaderService<Guid, AesirConversationDocumentTextData<Guid>> textFileLoader,
         ILogger<ConversationDocumentCollectionService> logger,
-        IConfigurationService configurationService
+        IConfigurationService configurationService,
+        IDocumentOperationLogger documentOperationLogger
     )
     {
         _conversationDocumentVectorSearch = conversationDocumentVectorSearch;
@@ -146,6 +154,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
         _textFileLoader = textFileLoader;
         _logger = logger;
         _configurationService = configurationService;
+        _documentOperationLogger = documentOperationLogger;
     }
 
     /// <summary>
@@ -158,7 +167,7 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
     /// <param name="cancellationToken">A token to monitor for request cancellation while loading the document.</param>
     /// <returns>A task that represents the asynchronous operation of loading the document.</returns>
     /// <exception cref="InvalidDataException">Thrown when the document format is unsupported or invalid.</exception>
-    public async Task LoadDocumentAsync(string documentPath, ModelLocationDescriptor modelLocationDescriptor, 
+    public async Task LoadDocumentAsync(string documentPath, ModelLocationDescriptor modelLocationDescriptor,
         IDictionary<string, object>? fileMetaData, CancellationToken cancellationToken)
     {
         var allSupportedFileContentTypes = FileTypeManager.DocumentProcessingMimeTypes;
@@ -173,42 +182,116 @@ public class ConversationDocumentCollectionService : IConversationDocumentCollec
             throw new InvalidDataException($"FileName is required metadata.");
         }
 
+        var fileName = fileNameMetaData?.ToString() ?? Path.GetFileName(documentPath);
+
+        // Extract conversation ID from metadata for logging
+        Guid? conversationIdGuid = null;
+        if (fileMetaData.TryGetValue("ConversationId", out var conversationIdObj) &&
+            Guid.TryParse(conversationIdObj?.ToString(), out var cid))
+        {
+            conversationIdGuid = cid;
+        }
+
+        // Get file size for logging
+        long? fileSizeBytes = null;
+        if (File.Exists(documentPath))
+        {
+            fileSizeBytes = new FileInfo(documentPath).Length;
+        }
+
         if (actualContentType == FileTypeManager.MimeTypes.Pdf)
         {
-            var pdfRequest = new LoadPdfRequest()
+            var embeddingLogId = await _documentOperationLogger.StartOperationAsync(
+                DocumentOperationType.EmbeddingsGenerated,
+                fileName,
+                documentPath,
+                fileSizeBytes,
+                actualContentType,
+                conversationIdGuid,
+                cancellationToken: cancellationToken);
+
+            try
             {
-                PdfLocalPath = documentPath,
-                PdfFileName = fileNameMetaData.ToString(),
-                BetweenBatchDelayInMs = 10,
-                Metadata = fileMetaData,
-                ModelLocation = modelLocationDescriptor
-            };
-            await _pdfDataLoader.LoadPdfAsync(pdfRequest, cancellationToken);
+                var pdfRequest = new LoadPdfRequest()
+                {
+                    PdfLocalPath = documentPath,
+                    PdfFileName = fileNameMetaData.ToString(),
+                    BetweenBatchDelayInMs = 10,
+                    Metadata = fileMetaData,
+                    ModelLocation = modelLocationDescriptor
+                };
+                await _pdfDataLoader.LoadPdfAsync(pdfRequest, cancellationToken);
+
+                await _documentOperationLogger.CompleteOperationAsync(embeddingLogId, cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await _documentOperationLogger.FailOperationAsync(embeddingLogId, ex.Message, cancellationToken);
+                throw;
+            }
         }
 
         if (FileTypeManager.IsImage(documentPath))
         {
-            var imageRequest = new LoadImageRequest()
+            var embeddingLogId = await _documentOperationLogger.StartOperationAsync(
+                DocumentOperationType.EmbeddingsGenerated,
+                fileName,
+                documentPath,
+                fileSizeBytes,
+                actualContentType,
+                conversationIdGuid,
+                cancellationToken: cancellationToken);
+
+            try
             {
-                ImageLocalPath = documentPath,
-                ImageFileName = fileNameMetaData.ToString(),
-                Metadata = fileMetaData,
-                ModelLocation = modelLocationDescriptor 
-            };
-            
-            await _imageDataLoader.LoadImageAsync(imageRequest, cancellationToken);
+                var imageRequest = new LoadImageRequest()
+                {
+                    ImageLocalPath = documentPath,
+                    ImageFileName = fileNameMetaData.ToString(),
+                    Metadata = fileMetaData,
+                    ModelLocation = modelLocationDescriptor
+                };
+
+                await _imageDataLoader.LoadImageAsync(imageRequest, cancellationToken);
+
+                await _documentOperationLogger.CompleteOperationAsync(embeddingLogId, cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await _documentOperationLogger.FailOperationAsync(embeddingLogId, ex.Message, cancellationToken);
+                throw;
+            }
         }
-        
+
         if (FileTypeManager.IsTextFile(documentPath))
         {
-            var textFileRequest = new LoadTextFileRequest()
+            var embeddingLogId = await _documentOperationLogger.StartOperationAsync(
+                DocumentOperationType.EmbeddingsGenerated,
+                fileName,
+                documentPath,
+                fileSizeBytes,
+                actualContentType,
+                conversationIdGuid,
+                cancellationToken: cancellationToken);
+
+            try
             {
-                TextFileLocalPath = documentPath,
-                TextFileFileName = fileNameMetaData.ToString(),
-                Metadata = fileMetaData
-            };
-            
-            await _textFileLoader.LoadTextFileAsync(textFileRequest, cancellationToken);
+                var textFileRequest = new LoadTextFileRequest()
+                {
+                    TextFileLocalPath = documentPath,
+                    TextFileFileName = fileNameMetaData.ToString(),
+                    Metadata = fileMetaData
+                };
+
+                await _textFileLoader.LoadTextFileAsync(textFileRequest, cancellationToken);
+
+                await _documentOperationLogger.CompleteOperationAsync(embeddingLogId, cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await _documentOperationLogger.FailOperationAsync(embeddingLogId, ex.Message, cancellationToken);
+                throw;
+            }
         }
     }
 

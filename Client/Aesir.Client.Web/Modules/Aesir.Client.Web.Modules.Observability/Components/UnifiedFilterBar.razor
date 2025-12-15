@@ -1,0 +1,625 @@
+@namespace Aesir.Client.Web.Modules.Observability.Components
+@using Aesir.Common.Models
+@using Aesir.Client.Web.Modules.Observability.Models
+
+<div class="unified-filter-bar">
+    <!-- Row 1: Search + Refresh + Filters Toggle -->
+    <div class="filter-row filter-row-primary">
+        <MudTextField @bind-Value="_searchText"
+                      Placeholder="Search logs..."
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Class="search-field"
+                      Immediate="false"
+                      DebounceInterval="500"
+                      OnDebounceIntervalElapsed="OnSearchChanged" />
+
+        <div class="primary-actions">
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                           Color="Color.Primary"
+                           OnClick="OnRefreshClicked"
+                           Disabled="IsLoading"
+                           Size="Size.Medium"
+                           aria-label="Refresh logs"
+                           Class="action-button" />
+
+            <MudBadge Content="@GetActiveFilterCount()"
+                      Color="Color.Primary"
+                      Visible="@(GetActiveFilterCount() > 0)"
+                      Overlap="true"
+                      Class="filter-badge">
+                <MudIconButton Icon="@(_showAdvancedFilters ? Icons.Material.Filled.FilterListOff : Icons.Material.Filled.FilterList)"
+                               Color="Color.Default"
+                               OnClick="ToggleAdvancedFilters"
+                               Size="Size.Small"
+                               aria-label="Toggle filters"
+                               Class="filter-toggle-icon" />
+            </MudBadge>
+        </div>
+    </div>
+
+    <!-- Row 2: Date Range + Clear -->
+    <div class="filter-row filter-row-secondary">
+        <MudDateRangePicker @bind-DateRange="_dateRange"
+                            @bind-DateRange:after="OnDateRangeChangedAsync"
+                            Label="Date Range"
+                            Clearable="true" />
+
+        @if (Filter.HasActiveFilters)
+        {
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.FilterAltOff"
+                       OnClick="OnClearFiltersClicked"
+                       Size="Size.Small"
+                       Class="clear-filters-button">
+                Clear All
+            </MudButton>
+        }
+    </div>
+
+    <!-- Expandable: Advanced Filters -->
+    @if (_showAdvancedFilters)
+    {
+        <div class="advanced-filters-panel">
+            <!-- Log Type Filter (always visible) -->
+            <div class="filter-group-row">
+                <div class="filter-group">
+                    <span class="filter-label">Log Type</span>
+                    <div class="filter-chips">
+                        <MudChip T="string"
+                                 Color="@(IsLogTypeSelected(TimelineItemType.Inference) ? Color.Info : Color.Default)"
+                                 Variant="@(IsLogTypeSelected(TimelineItemType.Inference) ? Variant.Filled : Variant.Outlined)"
+                                 OnClick="@(() => ToggleLogType(TimelineItemType.Inference))"
+                                 Size="Size.Small"
+                                 Class="filter-chip">
+                            <MudIcon Icon="@Icons.Material.Filled.Psychology" Size="Size.Small" Class="chip-icon" />
+                            Inference
+                        </MudChip>
+                        <MudChip T="string"
+                                 Color="@(IsLogTypeSelected(TimelineItemType.Document) ? Color.Secondary : Color.Default)"
+                                 Variant="@(IsLogTypeSelected(TimelineItemType.Document) ? Variant.Filled : Variant.Outlined)"
+                                 OnClick="@(() => ToggleLogType(TimelineItemType.Document))"
+                                 Size="Size.Small"
+                                 Class="filter-chip">
+                            <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="chip-icon" />
+                            Document
+                        </MudChip>
+                    </div>
+                </div>
+            </div>
+
+            @if (ShowInferenceFilters)
+            {
+                <div class="filter-group-row">
+                    <div class="filter-group">
+                        <span class="filter-label">Inference Status</span>
+                        <div class="filter-chips">
+                            <MudChip T="string"
+                                     Color="@(IsInferenceStatusSelected(InferenceStatus.Completed) ? Color.Success : Color.Default)"
+                                     Variant="@(IsInferenceStatusSelected(InferenceStatus.Completed) ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => ToggleInferenceStatus(InferenceStatus.Completed))"
+                                     Size="Size.Small"
+                                     Class="filter-chip">
+                                Completed
+                            </MudChip>
+                            <MudChip T="string"
+                                     Color="@(IsInferenceStatusSelected(InferenceStatus.Failed) ? Color.Error : Color.Default)"
+                                     Variant="@(IsInferenceStatusSelected(InferenceStatus.Failed) ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => ToggleInferenceStatus(InferenceStatus.Failed))"
+                                     Size="Size.Small"
+                                     Class="filter-chip">
+                                Failed
+                            </MudChip>
+                            <MudChip T="string"
+                                     Color="@(IsInferenceStatusSelected(InferenceStatus.Cancelled) ? Color.Warning : Color.Default)"
+                                     Variant="@(IsInferenceStatusSelected(InferenceStatus.Cancelled) ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => ToggleInferenceStatus(InferenceStatus.Cancelled))"
+                                     Size="Size.Small"
+                                     Class="filter-chip">
+                                Cancelled
+                            </MudChip>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <span class="filter-label">Tools</span>
+                        <div class="filter-chips">
+                            <MudChip T="string"
+                                     Color="@(_hasToolCallsFilter == true ? Color.Info : Color.Default)"
+                                     Variant="@(_hasToolCallsFilter == true ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => SetHasToolCallsFilter(true))"
+                                     Size="Size.Small"
+                                     Class="filter-chip">
+                                With Tools
+                            </MudChip>
+                            <MudChip T="string"
+                                     Color="@(_hasToolCallsFilter == false ? Color.Info : Color.Default)"
+                                     Variant="@(_hasToolCallsFilter == false ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => SetHasToolCallsFilter(false))"
+                                     Size="Size.Small"
+                                     Class="filter-chip">
+                                No Tools
+                            </MudChip>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (ShowDocumentFilters)
+            {
+                <div class="filter-group-row">
+                    <div class="filter-group">
+                        <span class="filter-label">Document Status</span>
+                        <div class="filter-chips">
+                            <MudChip T="string"
+                                     Color="@(IsDocumentStatusSelected(DocumentLogStatus.Completed) ? Color.Success : Color.Default)"
+                                     Variant="@(IsDocumentStatusSelected(DocumentLogStatus.Completed) ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => ToggleDocumentStatus(DocumentLogStatus.Completed))"
+                                     Size="Size.Small"
+                                     Class="filter-chip">
+                                Completed
+                            </MudChip>
+                            <MudChip T="string"
+                                     Color="@(IsDocumentStatusSelected(DocumentLogStatus.Failed) ? Color.Error : Color.Default)"
+                                     Variant="@(IsDocumentStatusSelected(DocumentLogStatus.Failed) ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => ToggleDocumentStatus(DocumentLogStatus.Failed))"
+                                     Size="Size.Small"
+                                     Class="filter-chip">
+                                Failed
+                            </MudChip>
+                            <MudChip T="string"
+                                     Color="@(IsDocumentStatusSelected(DocumentLogStatus.InProgress) ? Color.Info : Color.Default)"
+                                     Variant="@(IsDocumentStatusSelected(DocumentLogStatus.InProgress) ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => ToggleDocumentStatus(DocumentLogStatus.InProgress))"
+                                     Size="Size.Small"
+                                     Class="filter-chip">
+                                In Progress
+                            </MudChip>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <span class="filter-label">Operation</span>
+                        <div class="filter-chips">
+                            <MudChip T="string"
+                                     Color="@(IsDocumentOperationSelected(DocumentOperationType.FileUploaded) ? Color.Info : Color.Default)"
+                                     Variant="@(IsDocumentOperationSelected(DocumentOperationType.FileUploaded) ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => ToggleDocumentOperation(DocumentOperationType.FileUploaded))"
+                                     Size="Size.Small"
+                                     Class="filter-chip">
+                                <MudIcon Icon="@Icons.Material.Filled.Upload" Size="Size.Small" Class="chip-icon" />
+                                Upload
+                            </MudChip>
+                            <MudChip T="string"
+                                     Color="@(IsDocumentOperationSelected(DocumentOperationType.EmbeddingsGenerated) ? Color.Secondary : Color.Default)"
+                                     Variant="@(IsDocumentOperationSelected(DocumentOperationType.EmbeddingsGenerated) ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => ToggleDocumentOperation(DocumentOperationType.EmbeddingsGenerated))"
+                                     Size="Size.Small"
+                                     Class="filter-chip">
+                                <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Small" Class="chip-icon" />
+                                Embed
+                            </MudChip>
+                            <MudChip T="string"
+                                     Color="@(IsDocumentOperationSelected(DocumentOperationType.EmbeddingsUpdated) ? Color.Warning : Color.Default)"
+                                     Variant="@(IsDocumentOperationSelected(DocumentOperationType.EmbeddingsUpdated) ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => ToggleDocumentOperation(DocumentOperationType.EmbeddingsUpdated))"
+                                     Size="Size.Small"
+                                     Class="filter-chip">
+                                <MudIcon Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Class="chip-icon" />
+                                Update
+                            </MudChip>
+                            <MudChip T="string"
+                                     Color="@(IsDocumentOperationSelected(DocumentOperationType.FileDeleted) ? Color.Error : Color.Default)"
+                                     Variant="@(IsDocumentOperationSelected(DocumentOperationType.FileDeleted) ? Variant.Filled : Variant.Outlined)"
+                                     OnClick="@(() => ToggleDocumentOperation(DocumentOperationType.FileDeleted))"
+                                     Size="Size.Small"
+                                     Class="filter-chip">
+                                <MudIcon Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Class="chip-icon" />
+                                Delete
+                            </MudChip>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .unified-filter-bar {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 14px 16px;
+        background-color: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        margin-bottom: 16px;
+    }
+
+    /* Row 1: Primary Controls */
+    .filter-row-primary {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .search-field {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .primary-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    .action-button {
+        flex-shrink: 0;
+    }
+
+    .filter-toggle-icon {
+        opacity: 0.6;
+        transition: opacity 0.2s ease;
+    }
+
+    .filter-toggle-icon:hover {
+        opacity: 1;
+    }
+
+    .filter-badge .mud-badge-content {
+        font-size: 0.65rem;
+    }
+
+    /* Row 2: Log Type + Date Range */
+    .filter-row-secondary {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .filter-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--mud-palette-text-secondary);
+        white-space: nowrap;
+        min-width: 70px;
+    }
+
+    .filter-chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .filter-chip {
+        cursor: pointer !important;
+    }
+
+    .chip-icon {
+        margin-right: 4px;
+        font-size: 0.85rem !important;
+    }
+
+    .clear-filters-button {
+        margin-left: auto;
+        font-size: 0.75rem !important;
+    }
+
+    /* Advanced Filters Panel */
+    .advanced-filters-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 14px;
+        background-color: rgba(0, 0, 0, 0.15);
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        animation: slideDown 0.2s ease-out;
+    }
+
+    @@keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .filter-group-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px 32px;
+    }
+
+    .filter-group-row .filter-group {
+        min-width: 200px;
+    }
+
+    .filter-group-row .filter-label {
+        min-width: 110px;
+    }
+
+    /* Responsive: Tablet (768px - 1024px) */
+    @@media (max-width: 1024px) {
+        .filter-row-secondary {
+            flex-wrap: wrap;
+        }
+
+        .filter-group-row {
+            gap: 12px 24px;
+        }
+    }
+
+    /* Responsive: Mobile (smaller than 768px) */
+    @@media (max-width: 768px) {
+        .unified-filter-bar {
+            padding: 12px;
+            gap: 10px;
+        }
+
+        .filter-row-primary {
+            gap: 8px;
+        }
+
+        .search-field {
+            min-width: 150px;
+        }
+
+        .filter-row-secondary {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .filter-group {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+            width: 100%;
+        }
+
+        .filter-label {
+            min-width: auto;
+        }
+
+        .filter-chips {
+            width: 100%;
+        }
+
+        .filter-chip {
+            min-height: 36px;
+        }
+
+        .clear-filters-button {
+            margin-left: 0;
+            align-self: flex-start;
+        }
+
+        .advanced-filters-panel {
+            padding: 12px;
+        }
+
+        .filter-group-row {
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .filter-group-row .filter-group {
+            min-width: auto;
+            width: 100%;
+        }
+
+        .filter-group-row .filter-label {
+            min-width: auto;
+        }
+    }
+</style>
+
+@code {
+    private DateRange? _dateRange;
+    private string? _searchText;
+    private bool? _hasToolCallsFilter;
+    private bool _showAdvancedFilters = false;
+
+    /// <summary>
+    /// Gets or sets the current filter state.
+    /// </summary>
+    [Parameter]
+    public UnifiedLogFilter Filter { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets whether loading is in progress.
+    /// </summary>
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    /// <summary>
+    /// Event callback when filter changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<UnifiedLogFilter> FilterChanged { get; set; }
+
+    /// <summary>
+    /// Event callback when refresh is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+
+    /// <summary>
+    /// Event callback when clear filters is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClearFilters { get; set; }
+
+    /// <summary>
+    /// Shows inference filters if no log types selected or inference is selected.
+    /// </summary>
+    private bool ShowInferenceFilters =>
+        Filter.LogTypes.Count == 0 || Filter.LogTypes.Contains(TimelineItemType.Inference);
+
+    /// <summary>
+    /// Shows document filters if no log types selected or document is selected.
+    /// </summary>
+    private bool ShowDocumentFilters =>
+        Filter.LogTypes.Count == 0 || Filter.LogTypes.Contains(TimelineItemType.Document);
+
+    protected override void OnParametersSet()
+    {
+        // Sync local state with filter
+        if (Filter.From.HasValue && Filter.To.HasValue)
+        {
+            _dateRange = new DateRange(
+                Filter.From.Value.LocalDateTime,
+                Filter.To.Value.LocalDateTime);
+        }
+        else
+        {
+            _dateRange = null;
+        }
+
+        _searchText = Filter.SearchText;
+        _hasToolCallsFilter = Filter.HasToolCalls;
+    }
+
+    private void ToggleAdvancedFilters()
+    {
+        _showAdvancedFilters = !_showAdvancedFilters;
+    }
+
+    private int GetActiveFilterCount()
+    {
+        var count = 0;
+        count += Filter.LogTypes.Count;
+        count += Filter.InferenceStatuses.Count;
+        count += Filter.DocumentStatuses.Count;
+        count += Filter.DocumentOperationTypes.Count;
+        if (Filter.HasToolCalls.HasValue) count++;
+        return count;
+    }
+
+    private bool IsLogTypeSelected(TimelineItemType logType) => Filter.LogTypes.Contains(logType);
+    private bool IsInferenceStatusSelected(InferenceStatus status) => Filter.InferenceStatuses.Contains(status);
+    private bool IsDocumentStatusSelected(DocumentLogStatus status) => Filter.DocumentStatuses.Contains(status);
+    private bool IsDocumentOperationSelected(DocumentOperationType opType) => Filter.DocumentOperationTypes.Contains(opType);
+
+    private async Task ToggleLogType(TimelineItemType logType)
+    {
+        var newFilter = Filter.Clone();
+        if (newFilter.LogTypes.Contains(logType))
+            newFilter.LogTypes.Remove(logType);
+        else
+            newFilter.LogTypes.Add(logType);
+
+        await FilterChanged.InvokeAsync(newFilter);
+    }
+
+    private async Task ToggleInferenceStatus(InferenceStatus status)
+    {
+        var newFilter = Filter.Clone();
+        if (newFilter.InferenceStatuses.Contains(status))
+            newFilter.InferenceStatuses.Remove(status);
+        else
+            newFilter.InferenceStatuses.Add(status);
+
+        await FilterChanged.InvokeAsync(newFilter);
+    }
+
+    private async Task ToggleDocumentStatus(DocumentLogStatus status)
+    {
+        var newFilter = Filter.Clone();
+        if (newFilter.DocumentStatuses.Contains(status))
+            newFilter.DocumentStatuses.Remove(status);
+        else
+            newFilter.DocumentStatuses.Add(status);
+
+        await FilterChanged.InvokeAsync(newFilter);
+    }
+
+    private async Task ToggleDocumentOperation(DocumentOperationType opType)
+    {
+        var newFilter = Filter.Clone();
+        if (newFilter.DocumentOperationTypes.Contains(opType))
+            newFilter.DocumentOperationTypes.Remove(opType);
+        else
+            newFilter.DocumentOperationTypes.Add(opType);
+
+        await FilterChanged.InvokeAsync(newFilter);
+    }
+
+    private async Task SetHasToolCallsFilter(bool? hasTools)
+    {
+        var newFilter = Filter.Clone();
+
+        // Toggle off if clicking the same filter
+        if (_hasToolCallsFilter == hasTools)
+        {
+            newFilter.HasToolCalls = null;
+            _hasToolCallsFilter = null;
+        }
+        else
+        {
+            newFilter.HasToolCalls = hasTools;
+            _hasToolCallsFilter = hasTools;
+        }
+
+        await FilterChanged.InvokeAsync(newFilter);
+    }
+
+    private async Task OnDateRangeChangedAsync()
+    {
+        var newFilter = Filter.Clone();
+        if (_dateRange?.Start != null && _dateRange?.End != null)
+        {
+            newFilter.From = new DateTimeOffset(_dateRange.Start.Value, TimeSpan.Zero);
+            newFilter.To = new DateTimeOffset(_dateRange.End.Value.AddDays(1).AddSeconds(-1), TimeSpan.Zero);
+        }
+        else
+        {
+            newFilter.From = null;
+            newFilter.To = null;
+        }
+
+        await FilterChanged.InvokeAsync(newFilter);
+    }
+
+    private async Task OnSearchChanged(string? value)
+    {
+        var newFilter = Filter.Clone();
+        newFilter.SearchText = string.IsNullOrWhiteSpace(value) ? null : value;
+
+        await FilterChanged.InvokeAsync(newFilter);
+    }
+
+    private async Task OnRefreshClicked()
+    {
+        await OnRefresh.InvokeAsync();
+    }
+
+    private async Task OnClearFiltersClicked()
+    {
+        _dateRange = null;
+        _searchText = null;
+        _hasToolCallsFilter = null;
+        _showAdvancedFilters = false;
+        await OnClearFilters.InvokeAsync();
+    }
+}

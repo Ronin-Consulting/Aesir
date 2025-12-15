@@ -1,8 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Common.FileTypes;
+using Aesir.Common.Models;
 using Aesir.Infrastructure.Extensions;
 using Aesir.Infrastructure.Models;
 using Aesir.Infrastructure.Services;
+using Aesir.Modules.Documents.Events;
 using Aesir.Orchestration.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.VectorData;
@@ -58,6 +60,11 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
     private readonly ILogger<GlobalDocumentCollectionService> _logger;
 
     /// <summary>
+    /// Logger for document operations to the observability system.
+    /// </summary>
+    private readonly IDocumentOperationLogger _documentOperationLogger;
+
+    /// <summary>
     /// Service for managing global document collections, including operations such as
     /// vector-based and hybrid text searches as well as loading PDF documents into the system.
     /// </summary>
@@ -66,7 +73,8 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         IKeywordHybridSearchable<AesirGlobalDocumentTextData<Guid>>? globalDocumentHybridSearch,
         VectorStoreCollection<Guid, AesirGlobalDocumentTextData<Guid>> vectorStoreRecordCollection,
         Aesir.Modules.Documents.Services.DocumentLoaders.IPdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>> pdfDataLoader,
-        ILogger<GlobalDocumentCollectionService> logger
+        ILogger<GlobalDocumentCollectionService> logger,
+        IDocumentOperationLogger documentOperationLogger
     )
     {
         _globalDocumentVectorSearch = globalDocumentVectorSearch;
@@ -74,6 +82,7 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         _vectorStoreRecordCollection = vectorStoreRecordCollection;
         _pdfDataLoader = pdfDataLoader;
         _logger = logger;
+        _documentOperationLogger = documentOperationLogger;
     }
 
     /// <summary>
@@ -99,16 +108,44 @@ public class GlobalDocumentCollectionService : IGlobalDocumentCollectionService
         {
             throw new InvalidDataException($"FileName is required metadata.");
         }
-        
-        var request = new LoadPdfRequest()
+
+        var fileName = fileNameMetaData?.ToString() ?? Path.GetFileName(documentPath);
+
+        // Get file size for logging
+        long? fileSizeBytes = null;
+        if (File.Exists(documentPath))
         {
-            PdfLocalPath = documentPath,
-            PdfFileName = fileNameMetaData.ToString(),
-            BetweenBatchDelayInMs = 10,
-            Metadata = fileMetaData,
-            ModelLocation = modelLocationDescriptor
-        };
-        await _pdfDataLoader.LoadPdfAsync(request, cancellationToken);
+            fileSizeBytes = new FileInfo(documentPath).Length;
+        }
+
+        var embeddingLogId = await _documentOperationLogger.StartOperationAsync(
+            DocumentOperationType.EmbeddingsGenerated,
+            fileName,
+            documentPath,
+            fileSizeBytes,
+            actualContentType,
+            conversationId: null, // Global documents don't have a conversation ID
+            cancellationToken: cancellationToken);
+
+        try
+        {
+            var request = new LoadPdfRequest()
+            {
+                PdfLocalPath = documentPath,
+                PdfFileName = fileNameMetaData.ToString(),
+                BetweenBatchDelayInMs = 10,
+                Metadata = fileMetaData,
+                ModelLocation = modelLocationDescriptor
+            };
+            await _pdfDataLoader.LoadPdfAsync(request, cancellationToken);
+
+            await _documentOperationLogger.CompleteOperationAsync(embeddingLogId, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            await _documentOperationLogger.FailOperationAsync(embeddingLogId, ex.Message, cancellationToken);
+            throw;
+        }
     }
 
     /// <summary>

@@ -219,13 +219,21 @@ public class SettingsPageTests : TestContext
     [Fact]
     public void RendersObservabilityContent_WhenObservabilityTabSelected()
     {
-        // Arrange
+        // Arrange - Legacy inference logs
         var logs = new PagedLogResponse { Items = new List<AesirInferenceLogSummary>(), TotalCount = 0 };
         _mockObservabilityService.Setup(x => x.LoadLogsAsync(It.IsAny<LogFilter>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<PagedLogResponse>.Success(logs));
         _mockObservabilityService.Setup(x => x.CurrentResponse).Returns(logs);
         _mockObservabilityService.Setup(x => x.GroupedLogs).Returns(new List<TimeGroupedLogs>());
         _mockObservabilityService.Setup(x => x.CurrentFilter).Returns(new LogFilter());
+
+        // Arrange - Unified timeline
+        var unifiedResponse = new PagedUnifiedTimelineResponse { Items = new List<UnifiedTimelineItem>(), TotalCount = 0, Page = 1, PageSize = 50 };
+        _mockObservabilityService.Setup(x => x.LoadUnifiedLogsAsync(It.IsAny<UnifiedLogFilter>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<PagedUnifiedTimelineResponse>.Success(unifiedResponse));
+        _mockObservabilityService.Setup(x => x.CurrentUnifiedResponse).Returns(unifiedResponse);
+        _mockObservabilityService.Setup(x => x.UnifiedGroupedLogs).Returns(new List<UnifiedTimeGroupedLogs>());
+        _mockObservabilityService.Setup(x => x.CurrentUnifiedFilter).Returns(new UnifiedLogFilter());
 
         _navigationManager.NavigateTo("/settings?tab=observability");
 
@@ -300,13 +308,21 @@ public class SettingsPageTests : TestContext
         _mockAgentService.Setup(x => x.GetAgentToolsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<IReadOnlyList<AesirToolBase>>.Success(new List<AesirToolBase>()));
 
-        // Observability
+        // Observability - Legacy inference log support
         var logs = new PagedLogResponse { Items = new List<AesirInferenceLogSummary>(), TotalCount = 0 };
         _mockObservabilityService.Setup(x => x.LoadLogsAsync(It.IsAny<LogFilter>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<PagedLogResponse>.Success(logs));
         _mockObservabilityService.Setup(x => x.CurrentResponse).Returns(logs);
         _mockObservabilityService.Setup(x => x.GroupedLogs).Returns(new List<TimeGroupedLogs>());
         _mockObservabilityService.Setup(x => x.CurrentFilter).Returns(new LogFilter());
+
+        // Observability - Unified timeline support
+        var unifiedResponse = new PagedUnifiedTimelineResponse { Items = new List<UnifiedTimelineItem>(), TotalCount = 0, Page = 1, PageSize = 50 };
+        _mockObservabilityService.Setup(x => x.LoadUnifiedLogsAsync(It.IsAny<UnifiedLogFilter>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<PagedUnifiedTimelineResponse>.Success(unifiedResponse));
+        _mockObservabilityService.Setup(x => x.CurrentUnifiedResponse).Returns(unifiedResponse);
+        _mockObservabilityService.Setup(x => x.UnifiedGroupedLogs).Returns(new List<UnifiedTimeGroupedLogs>());
+        _mockObservabilityService.Setup(x => x.CurrentUnifiedFilter).Returns(new UnifiedLogFilter());
 
         // Model API Service
         _mockModelApiService.Setup(x => x.GetModelsAsync(It.IsAny<Guid>(), It.IsAny<ModelCategory>(), It.IsAny<CancellationToken>()))

@@ -53,32 +53,80 @@
     /// Gets or sets the inference status to display.
     /// </summary>
     [Parameter]
-    public InferenceStatus Status { get; set; }
+    public InferenceStatus? Status { get; set; }
 
-    private string GetStatusClass() => Status switch
-    {
-        InferenceStatus.Completed => "status-completed",
-        InferenceStatus.Failed => "status-failed",
-        InferenceStatus.Cancelled => "status-cancelled",
-        InferenceStatus.InProgress => "status-inprogress",
-        _ => "status-completed"
-    };
+    /// <summary>
+    /// Gets or sets the document log status to display (alternative to inference status).
+    /// </summary>
+    [Parameter]
+    public DocumentLogStatus? DocumentStatus { get; set; }
 
-    private string GetStatusIcon() => Status switch
+    private string GetStatusClass()
     {
-        InferenceStatus.Completed => Icons.Material.Filled.CheckCircle,
-        InferenceStatus.Failed => Icons.Material.Filled.Error,
-        InferenceStatus.Cancelled => Icons.Material.Filled.Cancel,
-        InferenceStatus.InProgress => Icons.Material.Filled.Autorenew,
-        _ => Icons.Material.Filled.CheckCircle
-    };
+        if (DocumentStatus.HasValue)
+        {
+            return DocumentStatus.Value switch
+            {
+                DocumentLogStatus.Completed => "status-completed",
+                DocumentLogStatus.Failed => "status-failed",
+                DocumentLogStatus.InProgress => "status-inprogress",
+                _ => "status-completed"
+            };
+        }
 
-    private string GetStatusLabel() => Status switch
+        return Status switch
+        {
+            InferenceStatus.Completed => "status-completed",
+            InferenceStatus.Failed => "status-failed",
+            InferenceStatus.Cancelled => "status-cancelled",
+            InferenceStatus.InProgress => "status-inprogress",
+            _ => "status-completed"
+        };
+    }
+
+    private string GetStatusIcon()
     {
-        InferenceStatus.Completed => "Done",
-        InferenceStatus.Failed => "Failed",
-        InferenceStatus.Cancelled => "Cancelled",
-        InferenceStatus.InProgress => "Running",
-        _ => "Done"
-    };
+        if (DocumentStatus.HasValue)
+        {
+            return DocumentStatus.Value switch
+            {
+                DocumentLogStatus.Completed => Icons.Material.Filled.CheckCircle,
+                DocumentLogStatus.Failed => Icons.Material.Filled.Error,
+                DocumentLogStatus.InProgress => Icons.Material.Filled.Autorenew,
+                _ => Icons.Material.Filled.CheckCircle
+            };
+        }
+
+        return Status switch
+        {
+            InferenceStatus.Completed => Icons.Material.Filled.CheckCircle,
+            InferenceStatus.Failed => Icons.Material.Filled.Error,
+            InferenceStatus.Cancelled => Icons.Material.Filled.Cancel,
+            InferenceStatus.InProgress => Icons.Material.Filled.Autorenew,
+            _ => Icons.Material.Filled.CheckCircle
+        };
+    }
+
+    private string GetStatusLabel()
+    {
+        if (DocumentStatus.HasValue)
+        {
+            return DocumentStatus.Value switch
+            {
+                DocumentLogStatus.Completed => "Done",
+                DocumentLogStatus.Failed => "Failed",
+                DocumentLogStatus.InProgress => "Running",
+                _ => "Done"
+            };
+        }
+
+        return Status switch
+        {
+            InferenceStatus.Completed => "Done",
+            InferenceStatus.Failed => "Failed",
+            InferenceStatus.Cancelled => "Cancelled",
+            InferenceStatus.InProgress => "Running",
+            _ => "Done"
+        };
+    }
 }

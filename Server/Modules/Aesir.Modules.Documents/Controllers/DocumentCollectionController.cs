@@ -1,4 +1,6 @@
+using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
+using Aesir.Modules.Documents.Events;
 using Aesir.Modules.Documents.Services.DocumentCollections;
 using Aesir.Modules.Storage.Services;
 using Microsoft.AspNetCore.Http;
@@ -20,7 +22,8 @@ public class DocumentCollectionController(
     IDocumentCollectionService documentCollectionService,
     IConfigurationService configurationService,
     IPdfThumbnailService pdfThumbnailService,
-    IChatHistoryService chatHistoryService)
+    IChatHistoryService chatHistoryService,
+    IDocumentOperationLogger documentOperationLogger)
     : ControllerBase
 {
     /// <summary>
@@ -579,12 +582,25 @@ public class DocumentCollectionController(
         if (string.IsNullOrWhiteSpace(folderId))
             return BadRequest($"{folderIdName} is required.");
 
+        Guid? deleteLogId = null;
+
         try
         {
             var files = await fileStorageService.GetFilesByFolderAsync(folderId);
 
             var virtualFilename = $"/{folderId}/{filename}";
             var fileToDelete = files.FirstOrDefault(f => f.FileName == virtualFilename);
+
+            // Start logging the file deletion operation
+            Guid? conversationIdGuid = folderType == FolderType.Conversation && Guid.TryParse(folderId, out var cid) ? cid : null;
+            deleteLogId = await documentOperationLogger.StartOperationAsync(
+                DocumentOperationType.FileDeleted,
+                filename,
+                virtualFilename,
+                fileToDelete?.FileSize,
+                fileToDelete?.MimeType,
+                conversationIdGuid);
+
             if (fileToDelete != null)
             {
                 await fileStorageService.DeleteFileAsync(fileToDelete.Id);
@@ -611,10 +627,19 @@ public class DocumentCollectionController(
 
             await documentCollectionService.DeleteDocumentAsync(args);
 
+            // Complete the delete operation logging
+            await documentOperationLogger.CompleteOperationAsync(deleteLogId.Value);
+
             return Ok(new { message = "Files deleted successfully", folderId, filename });
         }
         catch (Exception ex)
         {
+            // Log deletion failure if we started the operation
+            if (deleteLogId.HasValue)
+            {
+                await documentOperationLogger.FailOperationAsync(deleteLogId.Value, ex.Message);
+            }
+
             logger.LogError(ex, "Error deleting file {FileName} for {FolderType} {FolderId}",
                 folderType.ToString().ToLowerInvariant(), folderId, filename);
             return StatusCode(500, "An error occurred while deleting file.");
@@ -721,6 +746,18 @@ public class DocumentCollectionController(
                 await fileStorageService.UpsertFileWithThumbnailAsync(virtualFilename, mimeType, fileContent,
                     thumbnailContent, thumbnailMimeType);
                 fileStoredInDb = true;
+
+                // Log the file upload operation
+                Guid? conversationIdGuid = folderType == FolderType.Conversation && Guid.TryParse(folderId, out var cid) ? cid : null;
+                var uploadLogId = await documentOperationLogger.StartOperationAsync(
+                    DocumentOperationType.FileUploaded,
+                    fileName,
+                    virtualFilename,
+                    file.Length,
+                    mimeType,
+                    conversationIdGuid,
+                    cancellationToken: cancellationToken);
+                await documentOperationLogger.CompleteOperationAsync(uploadLogId, cancellationToken: cancellationToken);
             }
             finally
             {

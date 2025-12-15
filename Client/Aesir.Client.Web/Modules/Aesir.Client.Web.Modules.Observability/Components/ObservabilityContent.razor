@@ -1,5 +1,6 @@
 @namespace Aesir.Client.Web.Modules.Observability.Components
 @using Aesir.Client.Web.Modules.Observability.Models
+@using Aesir.Common.Models
 @inject IObservabilityService ObservabilityService
 @implements IDisposable
 
@@ -8,31 +9,31 @@
         <div class="header-content">
             <div class="header-text">
                 <MudText Typo="Typo.h5">Observability</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Monitor AI operations and function executions</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Monitor AI operations, document processing, and function executions</MudText>
             </div>
         </div>
-        @if (ObservabilityService.CurrentResponse != null)
+        @if (ObservabilityService.CurrentUnifiedResponse != null)
         {
             <div class="header-stats">
                 <span class="stat-item">
-                    <span class="stat-value">@ObservabilityService.CurrentResponse.TotalCount</span>
+                    <span class="stat-value">@ObservabilityService.CurrentUnifiedResponse.TotalCount</span>
                     <span class="stat-label">Total</span>
                 </span>
                 <span class="stat-item">
-                    <span class="stat-value">@ObservabilityService.CurrentResponse.Page</span>
-                    <span class="stat-label">of @ObservabilityService.CurrentResponse.TotalPages</span>
+                    <span class="stat-value">@ObservabilityService.CurrentUnifiedResponse.Page</span>
+                    <span class="stat-label">of @ObservabilityService.CurrentUnifiedResponse.TotalPages</span>
                 </span>
             </div>
         }
     </div>
 
-    <FilterBar Filter="_filter"
-               FilterChanged="OnFilterChanged"
-               OnRefresh="OnRefresh"
-               OnClearFilters="OnClearFilters"
-               IsLoading="ObservabilityService.IsLoading" />
+    <UnifiedFilterBar Filter="_unifiedFilter"
+                      FilterChanged="OnUnifiedFilterChanged"
+                      OnRefresh="OnRefresh"
+                      OnClearFilters="OnClearFilters"
+                      IsLoading="ObservabilityService.IsLoading" />
 
-    @if (ObservabilityService.IsLoading && ObservabilityService.GroupedLogs.Count == 0)
+    @if (ObservabilityService.IsLoading && ObservabilityService.UnifiedGroupedLogs.Count == 0)
     {
         <div class="loading-state">
             <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Primary" />
@@ -48,22 +49,22 @@
             </MudButton>
         </MudAlert>
     }
-    else if (ObservabilityService.GroupedLogs.Count == 0)
+    else if (ObservabilityService.UnifiedGroupedLogs.Count == 0)
     {
         <div class="empty-state">
             <MudIcon Icon="@Icons.Material.Filled.SearchOff" Class="empty-icon" />
             <h3 class="empty-title">No logs found</h3>
             <p class="empty-text">
-                @if (HasActiveFilters)
+                @if (_unifiedFilter.HasActiveFilters)
                 {
                     <span>No logs match your current filters. Try adjusting your filter criteria.</span>
                 }
                 else
                 {
-                    <span>No AI operation logs have been recorded yet. Start a chat to generate some logs!</span>
+                    <span>No logs have been recorded yet. Start a chat or upload a document to generate some logs!</span>
                 }
             </p>
-            @if (HasActiveFilters)
+            @if (_unifiedFilter.HasActiveFilters)
             {
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="OnClearFilters" Class="mt-4">
                     Clear Filters
@@ -74,29 +75,29 @@
     else
     {
         <div class="timeline-container">
-            @foreach (var group in ObservabilityService.GroupedLogs)
+            @foreach (var group in ObservabilityService.UnifiedGroupedLogs)
             {
-                <TimelineGroup Group="group" />
+                <UnifiedTimelineGroup Group="group" />
             }
         </div>
 
-        @if (ObservabilityService.CurrentResponse?.TotalPages > 1)
+        @if (ObservabilityService.CurrentUnifiedResponse?.TotalPages > 1)
         {
             <div class="pagination-bar">
                 <MudButton Variant="Variant.Outlined"
                            Color="Color.Primary"
                            OnClick="OnPreviousPage"
-                           Disabled="!ObservabilityService.CurrentResponse.HasPreviousPage || ObservabilityService.IsLoading"
+                           Disabled="!ObservabilityService.CurrentUnifiedResponse.HasPreviousPage || ObservabilityService.IsLoading"
                            StartIcon="@Icons.Material.Filled.ChevronLeft">
                     Previous
                 </MudButton>
                 <span class="pagination-info">
-                    Page @ObservabilityService.CurrentResponse.Page of @ObservabilityService.CurrentResponse.TotalPages
+                    Page @ObservabilityService.CurrentUnifiedResponse.Page of @ObservabilityService.CurrentUnifiedResponse.TotalPages
                 </span>
                 <MudButton Variant="Variant.Outlined"
                            Color="Color.Primary"
                            OnClick="OnNextPage"
-                           Disabled="!ObservabilityService.CurrentResponse.HasNextPage || ObservabilityService.IsLoading"
+                           Disabled="!ObservabilityService.CurrentUnifiedResponse.HasNextPage || ObservabilityService.IsLoading"
                            EndIcon="@Icons.Material.Filled.ChevronRight">
                     Next
                 </MudButton>
@@ -241,20 +242,13 @@
 </style>
 
 @code {
-    private LogFilter _filter = new();
+    private UnifiedLogFilter _unifiedFilter = new();
     private string? _error;
-
-    private bool HasActiveFilters =>
-        _filter.Statuses.Count > 0 ||
-        _filter.From.HasValue ||
-        _filter.To.HasValue ||
-        _filter.HasToolCalls.HasValue ||
-        !string.IsNullOrWhiteSpace(_filter.SearchText);
 
     protected override async Task OnInitializedAsync()
     {
         ObservabilityService.OnLogsChanged += OnLogsChanged;
-        await LoadLogsAsync();
+        await LoadUnifiedLogsAsync();
     }
 
     private void OnLogsChanged()
@@ -262,21 +256,21 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private async Task LoadLogsAsync()
+    private async Task LoadUnifiedLogsAsync()
     {
         _error = null;
-        var result = await ObservabilityService.LoadLogsAsync(_filter);
+        var result = await ObservabilityService.LoadUnifiedLogsAsync(_unifiedFilter);
         if (!result.IsSuccess)
         {
             _error = result.Error ?? "Failed to load logs";
         }
     }
 
-    private async Task OnFilterChanged(LogFilter newFilter)
+    private async Task OnUnifiedFilterChanged(UnifiedLogFilter newFilter)
     {
-        _filter = newFilter;
+        _unifiedFilter = newFilter;
         _error = null;
-        var result = await ObservabilityService.ApplyFilterAsync(_filter);
+        var result = await ObservabilityService.ApplyUnifiedFilterAsync(_unifiedFilter);
         if (!result.IsSuccess)
         {
             _error = result.Error ?? "Failed to apply filter";
@@ -286,7 +280,7 @@
     private async Task OnRefresh()
     {
         _error = null;
-        var result = await ObservabilityService.RefreshAsync();
+        var result = await ObservabilityService.RefreshUnifiedAsync();
         if (!result.IsSuccess)
         {
             _error = result.Error ?? "Failed to refresh logs";
@@ -295,9 +289,9 @@
 
     private async Task OnClearFilters()
     {
-        _filter = new LogFilter();
+        _unifiedFilter = new UnifiedLogFilter();
         _error = null;
-        var result = await ObservabilityService.ClearFilterAsync();
+        var result = await ObservabilityService.ClearUnifiedFilterAsync();
         if (!result.IsSuccess)
         {
             _error = result.Error ?? "Failed to clear filters";
@@ -307,9 +301,11 @@
     private async Task OnNextPage()
     {
         _error = null;
-        var result = await ObservabilityService.LoadNextPageAsync();
+        _unifiedFilter.Page++;
+        var result = await ObservabilityService.LoadUnifiedLogsAsync(_unifiedFilter);
         if (!result.IsSuccess)
         {
+            _unifiedFilter.Page--;
             _error = result.Error ?? "Failed to load next page";
         }
     }
@@ -317,10 +313,15 @@
     private async Task OnPreviousPage()
     {
         _error = null;
-        var result = await ObservabilityService.LoadPreviousPageAsync();
-        if (!result.IsSuccess)
+        if (_unifiedFilter.Page > 1)
         {
-            _error = result.Error ?? "Failed to load previous page";
+            _unifiedFilter.Page--;
+            var result = await ObservabilityService.LoadUnifiedLogsAsync(_unifiedFilter);
+            if (!result.IsSuccess)
+            {
+                _unifiedFilter.Page++;
+                _error = result.Error ?? "Failed to load previous page";
+            }
         }
     }
 
