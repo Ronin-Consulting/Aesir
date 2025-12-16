@@ -48,8 +48,9 @@ public class SttConfig
     /// <summary>
     /// Represents the Voice Activity Detection (VAD) threshold used to determine the minimum energy level
     /// required to classify audio as containing speech during the Speech-to-Text (STT) processing.
+    /// Lower values are more sensitive to quieter speech but may trigger on noise.
     /// </summary>
-    public float VadThreshold { get; set; } = 0.3f; // Slightly lower for better sensitivity per tuning tips
+    public float VadThreshold { get; set; } = 0.2f; // Lower for better sensitivity to capture beginning of words
 
     /// <summary>
     /// Defines the minimum duration of silence, in seconds, that the system recognizes
@@ -61,8 +62,9 @@ public class SttConfig
     /// <summary>
     /// Represents the minimum duration, in seconds, of a speech segment required for processing in the Speech-to-Text (STT) configuration.
     /// This property determines the threshold for identifying and analyzing speech input.
+    /// Lower values capture shorter words (e.g., "What", "Hi") but may pick up more noise.
     /// </summary>
-    public float MinSpeechDuration { get; set; } = 0.5f;
+    public float MinSpeechDuration { get; set; } = 0.15f;
 
     /// <summary>
     /// Represents the size of the Voice Activity Detection (VAD) window in samples,

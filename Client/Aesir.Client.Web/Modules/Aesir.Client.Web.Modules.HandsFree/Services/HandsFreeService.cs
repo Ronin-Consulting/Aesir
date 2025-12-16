@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.HandsFree.Models;
@@ -18,10 +19,15 @@ public class HandsFreeService : IHandsFreeService
     private readonly IChatApiService _chatApiService;
     private readonly IChatSessionNotifier _chatSessionNotifier;
 
-    private readonly Channel<byte[]> _audioChannel;
+    private Channel<byte[]> _audioChannel;
     private CancellationTokenSource? _processingCts;
     private bool _disposed;
     private bool _initialized;
+    private int _lastRecordingChunkCount;
+
+    // Minimum chunks required for a valid recording (~500ms at 128ms per chunk)
+    // Less than this is likely just an interrupt tap, not an actual recording
+    private const int MinimumRecordingChunks = 4;
 
     // Maintain conversation history for multi-turn conversations
     private AesirConversation? _conversation;
@@ -116,6 +122,14 @@ public class HandsFreeService : IHandsFreeService
                 return false;
             }
 
+            // Pre-initialize microphone to eliminate first-recording latency
+            // This requests mic permission and sets up the audio pipeline ahead of time
+            var warmedUp = await _audioCapture.WarmUpAsync();
+            if (!warmedUp)
+            {
+                Console.WriteLine("[HandsFree] Warning: Microphone warm-up failed, first recording may have latency");
+            }
+
             _initialized = true;
             SetState(HandsFreeState.Idle);
             return true;
@@ -153,6 +167,9 @@ public class HandsFreeService : IHandsFreeService
         {
             // Clear previous transcription
             LastTranscription = null;
+
+            // Reset the audio channel to ensure fresh state for new recording
+            ResetAudioChannel();
 
             // Start capturing audio
             var started = await _audioCapture.StartCaptureAsync();
@@ -241,24 +258,43 @@ public class HandsFreeService : IHandsFreeService
     {
         try
         {
+            Console.WriteLine("[HandsFree] ProcessSpeechAsync started");
+
             var transcriptionBuilder = new System.Text.StringBuilder();
+            var chunkCount = 0;
 
-            // Note: In a real implementation, we would stream audio to STT
-            // For now, we'll simulate the flow with collected audio
+            // Stream collected audio chunks to STT service and collect transcription
+            Console.WriteLine("[HandsFree] Starting STT streaming...");
+            await foreach (var textChunk in _speechService.StreamSpeechToTextAsync(
+                GetAudioChunksAsync(cancellationToken), cancellationToken))
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    return;
 
-            // For actual implementation, the audio channel would feed into
-            // the SignalR speech service. This is a simplified version.
+                transcriptionBuilder.Append(textChunk);
 
-            // Simulate STT processing - in production this would use:
-            // await foreach (var text in _speechService.StreamSpeechToTextAsync(GetAudioStream(), cancellationToken))
+                // Emit partial transcription updates for real-time feedback
+                OnTranscription?.Invoke(this, new TranscriptionEventArgs(
+                    transcriptionBuilder.ToString(), false));
+            }
 
-            // For now, we'll use the collected audio and process it
-            // This would be replaced with actual STT streaming
+            var transcription = transcriptionBuilder.ToString();
 
-            await Task.Delay(500, cancellationToken); // Simulate processing time
+            // Handle empty transcription (silence or STT failure)
+            if (string.IsNullOrWhiteSpace(transcription))
+            {
+                // If recording was very short (just an interrupt tap), silently return to Idle
+                if (_lastRecordingChunkCount < MinimumRecordingChunks)
+                {
+                    Console.WriteLine($"[HandsFree] Recording too short ({_lastRecordingChunkCount} chunks), treating as interrupt");
+                    SetState(HandsFreeState.Idle);
+                    return;
+                }
 
-            // Get transcription (this would come from actual STT)
-            var transcription = LastTranscription ?? "Hello, how can you help me today?";
+                SetState(HandsFreeState.Error, "No speech detected. Please try again.");
+                return;
+            }
+
             LastTranscription = transcription;
             OnTranscription?.Invoke(this, new TranscriptionEventArgs(transcription, true));
 
@@ -398,12 +434,41 @@ public class HandsFreeService : IHandsFreeService
         }
     }
 
+    /// <summary>
+    /// Converts the collected audio chunks from the channel into an async enumerable
+    /// for streaming to the STT service.
+    /// </summary>
+    private async IAsyncEnumerable<byte[]> GetAudioChunksAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        Console.WriteLine("[HandsFree] GetAudioChunksAsync started - reading from channel");
+        var chunkIndex = 0;
+
+        await foreach (var chunk in _audioChannel.Reader.ReadAllAsync(cancellationToken))
+        {
+            chunkIndex++;
+            Console.WriteLine($"[HandsFree] Yielding chunk {chunkIndex}: {chunk.Length} bytes");
+            yield return chunk;
+        }
+
+        // Store the chunk count for minimum recording duration check
+        _lastRecordingChunkCount = chunkIndex;
+        Console.WriteLine($"[HandsFree] GetAudioChunksAsync completed - yielded {chunkIndex} chunks");
+    }
+
     private void HandleAudioChunk(object? sender, AudioChunkEventArgs e)
     {
+        Console.WriteLine($"[HandsFree] Received audio chunk: {e.Data.Length} bytes, State: {State}");
+
         if (State == HandsFreeState.Listening)
         {
             // Queue audio chunk for processing
-            _audioChannel.Writer.TryWrite(e.Data);
+            var written = _audioChannel.Writer.TryWrite(e.Data);
+            Console.WriteLine($"[HandsFree] Wrote to channel: {written}");
+        }
+        else
+        {
+            Console.WriteLine($"[HandsFree] Ignoring chunk - not in Listening state");
         }
     }
 
@@ -422,8 +487,15 @@ public class HandsFreeService : IHandsFreeService
 
     private void ResetAudioChannel()
     {
-        // Drain and reset the channel
-        while (_audioChannel.Reader.TryRead(out _)) { }
+        // Complete any existing channel to signal end of stream
+        _audioChannel.Writer.TryComplete();
+
+        // Create a fresh channel for the next recording session
+        _audioChannel = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions
+        {
+            SingleReader = true,
+            SingleWriter = true
+        });
     }
 
     private void SetState(HandsFreeState newState, string? errorMessage = null)

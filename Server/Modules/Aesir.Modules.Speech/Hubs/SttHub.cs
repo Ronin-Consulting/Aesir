@@ -22,12 +22,35 @@ public class SttHub(ISttService sttService) : Hub
         IAsyncEnumerable<byte[]> audioFrames,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        Console.WriteLine("[SttHub] ProcessAudioStream called (raw PCM)");
+
+        var frameCount = 0;
+        var totalBytes = 0L;
+
+        async IAsyncEnumerable<byte[]> LoggedFrames([EnumeratorCancellation] CancellationToken ct = default)
+        {
+            await foreach (var frame in audioFrames.WithCancellation(ct))
+            {
+                frameCount++;
+                totalBytes += frame.Length;
+                if (frameCount <= 5 || frameCount % 10 == 0)
+                {
+                    Console.WriteLine($"[SttHub] Received PCM frame {frameCount}: {frame.Length} bytes");
+                }
+                yield return frame;
+            }
+            Console.WriteLine($"[SttHub] Total PCM frames received: {frameCount}, Total bytes: {totalBytes}");
+        }
+
         await foreach (var text in ProcessStreamInternal(
-            sttService.GenerateTextChunksAsync(audioFrames, cancellationToken),
+            sttService.GenerateTextChunksAsync(LoggedFrames(cancellationToken), cancellationToken),
             cancellationToken))
         {
+            Console.WriteLine($"[SttHub] Yielding text: '{text}'");
             yield return text;
         }
+
+        Console.WriteLine("[SttHub] ProcessAudioStream completed");
     }
 
     /// <summary>
@@ -41,6 +64,8 @@ public class SttHub(ISttService sttService) : Hub
         IAsyncEnumerable<byte[]> opusFrames,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        Console.WriteLine("[SttHub] ProcessOpusStream called");
+
         var opusConfig = new OpusCodecConfig
         {
             SampleRate = sttService.SampleRate,
@@ -49,12 +74,27 @@ public class SttHub(ISttService sttService) : Hub
             FrameSizeMs = 20
         };
 
+        var frameCount = 0;
+        async IAsyncEnumerable<byte[]> LoggedFrames([EnumeratorCancellation] CancellationToken ct = default)
+        {
+            await foreach (var frame in opusFrames.WithCancellation(ct))
+            {
+                frameCount++;
+                Console.WriteLine($"[SttHub] Received frame {frameCount}: {frame.Length} bytes");
+                yield return frame;
+            }
+            Console.WriteLine($"[SttHub] Total frames received: {frameCount}");
+        }
+
         await foreach (var text in ProcessStreamInternal(
-            sttService.GenerateTextChunksFromOpusAsync(opusFrames, opusConfig, cancellationToken),
+            sttService.GenerateTextChunksFromOpusAsync(LoggedFrames(cancellationToken), opusConfig, cancellationToken),
             cancellationToken))
         {
+            Console.WriteLine($"[SttHub] Yielding text: '{text}'");
             yield return text;
         }
+
+        Console.WriteLine("[SttHub] ProcessOpusStream completed");
     }
 
     /// <summary>

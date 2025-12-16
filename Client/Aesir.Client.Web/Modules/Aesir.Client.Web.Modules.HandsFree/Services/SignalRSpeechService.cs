@@ -95,22 +95,33 @@ public class SignalRSpeechService : ISignalRSpeechService
         if (_disposed)
             throw new ObjectDisposedException(nameof(SignalRSpeechService));
 
+        Console.WriteLine($"[SignalRSpeech] StreamSpeechToTextAsync called, hub state: {_sttHub?.State}");
+
         if (_sttHub?.State != HubConnectionState.Connected)
         {
             throw new InvalidOperationException("STT hub is not connected. Call ConnectAsync first.");
         }
 
+        Console.WriteLine("[SignalRSpeech] Starting StreamAsync to ProcessAudioStream...");
+
         // Stream audio to the STT hub and receive transcribed text
-        // Using ProcessOpusStream for Opus-encoded audio (more efficient)
+        // Using ProcessAudioStream for raw 16-bit PCM audio (direct from Web Audio API)
         var textStream = _sttHub.StreamAsync<string>(
-            "ProcessOpusStream",
+            "ProcessAudioStream",
             audioChunks,
             cancellationToken);
 
+        Console.WriteLine("[SignalRSpeech] Waiting for text chunks from server...");
+        var chunkCount = 0;
+
         await foreach (var text in textStream.WithCancellation(cancellationToken))
         {
+            chunkCount++;
+            Console.WriteLine($"[SignalRSpeech] Received text chunk {chunkCount}: '{text}'");
             yield return text;
         }
+
+        Console.WriteLine($"[SignalRSpeech] Stream completed, received {chunkCount} text chunks");
     }
 
     /// <inheritdoc />

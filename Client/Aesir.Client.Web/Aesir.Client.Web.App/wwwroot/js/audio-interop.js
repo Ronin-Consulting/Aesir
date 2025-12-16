@@ -70,8 +70,13 @@ window.aesirAudio = {
      * Dispose of all audio resources
      */
     dispose: function () {
-        this.capture.stop();
+        this.capture.release();  // Full cleanup, not just stop
         this.playback.stop();
+
+        if (this._state.captureContext) {
+            this._state.captureContext.close();
+            this._state.captureContext = null;
+        }
 
         if (this._state.audioContext) {
             this._state.audioContext.close();
@@ -87,25 +92,34 @@ window.aesirAudio = {
     // Microphone capture functions (push-to-talk)
     capture: {
         /**
-         * Start capturing audio from the microphone
-         * Sends Opus-encoded chunks to .NET via OnAudioChunk callback
-         * @returns {Promise<boolean>} True if capture started successfully
+         * Pre-initialize the audio capture pipeline to eliminate first-recording latency.
+         * Call this when entering hands-free mode to warm up the microphone.
+         * @returns {Promise<boolean>} True if warm-up successful
          */
-        start: async function () {
+        warmUp: async function () {
             const state = window.aesirAudio._state;
 
-            if (state.isCapturing) {
-                console.warn('Already capturing audio');
+            if (state.captureWarmedUp) {
+                console.log('Audio capture already warmed up');
                 return true;
             }
 
             try {
-                // Resume AudioContext if suspended (requires user interaction)
-                if (state.audioContext && state.audioContext.state === 'suspended') {
-                    await state.audioContext.resume();
+                console.log('Warming up audio capture...');
+
+                // Create a dedicated AudioContext for capture at 16kHz (STT sample rate)
+                if (!state.captureContext || state.captureContext.state === 'closed') {
+                    state.captureContext = new (window.AudioContext || window.webkitAudioContext)({
+                        sampleRate: state.sampleRate // 16kHz for STT
+                    });
                 }
 
-                // Request microphone access
+                // Resume AudioContext if suspended (requires user interaction)
+                if (state.captureContext.state === 'suspended') {
+                    await state.captureContext.resume();
+                }
+
+                // Request microphone access - this is the slow part that causes first-word loss
                 state.mediaStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         channelCount: 1,
@@ -117,49 +131,81 @@ window.aesirAudio = {
                     video: false
                 });
 
-                // Determine the best supported MIME type for Opus
-                const mimeType = this._getOpusMimeType();
+                // Create media stream source
+                state.captureSource = state.captureContext.createMediaStreamSource(state.mediaStream);
 
-                // Create MediaRecorder with Opus codec
-                const options = {
-                    mimeType: mimeType,
-                    audioBitsPerSecond: 32000
-                };
+                // Use ScriptProcessorNode for PCM capture (works in all browsers)
+                // Buffer size of 2048 samples at 16kHz = 128ms chunks (reduced for lower latency)
+                const bufferSize = 2048;
+                state.scriptProcessor = state.captureContext.createScriptProcessor(bufferSize, 1, 1);
 
-                state.mediaRecorder = new MediaRecorder(state.mediaStream, options);
+                state.scriptProcessor.onaudioprocess = async (event) => {
+                    if (!state.isCapturing || !state.captureDotNetRef) return;
 
-                // Handle recorded data chunks
-                state.mediaRecorder.ondataavailable = async (event) => {
-                    if (event.data && event.data.size > 0 && state.captureDotNetRef) {
-                        try {
-                            // Convert blob to base64
-                            const arrayBuffer = await event.data.arrayBuffer();
-                            const base64 = this._arrayBufferToBase64(arrayBuffer);
+                    const inputData = event.inputBuffer.getChannelData(0);
 
-                            // Send to .NET
-                            await state.captureDotNetRef.invokeMethodAsync('OnAudioChunk', base64);
-                        } catch (error) {
-                            console.error('Failed to send audio chunk:', error);
-                        }
+                    // Convert Float32 samples to Int16 PCM bytes
+                    const pcmBuffer = new ArrayBuffer(inputData.length * 2);
+                    const pcmView = new DataView(pcmBuffer);
+
+                    for (let i = 0; i < inputData.length; i++) {
+                        // Clamp to [-1, 1] and convert to 16-bit signed integer
+                        const sample = Math.max(-1, Math.min(1, inputData[i]));
+                        const int16 = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+                        pcmView.setInt16(i * 2, int16, true); // Little-endian
+                    }
+
+                    try {
+                        const base64 = this._arrayBufferToBase64(pcmBuffer);
+                        await state.captureDotNetRef.invokeMethodAsync('OnAudioChunk', base64);
+                    } catch (error) {
+                        console.error('Failed to send PCM chunk:', error);
                     }
                 };
 
-                state.mediaRecorder.onerror = (event) => {
-                    console.error('MediaRecorder error:', event.error);
-                    if (state.captureDotNetRef) {
-                        state.captureDotNetRef.invokeMethodAsync('OnCaptureError', event.error?.message || 'Unknown error');
+                // Connect: source -> scriptProcessor -> destination (required for processing)
+                state.captureSource.connect(state.scriptProcessor);
+                state.scriptProcessor.connect(state.captureContext.destination);
+
+                state.captureWarmedUp = true;
+                console.log('Audio capture warmed up successfully (raw PCM at', state.sampleRate, 'Hz)');
+                return true;
+            } catch (error) {
+                console.error('Failed to warm up audio capture:', error);
+                return false;
+            }
+        },
+
+        /**
+         * Start capturing audio from the microphone
+         * Sends raw 16-bit PCM chunks to .NET via OnAudioChunk callback
+         * Uses Web Audio API for direct PCM access (no container format)
+         * @returns {Promise<boolean>} True if capture started successfully
+         */
+        start: async function () {
+            const state = window.aesirAudio._state;
+
+            if (state.isCapturing) {
+                console.warn('Already capturing audio');
+                return true;
+            }
+
+            try {
+                // Warm up if not already done
+                if (!state.captureWarmedUp) {
+                    const warmedUp = await this.warmUp();
+                    if (!warmedUp) {
+                        throw new Error('Failed to warm up audio capture');
                     }
-                };
+                }
 
-                state.mediaRecorder.onstop = () => {
-                    console.log('MediaRecorder stopped');
-                    state.isCapturing = false;
-                };
+                // Resume AudioContext if suspended
+                if (state.captureContext.state === 'suspended') {
+                    await state.captureContext.resume();
+                }
 
-                // Start recording with 100ms chunks for low latency
-                state.mediaRecorder.start(100);
                 state.isCapturing = true;
-                console.log('Audio capture started');
+                console.log('Audio capture started (raw PCM at', state.sampleRate, 'Hz)');
                 return true;
             } catch (error) {
                 console.error('Failed to start audio capture:', error);
@@ -171,13 +217,32 @@ window.aesirAudio = {
         },
 
         /**
-         * Stop capturing audio and release microphone
+         * Stop capturing audio (keeps pipeline alive if warmed up for quick restart)
          */
         stop: function () {
             const state = window.aesirAudio._state;
 
-            if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
-                state.mediaRecorder.stop();
+            state.isCapturing = false;
+            console.log('Audio capture stopped (pipeline preserved for next recording)');
+        },
+
+        /**
+         * Fully release microphone and audio resources
+         */
+        release: function () {
+            const state = window.aesirAudio._state;
+
+            state.isCapturing = false;
+            state.captureWarmedUp = false;
+
+            if (state.scriptProcessor) {
+                state.scriptProcessor.disconnect();
+                state.scriptProcessor = null;
+            }
+
+            if (state.captureSource) {
+                state.captureSource.disconnect();
+                state.captureSource = null;
             }
 
             if (state.mediaStream) {
@@ -185,9 +250,7 @@ window.aesirAudio = {
                 state.mediaStream = null;
             }
 
-            state.mediaRecorder = null;
-            state.isCapturing = false;
-            console.log('Audio capture stopped');
+            console.log('Audio capture released');
         },
 
         /**
@@ -196,29 +259,6 @@ window.aesirAudio = {
          */
         isActive: function () {
             return window.aesirAudio._state.isCapturing;
-        },
-
-        /**
-         * Get the best supported Opus MIME type
-         * @returns {string} MIME type string
-         */
-        _getOpusMimeType: function () {
-            const types = [
-                'audio/webm;codecs=opus',
-                'audio/ogg;codecs=opus',
-                'audio/webm'
-            ];
-
-            for (const type of types) {
-                if (MediaRecorder.isTypeSupported(type)) {
-                    console.log('Using MIME type:', type);
-                    return type;
-                }
-            }
-
-            // Fallback to default
-            console.warn('No Opus MIME type supported, using default');
-            return 'audio/webm';
         },
 
         /**

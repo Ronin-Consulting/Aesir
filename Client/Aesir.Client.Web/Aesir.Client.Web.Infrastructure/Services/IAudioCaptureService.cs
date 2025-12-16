@@ -115,6 +115,13 @@ public interface IAudioCaptureService : IAsyncDisposable
     Task<bool> InitializeAsync(int sampleRate = 16000);
 
     /// <summary>
+    /// Pre-initialize the audio capture pipeline (microphone, AudioContext) to eliminate
+    /// first-recording latency. Call this when entering hands-free mode to "warm up" the microphone.
+    /// </summary>
+    /// <returns>True if warm-up succeeded.</returns>
+    Task<bool> WarmUpAsync();
+
+    /// <summary>
     /// Start capturing audio from the microphone.
     /// Requires user gesture in browser context.
     /// </summary>

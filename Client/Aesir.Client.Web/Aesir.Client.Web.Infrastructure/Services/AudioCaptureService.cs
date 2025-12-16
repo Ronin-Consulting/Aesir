@@ -94,6 +94,32 @@ public class AudioCaptureService : IAudioCaptureService
     }
 
     /// <inheritdoc />
+    public async Task<bool> WarmUpAsync()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(AudioCaptureService));
+
+        // Ensure initialized first
+        if (State == AudioCaptureState.NotInitialized)
+        {
+            var initialized = await InitializeAsync();
+            if (!initialized)
+                return false;
+        }
+
+        try
+        {
+            // Call the JavaScript warm-up function to pre-initialize microphone
+            return await _jsRuntime.InvokeAsync<bool>("aesirAudio.capture.warmUp");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to warm up audio capture: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<bool> StartCaptureAsync()
     {
         if (_disposed)
@@ -169,7 +195,7 @@ public class AudioCaptureService : IAudioCaptureService
     /// <summary>
     /// Called from JavaScript when an audio chunk is captured.
     /// </summary>
-    /// <param name="base64Data">Base64 encoded audio data.</param>
+    /// <param name="base64Data">Base64 encoded audio data (raw 16-bit PCM).</param>
     [JSInvokable("OnAudioChunk")]
     public void HandleAudioChunk(string base64Data)
     {
@@ -179,8 +205,8 @@ public class AudioCaptureService : IAudioCaptureService
         try
         {
             var data = Convert.FromBase64String(base64Data);
-            var format = HasOpusSupport ? "webm/opus" : "webm";
-            OnAudioChunk?.Invoke(this, new AudioChunkEventArgs(data, format));
+            // Now using raw 16-bit PCM format (16kHz, mono, little-endian)
+            OnAudioChunk?.Invoke(this, new AudioChunkEventArgs(data, "pcm/16bit"));
         }
         catch (Exception ex)
         {
