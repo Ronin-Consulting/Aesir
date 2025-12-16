@@ -1,0 +1,184 @@
+@using Aesir.Client.Web.Modules.HandsFree.Models
+
+<div class="avatar-container @GetStateClass()">
+    <div class="avatar-ring outer"></div>
+    <div class="avatar-ring middle"></div>
+    <div class="avatar-ring inner"></div>
+    <div class="avatar-core">
+        <MudIcon Icon="@GetStateIcon()" Size="Size.Large" Class="avatar-icon" />
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The current hands-free state.
+    /// </summary>
+    [Parameter]
+    public HandsFreeState State { get; set; } = HandsFreeState.Idle;
+
+    private string GetStateClass() => State switch
+    {
+        HandsFreeState.Idle => "state-idle",
+        HandsFreeState.Listening => "state-listening",
+        HandsFreeState.Processing => "state-processing",
+        HandsFreeState.Speaking => "state-speaking",
+        HandsFreeState.Error => "state-error",
+        _ => "state-idle"
+    };
+
+    private string GetStateIcon() => State switch
+    {
+        HandsFreeState.Idle => Icons.Material.Filled.Mic,
+        HandsFreeState.Listening => Icons.Material.Filled.GraphicEq,
+        HandsFreeState.Processing => Icons.Material.Filled.AutoAwesome,
+        HandsFreeState.Speaking => Icons.Material.Filled.RecordVoiceOver,
+        HandsFreeState.Error => Icons.Material.Filled.ErrorOutline,
+        _ => Icons.Material.Filled.Mic
+    };
+}
+
+<style>
+    .avatar-container {
+        position: relative;
+        width: 200px;
+        height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .avatar-ring {
+        position: absolute;
+        border-radius: 50%;
+        border: 2px solid rgba(33, 150, 243, 0.3);
+    }
+
+    .avatar-ring.outer {
+        width: 200px;
+        height: 200px;
+    }
+
+    .avatar-ring.middle {
+        width: 160px;
+        height: 160px;
+    }
+
+    .avatar-ring.inner {
+        width: 120px;
+        height: 120px;
+    }
+
+    .avatar-core {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+        box-shadow: 0 0 30px rgba(33, 150, 243, 0.5);
+    }
+
+    .avatar-icon {
+        color: white;
+    }
+
+    /* Idle state - subtle breathing */
+    .state-idle .avatar-ring {
+        animation: breathe 4s ease-in-out infinite;
+    }
+
+    .state-idle .avatar-ring.middle { animation-delay: 0.2s; }
+    .state-idle .avatar-ring.inner { animation-delay: 0.4s; }
+
+    @@keyframes breathe {
+        0%, 100% { transform: scale(1); opacity: 0.3; }
+        50% { transform: scale(1.05); opacity: 0.5; }
+    }
+
+    /* Listening state - pulsing glow */
+    .state-listening .avatar-ring {
+        border-color: rgba(76, 175, 80, 0.5);
+        animation: pulse 0.8s ease-in-out infinite;
+    }
+
+    .state-listening .avatar-ring.middle { animation-delay: 0.1s; }
+    .state-listening .avatar-ring.inner { animation-delay: 0.2s; }
+
+    .state-listening .avatar-core {
+        background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+        box-shadow: 0 0 40px rgba(76, 175, 80, 0.6);
+        animation: corePulse 0.8s ease-in-out infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.3; }
+        50% { transform: scale(1.1); opacity: 0.7; }
+    }
+
+    @@keyframes corePulse {
+        0%, 100% { box-shadow: 0 0 40px rgba(76, 175, 80, 0.6); }
+        50% { box-shadow: 0 0 60px rgba(76, 175, 80, 0.9); }
+    }
+
+    /* Processing state - gentle rotation */
+    .state-processing .avatar-ring {
+        border-color: rgba(255, 193, 7, 0.5);
+        animation: rotate 3s linear infinite;
+    }
+
+    .state-processing .avatar-ring.middle {
+        animation: rotate 2s linear infinite reverse;
+    }
+
+    .state-processing .avatar-ring.inner {
+        animation: rotate 1.5s linear infinite;
+    }
+
+    .state-processing .avatar-core {
+        background: linear-gradient(135deg, #FFC107 0%, #FFA000 100%);
+        box-shadow: 0 0 40px rgba(255, 193, 7, 0.6);
+    }
+
+    @@keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    /* Speaking state - expanding ripples */
+    .state-speaking .avatar-ring {
+        border-color: rgba(156, 39, 176, 0.5);
+        animation: ripple 1.5s ease-out infinite;
+    }
+
+    .state-speaking .avatar-ring.middle { animation-delay: 0.3s; }
+    .state-speaking .avatar-ring.inner { animation-delay: 0.6s; }
+
+    .state-speaking .avatar-core {
+        background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+        box-shadow: 0 0 40px rgba(156, 39, 176, 0.6);
+    }
+
+    @@keyframes ripple {
+        0% { transform: scale(1); opacity: 0.7; }
+        100% { transform: scale(1.3); opacity: 0; }
+    }
+
+    /* Error state - red shake */
+    .state-error .avatar-ring {
+        border-color: rgba(244, 67, 54, 0.5);
+    }
+
+    .state-error .avatar-core {
+        background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%);
+        box-shadow: 0 0 40px rgba(244, 67, 54, 0.6);
+        animation: shake 0.5s ease-in-out infinite;
+    }
+
+    @@keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+</style>

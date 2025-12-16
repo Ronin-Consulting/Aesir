@@ -10,6 +10,7 @@ using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Client.Web.Modules.Settings;
 using Aesir.Client.Web.Modules.Wizard;
 using Aesir.Client.Web.Modules.Observability;
+using Aesir.Client.Web.Modules.HandsFree;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -26,6 +27,9 @@ builder.Services.AddSingleton<IConfigurationChangedNotifier, ConfigurationChange
 
 // Add platform services (Tauri detection, native file operations)
 builder.Services.AddPlatformServices();
+
+// Add audio services for hands-free mode
+builder.Services.AddAudioServices();
 
 // Add module infrastructure
 builder.Services.AddModuleInfrastructure();
@@ -45,6 +49,7 @@ builder.Services.AddModule<ChatModule>();
 builder.Services.AddModule<SettingsModule>();
 builder.Services.AddModule<WizardModule>();
 builder.Services.AddModule<ObservabilityModule>();
+builder.Services.AddModule<HandsFreeModule>();
 
 // Build the app
 var app = builder.Build();

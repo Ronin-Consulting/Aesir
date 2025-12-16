@@ -1,0 +1,236 @@
+@page "/hands-free"
+@page "/hands-free/{AgentId:guid}"
+@layout HandsFreeLayout
+@using Aesir.Client.Web.Modules.HandsFree.Models
+@implements IAsyncDisposable
+
+<PageTitle>AESIR - Hands-Free</PageTitle>
+
+<ExitButton OnExit="HandleExit" />
+
+<div class="hands-free-content">
+    <HandsFreeAvatar State="_state" />
+
+    <PushToTalkButton State="_state"
+                      OnPress="HandlePressStart"
+                      OnRelease="HandlePressEnd" />
+
+    <SpeechRecognitionDisplay Transcription="@_transcription"
+                              IsFinal="@_transcriptionFinal"
+                              Response="@_response"
+                              ErrorMessage="@_error" />
+</div>
+
+@code {
+    [Inject]
+    private IHandsFreeService HandsFreeService { get; set; } = null!;
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = null!;
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = null!;
+
+    /// <summary>
+    /// Optional agent ID from route.
+    /// </summary>
+    [Parameter]
+    public Guid? AgentId { get; set; }
+
+    /// <summary>
+    /// Optional conversation ID from query string.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "conversation")]
+    public Guid? ConversationId { get; set; }
+
+    private HandsFreeState _state = HandsFreeState.Idle;
+    private string? _transcription;
+    private bool _transcriptionFinal;
+    private string? _response;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Set agent and conversation if provided
+        if (AgentId.HasValue)
+        {
+            HandsFreeService.CurrentAgentId = AgentId;
+        }
+
+        if (ConversationId.HasValue)
+        {
+            HandsFreeService.CurrentConversationId = ConversationId;
+        }
+
+        // Subscribe to events
+        HandsFreeService.OnStateChanged += HandleStateChanged;
+        HandsFreeService.OnTranscription += HandleTranscription;
+        HandsFreeService.OnResponseText += HandleResponse;
+
+        // Initialize the service
+        await HandsFreeService.InitializeAsync();
+        _state = HandsFreeService.State;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Set up keyboard shortcuts
+            await SetupKeyboardShortcuts();
+        }
+    }
+
+    private async Task SetupKeyboardShortcuts()
+    {
+        // Create inline script for keyboard handling
+        await JSRuntime.InvokeVoidAsync("eval", @"
+            window.handsFreeKeyHandler = {
+                dotNetRef: null,
+                spacePressed: false,
+
+                init: function(dotNetRef) {
+                    this.dotNetRef = dotNetRef;
+
+                    document.addEventListener('keydown', this.handleKeyDown.bind(this));
+                    document.addEventListener('keyup', this.handleKeyUp.bind(this));
+                },
+
+                handleKeyDown: function(e) {
+                    if (e.code === 'Space' && !e.repeat && !this.spacePressed) {
+                        e.preventDefault();
+                        this.spacePressed = true;
+                        this.dotNetRef.invokeMethodAsync('OnSpacePressed');
+                    }
+                    else if (e.code === 'Escape') {
+                        e.preventDefault();
+                        this.dotNetRef.invokeMethodAsync('OnEscapePressed');
+                    }
+                },
+
+                handleKeyUp: function(e) {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        this.spacePressed = false;
+                        this.dotNetRef.invokeMethodAsync('OnSpaceReleased');
+                    }
+                },
+
+                dispose: function() {
+                    document.removeEventListener('keydown', this.handleKeyDown);
+                    document.removeEventListener('keyup', this.handleKeyUp);
+                    this.dotNetRef = null;
+                }
+            };
+        ");
+
+        var dotNetRef = DotNetObjectReference.Create(this);
+        await JSRuntime.InvokeVoidAsync("handsFreeKeyHandler.init", dotNetRef);
+    }
+
+    [JSInvokable]
+    public async Task OnSpacePressed()
+    {
+        await HandlePressStart();
+    }
+
+    [JSInvokable]
+    public async Task OnSpaceReleased()
+    {
+        await HandlePressEnd();
+    }
+
+    [JSInvokable]
+    public async Task OnEscapePressed()
+    {
+        await HandleExit();
+    }
+
+    private async Task HandlePressStart()
+    {
+        await HandsFreeService.StartListeningAsync();
+    }
+
+    private async Task HandlePressEnd()
+    {
+        if (_state == HandsFreeState.Listening)
+        {
+            await HandsFreeService.StopListeningAsync();
+        }
+        else if (_state == HandsFreeState.Speaking)
+        {
+            await HandsFreeService.InterruptAsync();
+        }
+    }
+
+    private async Task HandleExit()
+    {
+        await HandsFreeService.ResetAsync();
+
+        // Navigate back to chat with session query parameter
+        var url = ConversationId.HasValue
+            ? $"/chat?session={ConversationId}"
+            : "/chat";
+
+        NavigationManager.NavigateTo(url);
+    }
+
+    private void HandleStateChanged(object? sender, HandsFreeStateChangedEventArgs e)
+    {
+        _state = e.CurrentState;
+        _error = e.ErrorMessage;
+
+        if (e.CurrentState == HandsFreeState.Idle)
+        {
+            // Clear displays when returning to idle
+            _transcription = null;
+            _transcriptionFinal = false;
+            _response = null;
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleTranscription(object? sender, TranscriptionEventArgs e)
+    {
+        _transcription = e.Text;
+        _transcriptionFinal = e.IsFinal;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleResponse(object? sender, string response)
+    {
+        _response = response;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Unsubscribe from events
+        HandsFreeService.OnStateChanged -= HandleStateChanged;
+        HandsFreeService.OnTranscription -= HandleTranscription;
+        HandsFreeService.OnResponseText -= HandleResponse;
+
+        // Clean up keyboard handler
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("handsFreeKeyHandler.dispose");
+        }
+        catch
+        {
+            // Ignore errors during disposal
+        }
+    }
+}
+
+<style>
+    .hands-free-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        z-index: 1;
+        position: relative;
+    }
+</style>

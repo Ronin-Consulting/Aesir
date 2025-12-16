@@ -1,0 +1,125 @@
+<div class="speech-display">
+    @if (!string.IsNullOrEmpty(Transcription))
+    {
+        <div class="transcription-container">
+            <div class="label">You said:</div>
+            <div class="text transcription @(IsFinal ? "final" : "partial")">
+                @Transcription
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Response))
+    {
+        <div class="response-container">
+            <div class="label">Assistant:</div>
+            <div class="text response">
+                @Response
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="error-container">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" Class="error-icon" />
+            <div class="text error">@ErrorMessage</div>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The transcribed user speech.
+    /// </summary>
+    [Parameter]
+    public string? Transcription { get; set; }
+
+    /// <summary>
+    /// Indicates if the transcription is final.
+    /// </summary>
+    [Parameter]
+    public bool IsFinal { get; set; }
+
+    /// <summary>
+    /// The assistant's response text.
+    /// </summary>
+    [Parameter]
+    public string? Response { get; set; }
+
+    /// <summary>
+    /// Error message to display.
+    /// </summary>
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+}
+
+<style>
+    .speech-display {
+        width: 100%;
+        max-width: 600px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-top: 24px;
+    }
+
+    .transcription-container,
+    .response-container,
+    .error-container {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: rgba(255, 255, 255, 0.5);
+        margin-bottom: 8px;
+    }
+
+    .text {
+        font-size: 16px;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .transcription.partial {
+        opacity: 0.7;
+        font-style: italic;
+    }
+
+    .transcription.final {
+        opacity: 1;
+    }
+
+    .response-container {
+        border-color: rgba(156, 39, 176, 0.3);
+        background: rgba(156, 39, 176, 0.1);
+    }
+
+    .response-container .label {
+        color: rgba(156, 39, 176, 0.8);
+    }
+
+    .error-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-color: rgba(244, 67, 54, 0.3);
+        background: rgba(244, 67, 54, 0.1);
+    }
+
+    .error-icon {
+        color: #F44336;
+    }
+
+    .error {
+        color: rgba(244, 67, 54, 0.9);
+    }
+</style>

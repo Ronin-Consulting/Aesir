@@ -1,0 +1,50 @@
+@inject NavigationManager NavigationManager
+
+<MudTooltip Text="Exit Hands-Free Mode (Esc)">
+    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                   Size="Size.Large"
+                   Class="exit-button"
+                   OnClick="OnExitClick" />
+</MudTooltip>
+
+@code {
+    /// <summary>
+    /// Optional callback when exiting. If not provided, navigates to /chat.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnExit { get; set; }
+
+    /// <summary>
+    /// The URL to navigate to when exiting (default: /chat).
+    /// </summary>
+    [Parameter]
+    public string ExitUrl { get; set; } = "/chat";
+
+    private async Task OnExitClick()
+    {
+        if (OnExit.HasDelegate)
+        {
+            await OnExit.InvokeAsync();
+        }
+        else
+        {
+            NavigationManager.NavigateTo(ExitUrl);
+        }
+    }
+}
+
+<style>
+    .exit-button {
+        position: fixed !important;
+        top: 24px;
+        right: 24px;
+        color: rgba(255, 255, 255, 0.6) !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-radius: 50% !important;
+    }
+
+    .exit-button:hover {
+        color: rgba(255, 255, 255, 0.9) !important;
+        background: rgba(255, 255, 255, 0.2) !important;
+    }
+</style>

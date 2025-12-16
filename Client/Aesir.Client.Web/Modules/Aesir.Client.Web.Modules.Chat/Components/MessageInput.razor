@@ -8,6 +8,7 @@
 @inject IDocumentApiService DocumentService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
 @implements IAsyncDisposable
 
 @* Event callback to request conversation ID from parent when needed for immediate upload *@
@@ -122,6 +123,13 @@
             <div class="right-actions">
                 @* Agent Selector (Claude-style) *@
                 <AgentSelectorCompact OnAgentSelected="HandleAgentSelected" />
+
+                <MudIconButton Icon="@Icons.Material.Filled.Mic"
+                               Size="Size.Small"
+                               Color="Color.Default"
+                               OnClick="NavigateToHandsFree"
+                               Title="Hands-Free Mode"
+                               Class="hands-free-button" />
 
                 <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
                                Size="Size.Small"
@@ -351,6 +359,16 @@
         opacity: 0.4;
     }
 
+    .hands-free-button {
+        opacity: 0.6;
+        transition: opacity 0.15s ease, color 0.15s ease;
+    }
+
+    .hands-free-button:hover {
+        opacity: 1;
+        color: var(--mud-palette-primary);
+    }
+
     .rag-disabled {
         opacity: 0.3 !important;
         cursor: not-allowed !important;
@@ -554,6 +572,24 @@
         {
             await OnThinkLevelChanged.InvokeAsync(level);
         }
+    }
+
+    private void NavigateToHandsFree()
+    {
+        // Build URL with current agent and conversation context
+        var agentId = ChatState.SelectedAgent?.Id;
+        var conversationId = GetConversationId?.Invoke();
+
+        var url = agentId.HasValue
+            ? $"/hands-free/{agentId}"
+            : "/hands-free";
+
+        if (conversationId.HasValue && conversationId != Guid.Empty)
+        {
+            url += $"?conversation={conversationId}";
+        }
+
+        NavigationManager.NavigateTo(url);
     }
 
     private async Task HandleFileSelected(IBrowserFile file)

@@ -1,4 +1,6 @@
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using Aesir.Modules.Speech.Services.Audio;
 using Microsoft.Extensions.Logging;
 using SherpaOnnx;
 
@@ -88,6 +90,11 @@ public partial class TtsService : ITtsService
     /// processing, including model paths, performance tuning options, and hardware acceleration settings.
     /// </summary>
     private readonly TtsConfig _config;
+
+    /// <summary>
+    /// Gets the sample rate of the TTS engine output.
+    /// </summary>
+    public int SampleRate => _ttsEngine.SampleRate;
 
     /// <summary>
     /// The TtsService class is responsible for handling text-to-speech (TTS) operations using ONNX models.
@@ -200,6 +207,116 @@ public partial class TtsService : ITtsService
                 }
             }
             yield return memoryStream.ToArray();
+        }
+    }
+
+    /// <summary>
+    /// Asynchronously generates Opus-encoded audio chunks from the provided text.
+    /// More efficient for streaming over the network (approx. 10x smaller than WAV).
+    /// </summary>
+    /// <param name="text">The input text to be converted to audio.</param>
+    /// <param name="speed">The speed factor for speech synthesis. The default value is 1.0f.</param>
+    /// <param name="opusConfig">Optional Opus codec configuration. If null, uses defaults optimized for speech.</param>
+    /// <returns>An asynchronous stream of Opus-encoded audio frames.</returns>
+    public async IAsyncEnumerable<byte[]> GenerateOpusChunksAsync(
+        string text,
+        float? speed = 1.0f,
+        OpusCodecConfig? opusConfig = null)
+    {
+        // Configure Opus for the TTS engine's sample rate
+        var config = opusConfig ?? new OpusCodecConfig
+        {
+            SampleRate = SampleRate,
+            Bitrate = 32000, // Good quality for speech
+            Channels = 1,
+            Application = OpusApplicationType.VoIP,
+            FrameSizeMs = 20
+        };
+
+        // Ensure sample rate matches TTS output
+        if (config.SampleRate != SampleRate)
+        {
+            _logger.LogWarning(
+                "Opus sample rate ({OpusSampleRate}) differs from TTS sample rate ({TtsSampleRate}). Using TTS rate.",
+                config.SampleRate, SampleRate);
+            config = config with { SampleRate = SampleRate };
+        }
+
+        using var codec = new OpusCodec(_logger as ILogger<OpusCodec> ??
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<OpusCodec>.Instance, config);
+
+        var sampleBuffer = new List<short>();
+        var frameSizeSamples = codec.FrameSizeSamples * config.Channels;
+
+        // Use regex to split the text while keeping the delimiters.
+        var sentences = SentenceSplitterRegex().Split(text)
+            .Select(s => s.Trim())
+            .Where(s => !string.IsNullOrEmpty(s));
+
+        var sentenceChunks = sentences.Select((s, i) => new { Sentence = s, Index = i })
+            .GroupBy(x => x.Index / _config.MaxSentencesPerChunk)
+            .Select(g => string.Join(" ", g.Select(x => x.Sentence)));
+
+        foreach (var sentenceGroup in sentenceChunks)
+        {
+            // Generate audio from TTS engine
+            var audio = _ttsEngine.Generate(sentenceGroup, speed: speed ?? _config.Speed, speakerId: _config.SpeakerId);
+
+            // Convert float samples to 16-bit PCM shorts
+            foreach (var sample in audio.Samples)
+            {
+                // Clamp and convert float sample to 16-bit PCM
+                var clampedSample = Math.Clamp(sample, -1.0f, 1.0f);
+                sampleBuffer.Add((short)(clampedSample * 32767.0f));
+
+                // Encode complete frames
+                while (sampleBuffer.Count >= frameSizeSamples)
+                {
+                    var frameSamples = new short[frameSizeSamples];
+                    sampleBuffer.CopyTo(0, frameSamples, 0, frameSizeSamples);
+                    sampleBuffer.RemoveRange(0, frameSizeSamples);
+
+                    byte[] opusFrame;
+                    try
+                    {
+                        opusFrame = codec.Encode(frameSamples);
+                    }
+                    catch (OpusEncodingException ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to encode TTS frame, skipping");
+                        continue;
+                    }
+
+                    yield return opusFrame;
+                }
+            }
+
+            // Allow other tasks to run
+            await Task.Yield();
+        }
+
+        // Flush remaining samples (pad with silence if needed)
+        if (sampleBuffer.Count > 0)
+        {
+            _logger.LogDebug("Flushing {Count} remaining TTS samples with silence padding", sampleBuffer.Count);
+
+            var padded = new short[frameSizeSamples];
+            sampleBuffer.CopyTo(0, padded, 0, Math.Min(sampleBuffer.Count, padded.Length));
+
+            byte[]? finalFrame = null;
+            try
+            {
+                finalFrame = codec.Encode(padded);
+            }
+            catch (OpusEncodingException ex)
+            {
+                _logger.LogWarning(ex, "Failed to encode final TTS frame");
+            }
+
+            if (finalFrame != null)
+            {
+                yield return finalFrame;
+            }
         }
     }
 

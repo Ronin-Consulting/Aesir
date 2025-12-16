@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Aesir.Modules.Speech.Services.Audio;
 using Microsoft.Extensions.Logging;
 using SherpaOnnx;
 using Whisper.net;
@@ -131,6 +132,11 @@ public class SttService : ISttService, IDisposable
     private readonly SttConfig _config;
 
     /// <summary>
+    /// Gets the expected input sample rate for the STT engine.
+    /// </summary>
+    public int SampleRate => _config.SampleRate;
+
+    /// <summary>
     /// The SttService class handles the conversion of audio data into text using ONNX-based models.
     /// It supports configurable options and integrates logging functionalities to monitor and manage
     /// the execution and behavior of the speech-to-text operations.
@@ -243,6 +249,77 @@ public class SttService : ISttService, IDisposable
         await foreach (var text in vadProcessor.FlushAndYieldAsync(cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            yield return text;
+        }
+    }
+
+    /// <summary>
+    /// Asynchronously generates transcribed text chunks from a stream of Opus-encoded audio data.
+    /// Opus audio is decoded to PCM before being processed by the STT engine.
+    /// </summary>
+    /// <param name="opusStream">
+    /// An asynchronous enumerable of Opus-encoded audio frames.
+    /// </param>
+    /// <param name="opusConfig">
+    /// Optional Opus codec configuration. If null, uses defaults (16kHz, mono, VoIP).
+    /// </param>
+    /// <param name="cancellationToken">
+    /// An optional cancellation token to observe while processing the audio stream.
+    /// </param>
+    /// <returns>
+    /// An asynchronous enumerable of transcribed text chunks as strings.
+    /// </returns>
+    public async IAsyncEnumerable<string> GenerateTextChunksFromOpusAsync(
+        IAsyncEnumerable<byte[]> opusStream,
+        OpusCodecConfig? opusConfig = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Configure Opus decoder for STT input requirements
+        var config = opusConfig ?? new OpusCodecConfig
+        {
+            SampleRate = SampleRate, // 16kHz for Whisper
+            Channels = 1,
+            Application = OpusApplicationType.VoIP,
+            FrameSizeMs = 20
+        };
+
+        // Ensure sample rate matches STT requirements
+        if (config.SampleRate != SampleRate)
+        {
+            _logger.LogWarning(
+                "Opus sample rate ({OpusSampleRate}) differs from STT sample rate ({SttSampleRate}). Using STT rate.",
+                config.SampleRate, SampleRate);
+            config = config with { SampleRate = SampleRate };
+        }
+
+        using var codec = new OpusCodec(_logger as ILogger<OpusCodec> ??
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<OpusCodec>.Instance, config);
+
+        // Decode Opus frames to PCM
+        async IAsyncEnumerable<byte[]> DecodeOpusStream()
+        {
+            await foreach (var opusFrame in opusStream.WithCancellation(cancellationToken))
+            {
+                if (opusFrame.Length == 0) continue;
+
+                byte[] pcmBytes;
+                try
+                {
+                    pcmBytes = codec.DecodeToBytes(opusFrame);
+                }
+                catch (OpusDecodingException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to decode Opus frame, skipping");
+                    continue;
+                }
+
+                yield return pcmBytes;
+            }
+        }
+
+        // Process the decoded PCM stream through the existing STT pipeline
+        await foreach (var text in GenerateTextChunksAsync(DecodeOpusStream(), cancellationToken))
+        {
             yield return text;
         }
     }
