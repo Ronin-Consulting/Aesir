@@ -230,6 +230,16 @@
         HandsFreeService.OnTranscription -= HandleTranscription;
         HandsFreeService.OnResponseText -= HandleResponse;
 
+        // Deactivate hands-free service to release microphone and SignalR connections
+        try
+        {
+            await HandsFreeService.DeactivateAsync();
+        }
+        catch
+        {
+            // Ignore errors during disposal
+        }
+
         // Clean up keyboard handler
         try
         {

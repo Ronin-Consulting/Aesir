@@ -254,6 +254,33 @@ public class HandsFreeService : IHandsFreeService
         LastResponse = null;
     }
 
+    /// <inheritdoc />
+    public async Task DeactivateAsync()
+    {
+        if (_disposed)
+            return;
+
+        // Reset state first
+        await ResetAsync();
+
+        // Clear conversation state for clean slate on next activation
+        CurrentAgentId = null;
+        CurrentConversationId = null;
+        HasExchangedMessages = false;
+        _conversation = null;
+
+        // Release the microphone and audio resources
+        await _audioCapture.ReleaseAsync();
+
+        // Disconnect SignalR hubs
+        await _speechService.DisconnectAsync();
+
+        // Reset initialization state so InitializeAsync can be called again
+        _initialized = false;
+
+        Console.WriteLine("[HandsFree] Deactivated - audio resources released");
+    }
+
     private async Task ProcessSpeechAsync(CancellationToken cancellationToken)
     {
         try

@@ -129,9 +129,16 @@ public interface IAudioCaptureService : IAsyncDisposable
     Task<bool> StartCaptureAsync();
 
     /// <summary>
-    /// Stop capturing audio and release microphone.
+    /// Stop capturing audio (keeps pipeline warm for quick restart).
     /// </summary>
     Task StopCaptureAsync();
+
+    /// <summary>
+    /// Release the microphone and all audio resources.
+    /// Call this when leaving hands-free mode to free hardware resources.
+    /// The service can be reactivated by calling WarmUpAsync() or StartCaptureAsync() again.
+    /// </summary>
+    Task ReleaseAsync();
 
     /// <summary>
     /// Get the current microphone permission status.

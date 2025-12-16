@@ -176,6 +176,30 @@ public class AudioCaptureService : IAudioCaptureService
     }
 
     /// <inheritdoc />
+    public async Task ReleaseAsync()
+    {
+        if (_disposed)
+            return;
+
+        try
+        {
+            // Stop any active capture first
+            if (State == AudioCaptureState.Capturing)
+            {
+                await _jsRuntime.InvokeVoidAsync("aesirAudio.capture.stop");
+            }
+
+            // Release all audio resources (microphone, AudioContext, etc.)
+            await _jsRuntime.InvokeVoidAsync("aesirAudio.capture.release");
+            SetState(AudioCaptureState.Ready);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to release audio capture: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<string> GetMicrophonePermissionAsync()
     {
         if (_disposed)

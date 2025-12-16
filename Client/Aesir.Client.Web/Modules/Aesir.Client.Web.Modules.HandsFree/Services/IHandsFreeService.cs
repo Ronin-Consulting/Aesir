@@ -89,4 +89,11 @@ public interface IHandsFreeService : IAsyncDisposable
     /// Clears any errors and resets state.
     /// </summary>
     Task ResetAsync();
+
+    /// <summary>
+    /// Deactivate the service and release audio resources (microphone, SignalR connections).
+    /// Call this when leaving the hands-free page to free hardware resources.
+    /// The service can be reactivated by calling InitializeAsync() again.
+    /// </summary>
+    Task DeactivateAsync();
 }
