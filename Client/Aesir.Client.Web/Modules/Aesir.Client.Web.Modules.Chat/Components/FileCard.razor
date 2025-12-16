@@ -11,9 +11,9 @@
 
     @* Left: Icon with colored background *@
     <div class="file-icon-wrapper" style="background-color: @_style.BackgroundColor;">
-        @if (ShowThumbnail && !string.IsNullOrEmpty(ThumbnailUrl))
+        @if (ShowThumbnail && !string.IsNullOrEmpty(ThumbnailUrl) && !_thumbnailFailed)
         {
-            <img src="@ThumbnailUrl" alt="@FileName" class="file-thumbnail" />
+            <img src="@ThumbnailUrl" alt="@FileName" class="file-thumbnail" @onerror="HandleThumbnailError" />
         }
         else
         {
@@ -430,6 +430,8 @@
 
     private bool _isHovered;
     private FileTypeHelper.FileTypeStyle _style = null!;
+    private bool _thumbnailFailed;
+    private string? _lastThumbnailUrl;
 
     private bool IsClickable => OnClick.HasDelegate && !IsUploading && !IsDeleted;
     private bool ShowActions => OnRemove.HasDelegate || OnDownload.HasDelegate;
@@ -470,6 +472,20 @@
     protected override void OnParametersSet()
     {
         _style = FileTypeHelper.GetStyle(FileName);
+
+        // Reset thumbnail failure state if URL changes
+        if (_lastThumbnailUrl != ThumbnailUrl)
+        {
+            _thumbnailFailed = false;
+            _lastThumbnailUrl = ThumbnailUrl;
+        }
+    }
+
+    private void HandleThumbnailError()
+    {
+        // Thumbnail failed to load (e.g., 404) - fall back to icon
+        _thumbnailFailed = true;
+        StateHasChanged();
     }
 
     private async Task HandleClick()

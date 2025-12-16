@@ -72,7 +72,8 @@ public class AudioCaptureService : IAudioCaptureService
                 "aesirAudio.initialize",
                 _dotNetRef,
                 sampleRate,
-                22050 // Playback sample rate - TTS typically uses 22kHz
+                22050, // Playback sample rate - TTS typically uses 22kHz
+                "capture" // Service type for callback routing
             );
 
             if (result)

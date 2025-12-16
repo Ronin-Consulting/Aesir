@@ -8,12 +8,14 @@ namespace Aesir.Client.Web.Tests.Unit.Chat.Services;
 public class ChatHistoryServiceTests
 {
     private readonly Mock<IChatApiService> _mockChatApiService;
+    private readonly Mock<IChatSessionNotifier> _mockChatSessionNotifier;
     private readonly ChatHistoryService _sut;
 
     public ChatHistoryServiceTests()
     {
         _mockChatApiService = new Mock<IChatApiService>();
-        _sut = new ChatHistoryService(_mockChatApiService.Object);
+        _mockChatSessionNotifier = new Mock<IChatSessionNotifier>();
+        _sut = new ChatHistoryService(_mockChatApiService.Object, _mockChatSessionNotifier.Object);
     }
 
     [Fact]
@@ -312,6 +314,45 @@ public class ChatHistoryServiceTests
         await _sut.NotifySessionCreatedAsync(Guid.NewGuid());
 
         // Assert
+        _mockChatApiService.Verify(x => x.GetChatSessionsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void Constructor_SubscribesToChatSessionNotifier()
+    {
+        // Arrange & Act - constructor is called in test setup
+        // The service should subscribe to OnSessionCreated event
+
+        // Assert - verify the event handler was added
+        _mockChatSessionNotifier.VerifyAdd(x => x.OnSessionCreated += It.IsAny<Action<Guid>>(), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleSessionCreated_RefreshesSessions_WhenEventRaised()
+    {
+        // Arrange
+        var sessions = new List<AesirChatSessionItem>
+        {
+            new() { Id = Guid.NewGuid(), Title = "Test Session", UpdatedAt = DateTimeOffset.Now }
+        };
+        _mockChatApiService.Setup(x => x.GetChatSessionsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirChatSessionItem>>.Success(sessions));
+
+        // Capture the event handler during subscription
+        Action<Guid>? capturedHandler = null;
+        _mockChatSessionNotifier.SetupAdd(x => x.OnSessionCreated += It.IsAny<Action<Guid>>())
+            .Callback<Action<Guid>>(handler => capturedHandler = handler);
+
+        // Create a new instance to capture the handler
+        var sut = new ChatHistoryService(_mockChatApiService.Object, _mockChatSessionNotifier.Object);
+
+        // Act - simulate the event being raised
+        capturedHandler?.Invoke(Guid.NewGuid());
+
+        // Give the async void handler time to execute
+        await Task.Delay(100);
+
+        // Assert - verify LoadSessionsAsync was called
         _mockChatApiService.Verify(x => x.GetChatSessionsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

@@ -60,6 +60,7 @@ public abstract class IntegrationTestBase : TestContext
         Services.AddSingleton<IApiClient, ApiClient>();
         Services.AddSingleton<IConfigurationApiService, ConfigurationApiService>();
         Services.AddSingleton<IChatApiService, ChatApiService>();
+        Services.AddSingleton<IChatSessionNotifier, ChatSessionNotifier>();
         Services.AddSingleton<IInferenceEngineService, InferenceEngineService>();
         Services.AddSingleton<IMcpServerService, McpServerService>();
         Services.AddSingleton<IToolService, ToolService>();

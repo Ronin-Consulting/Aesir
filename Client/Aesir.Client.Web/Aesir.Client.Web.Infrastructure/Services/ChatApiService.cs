@@ -31,6 +31,18 @@ public class ChatApiService : IChatApiService
         }
     }
 
+    public async Task<ApiResult<AesirChatResult?>> ChatAsync(
+        AesirAgentChatRequestBase request,
+        CancellationToken ct = default)
+    {
+        return await ExecuteAsync(async () =>
+        {
+            var result = await _apiClient.PostAsync<AesirChatResult>(
+                $"{ChatBaseUrl}/agent", request, ct);
+            return result;
+        });
+    }
+
     public async Task<ApiResult<IReadOnlyList<AesirChatSessionItem>>> GetChatSessionsAsync(
         string userId,
         CancellationToken ct = default)

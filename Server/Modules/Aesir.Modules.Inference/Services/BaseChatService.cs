@@ -116,8 +116,12 @@ public abstract class BaseChatService : IChatService
         request = request ?? throw new ArgumentNullException(nameof(request));
         //request.SetClientDateTimeInSystemMessage();
 
+        // Generate a new session ID if one isn't provided (new chat)
+        request.ChatSessionId ??= Guid.NewGuid();
+
         var response = new AesirChatResult()
         {
+            ChatSessionId = request.ChatSessionId,
             AesirConversation = request.Conversation,
             CompletionTokens = 0,
             PromptTokens = 0,

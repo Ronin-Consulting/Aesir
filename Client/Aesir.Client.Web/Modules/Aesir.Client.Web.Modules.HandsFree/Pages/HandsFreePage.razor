@@ -88,15 +88,22 @@
             window.handsFreeKeyHandler = {
                 dotNetRef: null,
                 spacePressed: false,
+                boundKeyDown: null,
+                boundKeyUp: null,
 
                 init: function(dotNetRef) {
                     this.dotNetRef = dotNetRef;
 
-                    document.addEventListener('keydown', this.handleKeyDown.bind(this));
-                    document.addEventListener('keyup', this.handleKeyUp.bind(this));
+                    // Store bound function references so we can remove them later
+                    this.boundKeyDown = this.handleKeyDown.bind(this);
+                    this.boundKeyUp = this.handleKeyUp.bind(this);
+
+                    document.addEventListener('keydown', this.boundKeyDown);
+                    document.addEventListener('keyup', this.boundKeyUp);
                 },
 
                 handleKeyDown: function(e) {
+                    if (!this.dotNetRef) return;
                     if (e.code === 'Space' && !e.repeat && !this.spacePressed) {
                         e.preventDefault();
                         this.spacePressed = true;
@@ -109,6 +116,7 @@
                 },
 
                 handleKeyUp: function(e) {
+                    if (!this.dotNetRef) return;
                     if (e.code === 'Space') {
                         e.preventDefault();
                         this.spacePressed = false;
@@ -117,9 +125,15 @@
                 },
 
                 dispose: function() {
-                    document.removeEventListener('keydown', this.handleKeyDown);
-                    document.removeEventListener('keyup', this.handleKeyUp);
+                    if (this.boundKeyDown) {
+                        document.removeEventListener('keydown', this.boundKeyDown);
+                    }
+                    if (this.boundKeyUp) {
+                        document.removeEventListener('keyup', this.boundKeyUp);
+                    }
                     this.dotNetRef = null;
+                    this.boundKeyDown = null;
+                    this.boundKeyUp = null;
                 }
             };
         ");
@@ -165,11 +179,16 @@
 
     private async Task HandleExit()
     {
+        // Only include conversation ID if messages were actually exchanged
+        var hasConversation = HandsFreeService.HasExchangedMessages &&
+                              HandsFreeService.CurrentConversationId.HasValue;
+        var conversationId = hasConversation ? HandsFreeService.CurrentConversationId : null;
+
         await HandsFreeService.ResetAsync();
 
-        // Navigate back to chat with session query parameter
-        var url = ConversationId.HasValue
-            ? $"/chat?session={ConversationId}"
+        // Navigate back to chat with session query parameter only if we have a real conversation
+        var url = conversationId.HasValue
+            ? $"/chat?session={conversationId}"
             : "/chat";
 
         NavigationManager.NavigateTo(url);

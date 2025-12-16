@@ -21,6 +21,16 @@ public interface IChatApiService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Sends a chat message to an agent and waits for the complete response.
+    /// </summary>
+    /// <param name="request">The chat request with agent ID and conversation.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The complete chat result.</returns>
+    Task<ApiResult<AesirChatResult?>> ChatAsync(
+        AesirAgentChatRequestBase request,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Gets chat sessions for a user.
     /// </summary>
     /// <param name="userId">The user ID.</param>

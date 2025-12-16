@@ -1,7 +1,8 @@
+using System.Globalization;
 using System.Threading.Channels;
-using Aesir.Client.Web.Infrastructure.Http;
 using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.HandsFree.Models;
+using Aesir.Common.Models;
 
 namespace Aesir.Client.Web.Modules.HandsFree.Services;
 
@@ -14,12 +15,16 @@ public class HandsFreeService : IHandsFreeService
     private readonly IAudioCaptureService _audioCapture;
     private readonly IAudioPlaybackService _audioPlayback;
     private readonly ISignalRSpeechService _speechService;
-    private readonly IApiClient _apiClient;
+    private readonly IChatApiService _chatApiService;
+    private readonly IChatSessionNotifier _chatSessionNotifier;
 
     private readonly Channel<byte[]> _audioChannel;
     private CancellationTokenSource? _processingCts;
     private bool _disposed;
     private bool _initialized;
+
+    // Maintain conversation history for multi-turn conversations
+    private AesirConversation? _conversation;
 
     /// <inheritdoc />
     public HandsFreeState State { get; private set; } = HandsFreeState.Idle;
@@ -29,6 +34,9 @@ public class HandsFreeService : IHandsFreeService
 
     /// <inheritdoc />
     public Guid? CurrentConversationId { get; set; }
+
+    /// <inheritdoc />
+    public bool HasExchangedMessages { get; private set; }
 
     /// <inheritdoc />
     public string? LastTranscription { get; private set; }
@@ -55,12 +63,14 @@ public class HandsFreeService : IHandsFreeService
         IAudioCaptureService audioCapture,
         IAudioPlaybackService audioPlayback,
         ISignalRSpeechService speechService,
-        IApiClient apiClient)
+        IChatApiService chatApiService,
+        IChatSessionNotifier chatSessionNotifier)
     {
         _audioCapture = audioCapture;
         _audioPlayback = audioPlayback;
         _speechService = speechService;
-        _apiClient = apiClient;
+        _chatApiService = chatApiService;
+        _chatSessionNotifier = chatSessionNotifier;
 
         // Create unbounded channel for audio chunks
         _audioChannel = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions
@@ -293,28 +303,66 @@ public class HandsFreeService : IHandsFreeService
                 return "Please select an agent first.";
             }
 
-            // Create a chat request
-            var request = new
+            // Initialize or update conversation
+            _conversation ??= new AesirConversation
             {
-                agentId = CurrentAgentId.Value,
-                conversationId = CurrentConversationId,
-                message = userMessage
+                Id = CurrentConversationId?.ToString() ?? Guid.NewGuid().ToString(),
+                Messages = new List<AesirChatMessage>()
             };
 
-            // Note: This would use the actual chat streaming endpoint
-            // For now, we use a simple POST
-            var response = await _apiClient.PostAsync<ChatResponseDto>(
-                "/api/chat/send",
-                request,
-                cancellationToken);
+            // Add the user message to conversation
+            _conversation.Messages.Add(AesirChatMessage.NewUserMessage(userMessage));
 
-            // Update conversation ID if new
-            if (response?.ConversationId != null)
+            // Build the chat request
+            // TODO: Replace hardcoded user ID with proper user context service from Infrastructure
+            var request = new AesirAgentChatRequestBase
             {
-                CurrentConversationId = response.ConversationId;
+                AgentId = CurrentAgentId.Value,
+                ChatSessionId = CurrentConversationId,
+                ChatSessionUpdatedAt = DateTimeOffset.Now,
+                Conversation = _conversation,
+                User = "blangford@gmail.com",
+                ClientDateTime = DateTime.Now.ToString("F", new CultureInfo("en-US")),
+                Title = "Hands-Free Conversation",
+                EnableThinking = false,
+                Tools = new HashSet<ToolRequest>()
+            };
+
+            // Send request to chat API
+            var result = await _chatApiService.ChatAsync(request, cancellationToken);
+
+            if (!result.IsSuccess || result.Value?.AesirConversation == null)
+            {
+                Console.Error.WriteLine($"Chat API error: {result.Error}");
+                return null;
             }
 
-            return response?.Content;
+            // Update conversation from response
+            _conversation = result.Value.AesirConversation;
+
+            // Track if this is a new session
+            var wasNewSession = !CurrentConversationId.HasValue;
+
+            // Update conversation ID from response
+            if (result.Value.ChatSessionId.HasValue)
+            {
+                CurrentConversationId = result.Value.ChatSessionId;
+
+                // Notify that a new session was created (triggers sidebar refresh)
+                if (wasNewSession)
+                {
+                    _chatSessionNotifier.NotifySessionCreated(CurrentConversationId.Value);
+                }
+            }
+
+            // Mark that we've had a successful exchange
+            HasExchangedMessages = true;
+
+            // Get the last assistant message
+            var assistantMessage = _conversation.Messages
+                .LastOrDefault(m => m.Role == "assistant");
+
+            return assistantMessage?.Content;
         }
         catch (Exception ex)
         {
@@ -417,14 +465,5 @@ public class HandsFreeService : IHandsFreeService
         await _audioPlayback.DisposeAsync();
 
         GC.SuppressFinalize(this);
-    }
-
-    /// <summary>
-    /// Simple DTO for chat response.
-    /// </summary>
-    private class ChatResponseDto
-    {
-        public Guid? ConversationId { get; set; }
-        public string? Content { get; set; }
     }
 }

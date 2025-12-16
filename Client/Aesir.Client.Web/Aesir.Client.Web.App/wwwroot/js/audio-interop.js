@@ -7,7 +7,8 @@ window.aesirAudio = {
         audioContext: null,
         mediaStream: null,
         mediaRecorder: null,
-        dotNetRef: null,
+        captureDotNetRef: null,   // Reference for capture callbacks (OnAudioChunk, OnCaptureError)
+        playbackDotNetRef: null,  // Reference for playback callbacks (OnPlaybackComplete)
         isCapturing: false,
         isPlaying: false,
         playbackQueue: [],
@@ -24,16 +25,25 @@ window.aesirAudio = {
      * @param {object} dotNetRef - .NET object reference for callbacks
      * @param {number} captureSampleRate - Sample rate for capture (default 16000)
      * @param {number} playbackSampleRate - Sample rate for playback (default 22050)
+     * @param {string} serviceType - 'capture' or 'playback' to identify which service is initializing
      * @returns {Promise<boolean>} True if initialization successful
      */
-    initialize: async function (dotNetRef, captureSampleRate, playbackSampleRate) {
+    initialize: async function (dotNetRef, captureSampleRate, playbackSampleRate, serviceType) {
         try {
+            // Store the reference based on service type
+            if (serviceType === 'playback') {
+                this._state.playbackDotNetRef = dotNetRef;
+            } else {
+                // Default to capture for backwards compatibility
+                this._state.captureDotNetRef = dotNetRef;
+            }
+
+            // Only initialize AudioContext once
             if (this._state.initialized) {
-                console.warn('Audio system already initialized');
+                console.log(`Audio system already initialized, registered ${serviceType || 'capture'} callbacks`);
                 return true;
             }
 
-            this._state.dotNetRef = dotNetRef;
             this._state.sampleRate = captureSampleRate || 16000;
             this._state.playbackSampleRate = playbackSampleRate || 22050;
 
@@ -68,7 +78,8 @@ window.aesirAudio = {
             this._state.audioContext = null;
         }
 
-        this._state.dotNetRef = null;
+        this._state.captureDotNetRef = null;
+        this._state.playbackDotNetRef = null;
         this._state.initialized = false;
         console.log('Audio system disposed');
     },
@@ -119,14 +130,14 @@ window.aesirAudio = {
 
                 // Handle recorded data chunks
                 state.mediaRecorder.ondataavailable = async (event) => {
-                    if (event.data && event.data.size > 0 && state.dotNetRef) {
+                    if (event.data && event.data.size > 0 && state.captureDotNetRef) {
                         try {
                             // Convert blob to base64
                             const arrayBuffer = await event.data.arrayBuffer();
                             const base64 = this._arrayBufferToBase64(arrayBuffer);
 
                             // Send to .NET
-                            await state.dotNetRef.invokeMethodAsync('OnAudioChunk', base64);
+                            await state.captureDotNetRef.invokeMethodAsync('OnAudioChunk', base64);
                         } catch (error) {
                             console.error('Failed to send audio chunk:', error);
                         }
@@ -135,8 +146,8 @@ window.aesirAudio = {
 
                 state.mediaRecorder.onerror = (event) => {
                     console.error('MediaRecorder error:', event.error);
-                    if (state.dotNetRef) {
-                        state.dotNetRef.invokeMethodAsync('OnCaptureError', event.error?.message || 'Unknown error');
+                    if (state.captureDotNetRef) {
+                        state.captureDotNetRef.invokeMethodAsync('OnCaptureError', event.error?.message || 'Unknown error');
                     }
                 };
 
@@ -152,8 +163,8 @@ window.aesirAudio = {
                 return true;
             } catch (error) {
                 console.error('Failed to start audio capture:', error);
-                if (state.dotNetRef) {
-                    state.dotNetRef.invokeMethodAsync('OnCaptureError', error.message || 'Failed to access microphone');
+                if (state.captureDotNetRef) {
+                    state.captureDotNetRef.invokeMethodAsync('OnCaptureError', error.message || 'Failed to access microphone');
                 }
                 return false;
             }
@@ -318,8 +329,8 @@ window.aesirAudio = {
 
             if (state.playbackQueue.length === 0) {
                 state.isPlaying = false;
-                if (state.dotNetRef) {
-                    state.dotNetRef.invokeMethodAsync('OnPlaybackComplete');
+                if (state.playbackDotNetRef) {
+                    state.playbackDotNetRef.invokeMethodAsync('OnPlaybackComplete');
                 }
                 return;
             }
@@ -372,8 +383,8 @@ window.aesirAudio = {
                     // Playback complete
                     state.isPlaying = false;
                     state.nextPlaybackTime = 0;
-                    if (state.dotNetRef) {
-                        state.dotNetRef.invokeMethodAsync('OnPlaybackComplete');
+                    if (state.playbackDotNetRef) {
+                        state.playbackDotNetRef.invokeMethodAsync('OnPlaybackComplete');
                     }
                 }
             };

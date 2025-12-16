@@ -571,6 +571,29 @@ Blazor client modules use **explicit project references** for component visibili
    ];
    ```
 
+#### Module Dependencies
+
+**CRITICAL: Modules should NOT depend on each other.**
+
+- Modules should only depend on:
+  - `Aesir.Client.Web.Infrastructure` (shared services, interfaces)
+  - `Aesir.Common` (shared models)
+  - External packages (MudBlazor, etc.)
+
+- **DO NOT** add project references between modules (e.g., HandsFree → Chat)
+
+- **Cross-module communication** should use the event notifier pattern:
+  1. Define interface in Infrastructure (e.g., `IChatSessionNotifier`)
+  2. Publisher module calls the notifier method
+  3. Subscriber module subscribes to the notifier event
+  4. See `IConfigurationChangedNotifier` for reference implementation
+
+- This pattern ensures:
+  - Loose coupling between modules
+  - Modules can be added/removed independently
+  - Clear separation of concerns
+  - Easy unit testing with mocked notifiers
+
 ### API Client
 
 #### Interface

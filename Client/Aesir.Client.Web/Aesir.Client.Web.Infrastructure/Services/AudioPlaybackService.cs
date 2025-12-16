@@ -67,7 +67,8 @@ public class AudioPlaybackService : IAudioPlaybackService
                 "aesirAudio.initialize",
                 _dotNetRef,
                 16000, // Capture sample rate
-                sampleRate // Playback sample rate
+                sampleRate, // Playback sample rate
+                "playback" // Service type for callback routing
             );
 
             if (result)

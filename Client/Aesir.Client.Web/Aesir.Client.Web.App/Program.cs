@@ -25,6 +25,9 @@ builder.Services.AddScoped<IThemeService, ThemeService>();
 // Add configuration change notifier (singleton to share across all components)
 builder.Services.AddSingleton<IConfigurationChangedNotifier, ConfigurationChangedNotifier>();
 
+// Add chat session notifier (singleton to share session events across modules)
+builder.Services.AddSingleton<IChatSessionNotifier, ChatSessionNotifier>();
+
 // Add platform services (Tauri detection, native file operations)
 builder.Services.AddPlatformServices();
 

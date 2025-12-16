@@ -24,6 +24,12 @@ public interface IHandsFreeService : IAsyncDisposable
     Guid? CurrentConversationId { get; set; }
 
     /// <summary>
+    /// Gets whether any messages were actually exchanged in this session.
+    /// Used to determine if the conversation should be persisted on exit.
+    /// </summary>
+    bool HasExchangedMessages { get; }
+
+    /// <summary>
     /// Gets the last transcribed user speech.
     /// </summary>
     string? LastTranscription { get; }

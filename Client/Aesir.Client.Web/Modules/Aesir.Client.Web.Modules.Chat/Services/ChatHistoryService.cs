@@ -13,13 +13,24 @@ public class ChatHistoryService : IChatHistoryService
     private const string UserIdValue = "blangford@gmail.com";
 
     private readonly IChatApiService _chatApiService;
+    private readonly IChatSessionNotifier _chatSessionNotifier;
     private List<AesirChatSessionItem> _sessions = [];
     private bool _isLoading;
     private string? _searchTerm;
 
-    public ChatHistoryService(IChatApiService chatApiService)
+    public ChatHistoryService(IChatApiService chatApiService, IChatSessionNotifier chatSessionNotifier)
     {
         _chatApiService = chatApiService;
+        _chatSessionNotifier = chatSessionNotifier;
+
+        // Subscribe to session created events from other modules (e.g., HandsFree)
+        _chatSessionNotifier.OnSessionCreated += HandleSessionCreated;
+    }
+
+    private async void HandleSessionCreated(Guid sessionId)
+    {
+        // Refresh the sessions list when a new session is created from another module
+        await LoadSessionsAsync().ConfigureAwait(false);
     }
 
     /// <inheritdoc />

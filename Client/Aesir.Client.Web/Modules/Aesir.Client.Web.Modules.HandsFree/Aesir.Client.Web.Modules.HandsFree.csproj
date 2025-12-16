@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Aesir.Client.Web.Infrastructure\Aesir.Client.Web.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\..\Common\Aesir.Common\Aesir.Common.csproj" />
   </ItemGroup>
 
 </Project>
