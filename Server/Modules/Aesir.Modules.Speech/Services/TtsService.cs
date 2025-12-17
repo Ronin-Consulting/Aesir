@@ -92,6 +92,11 @@ public partial class TtsService : ITtsService
     private readonly TtsConfig _config;
 
     /// <summary>
+    /// Preprocessor for converting markdown text to natural speech text.
+    /// </summary>
+    private readonly ITtsTextPreprocessor _textPreprocessor;
+
+    /// <summary>
     /// Gets the sample rate of the TTS engine output.
     /// </summary>
     public int SampleRate => _ttsEngine.SampleRate;
@@ -103,10 +108,12 @@ public partial class TtsService : ITtsService
     /// </summary>
     public TtsService(
         ILogger<TtsService> logger,
+        ITtsTextPreprocessor textPreprocessor,
         TtsConfig? config = null)
     {
         _config = config ?? new TtsConfig();
         _logger = logger;
+        _textPreprocessor = textPreprocessor;
 
         if (string.IsNullOrEmpty(_config.ModelPath))
         {
@@ -161,8 +168,11 @@ public partial class TtsService : ITtsService
     /// <returns>An asynchronous stream of byte arrays, where each byte array represents a WAV audio chunk corresponding to a processed sentence.</returns>
     public async IAsyncEnumerable<byte[]> GenerateAudioChunksAsync(string text, float? speed = 1.0f)
     {
+        // Preprocess markdown to natural speech text
+        var processedText = _textPreprocessor.PreprocessForSpeech(text);
+
         // Use regex to split the text while keeping the delimiters.
-        var sentences = SentenceSplitterRegex().Split(text)
+        var sentences = SentenceSplitterRegex().Split(processedText)
             .Select(s => s.Trim())
             .Where(s => !string.IsNullOrEmpty(s));
 
@@ -248,8 +258,11 @@ public partial class TtsService : ITtsService
         var sampleBuffer = new List<short>();
         var frameSizeSamples = codec.FrameSizeSamples * config.Channels;
 
+        // Preprocess markdown to natural speech text
+        var processedText = _textPreprocessor.PreprocessForSpeech(text);
+
         // Use regex to split the text while keeping the delimiters.
-        var sentences = SentenceSplitterRegex().Split(text)
+        var sentences = SentenceSplitterRegex().Split(processedText)
             .Select(s => s.Trim())
             .Where(s => !string.IsNullOrEmpty(s));
 

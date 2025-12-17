@@ -26,11 +26,15 @@ public class SpeechModule : ModuleBase
     {
         Log("Registering TTS and STT services...");
 
+        // Register TTS text preprocessor for converting markdown to natural speech
+        services.AddSingleton<ITtsTextPreprocessor, TtsTextPreprocessor>();
+
         // Register TTS service
         services.AddSingleton<ITtsService>(sp =>
         {
             var configuration = sp.GetRequiredService<IConfiguration>();
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+            var textPreprocessor = sp.GetRequiredService<ITtsTextPreprocessor>();
 
             // Get model paths from configuration
             var ttsModelPath = configuration["GeneralSettings:TtsModelPath"] ??
@@ -43,7 +47,7 @@ public class SpeechModule : ModuleBase
             ttsConfig.ModelPath = ttsModelPath;
             ttsConfig.CudaEnabled = useCuda;
 
-            return new TtsService(loggerFactory.CreateLogger<TtsService>(), ttsConfig);
+            return new TtsService(loggerFactory.CreateLogger<TtsService>(), textPreprocessor, ttsConfig);
         });
 
         // Register STT service
