@@ -8,6 +8,9 @@
             <MudText Typo="Typo.body2" Color="Color.Secondary">
                 Configure RAG (Retrieval-Augmented Generation), Speech, and Search settings.
             </MudText>
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                Changes to these settings require a server restart to take effect.
+            </MudAlert>
         </div>
         <MudStack Row="true" Spacing="2">
             <MudButton Variant="Variant.Outlined"
@@ -132,29 +135,27 @@
                 </MudCardContent>
             </MudCard>
 
-            @* Speech Configuration Section (Read-only) *@
+            @* Speech Configuration Section *@
             <MudCard Elevation="0" Outlined="true">
                 <MudCardHeader>
                     <CardHeaderContent>
                         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                             <MudIcon Icon="@Icons.Material.Filled.RecordVoiceOver" Color="Color.Primary" />
                             <MudText Typo="Typo.h6">Speech Model</MudText>
-                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
-                                Server Configured
-                            </MudChip>
                         </MudStack>
                         <MudText Typo="Typo.body2" Color="Color.Secondary">
-                            Text-to-speech voice used for hands-free mode. Configured on the server.
+                            Text-to-speech voice used for hands-free mode.
                         </MudText>
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
                     <MudSelect T="string"
-                               Value="@GetTtsModelDisplayName()"
+                               Value="@_selectedTtsModel"
+                               ValueChanged="OnTtsModelChanged"
                                Label="Voice Model"
                                Variant="Variant.Outlined"
-                               Disabled="true"
-                               ReadOnly="true"
+                               AnchorOrigin="Origin.BottomCenter"
+                               Disabled="@_isLoading"
                                HelperText="@GetTtsModelDescription()">
                         <MudSelectItem Value="@("Lessac")">Lessac (High Quality)</MudSelectItem>
                         <MudSelectItem Value="@("Joe")">Joe (Medium Quality)</MudSelectItem>
@@ -244,6 +245,11 @@
     private string? _errorMessage;
     private bool _showApiKey;
 
+    // TTS Model configuration
+    private const string LessacModelPath = "Assets/vits-piper-en_US-lessac-high/en_US-lessac-high.onnx";
+    private const string JoeModelPath = "Assets/vits-piper-en_US-joe-medium/en_US-joe-medium.onnx";
+    private string _selectedTtsModel = "Lessac";
+
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
@@ -268,7 +274,15 @@
             if (settingsResult.IsSuccess && settingsResult.Value != null)
             {
                 _settings = settingsResult.Value;
+
+                // Default to Lessac if no TTS model is configured
+                if (string.IsNullOrEmpty(_settings.TtsModelPath))
+                {
+                    _settings.TtsModelPath = LessacModelPath;
+                }
+
                 _originalSettings = CloneSettings(_settings);
+                _selectedTtsModel = GetTtsModelDisplayName();
                 _hasChanges = false;
             }
             else
@@ -319,6 +333,18 @@
         CheckForChanges();
     }
 
+    private void OnTtsModelChanged(string model)
+    {
+        _selectedTtsModel = model;
+        _settings.TtsModelPath = model switch
+        {
+            "Lessac" => LessacModelPath,
+            "Joe" => JoeModelPath,
+            _ => _settings.TtsModelPath
+        };
+        CheckForChanges();
+    }
+
     private void CheckForChanges()
     {
         _hasChanges =
@@ -326,6 +352,7 @@
             _settings.RagEmbeddingModel != _originalSettings.RagEmbeddingModel ||
             _settings.RagVisionInferenceEngineId != _originalSettings.RagVisionInferenceEngineId ||
             _settings.RagVisionModel != _originalSettings.RagVisionModel ||
+            _settings.TtsModelPath != _originalSettings.TtsModelPath ||
             _settings.GoogleSearchEngineId != _originalSettings.GoogleSearchEngineId ||
             _settings.GoogleApiKey != _originalSettings.GoogleApiKey;
 

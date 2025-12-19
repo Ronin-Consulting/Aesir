@@ -711,22 +711,18 @@ public partial class ChatPage
 - **Usage**: Always use Context7 before generating library-specific code (see Code Generation section)
 - If Context7 is not available, ask to have it installed
 
-### Playwright (Browser Testing)
-- **Purpose**: Automated browser testing for the web application
-- **Required**: Must be installed and available
-- **Usage**: Always use Playwright MCP tool when testing the web app in the browser
-- If Playwright is not available, ask to have it installed
-
 ## Testing Guidelines
 
 ### Manual Testing
 - The user will perform most testing manually unless explicitly asked to run tests
 - Do not run test suites unless specifically requested
 
-### Automated Browser Testing
-- Use the Playwright MCP tool for browser-based testing
-- Navigate to `https://aesir.localhost` for testing the web client
-- Take screenshots to verify UI state when appropriate
+### Browser Testing
+- Use the Claude Chrome Extension for browser-based testing
+- Test URL: `http://localhost:5173/`
+- **Starting the Blazor client**: Use `./run-blazor.sh` from the project root
+  - This script handles killing existing processes and starting the dev server
+  - Use `./run-blazor.sh --clean-build` if encountering stale build issues
 
 ## Planning & Workflow
 
