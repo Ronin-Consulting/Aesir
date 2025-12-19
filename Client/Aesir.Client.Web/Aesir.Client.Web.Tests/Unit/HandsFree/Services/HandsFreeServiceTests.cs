@@ -3,6 +3,7 @@ using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.HandsFree.Models;
 using Aesir.Client.Web.Modules.HandsFree.Services;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 
 namespace Aesir.Client.Web.Tests.Unit.HandsFree.Services;
 
@@ -15,6 +16,7 @@ public class HandsFreeServiceTests
     private readonly Mock<IChatSessionNotifier> _mockChatSessionNotifier;
     private readonly Mock<IChatPreferencesService> _mockChatPreferencesService;
     private readonly Mock<IAgentToolsService> _mockAgentToolsService;
+    private readonly Mock<IConfigurationApiService> _mockConfigurationApiService;
     private readonly HandsFreeService _sut;
 
     public HandsFreeServiceTests()
@@ -26,6 +28,7 @@ public class HandsFreeServiceTests
         _mockChatSessionNotifier = new Mock<IChatSessionNotifier>();
         _mockChatPreferencesService = new Mock<IChatPreferencesService>();
         _mockAgentToolsService = new Mock<IAgentToolsService>();
+        _mockConfigurationApiService = new Mock<IConfigurationApiService>();
 
         // Setup default behavior for preferences service
         _mockChatPreferencesService
@@ -50,7 +53,8 @@ public class HandsFreeServiceTests
             _mockChatApiService.Object,
             _mockChatSessionNotifier.Object,
             _mockChatPreferencesService.Object,
-            _mockAgentToolsService.Object);
+            _mockAgentToolsService.Object,
+            _mockConfigurationApiService.Object);
     }
 
     [Fact]
@@ -192,5 +196,104 @@ public class HandsFreeServiceTests
 
         // Assert
         _sut.State.Should().Be(HandsFreeState.Idle);
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_ClearsConversationState()
+    {
+        // Arrange - set up initial state
+        var agentId = Guid.NewGuid();
+        var conversationId = Guid.NewGuid();
+        _sut.CurrentAgentId = agentId;
+        _sut.CurrentConversationId = conversationId;
+
+        // Initialize services
+        _mockAudioCapture.Setup(x => x.InitializeAsync()).ReturnsAsync(true);
+        _mockAudioPlayback.Setup(x => x.InitializeAsync()).ReturnsAsync(true);
+        _mockSpeechService.Setup(x => x.ConnectAsync()).ReturnsAsync(true);
+        await _sut.InitializeAsync();
+
+        // Act
+        await _sut.DeactivateAsync();
+
+        // Assert - verify all conversation state is cleared
+        _sut.CurrentAgentId.Should().BeNull();
+        _sut.CurrentConversationId.Should().BeNull();
+        _sut.CurrentSessionTitle.Should().BeNull();
+        _sut.HasExchangedMessages.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ConfigurationApiService_CanBeVerifiedThroughSetup()
+    {
+        // Arrange
+        var agentId = Guid.NewGuid();
+        var agent = new AesirAgentBase
+        {
+            Id = agentId,
+            Name = "Test Agent",
+            ChatPromptPersona = PromptPersona.Business
+        };
+
+        _mockConfigurationApiService
+            .Setup(x => x.GetAgentAsync(agentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<AesirAgentBase>.Success(agent));
+
+        // Act - just verify the mock can be set up and returns expected value
+        var result = _mockConfigurationApiService.Object.GetAgentAsync(agentId, CancellationToken.None).Result;
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value!.ChatPromptPersona.Should().Be(PromptPersona.Business);
+    }
+
+    [Fact]
+    public void AesirChatMessage_NewSystemMessage_CreatesMessageWithPromptTemplate()
+    {
+        // Arrange - test that system message creation works correctly with Business persona
+        var persona = PromptPersona.Business;
+
+        // Act
+        var systemMessage = AesirChatMessage.NewSystemMessage(persona, null);
+
+        // Assert
+        systemMessage.Should().NotBeNull();
+        systemMessage.Role.Should().Be("system");
+        // The Business prompt template should contain the {{currentDateTime}} placeholder
+        systemMessage.Content.Should().Contain("{{currentDateTime}}");
+    }
+
+    [Fact]
+    public void AesirChatMessage_NewSystemMessage_CreatesMessageWithCustomContent()
+    {
+        // Arrange - test custom persona with custom content
+        var persona = PromptPersona.Custom;
+        var customContent = "You are a custom assistant. Today's date is {{currentDateTime}}.";
+
+        // Act
+        var systemMessage = AesirChatMessage.NewSystemMessage(persona, customContent);
+
+        // Assert
+        systemMessage.Should().NotBeNull();
+        systemMessage.Role.Should().Be("system");
+        systemMessage.Content.Should().Be(customContent);
+        systemMessage.Content.Should().Contain("{{currentDateTime}}");
+    }
+
+    [Fact]
+    public void AesirChatMessage_NewSystemMessage_MilitaryPersonaContainsDateTimePlaceholder()
+    {
+        // Arrange
+        var persona = PromptPersona.Military;
+
+        // Act
+        var systemMessage = AesirChatMessage.NewSystemMessage(persona, null);
+
+        // Assert
+        systemMessage.Should().NotBeNull();
+        systemMessage.Role.Should().Be("system");
+        // The Military prompt template should contain the {{currentDateTime}} placeholder
+        systemMessage.Content.Should().Contain("{{currentDateTime}}");
     }
 }

@@ -20,6 +20,7 @@ public class HandsFreeService : IHandsFreeService
     private readonly IChatSessionNotifier _chatSessionNotifier;
     private readonly IChatPreferencesService _chatPreferencesService;
     private readonly IAgentToolsService _agentToolsService;
+    private readonly IConfigurationApiService _configurationApiService;
 
     private Channel<byte[]> _audioChannel;
     private CancellationTokenSource? _processingCts;
@@ -33,6 +34,9 @@ public class HandsFreeService : IHandsFreeService
 
     // Maintain conversation history for multi-turn conversations
     private AesirConversation? _conversation;
+
+    // Cache current agent for system prompt initialization
+    private AesirAgentBase? _currentAgent;
 
     /// <inheritdoc />
     public HandsFreeState State { get; private set; } = HandsFreeState.Idle;
@@ -77,7 +81,8 @@ public class HandsFreeService : IHandsFreeService
         IChatApiService chatApiService,
         IChatSessionNotifier chatSessionNotifier,
         IChatPreferencesService chatPreferencesService,
-        IAgentToolsService agentToolsService)
+        IAgentToolsService agentToolsService,
+        IConfigurationApiService configurationApiService)
     {
         _audioCapture = audioCapture;
         _audioPlayback = audioPlayback;
@@ -86,6 +91,7 @@ public class HandsFreeService : IHandsFreeService
         _chatSessionNotifier = chatSessionNotifier;
         _chatPreferencesService = chatPreferencesService;
         _agentToolsService = agentToolsService;
+        _configurationApiService = configurationApiService;
 
         // Create unbounded channel for audio chunks
         _audioChannel = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions
@@ -278,6 +284,7 @@ public class HandsFreeService : IHandsFreeService
         CurrentSessionTitle = null;
         HasExchangedMessages = false;
         _conversation = null;
+        _currentAgent = null;
 
         // Release the microphone and audio resources
         await _audioCapture.ReleaseAsync();
@@ -376,12 +383,35 @@ public class HandsFreeService : IHandsFreeService
                 return "Please select an agent first.";
             }
 
-            // Initialize or update conversation
-            _conversation ??= new AesirConversation
+            // Initialize conversation with system prompt if this is a new conversation
+            if (_conversation == null)
             {
-                Id = CurrentConversationId?.ToString() ?? Guid.NewGuid().ToString(),
-                Messages = new List<AesirChatMessage>()
-            };
+                _conversation = new AesirConversation
+                {
+                    Id = CurrentConversationId?.ToString() ?? Guid.NewGuid().ToString(),
+                    Messages = new List<AesirChatMessage>()
+                };
+
+                // Fetch agent if not already loaded
+                if (_currentAgent == null && CurrentAgentId.HasValue)
+                {
+                    var agentResult = await _configurationApiService.GetAgentAsync(CurrentAgentId.Value, cancellationToken);
+                    if (agentResult.IsSuccess && agentResult.Value != null)
+                    {
+                        _currentAgent = agentResult.Value;
+                    }
+                }
+
+                // Add system message based on agent's prompt persona
+                // This ensures {{currentDateTime}} placeholder is present for server-side rendering
+                if (_currentAgent != null)
+                {
+                    var systemMessage = AesirChatMessage.NewSystemMessage(
+                        _currentAgent.ChatPromptPersona,
+                        _currentAgent.ChatCustomPromptContent);
+                    _conversation.Messages.Insert(0, systemMessage);
+                }
+            }
 
             // Add the user message to conversation
             _conversation.Messages.Add(AesirChatMessage.NewUserMessage(userMessage));
