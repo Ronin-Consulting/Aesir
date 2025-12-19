@@ -36,10 +36,10 @@ services:
       resources:
         limits:
           cpus: '4.0'
-          memory: 2G
+          memory: 4G
         reservations:
           cpus: '1.0'
-          memory: 1G
+          memory: 2G
     # Uncomment user and volumes if using Docker MCP Toolkit MCP Servers run in stdio mode
     #user: "0:0"
     #volumes:

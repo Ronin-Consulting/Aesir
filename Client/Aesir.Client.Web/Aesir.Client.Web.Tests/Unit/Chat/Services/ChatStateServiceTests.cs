@@ -1,3 +1,4 @@
+using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Common.Models;
 using Microsoft.JSInterop;
@@ -8,12 +9,49 @@ public class ChatStateServiceTests
 {
     private readonly ChatStateService _service;
     private readonly Mock<IJSRuntime> _jsRuntime;
+    private readonly Mock<IChatPreferencesService> _preferencesService;
 
     public ChatStateServiceTests()
     {
         _jsRuntime = new Mock<IJSRuntime>();
-        _service = new ChatStateService(_jsRuntime.Object);
+        _preferencesService = new Mock<IChatPreferencesService>();
+
+        // Setup default returns for preferences service
+        _preferencesService
+            .Setup(x => x.GetDisabledToolIdsCached(It.IsAny<Guid?>()))
+            .Returns(new HashSet<Guid>());
+        _preferencesService
+            .Setup(x => x.GetThinkLevelCached(It.IsAny<Guid?>()))
+            .Returns((ThinkValue?)null);
+        _preferencesService
+            .Setup(x => x.SetToolEnabledAsync(It.IsAny<Guid?>(), It.IsAny<Guid>(), It.IsAny<bool>()))
+            .Returns(Task.CompletedTask);
+        _preferencesService
+            .Setup(x => x.SetThinkLevelAsync(It.IsAny<Guid?>(), It.IsAny<ThinkValue?>()))
+            .Returns(Task.CompletedTask);
+        _preferencesService
+            .Setup(x => x.ClearToolTogglesAsync(It.IsAny<Guid?>()))
+            .Returns(Task.CompletedTask);
+        _preferencesService
+            .Setup(x => x.ClearThinkLevelAsync(It.IsAny<Guid?>()))
+            .Returns(Task.CompletedTask);
+        _preferencesService
+            .Setup(x => x.RestoreToolTogglesFromStorageAsync(It.IsAny<Guid?>()))
+            .Returns(Task.CompletedTask);
+        _preferencesService
+            .Setup(x => x.RestoreThinkLevelFromStorageAsync(It.IsAny<Guid?>()))
+            .Returns(Task.CompletedTask);
+        _preferencesService
+            .Setup(x => x.GetDisabledToolIdsAsync(It.IsAny<Guid?>()))
+            .ReturnsAsync(new HashSet<Guid>());
+        _preferencesService
+            .Setup(x => x.GetThinkLevelAsync(It.IsAny<Guid?>()))
+            .ReturnsAsync((ThinkValue?)null);
+
+        _service = new ChatStateService(_jsRuntime.Object, _preferencesService.Object, null);
     }
+
+    #region Agent Selection Tests
 
     [Fact]
     public void SelectedAgent_IsNull_Initially()
@@ -21,14 +59,6 @@ public class ChatStateServiceTests
         // Assert
         _service.SelectedAgent.Should().BeNull();
         _service.SelectedAgentId.Should().BeNull();
-    }
-
-    [Fact]
-    public void CurrentSessionId_IsNull_Initially()
-    {
-        // Assert
-        _service.CurrentSessionId.Should().BeNull();
-        _service.HasActiveChat.Should().BeFalse();
     }
 
     [Fact]
@@ -89,6 +119,36 @@ public class ChatStateServiceTests
         // Assert
         _service.SelectedAgent.Should().BeNull();
         _service.SelectedAgentId.Should().BeNull();
+    }
+
+    [Fact]
+    public void MultipleAgentChanges_RaiseCorrectEvents()
+    {
+        // Arrange
+        var agent1 = new AesirAgentBase { Id = Guid.NewGuid(), Name = "Agent 1" };
+        var agent2 = new AesirAgentBase { Id = Guid.NewGuid(), Name = "Agent 2" };
+        var eventCount = 0;
+        _service.OnAgentChanged += () => eventCount++;
+
+        // Act
+        _service.SelectAgent(agent1);
+        _service.SelectAgent(agent2);
+        _service.SelectAgent(null);
+
+        // Assert
+        eventCount.Should().Be(3);
+    }
+
+    #endregion
+
+    #region Session Management Tests
+
+    [Fact]
+    public void CurrentSessionId_IsNull_Initially()
+    {
+        // Assert
+        _service.CurrentSessionId.Should().BeNull();
+        _service.HasActiveChat.Should().BeFalse();
     }
 
     [Fact]
@@ -176,24 +236,6 @@ public class ChatStateServiceTests
 
         // Assert
         eventRaised.Should().BeTrue();
-    }
-
-    [Fact]
-    public void MultipleAgentChanges_RaiseCorrectEvents()
-    {
-        // Arrange
-        var agent1 = new AesirAgentBase { Id = Guid.NewGuid(), Name = "Agent 1" };
-        var agent2 = new AesirAgentBase { Id = Guid.NewGuid(), Name = "Agent 2" };
-        var eventCount = 0;
-        _service.OnAgentChanged += () => eventCount++;
-
-        // Act
-        _service.SelectAgent(agent1);
-        _service.SelectAgent(agent2);
-        _service.SelectAgent(null);
-
-        // Assert
-        eventCount.Should().Be(3);
     }
 
     [Fact]
@@ -293,334 +335,29 @@ public class ChatStateServiceTests
         _service.CurrentSessionTitle.Should().BeNull();
     }
 
-    #region ThinkLevel Tests
-
-    [Fact]
-    public void SelectedThinkLevel_IsNull_Initially()
-    {
-        // Assert
-        _service.SelectedThinkLevel.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task SetThinkLevelAsync_SetsLevel_Low()
-    {
-        // Act
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.Low));
-
-        // Assert
-        _service.SelectedThinkLevel.Should().NotBeNull();
-        _service.SelectedThinkLevel!.Value.ToString().Should().Be(ThinkValue.Low);
-    }
-
-    [Fact]
-    public async Task SetThinkLevelAsync_SetsLevel_Medium()
-    {
-        // Act
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.Medium));
-
-        // Assert
-        _service.SelectedThinkLevel.Should().NotBeNull();
-        _service.SelectedThinkLevel!.Value.ToString().Should().Be(ThinkValue.Medium);
-    }
-
-    [Fact]
-    public async Task SetThinkLevelAsync_SetsLevel_High()
-    {
-        // Act
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.High));
-
-        // Assert
-        _service.SelectedThinkLevel.Should().NotBeNull();
-        _service.SelectedThinkLevel!.Value.ToString().Should().Be(ThinkValue.High);
-    }
-
-    [Fact]
-    public async Task SetThinkLevelAsync_SetsLevel_True()
-    {
-        // Act
-        await _service.SetThinkLevelAsync(new ThinkValue(true));
-
-        // Assert
-        _service.SelectedThinkLevel.Should().NotBeNull();
-        _service.SelectedThinkLevel!.Value.ToString().Should().BeOneOf("True", "true");
-    }
-
-    [Fact]
-    public async Task SetThinkLevelAsync_SetsLevel_False()
-    {
-        // Act
-        await _service.SetThinkLevelAsync(new ThinkValue(false));
-
-        // Assert
-        _service.SelectedThinkLevel.Should().NotBeNull();
-        _service.SelectedThinkLevel!.Value.ToString().Should().BeOneOf("False", "false");
-    }
-
-    [Fact]
-    public async Task SetThinkLevelAsync_CanSetToNull()
-    {
-        // Arrange
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.High));
-
-        // Act
-        await _service.SetThinkLevelAsync(null);
-
-        // Assert
-        _service.SelectedThinkLevel.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task SetThinkLevelAsync_RaisesEvent()
-    {
-        // Arrange
-        var eventRaised = false;
-        _service.OnThinkLevelChanged += () => eventRaised = true;
-
-        // Act
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.Medium));
-
-        // Assert
-        eventRaised.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task SetThinkLevelAsync_DoesNotRaiseEvent_WhenSameLevelSet()
-    {
-        // Arrange
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.High));
-        var eventRaised = false;
-        _service.OnThinkLevelChanged += () => eventRaised = true;
-
-        // Act
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.High));
-
-        // Assert
-        eventRaised.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task SetThinkLevelAsync_PersistsToLocalStorage_WithSession()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        _service.SetCurrentSession(sessionId);
-
-        // Act
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.High));
-
-        // Assert
-        _jsRuntime.Verify(js => js.InvokeAsync<object>(
-            "localStorage.setItem",
-            It.Is<object[]>(args => args.Length == 2 &&
-                args[0].ToString()!.Contains(sessionId.ToString()) &&
-                args[1].ToString() == ThinkValue.High)),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task SetThinkLevelAsync_CachesInMemory_WithSession()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        _service.SetCurrentSession(sessionId);
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.Medium));
-
-        // Act - Get from cache (should not call localStorage)
-        var level = await _service.GetThinkLevelForSessionAsync(sessionId);
-
-        // Assert
-        level.Should().NotBeNull();
-        level!.Value.ToString().Should().Be(ThinkValue.Medium);
-        // Should only have one localStorage call (the setItem from SetThinkLevelAsync)
-        _jsRuntime.Verify(js => js.InvokeAsync<string?>("localStorage.getItem", It.IsAny<object[]>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task ClearThinkLevelAsync_ClearsLevel()
-    {
-        // Arrange
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.High));
-
-        // Act
-        await _service.ClearThinkLevelAsync();
-
-        // Assert
-        _service.SelectedThinkLevel.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task ClearThinkLevelAsync_RaisesEvent()
-    {
-        // Arrange
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.High));
-        var eventRaised = false;
-        _service.OnThinkLevelChanged += () => eventRaised = true;
-
-        // Act
-        await _service.ClearThinkLevelAsync();
-
-        // Assert
-        eventRaised.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task ClearThinkLevelAsync_DoesNotRaiseEvent_WhenAlreadyNull()
-    {
-        // Arrange - default is null
-        var eventRaised = false;
-        _service.OnThinkLevelChanged += () => eventRaised = true;
-
-        // Act
-        await _service.ClearThinkLevelAsync();
-
-        // Assert
-        eventRaised.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task ClearThinkLevelAsync_RemovesFromLocalStorage()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        _service.SetCurrentSession(sessionId);
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.High));
-
-        // Act
-        await _service.ClearThinkLevelAsync();
-
-        // Assert
-        _jsRuntime.Verify(js => js.InvokeAsync<object>(
-            "localStorage.removeItem",
-            It.Is<object[]>(args => args.Length == 1 && args[0].ToString()!.Contains(sessionId.ToString()))),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task GetThinkLevelForSessionAsync_ReturnsNull_ForEmptyGuid()
-    {
-        // Act
-        var result = await _service.GetThinkLevelForSessionAsync(Guid.Empty);
-
-        // Assert
-        result.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task GetThinkLevelForSessionAsync_LoadsFromStorage_WhenNotCached()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        _jsRuntime.Setup(js => js.InvokeAsync<string?>("localStorage.getItem", It.IsAny<object[]>()))
-            .ReturnsAsync(ThinkValue.Medium);
-
-        // Act
-        var level = await _service.GetThinkLevelForSessionAsync(sessionId);
-
-        // Assert
-        level.Should().NotBeNull();
-        level!.Value.ToString().Should().Be(ThinkValue.Medium);
-    }
-
-    [Fact]
-    public async Task RestoreThinkLevelForSessionAsync_RaisesEvent()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        var eventRaised = false;
-        _service.OnThinkLevelChanged += () => eventRaised = true;
-
-        // Act
-        await _service.RestoreThinkLevelForSessionAsync(sessionId);
-
-        // Assert
-        eventRaised.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task RestoreThinkLevelForSessionAsync_ResetsToNull_ForEmptyGuid()
-    {
-        // Arrange
-        await _service.SetThinkLevelAsync(new ThinkValue(ThinkValue.High));
-
-        // Act
-        await _service.RestoreThinkLevelForSessionAsync(Guid.Empty);
-
-        // Assert
-        _service.SelectedThinkLevel.Should().BeNull();
-    }
-
     #endregion
 
-    #region ToolToggle Tests
+    #region Tool Toggle Delegation Tests
 
     [Fact]
-    public void DisabledToolIds_IsEmpty_Initially()
-    {
-        // Assert
-        _service.DisabledToolIds.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task SetToolEnabledAsync_AddsToDisabled_WhenFalse()
+    public void DisabledToolIds_DelegatesToPreferencesService()
     {
         // Arrange
-        var toolId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var disabledIds = new HashSet<Guid> { Guid.NewGuid() };
+        _service.SetCurrentSession(sessionId);
+        _preferencesService.Setup(x => x.GetDisabledToolIdsCached(sessionId)).Returns(disabledIds);
 
         // Act
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
+        var result = _service.DisabledToolIds;
 
         // Assert
-        _service.DisabledToolIds.Should().Contain(toolId);
+        result.Should().BeSameAs(disabledIds);
+        _preferencesService.Verify(x => x.GetDisabledToolIdsCached(sessionId), Times.Once);
     }
 
     [Fact]
-    public async Task SetToolEnabledAsync_RemovesFromDisabled_WhenTrue()
-    {
-        // Arrange
-        var toolId = Guid.NewGuid();
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
-
-        // Act
-        await _service.SetToolEnabledAsync(toolId, enabled: true);
-
-        // Assert
-        _service.DisabledToolIds.Should().NotContain(toolId);
-    }
-
-    [Fact]
-    public async Task SetToolEnabledAsync_RaisesEvent_WhenChanged()
-    {
-        // Arrange
-        var toolId = Guid.NewGuid();
-        var eventRaised = false;
-        _service.OnToolTogglesChanged += () => eventRaised = true;
-
-        // Act
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
-
-        // Assert
-        eventRaised.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task SetToolEnabledAsync_DoesNotRaiseEvent_WhenNoChange()
-    {
-        // Arrange
-        var toolId = Guid.NewGuid();
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
-        var eventRaised = false;
-        _service.OnToolTogglesChanged += () => eventRaised = true;
-
-        // Act - disable again (no change)
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
-
-        // Assert
-        eventRaised.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task SetToolEnabledAsync_PersistsToSession_WithActiveSession()
+    public async Task SetToolEnabledAsync_DelegatesToPreferencesService()
     {
         // Arrange
         var sessionId = Guid.NewGuid();
@@ -628,152 +365,56 @@ public class ChatStateServiceTests
         _service.SetCurrentSession(sessionId);
 
         // Act
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
+        await _service.SetToolEnabledAsync(toolId, false);
 
-        // Assert - check that session storage was updated
-        var storedIds = _service.GetDisabledToolIdsForSession(sessionId);
-        storedIds.Should().Contain(toolId);
+        // Assert
+        _preferencesService.Verify(x => x.SetToolEnabledAsync(sessionId, toolId, false), Times.Once);
     }
 
     [Fact]
-    public async Task SetToolEnabledAsync_PersistsToLocalStorage_WithSession()
+    public void IsToolEnabled_DelegatesToPreferencesService()
     {
         // Arrange
         var sessionId = Guid.NewGuid();
         var toolId = Guid.NewGuid();
         _service.SetCurrentSession(sessionId);
+        _preferencesService.Setup(x => x.IsToolEnabled(sessionId, toolId)).Returns(false);
 
         // Act
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
+        var result = _service.IsToolEnabled(toolId);
 
         // Assert
-        _jsRuntime.Verify(js => js.InvokeAsync<object>(
-            "localStorage.setItem",
-            It.Is<object[]>(args => args.Length == 2 &&
-                args[0].ToString()!.Contains(sessionId.ToString()) &&
-                args[1].ToString()!.Contains(toolId.ToString()))),
-            Times.Once);
+        result.Should().BeFalse();
+        _preferencesService.Verify(x => x.IsToolEnabled(sessionId, toolId), Times.Once);
     }
 
     [Fact]
-    public async Task SetToolEnabledAsync_CachesInMemory_WithSession()
+    public async Task ClearToolTogglesAsync_DelegatesToPreferencesService()
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        var toolId = Guid.NewGuid();
         _service.SetCurrentSession(sessionId);
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
-
-        // Act - Get from cache (should not call localStorage.getItem)
-        var storedIds = _service.GetDisabledToolIdsForSession(sessionId);
-
-        // Assert
-        storedIds.Should().Contain(toolId);
-        // GetDisabledToolIdsForSession only reads from memory, not localStorage
-        _jsRuntime.Verify(js => js.InvokeAsync<string?>("localStorage.getItem", It.IsAny<object[]>()), Times.Never);
-    }
-
-    [Fact]
-    public void IsToolEnabled_ReturnsTrue_WhenNotDisabled()
-    {
-        // Arrange
-        var toolId = Guid.NewGuid();
-
-        // Assert
-        _service.IsToolEnabled(toolId).Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task IsToolEnabled_ReturnsFalse_WhenDisabled()
-    {
-        // Arrange
-        var toolId = Guid.NewGuid();
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
-
-        // Assert
-        _service.IsToolEnabled(toolId).Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task ClearToolTogglesAsync_ClearsAllDisabled()
-    {
-        // Arrange
-        var toolId1 = Guid.NewGuid();
-        var toolId2 = Guid.NewGuid();
-        await _service.SetToolEnabledAsync(toolId1, enabled: false);
-        await _service.SetToolEnabledAsync(toolId2, enabled: false);
 
         // Act
         await _service.ClearToolTogglesAsync();
 
         // Assert
-        _service.DisabledToolIds.Should().BeEmpty();
+        _preferencesService.Verify(x => x.ClearToolTogglesAsync(sessionId), Times.Once);
     }
 
     [Fact]
-    public async Task ClearToolTogglesAsync_RaisesEvent_WhenHadDisabled()
-    {
-        // Arrange
-        var toolId = Guid.NewGuid();
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
-        var eventRaised = false;
-        _service.OnToolTogglesChanged += () => eventRaised = true;
-
-        // Act
-        await _service.ClearToolTogglesAsync();
-
-        // Assert
-        eventRaised.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task ClearToolTogglesAsync_DoesNotRaiseEvent_WhenAlreadyEmpty()
-    {
-        // Arrange - default is empty
-        var eventRaised = false;
-        _service.OnToolTogglesChanged += () => eventRaised = true;
-
-        // Act
-        await _service.ClearToolTogglesAsync();
-
-        // Assert
-        eventRaised.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task ClearToolTogglesAsync_RemovesSessionStorage()
+    public void GetDisabledToolIdsForSession_DelegatesToPreferencesService()
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        var toolId = Guid.NewGuid();
-        _service.SetCurrentSession(sessionId);
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
+        var disabledIds = new HashSet<Guid> { Guid.NewGuid() };
+        _preferencesService.Setup(x => x.GetDisabledToolIdsCached(sessionId)).Returns(disabledIds);
 
         // Act
-        await _service.ClearToolTogglesAsync();
+        var result = _service.GetDisabledToolIdsForSession(sessionId);
 
         // Assert
-        var storedIds = _service.GetDisabledToolIdsForSession(sessionId);
-        storedIds.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task ClearToolTogglesAsync_RemovesFromLocalStorage()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        var toolId = Guid.NewGuid();
-        _service.SetCurrentSession(sessionId);
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
-
-        // Act
-        await _service.ClearToolTogglesAsync();
-
-        // Assert
-        _jsRuntime.Verify(js => js.InvokeAsync<object>(
-            "localStorage.removeItem",
-            It.Is<object[]>(args => args.Length == 1 && args[0].ToString()!.Contains(sessionId.ToString()))),
-            Times.Once);
+        result.Should().BeSameAs(disabledIds);
     }
 
     [Fact]
@@ -787,210 +428,134 @@ public class ChatStateServiceTests
     }
 
     [Fact]
-    public void GetDisabledToolIdsForSession_ReturnsEmpty_ForUnknownSession()
-    {
-        // Act
-        var result = _service.GetDisabledToolIdsForSession(Guid.NewGuid());
-
-        // Assert
-        result.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task GetDisabledToolIdsForSession_ReturnsDisabledIds_ForKnownSession()
+    public async Task RestoreToolTogglesForSessionAsync_DelegatesToPreferencesService()
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        var toolId = Guid.NewGuid();
-        _service.SetCurrentSession(sessionId);
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
 
         // Act
-        var result = _service.GetDisabledToolIdsForSession(sessionId);
+        await _service.RestoreToolTogglesForSessionAsync(sessionId);
 
         // Assert
-        result.Should().Contain(toolId);
+        _preferencesService.Verify(x => x.RestoreToolTogglesFromStorageAsync(sessionId), Times.Once);
     }
 
     [Fact]
-    public void RestoreToolTogglesForSession_ResetsToEmpty_ForEmptyGuid()
-    {
-        // Arrange - use sync version (in-memory only)
-        _service.RestoreToolTogglesForSession(Guid.Empty);
-
-        // Assert
-        _service.DisabledToolIds.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task RestoreToolTogglesForSession_RestoresFromSession()
-    {
-        // Arrange
-        var sessionId1 = Guid.NewGuid();
-        var sessionId2 = Guid.NewGuid();
-        var toolId = Guid.NewGuid();
-
-        // Set up session 1 with a disabled tool
-        _service.SetCurrentSession(sessionId1);
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
-
-        // Switch to session 2 (this will clear current disabled tools when restored)
-        _service.SetCurrentSession(sessionId2);
-        _service.RestoreToolTogglesForSession(sessionId2);
-
-        // Verify session 2 has no disabled tools
-        _service.DisabledToolIds.Should().BeEmpty();
-
-        // Act - restore session 1
-        _service.RestoreToolTogglesForSession(sessionId1);
-
-        // Assert - session 1's disabled tool should be restored
-        _service.DisabledToolIds.Should().Contain(toolId);
-    }
-
-    [Fact]
-    public async Task RestoreToolTogglesForSession_ClearsCurrentIfNoSessionData()
-    {
-        // Arrange
-        var toolId = Guid.NewGuid();
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
-        var unknownSessionId = Guid.NewGuid();
-
-        // Act
-        _service.RestoreToolTogglesForSession(unknownSessionId);
-
-        // Assert
-        _service.DisabledToolIds.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void RestoreToolTogglesForSession_RaisesEvent()
+    public void OnToolTogglesChanged_ForwardedFromPreferencesService()
     {
         // Arrange
         var eventRaised = false;
         _service.OnToolTogglesChanged += () => eventRaised = true;
 
         // Act
-        _service.RestoreToolTogglesForSession(Guid.NewGuid());
+        _preferencesService.Raise(x => x.OnToolTogglesChanged += null);
 
         // Assert
         eventRaised.Should().BeTrue();
     }
 
-    [Fact]
-    public async Task RestoreToolTogglesForSessionAsync_ResetsToEmpty_ForEmptyGuid()
-    {
-        // Arrange
-        var toolId = Guid.NewGuid();
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
+    #endregion
 
-        // Act
-        await _service.RestoreToolTogglesForSessionAsync(Guid.Empty);
-
-        // Assert
-        _service.DisabledToolIds.Should().BeEmpty();
-    }
+    #region Think Level Delegation Tests
 
     [Fact]
-    public async Task RestoreToolTogglesForSessionAsync_RaisesEvent()
+    public void SelectedThinkLevel_DelegatesToPreferencesService()
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        var eventRaised = false;
-        _service.OnToolTogglesChanged += () => eventRaised = true;
-
-        // Act
-        await _service.RestoreToolTogglesForSessionAsync(sessionId);
-
-        // Assert
-        eventRaised.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task RestoreToolTogglesForSessionAsync_LoadsFromCache_WhenCached()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        var toolId = Guid.NewGuid();
+        var thinkLevel = new ThinkValue(ThinkValue.High);
         _service.SetCurrentSession(sessionId);
-        await _service.SetToolEnabledAsync(toolId, enabled: false);
-
-        // Clear current disabled tools (simulate switching sessions)
-        _service.SetCurrentSession(Guid.NewGuid());
-        _service.RestoreToolTogglesForSession(Guid.NewGuid());
-        _service.DisabledToolIds.Should().BeEmpty();
-
-        // Act - restore from original session
-        await _service.RestoreToolTogglesForSessionAsync(sessionId);
-
-        // Assert
-        _service.DisabledToolIds.Should().Contain(toolId);
-        // Should not call localStorage.getItem because it's cached
-        _jsRuntime.Verify(js => js.InvokeAsync<string?>("localStorage.getItem", It.IsAny<object[]>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task RestoreToolTogglesForSessionAsync_LoadsFromStorage_WhenNotCached()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        var toolId = Guid.NewGuid();
-        var json = System.Text.Json.JsonSerializer.Serialize(new HashSet<Guid> { toolId });
-        _jsRuntime.Setup(js => js.InvokeAsync<string?>("localStorage.getItem", It.IsAny<object[]>()))
-            .ReturnsAsync(json);
+        _preferencesService.Setup(x => x.GetThinkLevelCached(sessionId)).Returns(thinkLevel);
 
         // Act
-        await _service.RestoreToolTogglesForSessionAsync(sessionId);
+        var result = _service.SelectedThinkLevel;
 
         // Assert
-        _service.DisabledToolIds.Should().Contain(toolId);
+        result.Should().NotBeNull();
+        result!.Value.ToString().Should().Be(ThinkValue.High);
+        _preferencesService.Verify(x => x.GetThinkLevelCached(sessionId), Times.Once);
     }
 
     [Fact]
-    public async Task RestoreToolTogglesForSessionAsync_CachesLoadedData()
+    public async Task SetThinkLevelAsync_DelegatesToPreferencesService()
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        var toolId = Guid.NewGuid();
-        var json = System.Text.Json.JsonSerializer.Serialize(new HashSet<Guid> { toolId });
-        _jsRuntime.Setup(js => js.InvokeAsync<string?>("localStorage.getItem", It.IsAny<object[]>()))
-            .ReturnsAsync(json);
+        var level = new ThinkValue(ThinkValue.Medium);
+        _service.SetCurrentSession(sessionId);
 
-        // Act - load from storage
-        await _service.RestoreToolTogglesForSessionAsync(sessionId);
+        // Act
+        await _service.SetThinkLevelAsync(level);
 
-        // Assert - verify it's now cached
-        var cachedIds = _service.GetDisabledToolIdsForSession(sessionId);
-        cachedIds.Should().Contain(toolId);
+        // Assert
+        _preferencesService.Verify(x => x.SetThinkLevelAsync(sessionId, level), Times.Once);
     }
 
     [Fact]
-    public async Task SessionIsolation_DifferentSessionsHaveDifferentToggles()
+    public async Task ClearThinkLevelAsync_DelegatesToPreferencesService()
     {
         // Arrange
-        var sessionId1 = Guid.NewGuid();
-        var sessionId2 = Guid.NewGuid();
-        var toolId1 = Guid.NewGuid();
-        var toolId2 = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        _service.SetCurrentSession(sessionId);
 
-        // Set up session 1 with tool1 disabled
-        _service.SetCurrentSession(sessionId1);
-        await _service.SetToolEnabledAsync(toolId1, enabled: false);
-
-        // Switch to session 2 and disable tool2
-        _service.SetCurrentSession(sessionId2);
-        _service.RestoreToolTogglesForSession(sessionId2);
-        await _service.SetToolEnabledAsync(toolId2, enabled: false);
-
-        // Act - get disabled IDs for each session
-        var session1Disabled = _service.GetDisabledToolIdsForSession(sessionId1);
-        var session2Disabled = _service.GetDisabledToolIdsForSession(sessionId2);
+        // Act
+        await _service.ClearThinkLevelAsync();
 
         // Assert
-        session1Disabled.Should().Contain(toolId1);
-        session1Disabled.Should().NotContain(toolId2);
-        session2Disabled.Should().Contain(toolId2);
-        session2Disabled.Should().NotContain(toolId1);
+        _preferencesService.Verify(x => x.ClearThinkLevelAsync(sessionId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetThinkLevelForSessionAsync_DelegatesToPreferencesService()
+    {
+        // Arrange
+        var sessionId = Guid.NewGuid();
+        var level = new ThinkValue(ThinkValue.Low);
+        _preferencesService.Setup(x => x.GetThinkLevelAsync(sessionId)).ReturnsAsync(level);
+
+        // Act
+        var result = await _service.GetThinkLevelForSessionAsync(sessionId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Value.ToString().Should().Be(ThinkValue.Low);
+    }
+
+    [Fact]
+    public async Task GetThinkLevelForSessionAsync_ReturnsNull_ForEmptyGuid()
+    {
+        // Act
+        var result = await _service.GetThinkLevelForSessionAsync(Guid.Empty);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RestoreThinkLevelForSessionAsync_DelegatesToPreferencesService()
+    {
+        // Arrange
+        var sessionId = Guid.NewGuid();
+
+        // Act
+        await _service.RestoreThinkLevelForSessionAsync(sessionId);
+
+        // Assert
+        _preferencesService.Verify(x => x.RestoreThinkLevelFromStorageAsync(sessionId), Times.Once);
+    }
+
+    [Fact]
+    public void OnThinkLevelChanged_ForwardedFromPreferencesService()
+    {
+        // Arrange
+        var eventRaised = false;
+        _service.OnThinkLevelChanged += () => eventRaised = true;
+
+        // Act
+        _preferencesService.Raise(x => x.OnThinkLevelChanged += null);
+
+        // Assert
+        eventRaised.Should().BeTrue();
     }
 
     #endregion

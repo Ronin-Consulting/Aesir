@@ -1,3 +1,6 @@
+@using Aesir.Client.Web.Infrastructure.Services
+@inject IMarkdownService MarkdownService
+
 <div class="speech-display">
     @if (!string.IsNullOrEmpty(Transcription))
     {
@@ -13,8 +16,8 @@
     {
         <div class="response-container">
             <div class="label">Assistant:</div>
-            <div class="text response">
-                @Response
+            <div class="text response markdown-body">
+                @((MarkupString)MarkdownService.ToHtml(Response))
             </div>
         </div>
     }
@@ -63,6 +66,8 @@
         flex-direction: column;
         gap: 16px;
         margin-top: 24px;
+        max-height: calc(100vh - 400px);
+        overflow-y: auto;
     }
 
     .transcription-container,
@@ -101,10 +106,104 @@
     .response-container {
         border-color: rgba(156, 39, 176, 0.3);
         background: rgba(156, 39, 176, 0.1);
+        max-height: 300px;
+        overflow-y: auto;
     }
 
     .response-container .label {
         color: rgba(156, 39, 176, 0.8);
+    }
+
+    /* Markdown body styles for response */
+    .response.markdown-body {
+        font-size: 16px;
+        line-height: 1.6;
+    }
+
+    .response.markdown-body p {
+        margin: 0 0 1em 0;
+    }
+
+    .response.markdown-body p:last-child {
+        margin-bottom: 0;
+    }
+
+    .response.markdown-body h1,
+    .response.markdown-body h2,
+    .response.markdown-body h3,
+    .response.markdown-body h4 {
+        margin: 1em 0 0.5em 0;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.95);
+    }
+
+    .response.markdown-body h1 { font-size: 1.5em; }
+    .response.markdown-body h2 { font-size: 1.3em; }
+    .response.markdown-body h3 { font-size: 1.1em; }
+
+    .response.markdown-body ul,
+    .response.markdown-body ol {
+        margin: 0.5em 0;
+        padding-left: 1.5em;
+    }
+
+    .response.markdown-body li {
+        margin: 0.25em 0;
+    }
+
+    .response.markdown-body code {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 0.2em 0.4em;
+        border-radius: 4px;
+        font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+        font-size: 0.9em;
+    }
+
+    .response.markdown-body pre {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 1em;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 0.5em 0;
+    }
+
+    .response.markdown-body pre code {
+        background: none;
+        padding: 0;
+    }
+
+    .response.markdown-body blockquote {
+        border-left: 3px solid rgba(156, 39, 176, 0.5);
+        margin: 0.5em 0;
+        padding-left: 1em;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .response.markdown-body a {
+        color: #BB86FC;
+        text-decoration: none;
+    }
+
+    .response.markdown-body a:hover {
+        text-decoration: underline;
+    }
+
+    .response.markdown-body table {
+        border-collapse: collapse;
+        margin: 0.5em 0;
+        width: 100%;
+    }
+
+    .response.markdown-body th,
+    .response.markdown-body td {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 0.5em;
+        text-align: left;
+    }
+
+    .response.markdown-body th {
+        background: rgba(0, 0, 0, 0.2);
+        font-weight: 600;
     }
 
     .error-container {
@@ -121,5 +220,27 @@
 
     .error {
         color: rgba(244, 67, 54, 0.9);
+    }
+
+    /* Custom scrollbar styling */
+    .speech-display::-webkit-scrollbar,
+    .response-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .speech-display::-webkit-scrollbar-track,
+    .response-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .speech-display::-webkit-scrollbar-thumb,
+    .response-container::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+    }
+
+    .speech-display::-webkit-scrollbar-thumb:hover,
+    .response-container::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
     }
 </style>

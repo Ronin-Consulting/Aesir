@@ -1,7 +1,6 @@
 using Aesir.Infrastructure.Modules;
 using Aesir.Modules.Speech.Services;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -26,19 +25,27 @@ public class SpeechModule : ModuleBase
     {
         Log("Registering TTS and STT services...");
 
+        // Get model paths from database configuration (ConfigurationService is set by ModuleExtensions before this is called)
+        var generalSettings = ConfigurationService!.GetGeneralSettingsAsync().GetAwaiter().GetResult();
+        var ttsModelPath = generalSettings.TtsModelPath ??
+                          throw new InvalidOperationException("TtsModelPath not configured in GeneralSettings");
+        var sttModelPath = generalSettings.SttModelPath ??
+                          throw new InvalidOperationException("SttModelPath not configured in GeneralSettings");
+        var vadModelPath = generalSettings.VadModelPath ??
+                          throw new InvalidOperationException("VadModelPath not configured in GeneralSettings");
+
+        Log($"TTS model path: {ttsModelPath}");
+        Log($"STT model path: {sttModelPath}");
+        Log($"VAD model path: {vadModelPath}");
+
         // Register TTS text preprocessor for converting markdown to natural speech
         services.AddSingleton<ITtsTextPreprocessor, TtsTextPreprocessor>();
 
         // Register TTS service
         services.AddSingleton<ITtsService>(sp =>
         {
-            var configuration = sp.GetRequiredService<IConfiguration>();
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             var textPreprocessor = sp.GetRequiredService<ITtsTextPreprocessor>();
-
-            // Get model paths from configuration
-            var ttsModelPath = configuration["GeneralSettings:TtsModelPath"] ??
-                              throw new InvalidOperationException("TtsModelPath not configured in GeneralSettings");
 
             var useCudaValue = Environment.GetEnvironmentVariable("USE_CUDA");
             _ = bool.TryParse(useCudaValue, out var useCuda);
@@ -53,14 +60,7 @@ public class SpeechModule : ModuleBase
         // Register STT service
         services.AddSingleton<ISttService>(sp =>
         {
-            var configuration = sp.GetRequiredService<IConfiguration>();
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-
-            // Get model paths from configuration
-            var sttModelPath = configuration["GeneralSettings:SttModelPath"] ??
-                              throw new InvalidOperationException("SttModelPath not configured in GeneralSettings");
-            var vadModelPath = configuration["GeneralSettings:VadModelPath"] ??
-                              throw new InvalidOperationException("VadModelPath not configured in GeneralSettings");
 
             var useCudaValue = Environment.GetEnvironmentVariable("USE_CUDA");
             _ = bool.TryParse(useCudaValue, out var useCuda);
@@ -74,7 +74,7 @@ public class SpeechModule : ModuleBase
         });
 
         Log("TTS and STT services registered successfully");
-        
+
         return Task.CompletedTask;
     }
 

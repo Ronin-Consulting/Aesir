@@ -40,7 +40,8 @@ public class Program
                             "http://localhost:5000",
                             "https://localhost:5001")
                         .AllowAnyMethod()
-                        .AllowAnyHeader();
+                        .AllowAnyHeader()
+                        .AllowCredentials(); // Required for SignalR WebSocket connections
                 });
             });
 

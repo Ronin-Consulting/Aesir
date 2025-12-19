@@ -114,7 +114,9 @@ public class ChatService : BaseChatService
     /// <returns>A concise title summarizing the user's message.</returns>
     protected override async Task<string> GetTitleForUserMessageAsync(AesirChatRequestBase request)
     {
-        if (request.Conversation.Messages.Count > 2)
+        // Check non-system messages only (system messages are added during execution)
+        var nonSystemMessageCount = request.Conversation.Messages.Count(m => m.Role != "system");
+        if (nonSystemMessageCount > 2)
             throw new InvalidOperationException(
                 "This operation should only be used when user first creates completion.");
 

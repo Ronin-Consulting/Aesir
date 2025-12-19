@@ -49,6 +49,19 @@
         <Content Include="Assets\vits-piper-en_US-joe-medium\espeak-ng-data\**">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+        <!-- Lessac High Quality Voice Model -->
+        <None Remove="Assets\vits-piper-en_US-lessac-high\tokens.txt" />
+        <Content Include="Assets\vits-piper-en_US-lessac-high\tokens.txt">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <None Remove="Assets\vits-piper-en_US-lessac-high\en_US-lessac-high.onnx" />
+        <Content Include="Assets\vits-piper-en_US-lessac-high\en_US-lessac-high.onnx">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <None Remove="Assets\vits-piper-en_US-lessac-high\espeak-ng-data\**" />
+        <Content Include="Assets\vits-piper-en_US-lessac-high\espeak-ng-data\**">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
         <None Remove="Assets\vad\silero_vad.onnx" />
         <Content Include="Assets\vad\silero_vad.onnx">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

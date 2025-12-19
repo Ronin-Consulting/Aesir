@@ -71,11 +71,14 @@ public abstract class IntegrationTestBase : TestContext
         Services.AddSingleton<IGeneralSettingsService, GeneralSettingsService>();
         Services.AddSingleton<IWizardStateService, WizardStateService>();
 
+        // Shared services (from Program.cs)
+        Services.AddSingleton<IChatPreferencesService, ChatPreferencesService>();
+        Services.AddSingleton<IAgentToolsService, AgentToolsService>();
+
         // Additional chat services (added for new components)
         Services.AddSingleton<IDocumentApiService, DocumentApiService>();
         Services.AddSingleton<IToolCallStateService, ToolCallStateService>();
         Services.AddSingleton<ICitationStateService, CitationStateService>();
-        Services.AddSingleton<IAgentToolsService, AgentToolsService>();
 
         // MudBlazor services
         Services.AddMudServices();

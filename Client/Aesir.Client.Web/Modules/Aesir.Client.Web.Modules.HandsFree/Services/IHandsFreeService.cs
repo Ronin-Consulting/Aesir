@@ -24,6 +24,11 @@ public interface IHandsFreeService : IAsyncDisposable
     Guid? CurrentConversationId { get; set; }
 
     /// <summary>
+    /// Gets the current session title (AI-generated after first message).
+    /// </summary>
+    string? CurrentSessionTitle { get; }
+
+    /// <summary>
     /// Gets whether any messages were actually exchanged in this session.
     /// Used to determine if the conversation should be persisted on exit.
     /// </summary>

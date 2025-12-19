@@ -148,12 +148,17 @@ public abstract class BaseChatService : IChatService
         }
 
         var title = request.Title;
-        if (request.Conversation.Messages.Count == 2)
+        // Generate title on first user message exchange (1 user + 1 assistant, ignoring system messages)
+        var nonSystemMessageCount = request.Conversation.Messages.Count(m => m.Role != "system");
+        if (nonSystemMessageCount == 2)
         {
             title = await GetTitleForUserMessageAsync(request);
         }
 
         await PersistChatSessionAsync(request, response.AesirConversation, title);
+
+        // Include the title in the response so clients can display it
+        response.Title = title;
 
         return response;
     }
@@ -193,7 +198,9 @@ public abstract class BaseChatService : IChatService
         }
 
         var titleTask = Task.FromResult(title);
-        if (request.Conversation.Messages.Count == 2 && string.IsNullOrEmpty(title))
+        // Generate title on first user message (1 non-system message before streaming adds assistant response)
+        var nonSystemMessageCount = request.Conversation.Messages.Count(m => m.Role != "system");
+        if (nonSystemMessageCount == 1 && string.IsNullOrEmpty(title))
         {
             titleTask = GetTitleForUserMessageAsync(request);
         }

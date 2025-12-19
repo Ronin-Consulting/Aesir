@@ -14,6 +14,12 @@ public class AesirChatResult
     public Guid? ChatSessionId { get; set; }
 
     /// <summary>
+    /// Gets or sets the generated or existing title for the chat session.
+    /// </summary>
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
+
+    /// <summary>
     /// Gets or sets the conversation containing the complete message history.
     /// </summary>
     [JsonPropertyName("conversation")]

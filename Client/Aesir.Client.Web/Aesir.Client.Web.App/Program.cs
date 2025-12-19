@@ -28,6 +28,15 @@ builder.Services.AddSingleton<IConfigurationChangedNotifier, ConfigurationChange
 // Add chat session notifier (singleton to share session events across modules)
 builder.Services.AddSingleton<IChatSessionNotifier, ChatSessionNotifier>();
 
+// Add chat preferences service (shared between Chat and HandsFree modules)
+builder.Services.AddSingleton<IChatPreferencesService, ChatPreferencesService>();
+
+// Add agent tools service (shared between Chat and HandsFree modules)
+builder.Services.AddSingleton<IAgentToolsService, AgentToolsService>();
+
+// Add markdown service (shared between Chat and HandsFree modules)
+builder.Services.AddSingleton<IMarkdownService, MarkdownService>();
+
 // Add platform services (Tauri detection, native file operations)
 builder.Services.AddPlatformServices();
 

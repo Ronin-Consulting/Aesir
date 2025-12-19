@@ -4,6 +4,7 @@ using MudBlazor;
 using MudBlazor.Services;
 using Aesir.Client.Web.Modules.Chat.Components;
 using Aesir.Client.Web.Modules.Chat.Services;
+using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Common.Models;
 using Microsoft.JSInterop;
 

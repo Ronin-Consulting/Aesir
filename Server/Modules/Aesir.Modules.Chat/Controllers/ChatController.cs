@@ -36,13 +36,19 @@ namespace Aesir.Modules.Chat.Controllers
             var tools = await configurationService.GetToolsUsedByAgentAsync(request.AgentId.Value);
             var mcpServers = await configurationService.GetMcpServersAsync();
 
+            logger.LogDebug("[AgentChat] Request received with {ToolCount} tools", request.Tools.Count);
+            foreach (var reqTool in request.Tools)
+            {
+                logger.LogDebug("[AgentChat] Request tool: {ToolName}, McpServer: {McpServer}", reqTool.ToolName, reqTool.McpServerName);
+            }
+
             // Apply inference engine master switch for thinking
             var (effectiveEnableThinking, effectiveThinkValue) = await ApplyInferenceEngineMasterSwitchAsync(
                 agent, request.EnableThinking, request.ThinkValue);
 
             var filteredTools = request.Tools.Where(tr =>
                 tools.Any(t =>
-                    t.Name == tr.ToolName &&
+                    t.ToolName == tr.ToolName &&
                     (!tr.IsMcpServerToolRequest ||
                      (mcpServers.Any(mcp => mcp.Id == t.McpServerId && mcp.Name == tr.McpServerName)))
                 )).ToList();

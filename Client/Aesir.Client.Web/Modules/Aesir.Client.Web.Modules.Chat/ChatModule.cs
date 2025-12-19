@@ -28,8 +28,7 @@ public class ChatModule : ClientModuleBase
         // Register chat history service as scoped (depends on scoped IChatApiService)
         services.AddScoped<IChatHistoryService, ChatHistoryService>();
 
-        // Register markdown service for rendering assistant messages
-        services.AddSingleton<IMarkdownService, MarkdownService>();
+        // Note: IMarkdownService is now registered in Infrastructure (Program.cs) for shared access
 
         // Register citation link parser for parsing file:// citation URLs
         services.AddSingleton<ICitationLinkParser, CitationLinkParser>();
@@ -40,8 +39,7 @@ public class ChatModule : ClientModuleBase
         // Register tool call state service for managing tool call display during streaming
         services.AddScoped<IToolCallStateService, ToolCallStateService>();
 
-        // Register agent tools service as scoped (depends on scoped IApiClient)
-        services.AddScoped<IAgentToolsService, AgentToolsService>();
+        // Note: IAgentToolsService is now registered in Infrastructure (Program.cs) for shared access
 
         // Register documents view service for the Documents panel
         services.AddScoped<IDocumentsViewService, DocumentsViewService>();

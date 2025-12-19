@@ -1,4 +1,4 @@
-using Aesir.Client.Web.Modules.Chat.Services;
+using Aesir.Client.Web.Infrastructure.Services;
 
 namespace Aesir.Client.Web.Tests.Unit.Chat.Services;
 

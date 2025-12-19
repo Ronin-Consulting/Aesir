@@ -18,6 +18,8 @@ public class HandsFreeService : IHandsFreeService
     private readonly ISignalRSpeechService _speechService;
     private readonly IChatApiService _chatApiService;
     private readonly IChatSessionNotifier _chatSessionNotifier;
+    private readonly IChatPreferencesService _chatPreferencesService;
+    private readonly IAgentToolsService _agentToolsService;
 
     private Channel<byte[]> _audioChannel;
     private CancellationTokenSource? _processingCts;
@@ -40,6 +42,9 @@ public class HandsFreeService : IHandsFreeService
 
     /// <inheritdoc />
     public Guid? CurrentConversationId { get; set; }
+
+    /// <inheritdoc />
+    public string? CurrentSessionTitle { get; private set; }
 
     /// <inheritdoc />
     public bool HasExchangedMessages { get; private set; }
@@ -70,13 +75,17 @@ public class HandsFreeService : IHandsFreeService
         IAudioPlaybackService audioPlayback,
         ISignalRSpeechService speechService,
         IChatApiService chatApiService,
-        IChatSessionNotifier chatSessionNotifier)
+        IChatSessionNotifier chatSessionNotifier,
+        IChatPreferencesService chatPreferencesService,
+        IAgentToolsService agentToolsService)
     {
         _audioCapture = audioCapture;
         _audioPlayback = audioPlayback;
         _speechService = speechService;
         _chatApiService = chatApiService;
         _chatSessionNotifier = chatSessionNotifier;
+        _chatPreferencesService = chatPreferencesService;
+        _agentToolsService = agentToolsService;
 
         // Create unbounded channel for audio chunks
         _audioChannel = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions
@@ -266,6 +275,7 @@ public class HandsFreeService : IHandsFreeService
         // Clear conversation state for clean slate on next activation
         CurrentAgentId = null;
         CurrentConversationId = null;
+        CurrentSessionTitle = null;
         HasExchangedMessages = false;
         _conversation = null;
 
@@ -376,6 +386,31 @@ public class HandsFreeService : IHandsFreeService
             // Add the user message to conversation
             _conversation.Messages.Add(AesirChatMessage.NewUserMessage(userMessage));
 
+            // Get tools and think level from shared preferences (inherits from main chat)
+            var disabledToolIds = await _chatPreferencesService.GetDisabledToolIdsAsync(CurrentConversationId);
+            var thinkLevel = await _chatPreferencesService.GetThinkLevelAsync(CurrentConversationId);
+
+            // Get agent tools as ToolRequest objects
+            var allToolRequests = await _agentToolsService.GetAgentToolRequestsAsync(CurrentAgentId.Value, cancellationToken);
+            var agentTools = await _agentToolsService.GetAgentToolsAsync(CurrentAgentId.Value, cancellationToken);
+
+            // Filter tools by disabled IDs and build the enabled tools set
+            var enabledTools = new HashSet<ToolRequest>();
+            for (var i = 0; i < allToolRequests.Count; i++)
+            {
+                var toolRequest = allToolRequests[i];
+                var agentTool = i < agentTools.Count ? agentTools[i] : null;
+
+                // Only add tool if it's not in the disabled set
+                if (agentTool?.Id == null || !disabledToolIds.Contains(agentTool.Id.Value))
+                {
+                    enabledTools.Add(toolRequest);
+                }
+            }
+
+            // Determine if thinking should be enabled based on the think level
+            var enableThinking = GetEffectiveThinkingEnabled(thinkLevel);
+
             // Build the chat request
             // TODO: Replace hardcoded user ID with proper user context service from Infrastructure
             var request = new AesirAgentChatRequestBase
@@ -386,9 +421,10 @@ public class HandsFreeService : IHandsFreeService
                 Conversation = _conversation,
                 User = "blangford@gmail.com",
                 ClientDateTime = DateTime.Now.ToString("F", new CultureInfo("en-US")),
-                Title = "Hands-Free Conversation",
-                EnableThinking = false,
-                Tools = new HashSet<ToolRequest>()
+                Title = string.Empty,
+                EnableThinking = enableThinking,
+                ThinkValue = thinkLevel,
+                Tools = enabledTools
             };
 
             // Send request to chat API
@@ -418,6 +454,12 @@ public class HandsFreeService : IHandsFreeService
                 }
             }
 
+            // Update session title from response (AI-generated on first message)
+            if (!string.IsNullOrEmpty(result.Value.Title))
+            {
+                CurrentSessionTitle = result.Value.Title;
+            }
+
             // Mark that we've had a successful exchange
             HasExchangedMessages = true;
 
@@ -432,6 +474,27 @@ public class HandsFreeService : IHandsFreeService
             Console.Error.WriteLine($"Chat API error: {ex.Message}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Determines if thinking should be enabled based on the think level.
+    /// </summary>
+    private static bool? GetEffectiveThinkingEnabled(ThinkValue? thinkLevel)
+    {
+        if (thinkLevel == null)
+        {
+            return null; // Let server/agent decide
+        }
+
+        // Check if the level indicates thinking should be disabled
+        var levelString = thinkLevel.Value.ToString();
+        if (string.Equals(levelString, "false", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // Any other value (low, medium, high, true) means thinking is enabled
+        return true;
     }
 
     private async Task PlayResponseAsync(string text, CancellationToken cancellationToken)

@@ -13,6 +13,8 @@ public class HandsFreeServiceTests
     private readonly Mock<ISignalRSpeechService> _mockSpeechService;
     private readonly Mock<IChatApiService> _mockChatApiService;
     private readonly Mock<IChatSessionNotifier> _mockChatSessionNotifier;
+    private readonly Mock<IChatPreferencesService> _mockChatPreferencesService;
+    private readonly Mock<IAgentToolsService> _mockAgentToolsService;
     private readonly HandsFreeService _sut;
 
     public HandsFreeServiceTests()
@@ -22,13 +24,33 @@ public class HandsFreeServiceTests
         _mockSpeechService = new Mock<ISignalRSpeechService>();
         _mockChatApiService = new Mock<IChatApiService>();
         _mockChatSessionNotifier = new Mock<IChatSessionNotifier>();
+        _mockChatPreferencesService = new Mock<IChatPreferencesService>();
+        _mockAgentToolsService = new Mock<IAgentToolsService>();
+
+        // Setup default behavior for preferences service
+        _mockChatPreferencesService
+            .Setup(x => x.GetDisabledToolIdsAsync(It.IsAny<Guid?>()))
+            .ReturnsAsync(new HashSet<Guid>());
+        _mockChatPreferencesService
+            .Setup(x => x.GetThinkLevelAsync(It.IsAny<Guid?>()))
+            .ReturnsAsync((ThinkValue?)null);
+
+        // Setup default behavior for agent tools service
+        _mockAgentToolsService
+            .Setup(x => x.GetAgentToolsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<AesirToolBase>());
+        _mockAgentToolsService
+            .Setup(x => x.GetAgentToolRequestsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<ToolRequest>());
 
         _sut = new HandsFreeService(
             _mockAudioCapture.Object,
             _mockAudioPlayback.Object,
             _mockSpeechService.Object,
             _mockChatApiService.Object,
-            _mockChatSessionNotifier.Object);
+            _mockChatSessionNotifier.Object,
+            _mockChatPreferencesService.Object,
+            _mockAgentToolsService.Object);
     }
 
     [Fact]

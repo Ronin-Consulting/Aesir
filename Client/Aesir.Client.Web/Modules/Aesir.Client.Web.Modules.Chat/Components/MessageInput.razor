@@ -1,6 +1,7 @@
 @using Aesir.Client.Web.Modules.Chat.Services
 @using Aesir.Client.Web.Modules.Chat.Models
 @using Aesir.Client.Web.Modules.Chat.Components
+@using Aesir.Client.Web.Infrastructure.Services
 @using Aesir.Common.Models
 @using Microsoft.AspNetCore.Components.Forms
 @inject IChatStateService ChatState
@@ -128,7 +129,8 @@
                                Size="Size.Small"
                                Color="Color.Default"
                                OnClick="NavigateToHandsFree"
-                               Title="Hands-Free Mode"
+                               Disabled="@HasPendingUnsubmittedFiles"
+                               Title="@HandsFreeButtonTooltip"
                                Class="hands-free-button" />
 
                 <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
@@ -462,6 +464,19 @@
     private string AttachButtonTooltip => _isRagEnabled
         ? "Attach files"
         : "Assign RagTool to this agent to enable file uploads";
+
+    /// <summary>
+    /// Returns true if there are files attached that haven't been submitted with a message.
+    /// This prevents navigation to hands-free mode until files are either submitted or removed.
+    /// </summary>
+    private bool HasPendingUnsubmittedFiles => _pendingFiles.Any(f =>
+        f.Status == UploadStatus.Pending ||
+        f.Status == UploadStatus.Uploading ||
+        f.Status == UploadStatus.Completed);
+
+    private string HandsFreeButtonTooltip => HasPendingUnsubmittedFiles
+        ? "Submit or remove attached files before using hands-free mode"
+        : "Hands-Free Mode";
 
     private ElementReference _textFieldWrapper;
     private bool _tabInsertionEnabled;

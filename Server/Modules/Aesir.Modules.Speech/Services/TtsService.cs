@@ -141,6 +141,21 @@ public partial class TtsService : ITtsService
 
         _logger.LogInformation("Initializing TTS engine with model: {ModelPath}", _config.ModelPath);
 
+        // Log model file details for debugging
+        var modelFileInfo = new FileInfo(_config.ModelPath);
+        _logger.LogInformation("TTS model file size: {Size:N0} bytes ({SizeMB:F2} MB)",
+            modelFileInfo.Length, modelFileInfo.Length / (1024.0 * 1024.0));
+
+        var espeakDataDir = Path.Combine(
+            Path.GetDirectoryName(_config.ModelPath) ?? throw new InvalidOperationException(), "espeak-ng-data");
+
+        _logger.LogInformation("TTS config: Tokens={TokensPath}, DataDir={DataDir}, NumThreads={NumThreads}, Provider={Provider}",
+            tokensPath, espeakDataDir, _config.NumThreads, _config.CudaEnabled ? "cuda" : "cpu");
+
+        // Log available memory before loading model
+        var gcMemory = GC.GetTotalMemory(false);
+        _logger.LogInformation("Memory before TTS model load: GC={GcMemory:N0} bytes", gcMemory);
+
         var ttsEngineConfig = new OfflineTtsConfig
         {
             Model = new OfflineTtsModelConfig
@@ -149,15 +164,30 @@ public partial class TtsService : ITtsService
                 {
                     Model = _config.ModelPath,
                     Tokens = tokensPath,
-                    DataDir = Path.Combine(
-                        Path.GetDirectoryName(_config.ModelPath) ?? throw new InvalidOperationException(), "espeak-ng-data")
+                    DataDir = espeakDataDir
                 },
                 Debug = _config.Debug,
                 NumThreads = _config.NumThreads,
                 Provider = _config.CudaEnabled ? "cuda" : "cpu"
             }
         };
-        _ttsEngine = new OfflineTts(ttsEngineConfig);
+
+        _logger.LogInformation("Creating OfflineTts instance...");
+        try
+        {
+            _ttsEngine = new OfflineTts(ttsEngineConfig);
+            _logger.LogInformation("TTS engine created successfully. SampleRate={SampleRate}", _ttsEngine.SampleRate);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create TTS engine. This may indicate a native library crash.");
+            throw;
+        }
+
+        // Log memory after loading
+        var gcMemoryAfter = GC.GetTotalMemory(false);
+        _logger.LogInformation("Memory after TTS model load: GC={GcMemory:N0} bytes (delta: {Delta:N0})",
+            gcMemoryAfter, gcMemoryAfter - gcMemory);
     }
 
     /// <summary>

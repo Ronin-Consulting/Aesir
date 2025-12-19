@@ -2,7 +2,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using Aesir.Client.Web.Modules.Chat.Components;
-using Aesir.Client.Web.Modules.Chat.Services;
+using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Common.Models;
 
 namespace Aesir.Client.Web.Tests.Unit.Chat.Components;
