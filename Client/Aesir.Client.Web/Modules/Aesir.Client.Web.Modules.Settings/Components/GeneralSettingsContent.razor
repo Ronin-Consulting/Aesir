@@ -138,39 +138,27 @@
                     <CardHeaderContent>
                         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                             <MudIcon Icon="@Icons.Material.Filled.RecordVoiceOver" Color="Color.Primary" />
-                            <MudText Typo="Typo.h6">Speech Models</MudText>
+                            <MudText Typo="Typo.h6">Speech Model</MudText>
                             <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
                                 Server Configured
                             </MudChip>
                         </MudStack>
                         <MudText Typo="Typo.body2" Color="Color.Secondary">
-                            Speech models are configured on the server. These settings are read-only.
+                            Text-to-speech voice used for hands-free mode. Configured on the server.
                         </MudText>
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    <MudStack Spacing="3">
-                        <MudTextField @bind-Value="_settings.TtsModelPath"
-                                      Label="Text-to-Speech Model Path"
-                                      Variant="Variant.Outlined"
-                                      ReadOnly="true"
-                                      Disabled="true"
-                                      HelperText="Path to the TTS model on the server" />
-
-                        <MudTextField @bind-Value="_settings.SttModelPath"
-                                      Label="Speech-to-Text Model Path"
-                                      Variant="Variant.Outlined"
-                                      ReadOnly="true"
-                                      Disabled="true"
-                                      HelperText="Path to the STT model on the server" />
-
-                        <MudTextField @bind-Value="_settings.VadModelPath"
-                                      Label="Voice Activity Detection Model Path"
-                                      Variant="Variant.Outlined"
-                                      ReadOnly="true"
-                                      Disabled="true"
-                                      HelperText="Path to the VAD model on the server" />
-                    </MudStack>
+                    <MudSelect T="string"
+                               Value="@GetTtsModelDisplayName()"
+                               Label="Voice Model"
+                               Variant="Variant.Outlined"
+                               Disabled="true"
+                               ReadOnly="true"
+                               HelperText="@GetTtsModelDescription()">
+                        <MudSelectItem Value="@("Lessac")">Lessac (High Quality)</MudSelectItem>
+                        <MudSelectItem Value="@("Joe")">Joe (Medium Quality)</MudSelectItem>
+                    </MudSelect>
                 </MudCardContent>
             </MudCard>
 
@@ -412,6 +400,31 @@
             VadModelPath = source.VadModelPath,
             GoogleSearchEngineId = source.GoogleSearchEngineId,
             GoogleApiKey = source.GoogleApiKey
+        };
+    }
+
+    private string GetTtsModelDisplayName()
+    {
+        if (string.IsNullOrEmpty(_settings.TtsModelPath))
+            return "Not Configured";
+
+        if (_settings.TtsModelPath.Contains("lessac", StringComparison.OrdinalIgnoreCase))
+            return "Lessac";
+
+        if (_settings.TtsModelPath.Contains("joe", StringComparison.OrdinalIgnoreCase))
+            return "Joe";
+
+        return "Unknown";
+    }
+
+    private string GetTtsModelDescription()
+    {
+        var model = GetTtsModelDisplayName();
+        return model switch
+        {
+            "Lessac" => "Professional female voice with clear articulation. Best for general use.",
+            "Joe" => "Natural male voice with conversational tone. Faster processing.",
+            _ => "Voice model information unavailable."
         };
     }
 }
