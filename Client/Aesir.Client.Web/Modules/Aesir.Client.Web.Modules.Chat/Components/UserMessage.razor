@@ -10,11 +10,8 @@
 <div class="user-message @ThemeClass">
     <div class="message-wrapper">
         <div class="message-bubble">
-            @* Main content row: Avatar + Message *@
+            @* Main content row *@
             <div class="message-main">
-            <div class="user-avatar" title="@UserDisplayName">
-                <span class="initials">@UserInitials</span>
-            </div>
             <div class="message-content">
                 @if (_isEditing)
                 {
@@ -134,7 +131,7 @@
     .user-message {
         display: flex;
         flex-direction: column;
-        align-items: flex-start;
+        align-items: flex-end;
         margin-bottom: 16px;
         padding: 0 48px;
     }
@@ -149,29 +146,20 @@
     .user-message .message-bubble {
         display: flex;
         flex-direction: column;
-        border-radius: 28px;
-        padding: 8px 20px 8px 8px;
+        border-radius: 12px;
+        padding: 12px 20px;
         position: relative;
     }
 
-    /* Main content row: Avatar + Message */
+    /* Main content row */
     .user-message .message-main {
         display: flex;
         align-items: flex-start;
-        gap: 12px;
     }
 
     /* Dark theme styles */
     .user-message.theme-dark .message-bubble {
         background-color: #424242;
-    }
-
-    .user-message.theme-dark .user-avatar {
-        background-color: var(--mud-palette-primary);
-    }
-
-    .user-message.theme-dark .user-avatar .initials {
-        color: #ffffff;
     }
 
     .user-message.theme-dark .message-text {
@@ -183,33 +171,8 @@
         background-color: #e0e0e0;
     }
 
-    .user-message.theme-light .user-avatar {
-        background-color: var(--mud-palette-primary);
-    }
-
-    .user-message.theme-light .user-avatar .initials {
-        color: #ffffff;
-    }
-
     .user-message.theme-light .message-text {
         color: #212121;
-    }
-
-    .user-message .user-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .user-message .user-avatar .initials {
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
     }
 
     .user-message .message-content {
@@ -558,8 +521,6 @@
     /// </summary>
     private bool _copied;
 
-    private string UserInitials => GetInitials(UserDisplayName);
-
     /// <summary>
     /// Image file attachments for this message.
     /// </summary>
@@ -611,32 +572,6 @@
         }
 
         return null;
-    }
-
-    private static string GetInitials(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return "U";
-
-        // Handle email addresses - use the part before @
-        if (name.Contains('@'))
-        {
-            name = name.Split('@')[0];
-        }
-
-        // Try to split by common separators (space, dot, underscore)
-        var parts = name.Split([' ', '.', '_'], StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-        {
-            return $"{char.ToUpper(parts[0][0])}{char.ToUpper(parts[^1][0])}";
-        }
-
-        // Single name - take first two characters
-        if (name.Length >= 2)
-        {
-            return $"{char.ToUpper(name[0])}{char.ToUpper(name[1])}";
-        }
-
-        return name.Length > 0 ? char.ToUpper(name[0]).ToString() : "U";
     }
 
     private string GetDisplayContent()
