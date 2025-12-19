@@ -98,7 +98,7 @@ public class Program
                 }
             }
 
-            app.MapHealthChecks("/healthz");
+            app.MapHealthChecks("/health");
 
             if (app.Environment.IsDevelopment())
             {

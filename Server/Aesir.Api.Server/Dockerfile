@@ -28,8 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get install -y --no-install-recommends docker-ce-cli \
     # Cleanup
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-USER $APP_UID
+    && rm -rf /var/lib/apt/lists/* \
+    && adduser --disabled-password --gecos "" --uid 1000 appuser
+USER appuser
 WORKDIR /app
 EXPOSE 80
 
