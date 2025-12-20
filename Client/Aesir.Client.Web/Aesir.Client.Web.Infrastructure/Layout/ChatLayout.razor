@@ -172,6 +172,9 @@
     </MudDrawer>
 
     <MudMainContent Class="chat-main-content">
+        @* Transparent backdrop for top bar - content scrolls under this *@
+        <div class="top-bar-backdrop"></div>
+
         @* Floating Sidebar Toggle - Always visible at left edge of main content *@
         <div class="sidebar-toggle-container">
             <MudIconButton Icon="@Icons.Material.Filled.ViewSidebar"
@@ -317,8 +320,20 @@
         height: 100vh;
         overflow: hidden;
         position: relative;
-        /* Reduce default MudBlazor padding-top by 25% (64px -> 48px) */
-        padding-top: 48px !important;
+        padding-top: 0 !important;
+    }
+
+    .top-bar-backdrop {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 48px;
+        background-color: color-mix(in srgb, var(--mud-palette-surface) 75%, transparent);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        z-index: 5;
+        pointer-events: none;
     }
 
     .title-container {

@@ -148,10 +148,22 @@
 
 <style>
     .message-input-wrapper {
-        padding: 0 48px 24px 48px;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 16px 48px 24px 48px;
         max-width: 900px;
         margin: 0 auto;
         width: 100%;
+        background: linear-gradient(
+            to bottom,
+            transparent 0%,
+            color-mix(in srgb, var(--mud-palette-surface) 75%, transparent) 16px
+        );
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        z-index: 5;
     }
 
     .message-input-container {
