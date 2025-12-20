@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using Aesir.Client.Web.Infrastructure.Models;
+using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.Chat.Models;
 
 namespace Aesir.Client.Web.Modules.Chat.Services;

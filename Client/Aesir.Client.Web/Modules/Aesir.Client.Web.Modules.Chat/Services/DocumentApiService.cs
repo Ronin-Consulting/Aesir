@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Aesir.Client.Web.Modules.Chat.Models;
+using Aesir.Client.Web.Infrastructure.Models;
+using Aesir.Client.Web.Infrastructure.Services;
 using Microsoft.AspNetCore.Components.Forms;
 
 namespace Aesir.Client.Web.Modules.Chat.Services;

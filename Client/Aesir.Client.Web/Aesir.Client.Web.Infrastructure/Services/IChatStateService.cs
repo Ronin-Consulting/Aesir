@@ -1,6 +1,6 @@
 using Aesir.Common.Models;
 
-namespace Aesir.Client.Web.Modules.Chat.Services;
+namespace Aesir.Client.Web.Infrastructure.Services;
 
 /// <summary>
 /// Service for managing chat state including selected agent and current conversation.

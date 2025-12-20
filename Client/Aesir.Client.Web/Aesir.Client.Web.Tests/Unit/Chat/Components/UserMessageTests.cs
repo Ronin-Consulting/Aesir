@@ -4,6 +4,7 @@ using MudBlazor;
 using MudBlazor.Services;
 using Aesir.Client.Web.Modules.Chat.Components;
 using Aesir.Client.Web.Modules.Chat.Services;
+using Aesir.Client.Web.Infrastructure.Models;
 using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Common.Models;
 using Microsoft.JSInterop;
@@ -517,7 +518,7 @@ public class UserMessageTests : TestContext
         var cut = RenderComponent<UserMessage>(parameters => parameters
             .Add(p => p.Message, message)
             .Add(p => p.FilesLoaded, false)
-            .Add(p => p.ExistingFiles, Array.Empty<Aesir.Client.Web.Modules.Chat.Models.ConversationFile>()));
+            .Add(p => p.ExistingFiles, Array.Empty<ConversationFile>()));
 
         // Assert - File should NOT show as deleted (assume it exists until files load)
         // Check the actual file-card element's class attribute, not just any markup containing the text
@@ -536,7 +537,7 @@ public class UserMessageTests : TestContext
             Content = "<file>document.pdf</file>What is in this file?"
         };
 
-        var existingFiles = new List<Aesir.Client.Web.Modules.Chat.Models.ConversationFile>
+        var existingFiles = new List<ConversationFile>
         {
             new() { Id = Guid.NewGuid(), FileName = "/conversation-123/document.pdf" }
         };
@@ -563,7 +564,7 @@ public class UserMessageTests : TestContext
             Content = "<file>document.pdf</file>What is in this file?"
         };
 
-        var existingFiles = new List<Aesir.Client.Web.Modules.Chat.Models.ConversationFile>
+        var existingFiles = new List<ConversationFile>
         {
             new() { Id = Guid.NewGuid(), FileName = "/conversation-123/other-file.pdf" }
         };
@@ -595,7 +596,7 @@ public class UserMessageTests : TestContext
         var cut = RenderComponent<UserMessage>(parameters => parameters
             .Add(p => p.Message, message)
             .Add(p => p.FilesLoaded, true)
-            .Add(p => p.ExistingFiles, Array.Empty<Aesir.Client.Web.Modules.Chat.Models.ConversationFile>()));
+            .Add(p => p.ExistingFiles, Array.Empty<ConversationFile>()));
 
         // Assert - File SHOULD show as deleted (this was the bug - previously returned false)
         var fileCard = cut.Find(".file-card");

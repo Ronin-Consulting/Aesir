@@ -10,6 +10,7 @@ using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Client.Web.Modules.Settings;
 using Aesir.Client.Web.Modules.Wizard;
 using Aesir.Client.Web.Modules.Observability;
+using Aesir.Client.Web.Modules.Observability.Components;
 using Aesir.Client.Web.Modules.HandsFree;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -24,6 +25,9 @@ builder.Services.AddScoped<IThemeService, ThemeService>();
 
 // Add configuration change notifier (singleton to share across all components)
 builder.Services.AddSingleton<IConfigurationChangedNotifier, ConfigurationChangedNotifier>();
+
+// Add settings tab registry for dynamic tab registration
+builder.Services.AddSingleton<ISettingsTabRegistry, SettingsTabRegistry>();
 
 // Add chat session notifier (singleton to share session events across modules)
 builder.Services.AddSingleton<IChatSessionNotifier, ChatSessionNotifier>();
@@ -65,6 +69,17 @@ builder.Services.AddModule<HandsFreeModule>();
 
 // Build the app
 var app = builder.Build();
+
+// Register dynamic settings tabs from modules
+var tabRegistry = app.Services.GetRequiredService<ISettingsTabRegistry>();
+tabRegistry.RegisterTab(new SettingsTabDefinition
+{
+    TabId = "observability",
+    Label = "Observability",
+    Icon = "Timeline",
+    Priority = 600, // After built-in tabs (100-500)
+    ContentComponentType = typeof(ObservabilityContent)
+});
 
 // Initialize module navigation
 app.Services.InitializeModuleNavigation();

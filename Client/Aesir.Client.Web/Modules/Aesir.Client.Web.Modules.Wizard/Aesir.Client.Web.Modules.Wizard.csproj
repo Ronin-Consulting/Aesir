@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Aesir.Client.Web.Infrastructure\Aesir.Client.Web.Infrastructure.csproj" />
+    <!-- Wizard is a setup module that configures Settings - this dependency is intentional -->
     <ProjectReference Include="..\Aesir.Client.Web.Modules.Settings\Aesir.Client.Web.Modules.Settings.csproj" />
   </ItemGroup>
 

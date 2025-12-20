@@ -1,15 +1,35 @@
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
+using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.Settings.Components;
 
 namespace Aesir.Client.Web.Tests.Unit.Settings.Components;
 
 public class SettingsTabsTests : TestContext
 {
+    private readonly Mock<ISettingsTabRegistry> _mockTabRegistry;
+
     public SettingsTabsTests()
     {
+        // Create the Observability tab definition (normally registered by the Observability module)
+        var observabilityTab = new SettingsTabDefinition
+        {
+            TabId = "observability",
+            Label = "Observability",
+            Icon = "Timeline",
+            Priority = 100,
+            ContentComponentType = typeof(MudText) // Placeholder for testing
+        };
+
+        _mockTabRegistry = new Mock<ISettingsTabRegistry>();
+        _mockTabRegistry.Setup(x => x.GetTabs()).Returns(new List<SettingsTabDefinition> { observabilityTab });
+        _mockTabRegistry.Setup(x => x.GetTab("observability")).Returns(observabilityTab);
+        _mockTabRegistry.Setup(x => x.GetTab(It.Is<string>(s => s != "observability"))).Returns((SettingsTabDefinition?)null);
+
+        Services.AddSingleton(_mockTabRegistry.Object);
         Services.AddMudServices();
         JSInterop.Mode = JSRuntimeMode.Loose;
     }

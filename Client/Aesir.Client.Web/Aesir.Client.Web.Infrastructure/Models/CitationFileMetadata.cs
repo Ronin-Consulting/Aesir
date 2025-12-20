@@ -1,4 +1,4 @@
-namespace Aesir.Client.Web.Modules.Chat.Models;
+namespace Aesir.Client.Web.Infrastructure.Models;
 
 /// <summary>
 /// Metadata about a citation file.

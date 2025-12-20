@@ -17,8 +17,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Aesir.Client.Web.Infrastructure\Aesir.Client.Web.Infrastructure.csproj" />
-    <ProjectReference Include="..\Aesir.Client.Web.Modules.Chat\Aesir.Client.Web.Modules.Chat.csproj" />
-    <ProjectReference Include="..\Aesir.Client.Web.Modules.Observability\Aesir.Client.Web.Modules.Observability.csproj" />
   </ItemGroup>
 
 </Project>

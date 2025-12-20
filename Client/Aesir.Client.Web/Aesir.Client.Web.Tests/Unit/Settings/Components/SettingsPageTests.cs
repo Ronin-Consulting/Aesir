@@ -23,6 +23,7 @@ public class SettingsPageTests : TestContext
     private readonly Mock<IAgentService> _mockAgentService;
     private readonly Mock<IObservabilityService> _mockObservabilityService;
     private readonly Mock<IModelApiService> _mockModelApiService;
+    private readonly Mock<ISettingsTabRegistry> _mockTabRegistry;
     private readonly Mock<IDialogService> _mockDialogService;
     private readonly Mock<ISnackbar> _mockSnackbar;
     private readonly FakeNavigationManager _navigationManager;
@@ -39,6 +40,20 @@ public class SettingsPageTests : TestContext
         _mockDialogService = new Mock<IDialogService>();
         _mockSnackbar = new Mock<ISnackbar>();
 
+        // Create the Observability tab definition (normally registered by the Observability module)
+        var observabilityTab = new SettingsTabDefinition
+        {
+            TabId = "observability",
+            Label = "Observability",
+            Icon = "Timeline",
+            Priority = 100,
+            ContentComponentType = typeof(Aesir.Client.Web.Modules.Observability.Components.ObservabilityContent)
+        };
+        _mockTabRegistry = new Mock<ISettingsTabRegistry>();
+        _mockTabRegistry.Setup(x => x.GetTabs()).Returns(new List<SettingsTabDefinition> { observabilityTab });
+        _mockTabRegistry.Setup(x => x.GetTab("observability")).Returns(observabilityTab);
+        _mockTabRegistry.Setup(x => x.GetTab(It.Is<string>(s => s != "observability"))).Returns((SettingsTabDefinition?)null);
+
         // Register services
         Services.AddSingleton(_mockGeneralSettingsService.Object);
         Services.AddSingleton(_mockInferenceEngineService.Object);
@@ -47,6 +62,7 @@ public class SettingsPageTests : TestContext
         Services.AddSingleton(_mockAgentService.Object);
         Services.AddSingleton(_mockObservabilityService.Object);
         Services.AddSingleton(_mockModelApiService.Object);
+        Services.AddSingleton(_mockTabRegistry.Object);
         Services.AddSingleton(_mockDialogService.Object);
         Services.AddSingleton(_mockSnackbar.Object);
         Services.AddMudServices();

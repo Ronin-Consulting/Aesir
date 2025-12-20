@@ -1,7 +1,7 @@
-using Aesir.Client.Web.Modules.Chat.Models;
+using Aesir.Client.Web.Infrastructure.Models;
 using Microsoft.AspNetCore.Components.Forms;
 
-namespace Aesir.Client.Web.Modules.Chat.Services;
+namespace Aesir.Client.Web.Infrastructure.Services;
 
 /// <summary>
 /// Service for managing document uploads and retrieval for conversations.

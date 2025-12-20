@@ -1,6 +1,6 @@
 @page "/settings"
-@layout Aesir.Client.Web.Modules.Chat.Layout.ChatLayout
-@using Aesir.Client.Web.Modules.Observability.Components
+@layout ChatLayout
+@inject ISettingsTabRegistry TabRegistry
 
 <PageTitle>Settings - AESIR</PageTitle>
 
@@ -26,11 +26,19 @@
         case "agents":
             <AgentsContent />
             break;
-        case "observability":
-            <ObservabilityContent />
-            break;
         default:
-            <GeneralSettingsContent />
+            {
+                // Check for dynamically registered tab
+                var dynamicTab = TabRegistry.GetTab(_selectedTab);
+                if (dynamicTab != null)
+                {
+                    <DynamicComponent Type="@dynamicTab.ContentComponentType" />
+                }
+                else
+                {
+                    <GeneralSettingsContent />
+                }
+            }
             break;
     }
 </SettingsTabs>

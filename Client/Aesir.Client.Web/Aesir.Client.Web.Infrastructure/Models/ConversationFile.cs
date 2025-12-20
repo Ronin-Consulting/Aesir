@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Aesir.Client.Web.Modules.Chat.Models;
+namespace Aesir.Client.Web.Infrastructure.Models;
 
 /// <summary>
 /// Represents a file attached to a conversation.

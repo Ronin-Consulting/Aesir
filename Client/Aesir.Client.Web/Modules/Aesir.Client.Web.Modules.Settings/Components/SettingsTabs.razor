@@ -1,4 +1,5 @@
 @namespace Aesir.Client.Web.Modules.Settings.Components
+@inject ISettingsTabRegistry TabRegistry
 
 <div class="settings-panel">
     <div class="settings-tabs-container">
@@ -23,13 +24,19 @@
                                  OnClick="HandleTabClick" />
             </div>
 
-            @* Utilities Group *@
-            <div class="tab-group">
-                <div class="tab-group-header">Utilities</div>
-                <SettingsTabItem Icon="Timeline" Label="Observability" TabId="observability"
-                                 IsSelected="@(SelectedTab == "observability")"
-                                 OnClick="HandleTabClick" />
-            </div>
+            @* Utilities Group - Dynamic tabs from registry *@
+            @if (TabRegistry.GetTabs().Any())
+            {
+                <div class="tab-group">
+                    <div class="tab-group-header">Utilities</div>
+                    @foreach (var tab in TabRegistry.GetTabs())
+                    {
+                        <SettingsTabItem Icon="@tab.Icon" Label="@tab.Label" TabId="@tab.TabId"
+                                         IsSelected="@(SelectedTab == tab.TabId)"
+                                         OnClick="HandleTabClick" />
+                    }
+                </div>
+            }
 
             @* Setup Wizard Link *@
             <div class="settings-footer">

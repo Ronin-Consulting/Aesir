@@ -6,6 +6,8 @@ using Moq;
 using Aesir.Client.Web.Modules.Chat.Components;
 using Aesir.Client.Web.Modules.Chat.Models;
 using Aesir.Client.Web.Modules.Chat.Services;
+using Aesir.Client.Web.Infrastructure.Components;
+using Aesir.Client.Web.Infrastructure.Models;
 using Aesir.Client.Web.Infrastructure.Services;
 
 namespace Aesir.Client.Web.Tests.Unit.Chat.Components;

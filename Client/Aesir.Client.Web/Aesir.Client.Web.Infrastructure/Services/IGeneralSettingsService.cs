@@ -1,7 +1,7 @@
 using Aesir.Client.Web.Infrastructure.Http;
 using Aesir.Common.Models;
 
-namespace Aesir.Client.Web.Modules.Settings.Services;
+namespace Aesir.Client.Web.Infrastructure.Services;
 
 /// <summary>
 /// Service interface for managing general settings.

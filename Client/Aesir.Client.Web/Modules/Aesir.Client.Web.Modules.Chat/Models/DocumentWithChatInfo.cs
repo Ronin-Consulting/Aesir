@@ -1,3 +1,5 @@
+using Aesir.Client.Web.Infrastructure.Models;
+
 namespace Aesir.Client.Web.Modules.Chat.Models;
 
 /// <summary>

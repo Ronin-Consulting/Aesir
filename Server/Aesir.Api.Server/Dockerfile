@@ -29,7 +29,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Cleanup
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && adduser --disabled-password --gecos "" --uid 1000 appuser
+    # Create appuser: try UID 1000 first, fall back to auto-assigned UID if already taken
+    && (getent passwd appuser > /dev/null 2>&1 || adduser --disabled-password --gecos "" --uid 1000 appuser 2>/dev/null || adduser --disabled-password --gecos "" appuser)
 USER appuser
 WORKDIR /app
 EXPOSE 80
