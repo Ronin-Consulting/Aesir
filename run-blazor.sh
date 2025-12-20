@@ -37,10 +37,10 @@ if lsof -ti:$PORT > /dev/null 2>&1; then
     echo "Existing process stopped."
 fi
 
-# Also kill any dotnet watch processes for this app
-if pgrep -f "dotnet.*watch.*Aesir.Client.Web.App" > /dev/null 2>&1; then
-    echo "Stopping existing dotnet watch process..."
-    pkill -f "dotnet.*watch.*Aesir.Client.Web.App" 2>/dev/null || true
+# Also kill any dotnet processes for this app
+if pgrep -f "dotnet.*Aesir.Client.Web.App" > /dev/null 2>&1; then
+    echo "Stopping existing dotnet process..."
+    pkill -f "dotnet.*Aesir.Client.Web.App" 2>/dev/null || true
     sleep 1
 fi
 
@@ -62,5 +62,5 @@ echo "Access via: https://aesir.localhost (reverse proxy)"
 echo "Press Ctrl+C to stop"
 echo ""
 
-# Start the dev server with hot reload
-dotnet watch run --urls "http://localhost:$PORT"
+# Start the dev server (no hot reload - more stable)
+dotnet run --urls "http://localhost:$PORT"

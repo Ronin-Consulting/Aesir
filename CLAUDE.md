@@ -72,7 +72,7 @@ AESIR is an AI-powered chat orchestration platform with:
 
 2. **Start Client**: `./run-blazor.sh`
    - Auto-kills existing processes on port 5173
-   - Starts hot reload dev server
+   - Starts dev server (no hot reload - rebuild required for changes)
 
 3. **Open**: http://localhost:5173/ or https://aesir.localhost
 
@@ -572,7 +572,8 @@ Connection strings use Docker service names (`pgdb`) which only resolve within D
 - Update or create tests if needed
 
 **Testing:**
-- Always stop existing `dotnet watch` processes before restarting
+- Always stop existing `dotnet` processes before restarting Blazor (use `./run-blazor.sh` which handles this)
+- Do NOT use `dotnet watch` - it is unstable; use `dotnet run` instead
 - Include appropriate timeout for test runs
 
 ### Branding
