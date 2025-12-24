@@ -35,18 +35,19 @@ public class OllamaPromptExecutionSettingsBuilder(
 
     protected override void ConfigureForThinking(OllamaPromptExecutionSettings settings, AesirChatRequestBase request)
     {
-        logger.LogDebug("[Thinking Config] Request.EnableThinking={EnableThinking}, Request.ThinkValue={ThinkValue}",
+        logger.LogInformation("[Ollama-Thinking] === CONFIGURING THINKING FOR OLLAMA ===");
+        logger.LogInformation("[Ollama-Thinking] Input: EnableThinking={EnableThinking}, ThinkValue={ThinkValue}",
             request.EnableThinking, request.ThinkValue);
 
         if (request.EnableThinking ?? false)
         {
             var thinkValue = request.ThinkValue ?? true;
             settings.ExtensionData!.Add("think", thinkValue);
-            logger.LogDebug("[Thinking Config] Added 'think' to ExtensionData with value: {ThinkValue}", thinkValue);
+            logger.LogInformation("[Ollama-Thinking] === SENDING TO OLLAMA API: think={ThinkValue} ===", thinkValue);
         }
         else
         {
-            logger.LogDebug("[Thinking Config] Thinking NOT enabled - 'think' parameter will NOT be sent to Ollama");
+            logger.LogInformation("[Ollama-Thinking] Thinking NOT enabled - 'think' parameter will NOT be sent to Ollama");
         }
     }
 }

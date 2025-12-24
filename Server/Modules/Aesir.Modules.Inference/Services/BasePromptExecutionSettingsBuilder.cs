@@ -23,8 +23,11 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
 
     public async Task<PromptExecutionSettingsResult<TPromptExecutionSettings>> BuildAsync(AesirChatRequestBase request)
     {
-        Logger.LogWarning("[PromptSettings] BuildAsync called for request with {ToolCount} tools", request.Tools?.Count ?? 0);
-        Logger.LogWarning("[PromptSettings] Conversation has {MessageCount} messages", request.Conversation?.Messages?.Count ?? 0);
+        Logger.LogInformation("[PromptSettings] === BUILD PROMPT SETTINGS ===");
+        Logger.LogInformation("[PromptSettings] Model={Model}, EnableThinking={EnableThinking}, ThinkValue={ThinkValue}",
+            request.Model, request.EnableThinking, request.ThinkValue);
+        Logger.LogInformation("[PromptSettings] Tools={ToolCount}, Messages={MessageCount}",
+            request.Tools?.Count ?? 0, request.Conversation?.Messages?.Count ?? 0);
 
         var systemPromptVariables = new Dictionary<string, object>
         {
@@ -36,7 +39,14 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
         var settings = CreatePromptExecutionSettings(request);
 
         if(request.EnableThinking ?? false)
+        {
+            Logger.LogInformation("[PromptSettings] Thinking is ENABLED - calling ConfigureForThinking");
             ConfigureForThinking(settings, request);
+        }
+        else
+        {
+            Logger.LogInformation("[PromptSettings] Thinking is DISABLED - skipping ConfigureForThinking");
+        }
 
         await ConfigureBuiltInTools(settings, request, systemPromptVariables);
         await ConfigureExternalToolsAsync(settings, request, systemPromptVariables);
@@ -58,14 +68,14 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
         var enableDocumentSearch = hasRagTool && hasFileInMessages;
         var enableMcpTools = request.Tools.Any(t => t.IsMcpServerToolRequest);
 
-        Logger.LogWarning("[PromptSettings] hasRagTool={HasRagTool}, hasFileInMessages={HasFileInMessages}", hasRagTool, hasFileInMessages);
+        Logger.LogDebug("[PromptSettings] hasRagTool={HasRagTool}, hasFileInMessages={HasFileInMessages}", hasRagTool, hasFileInMessages);
         foreach (var msg in request.Conversation.Messages)
         {
-            Logger.LogWarning("[PromptSettings]   Message Role={Role}, HasFile={HasFile}, FileName={FileName}", msg.Role, msg.HasFile(), msg.GetFileName() ?? "null");
+            Logger.LogDebug("[PromptSettings]   Message Role={Role}, HasFile={HasFile}, FileName={FileName}", msg.Role, msg.HasFile(), msg.GetFileName() ?? "null");
         }
         foreach (var tool in request.Tools)
         {
-            Logger.LogWarning("[PromptSettings]   Tool: IsRag={IsRag}, IsWeb={IsWeb}, IsMcp={IsMcp}", tool.IsRagToolRequest, tool.IsWebSearchToolRequest, tool.IsMcpServerToolRequest);
+            Logger.LogDebug("[PromptSettings]   Tool: IsRag={IsRag}, IsWeb={IsWeb}, IsMcp={IsMcp}", tool.IsRagToolRequest, tool.IsWebSearchToolRequest, tool.IsMcpServerToolRequest);
         }
 
         kernelPluginArgs["PluginName"] = "ChatTools";
@@ -103,21 +113,21 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
         Kernel.Plugins.Add(plugin);
 
         // Log plugin configuration for debugging
-        Logger.LogWarning("[PromptSettings] enableWebSearch={EnableWebSearch}, enableDocumentSearch={EnableDocumentSearch}, enableMcpTools={EnableMcpTools}", enableWebSearch, enableDocumentSearch, enableMcpTools);
-        Logger.LogWarning("[PromptSettings] Plugin '{PluginName}' added with {FunctionCount} functions", plugin.Name, plugin.Count());
+        Logger.LogDebug("[PromptSettings] enableWebSearch={EnableWebSearch}, enableDocumentSearch={EnableDocumentSearch}, enableMcpTools={EnableMcpTools}", enableWebSearch, enableDocumentSearch, enableMcpTools);
+        Logger.LogDebug("[PromptSettings] Plugin '{PluginName}' added with {FunctionCount} functions", plugin.Name, plugin.Count());
         foreach (var func in plugin)
         {
-            Logger.LogWarning("[PromptSettings]   - Function: {FunctionName}", func.Name);
+            Logger.LogDebug("[PromptSettings]   - Function: {FunctionName}", func.Name);
         }
 
         if (enableWebSearch || enableDocumentSearch || enableMcpTools)
         {
             settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
-            Logger.LogWarning("[PromptSettings] FunctionChoiceBehavior set to Auto");
+            Logger.LogDebug("[PromptSettings] FunctionChoiceBehavior set to Auto");
         }
         else
         {
-            Logger.LogWarning("[PromptSettings] No tools enabled - FunctionChoiceBehavior NOT set");
+            Logger.LogDebug("[PromptSettings] No tools enabled - FunctionChoiceBehavior NOT set");
         }
     }
 

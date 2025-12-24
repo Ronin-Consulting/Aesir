@@ -148,6 +148,38 @@ public class ChatService : BaseChatService
 
         if (completionResults.Count > 0)
         {
+            // DEBUG: Log InnerContent type for non-streaming response
+            _logger.LogInformation("[OpenAI-Debug] Non-streaming - InnerContent type: {Type}",
+                completionResults[0].InnerContent?.GetType().FullName ?? "null");
+
+            // DEBUG: Log all metadata to find reasoning-related data
+            if (completionResults[0].Metadata != null)
+            {
+                foreach (var kvp in completionResults[0].Metadata!)
+                {
+                    _logger.LogInformation("[OpenAI-Debug] Non-streaming Metadata[{Key}] = {ValueType}: {Value}",
+                        kvp.Key,
+                        kvp.Value?.GetType().Name ?? "null",
+                        TruncateString(kvp.Value?.ToString(), 200));
+                }
+            }
+
+            // DEBUG: Try to serialize InnerContent to see raw structure
+            if (completionResults[0].InnerContent != null)
+            {
+                try
+                {
+                    var json = System.Text.Json.JsonSerializer.Serialize(completionResults[0].InnerContent,
+                        new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
+                    _logger.LogInformation("[OpenAI-Debug] Non-streaming InnerContent JSON: {Json}",
+                        TruncateString(json, 2000));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug("[OpenAI-Debug] Could not serialize non-streaming InnerContent: {Error}", ex.Message);
+                }
+            }
+
             var content = completionResults[0].Content ?? string.Empty;
             var promptTokens = 0;
             var completionTokens = 0;
@@ -190,11 +222,42 @@ public class ChatService : BaseChatService
 
         await foreach (var streamResult in streamingResults)
         {
-            //_logger.LogDebug("Received streaming content from Semantic Kernel: {Content}", streamResult.Content);
+            // DEBUG: Log InnerContent type to understand what SK gives us
+            _logger.LogInformation("[OpenAI-Debug] InnerContent type: {Type}",
+                streamResult.InnerContent?.GetType().FullName ?? "null");
+
+            // DEBUG: Log all metadata keys to find reasoning-related data
+            if (streamResult.Metadata != null)
+            {
+                foreach (var kvp in streamResult.Metadata)
+                {
+                    _logger.LogInformation("[OpenAI-Debug] Metadata[{Key}] = {ValueType}: {Value}",
+                        kvp.Key,
+                        kvp.Value?.GetType().Name ?? "null",
+                        TruncateString(kvp.Value?.ToString(), 200));
+                }
+            }
+
+            // DEBUG: Try to serialize InnerContent to see raw structure
+            if (streamResult.InnerContent != null)
+            {
+                try
+                {
+                    var json = System.Text.Json.JsonSerializer.Serialize(streamResult.InnerContent,
+                        new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
+                    _logger.LogInformation("[OpenAI-Debug] InnerContent JSON: {Json}",
+                        TruncateString(json, 2000));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug("[OpenAI-Debug] Could not serialize InnerContent: {Error}", ex.Message);
+                }
+            }
 
             var isComplete = streamResult is OpenAIStreamingChatMessageContent { FinishReason: ChatFinishReason.Stop };
 
             // NOTE: Currently, SK does not support streaming "reasoning" summary.
+            // TODO: Once we identify where reasoning content is in the response, update this logic.
 
             yield return (streamResult.Content ?? string.Empty, false, isComplete);
         }
@@ -248,5 +311,14 @@ public class ChatService : BaseChatService
         }
 
         return chatHistory;
+    }
+
+    /// <summary>
+    /// Truncates a string to a maximum length for logging purposes.
+    /// </summary>
+    private static string TruncateString(string? value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value)) return "null";
+        return value.Length <= maxLength ? value : value[..maxLength] + "...";
     }
 }
