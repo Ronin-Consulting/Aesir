@@ -32,22 +32,9 @@ namespace Aesir.Modules.Chat.Controllers
         [HttpPost("agent")]
         public async Task<AesirChatResult> AgentChatCompletionsAsync([FromBody] AesirAgentChatRequestBase request)
         {
-            // Log incoming request parameters
-            logger.LogInformation("[AgentChat] === INCOMING REQUEST ===");
-            logger.LogInformation("[AgentChat] Request.EnableThinking={EnableThinking}, Request.ThinkValue={ThinkValue}",
-                request.EnableThinking, request.ThinkValue);
-            logger.LogInformation("[AgentChat] AgentId={AgentId}, ChatSessionId={ChatSessionId}",
-                request.AgentId, request.ChatSessionId);
-
             var agent = await configurationService.GetAgentAsync(request.AgentId.Value);
             var tools = await configurationService.GetToolsUsedByAgentAsync(request.AgentId.Value);
             var mcpServers = await configurationService.GetMcpServersAsync();
-
-            logger.LogDebug("[AgentChat] Request received with {ToolCount} tools", request.Tools.Count);
-            foreach (var reqTool in request.Tools)
-            {
-                logger.LogDebug("[AgentChat] Request tool: {ToolName}, McpServer: {McpServer}", reqTool.ToolName, reqTool.McpServerName);
-            }
 
             // Apply inference engine master switch for thinking
             var (effectiveEnableThinking, effectiveThinkValue) = await ApplyInferenceEngineMasterSwitchAsync(
@@ -76,13 +63,6 @@ namespace Aesir.Modules.Chat.Controllers
                 Tools = filteredTools,
                 ThinkValue = effectiveThinkValue
             };
-
-            // Log what we're sending to the model
-            logger.LogInformation("[AgentChat] === SENDING TO MODEL ===");
-            logger.LogInformation("[AgentChat] Model={Model}, EnableThinking={EnableThinking}, ThinkValue={ThinkValue}",
-                chatRequest.Model, chatRequest.EnableThinking, chatRequest.ThinkValue);
-            logger.LogInformation("[AgentChat] MaxTokens={MaxTokens}, Temperature={Temperature}, TopP={TopP}",
-                chatRequest.MaxTokens, chatRequest.Temperature, chatRequest.TopP);
 
             // Resolve the correct ChatService based on the agent's inference engine
             var agentChatService = serviceProvider.GetKeyedService<IChatService>(agent.ChatInferenceEngineId.ToString());
@@ -102,13 +82,6 @@ namespace Aesir.Modules.Chat.Controllers
         [HttpPost("agent/streamed")]
         public async Task<IAsyncEnumerable<AesirChatStreamedResult>> AgentChatCompletionsStreamedAsync([FromBody] AesirAgentChatRequestBase request)
         {
-            // Log incoming request parameters
-            logger.LogInformation("[AgentChat-Streamed] === INCOMING REQUEST ===");
-            logger.LogInformation("[AgentChat-Streamed] Request.EnableThinking={EnableThinking}, Request.ThinkValue={ThinkValue}",
-                request.EnableThinking, request.ThinkValue);
-            logger.LogInformation("[AgentChat-Streamed] AgentId={AgentId}, ChatSessionId={ChatSessionId}",
-                request.AgentId, request.ChatSessionId);
-
             var agent = await configurationService.GetAgentAsync(request.AgentId.Value);
             var tools = await configurationService.GetToolsUsedByAgentAsync(request.AgentId.Value);
             var mcpServers = await configurationService.GetMcpServersAsync();
@@ -140,13 +113,6 @@ namespace Aesir.Modules.Chat.Controllers
                 Tools = filteredTools,
                 ThinkValue = effectiveThinkValue
             };
-
-            // Log what we're sending to the model
-            logger.LogInformation("[AgentChat-Streamed] === SENDING TO MODEL ===");
-            logger.LogInformation("[AgentChat-Streamed] Model={Model}, EnableThinking={EnableThinking}, ThinkValue={ThinkValue}",
-                chatRequest.Model, chatRequest.EnableThinking, chatRequest.ThinkValue);
-            logger.LogInformation("[AgentChat-Streamed] MaxTokens={MaxTokens}, Temperature={Temperature}, TopP={TopP}",
-                chatRequest.MaxTokens, chatRequest.Temperature, chatRequest.TopP);
 
             // Resolve the correct ChatService based on the agent's inference engine
             var agentChatService = serviceProvider.GetKeyedService<IChatService>(agent.ChatInferenceEngineId.ToString());

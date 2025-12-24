@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using Aesir.Infrastructure.Services;
+using Aesir.Modules.Inference.OpenAI.Stopgap;
 using Aesir.Modules.Inference.Services;
 using Aesir.Modules.Logging.Services;
 using Microsoft.Extensions.Logging;
@@ -148,38 +149,6 @@ public class ChatService : BaseChatService
 
         if (completionResults.Count > 0)
         {
-            // DEBUG: Log InnerContent type for non-streaming response
-            _logger.LogInformation("[OpenAI-Debug] Non-streaming - InnerContent type: {Type}",
-                completionResults[0].InnerContent?.GetType().FullName ?? "null");
-
-            // DEBUG: Log all metadata to find reasoning-related data
-            if (completionResults[0].Metadata != null)
-            {
-                foreach (var kvp in completionResults[0].Metadata!)
-                {
-                    _logger.LogInformation("[OpenAI-Debug] Non-streaming Metadata[{Key}] = {ValueType}: {Value}",
-                        kvp.Key,
-                        kvp.Value?.GetType().Name ?? "null",
-                        TruncateString(kvp.Value?.ToString(), 200));
-                }
-            }
-
-            // DEBUG: Try to serialize InnerContent to see raw structure
-            if (completionResults[0].InnerContent != null)
-            {
-                try
-                {
-                    var json = System.Text.Json.JsonSerializer.Serialize(completionResults[0].InnerContent,
-                        new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
-                    _logger.LogInformation("[OpenAI-Debug] Non-streaming InnerContent JSON: {Json}",
-                        TruncateString(json, 2000));
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug("[OpenAI-Debug] Could not serialize non-streaming InnerContent: {Error}", ex.Message);
-                }
-            }
-
             var content = completionResults[0].Content ?? string.Empty;
             var promptTokens = 0;
             var completionTokens = 0;
@@ -212,54 +181,86 @@ public class ChatService : BaseChatService
 
         var chatCompletionService = GetChatCompletionService(request.Model);
 
-        _kernel.Data.Add("ChatSessionId",request.ChatSessionId);
-        _kernel.Data.Add("ConversationId",request.Conversation.Id);
+        _kernel.Data.Add("ChatSessionId", request.ChatSessionId);
+        _kernel.Data.Add("ConversationId", request.Conversation.Id);
 
-        var streamingResults = chatCompletionService.GetStreamingChatMessageContentsAsync(
-            chatHistory,
-            settings,
-            _kernel);
+        // STOPGAP: Create reasoning content collector to intercept reasoning_content
+        // from llama.cpp/TTRA responses. Remove when OpenAI SDK or SK adds native support.
+        var reasoningCollectorLogger = _loggerFactory.CreateLogger<ReasoningContentCollector_Stopgap>();
+        await using var reasoningCollector = new ReasoningContentCollector_Stopgap(reasoningCollectorLogger);
+        ReasoningContentCollector_Stopgap.StoreInKernel(_kernel, reasoningCollector);
+
+        try
+        {
+            // STOPGAP: Enable AsyncLocal scope so HTTP handler can access collector
+            using (reasoningCollector.CreateScope())
+            {
+                var streamingResults = chatCompletionService.GetStreamingChatMessageContentsAsync(
+                    chatHistory,
+                    settings,
+                    _kernel);
+
+                // STOPGAP: Merge reasoning content with regular content
+                await foreach (var result in MergeReasoningAndContent_Stopgap(streamingResults, reasoningCollector))
+                {
+                    yield return result;
+                }
+            }
+        }
+        finally
+        {
+            ReasoningContentCollector_Stopgap.RemoveFromKernel(_kernel);
+        }
+    }
+
+    /// <summary>
+    /// STOPGAP: Merges reasoning content from the HTTP interceptor with regular content from SK.
+    /// Remove when native SDK support is available.
+    /// </summary>
+    private async IAsyncEnumerable<(string content, bool isThinking, bool isComplete)>
+        MergeReasoningAndContent_Stopgap(
+            IAsyncEnumerable<StreamingChatMessageContent> streamingResults,
+            ReasoningContentCollector_Stopgap reasoningCollector)
+    {
+        // Drain any reasoning chunks that arrived before first content
+        while (reasoningCollector.Reader.TryRead(out var chunk))
+        {
+            _logger.LogDebug("[Stopgap] Yielding pre-content reasoning chunk: {Content}",
+                chunk.Content.Length > 50 ? chunk.Content[..50] + "..." : chunk.Content);
+            yield return (chunk.Content, chunk.IsThinking, false);
+        }
 
         await foreach (var streamResult in streamingResults)
         {
-            // DEBUG: Log InnerContent type to understand what SK gives us
-            _logger.LogInformation("[OpenAI-Debug] InnerContent type: {Type}",
-                streamResult.InnerContent?.GetType().FullName ?? "null");
-
-            // DEBUG: Log all metadata keys to find reasoning-related data
-            if (streamResult.Metadata != null)
+            // Check for reasoning chunks between content chunks
+            while (reasoningCollector.Reader.TryRead(out var chunk))
             {
-                foreach (var kvp in streamResult.Metadata)
-                {
-                    _logger.LogInformation("[OpenAI-Debug] Metadata[{Key}] = {ValueType}: {Value}",
-                        kvp.Key,
-                        kvp.Value?.GetType().Name ?? "null",
-                        TruncateString(kvp.Value?.ToString(), 200));
-                }
+                _logger.LogDebug("[Stopgap] Yielding reasoning chunk: {Content}",
+                    chunk.Content.Length > 50 ? chunk.Content[..50] + "..." : chunk.Content);
+                yield return (chunk.Content, chunk.IsThinking, false);
             }
 
-            // DEBUG: Try to serialize InnerContent to see raw structure
-            if (streamResult.InnerContent != null)
+            var isComplete = streamResult is OpenAIStreamingChatMessageContent
+                { FinishReason: ChatFinishReason.Stop };
+
+            // Only yield non-empty content chunks
+            if (!string.IsNullOrEmpty(streamResult.Content))
             {
-                try
-                {
-                    var json = System.Text.Json.JsonSerializer.Serialize(streamResult.InnerContent,
-                        new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
-                    _logger.LogInformation("[OpenAI-Debug] InnerContent JSON: {Json}",
-                        TruncateString(json, 2000));
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug("[OpenAI-Debug] Could not serialize InnerContent: {Error}", ex.Message);
-                }
+                yield return (streamResult.Content, false, isComplete);
             }
+            else if (isComplete)
+            {
+                // Still yield completion signal even if content is empty
+                yield return (string.Empty, false, true);
+            }
+        }
 
-            var isComplete = streamResult is OpenAIStreamingChatMessageContent { FinishReason: ChatFinishReason.Stop };
-
-            // NOTE: Currently, SK does not support streaming "reasoning" summary.
-            // TODO: Once we identify where reasoning content is in the response, update this logic.
-
-            yield return (streamResult.Content ?? string.Empty, false, isComplete);
+        // Drain any remaining reasoning chunks
+        while (reasoningCollector.Reader.TryRead(out var chunk))
+        {
+            _logger.LogDebug("[Stopgap] Yielding post-content reasoning chunk: {Content}",
+                chunk.Content.Length > 50 ? chunk.Content[..50] + "..." : chunk.Content);
+            yield return (chunk.Content, chunk.IsThinking, false);
         }
     }
 
@@ -311,14 +312,5 @@ public class ChatService : BaseChatService
         }
 
         return chatHistory;
-    }
-
-    /// <summary>
-    /// Truncates a string to a maximum length for logging purposes.
-    /// </summary>
-    private static string TruncateString(string? value, int maxLength)
-    {
-        if (string.IsNullOrEmpty(value)) return "null";
-        return value.Length <= maxLength ? value : value[..maxLength] + "...";
     }
 }

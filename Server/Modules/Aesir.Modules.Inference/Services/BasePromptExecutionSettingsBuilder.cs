@@ -23,11 +23,8 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
 
     public async Task<PromptExecutionSettingsResult<TPromptExecutionSettings>> BuildAsync(AesirChatRequestBase request)
     {
-        Logger.LogInformation("[PromptSettings] === BUILD PROMPT SETTINGS ===");
-        Logger.LogInformation("[PromptSettings] Model={Model}, EnableThinking={EnableThinking}, ThinkValue={ThinkValue}",
-            request.Model, request.EnableThinking, request.ThinkValue);
-        Logger.LogInformation("[PromptSettings] Tools={ToolCount}, Messages={MessageCount}",
-            request.Tools?.Count ?? 0, request.Conversation?.Messages?.Count ?? 0);
+        Logger.LogDebug("[PromptSettings] Building settings: Model={Model}, EnableThinking={EnableThinking}, ThinkValue={ThinkValue}, Tools={ToolCount}, Messages={MessageCount}",
+            request.Model, request.EnableThinking, request.ThinkValue, request.Tools?.Count ?? 0, request.Conversation?.Messages?.Count ?? 0);
 
         var systemPromptVariables = new Dictionary<string, object>
         {
@@ -40,12 +37,12 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
 
         if(request.EnableThinking ?? false)
         {
-            Logger.LogInformation("[PromptSettings] Thinking is ENABLED - calling ConfigureForThinking");
+            Logger.LogDebug("[PromptSettings] Thinking enabled - configuring");
             ConfigureForThinking(settings, request);
         }
         else
         {
-            Logger.LogInformation("[PromptSettings] Thinking is DISABLED - skipping ConfigureForThinking");
+            Logger.LogDebug("[PromptSettings] Thinking not enabled");
         }
 
         await ConfigureBuiltInTools(settings, request, systemPromptVariables);

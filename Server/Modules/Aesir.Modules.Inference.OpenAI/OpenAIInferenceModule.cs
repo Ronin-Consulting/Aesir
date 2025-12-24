@@ -1,10 +1,12 @@
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Models;
 using Aesir.Infrastructure.Modules;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Inference.OpenAI.Services;
+using Aesir.Modules.Inference.OpenAI.Stopgap;
 using Aesir.Modules.Inference.Services;
 using Aesir.Modules.Logging.Services;
 using Microsoft.Extensions.AI;
@@ -193,13 +195,30 @@ public class OpenAIInferenceModule : ModuleBase
                        throw new InvalidOperationException("OpenAI Endpoint not configured");
 
         if (string.IsNullOrEmpty(endPoint))
+        {
             services.AddKeyedSingleton(inferenceEngineIdKey, new OpenAIClient(apiCreds));
+        }
         else
         {
-            services.AddKeyedSingleton(inferenceEngineIdKey, new OpenAIClient(apiCreds, new OpenAIClientOptions()
+            // STOPGAP: Create OpenAI client with custom handler to intercept reasoning_content
+            // from llama.cpp/TTRA responses. Remove when OpenAI SDK or SK adds native support.
+            services.AddKeyedSingleton(inferenceEngineIdKey, (sp, _) =>
             {
-                Endpoint = new Uri(endPoint)
-            }));
+                var logger = sp.GetService<ILogger<ReasoningContentHandler_Stopgap>>();
+                var handler = new ReasoningContentHandler_Stopgap(logger)
+                {
+                    InnerHandler = new HttpClientHandler()
+                };
+
+                var httpClient = new HttpClient(handler);
+                var transport = new HttpClientPipelineTransport(httpClient);
+
+                return new OpenAIClient(apiCreds, new OpenAIClientOptions
+                {
+                    Endpoint = new Uri(endPoint),
+                    Transport = transport
+                });
+            });
         }
     }
 }

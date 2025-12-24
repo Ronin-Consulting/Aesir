@@ -36,8 +36,7 @@ public class OpenAiPromptExecutionSettingsBuilder(
 
     protected override void ConfigureForThinking(OpenAIPromptExecutionSettings settings, AesirChatRequestBase request)
     {
-        logger.LogInformation("[OpenAI-Thinking] === CONFIGURING THINKING FOR OPENAI ===");
-        logger.LogInformation("[OpenAI-Thinking] Input: EnableThinking={EnableThinking}, ThinkValue={ThinkValue}",
+        logger.LogDebug("[OpenAI-Thinking] Configuring thinking: EnableThinking={EnableThinking}, ThinkValue={ThinkValue}",
             request.EnableThinking, request.ThinkValue);
 
         if (request.EnableThinking ?? false)
@@ -47,11 +46,11 @@ public class OpenAiPromptExecutionSettingsBuilder(
             var reasoningEffort = MapThinkValueToReasoningEffort(request.ThinkValue);
 
             settings.ReasoningEffort = reasoningEffort;
-            logger.LogInformation("[OpenAI-Thinking] === SENDING TO OPENAI API: reasoning_effort={ReasoningEffort} ===", reasoningEffort);
+            logger.LogDebug("[OpenAI-Thinking] Sending reasoning_effort={ReasoningEffort}", reasoningEffort);
         }
         else
         {
-            logger.LogInformation("[OpenAI-Thinking] Thinking NOT enabled - reasoning_effort will NOT be sent to OpenAI");
+            logger.LogDebug("[OpenAI-Thinking] Thinking not enabled");
         }
     }
 
