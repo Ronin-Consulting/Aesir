@@ -291,7 +291,8 @@ public abstract class BaseChatService : IChatService
 
     /// <summary>
     /// Merges tool call events with text/thinking content into a single stream.
-    /// Tool calls are checked non-blocking before each content chunk.
+    /// Content stream is started eagerly in a background task so tool calls can be
+    /// yielded immediately as they occur, without waiting for content to arrive.
     /// </summary>
     private async IAsyncEnumerable<AesirChatStreamedResultBase> MergeToolCallsAndContentAsync(
         IAsyncEnumerable<(string content, bool isThinking, bool isComplete)> contentStream,
@@ -303,57 +304,101 @@ public abstract class BaseChatService : IChatService
         AesirChatMessage messageToSave)
     {
         // Collect tool calls to persist with the message, using Dictionary for deduplication by ToolCallId.
-        // This prevents duplicate tool calls if the same event is received multiple times.
         var collectedToolCalls = new Dictionary<string, AesirToolCallInfo>();
 
-        await foreach (var (content, isThinking, isComplete) in contentStream)
+        // Buffer content from the lazy enumerable into a channel
+        var contentBuffer = Channel.CreateUnbounded<(string content, bool isThinking, bool isComplete)>();
+
+        // Start consuming the content stream EAGERLY in background.
+        // This kicks off the actual API call immediately, allowing tool calls
+        // to be written to their channel while we wait for content.
+        var contentProducerTask = Task.Run(async () =>
         {
-            // Check for tool calls first (non-blocking) and yield any pending ones
+            try
+            {
+                await foreach (var item in contentStream)
+                {
+                    await contentBuffer.Writer.WriteAsync(item);
+                }
+            }
+            finally
+            {
+                contentBuffer.Writer.Complete();
+            }
+        });
+
+        var contentReader = contentBuffer.Reader;
+        var contentComplete = false;
+
+        // Main loop: yield from whichever channel has data first
+        while (!contentComplete)
+        {
+            // Always drain all available tool calls first (non-blocking)
             while (toolCallReader.TryRead(out var toolCall))
             {
                 collectedToolCalls[toolCall.ToolCallId] = toolCall;
                 yield return CreateToolCallResult(completionId, request, title, toolCall);
             }
 
-            // Update title if ready
-            if (title == request.Title && titleTask.IsCompleted)
-                title = await titleTask;
-
-            // Yield content chunk
-            if (!string.IsNullOrEmpty(content))
+            // Try to read content (non-blocking)
+            if (contentReader.TryRead(out var contentItem))
             {
-                var messageToSend = AesirChatMessage.NewAssistantMessage(string.Empty);
+                // Update title if ready
+                if (title == request.Title && titleTask.IsCompleted)
+                    title = await titleTask;
 
-                if (isThinking)
+                // Yield content chunk
+                if (!string.IsNullOrEmpty(contentItem.content))
                 {
-                    messageToSave.ThoughtsContent += content;
-                    messageToSend.ThoughtsContent = content;
-                }
-                else
-                {
-                    messageToSave.Content += content;
-                    messageToSend.Content = content;
-                }
+                    var messageToSend = AesirChatMessage.NewAssistantMessage(string.Empty);
 
-                yield return new AesirChatStreamedResult
-                {
-                    Id = completionId,
-                    ChatSessionId = request.ChatSessionId,
-                    ConversationId = request.Conversation.Id,
-                    Delta = messageToSend,
-                    Title = title,
-                    IsThinking = isThinking,
-                    EventType = isThinking ? StreamEventType.Thinking : StreamEventType.Text
-                };
+                    if (contentItem.isThinking)
+                    {
+                        messageToSave.ThoughtsContent += contentItem.content;
+                        messageToSend.ThoughtsContent = contentItem.content;
+                    }
+                    else
+                    {
+                        messageToSave.Content += contentItem.content;
+                        messageToSend.Content = contentItem.content;
+                    }
+
+                    yield return new AesirChatStreamedResult
+                    {
+                        Id = completionId,
+                        ChatSessionId = request.ChatSessionId,
+                        ConversationId = request.Conversation.Id,
+                        Delta = messageToSend,
+                        Title = title,
+                        IsThinking = contentItem.isThinking,
+                        EventType = contentItem.isThinking ? StreamEventType.Thinking : StreamEventType.Text
+                    };
+                }
+                continue;
+            }
+
+            // Nothing available from either channel - wait for either to have data
+            var toolCallWaitTask = toolCallReader.WaitToReadAsync().AsTask();
+            var contentWaitTask = contentReader.WaitToReadAsync().AsTask();
+
+            await Task.WhenAny(toolCallWaitTask, contentWaitTask);
+
+            // Check if content stream is done
+            if (contentWaitTask.IsCompleted && !await contentWaitTask)
+            {
+                contentComplete = true;
             }
         }
 
-        // Drain any remaining tool calls after content stream completes
+        // Final drain: any remaining tool calls after content completes
         while (toolCallReader.TryRead(out var toolCall))
         {
             collectedToolCalls[toolCall.ToolCallId] = toolCall;
             yield return CreateToolCallResult(completionId, request, title, toolCall);
         }
+
+        // Wait for content producer to finish (should already be done)
+        await contentProducerTask;
 
         // Persist collected tool calls with the message (deduplicated by ToolCallId)
         if (collectedToolCalls.Count > 0)
