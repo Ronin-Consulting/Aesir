@@ -1,0 +1,40 @@
+@namespace Aesir.Client.Web.Modules.Settings.Components
+
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-4">@ContentText</MudText>
+        <MudTextField @bind-Value="_inputValue"
+                      Label="@Label"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      AutoFocus="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@string.IsNullOrWhiteSpace(_inputValue)">
+            @ButtonText
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string ContentText { get; set; } = "Enter a value:";
+    [Parameter] public string Label { get; set; } = "Value";
+    [Parameter] public string ButtonText { get; set; } = "OK";
+    [Parameter] public string? DefaultValue { get; set; }
+
+    private string? _inputValue;
+
+    protected override void OnParametersSet()
+    {
+        _inputValue = DefaultValue;
+    }
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(_inputValue));
+    private void Cancel() => MudDialog.Cancel();
+}

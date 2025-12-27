@@ -30,6 +30,9 @@ public class ResearchModule : ModuleBase
         services.AddScoped<IResearchTeamRepository, ResearchTeamRepository>();
         services.AddScoped<IResearchSessionRepository, ResearchSessionRepository>();
 
+        // Register services
+        services.AddScoped<IResearchTeamService, ResearchTeamService>();
+
         Log("Research services registered successfully");
 
         return Task.CompletedTask;

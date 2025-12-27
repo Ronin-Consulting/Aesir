@@ -1,0 +1,274 @@
+@namespace Aesir.Client.Web.Modules.Settings.Components
+@using Aesir.Common.Models
+
+<div class="settings-content-container">
+    @* Header Section *@
+    <div class="content-header">
+        <div class="header-text">
+            <MudText Typo="Typo.h5">Research Teams</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Configure multi-agent research teams with role assignments and parameter overrides.
+            </MudText>
+        </div>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreateDialog">
+            Add Team
+        </MudButton>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="my-2" ShowCloseIcon="true" CloseIconClicked="() => _errorMessage = null">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    @* Content Section *@
+    <div class="content-body">
+        <MudDataGrid T="ResearchTeamBase"
+                     Items="@_teams"
+                     Dense="true"
+                     Hover="true"
+                     Striped="true"
+                     Elevation="0"
+                     Outlined="true"
+                     Loading="@_isLoading"
+                     LoadingProgressColor="Color.Primary">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="Name" />
+                <PropertyColumn Property="x => x.Description" Title="Description" />
+                <TemplateColumn Title="Members" Sortable="false">
+                    <CellTemplate>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                            @(context.Item.Members?.Count ?? 0) members
+                        </MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Status" Sortable="false">
+                    <CellTemplate>
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="@(context.Item.IsActive ? Color.Success : Color.Default)">
+                            @(context.Item.IsActive ? "Active" : "Inactive")
+                        </MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Actions" Sortable="false">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Size="Size.Small"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => OpenEditDialog(context.Item))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                           Size="Size.Small"
+                                           Color="Color.Secondary"
+                                           OnClick="@(() => DuplicateTeam(context.Item))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => ConfirmDelete(context.Item))" />
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <NoRecordsContent>
+                <MudText Typo="Typo.body1">No research teams configured.</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Click "Add Team" to create your first research team.
+                </MudText>
+            </NoRecordsContent>
+        </MudDataGrid>
+    </div>
+</div>
+
+<style>
+    .settings-content-container {
+        padding: 24px;
+        max-width: 1200px;
+    }
+
+    .content-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .header-text {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .content-body {
+        padding-bottom: 40px;
+    }
+</style>
+
+@code {
+    [Inject] private IResearchTeamApiService ResearchTeamService { get; set; } = null!;
+    [Inject] private IAgentService AgentService { get; set; } = null!;
+    [Inject] private IDialogService DialogService { get; set; } = null!;
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+
+    private List<ResearchTeamBase> _teams = [];
+    private IReadOnlyList<AesirAgentBase> _agents = [];
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        // Load teams and agents in parallel
+        var teamsTask = ResearchTeamService.GetTeamsAsync();
+        var agentsTask = AgentService.GetAllAsync();
+
+        await Task.WhenAll(teamsTask, agentsTask);
+
+        var teamsResult = await teamsTask;
+        var agentsResult = await agentsTask;
+
+        agentsResult.OnSuccess(agents => _agents = agents);
+
+        if (teamsResult.IsSuccess && teamsResult.Value is not null)
+        {
+            _teams = teamsResult.Value.ToList();
+        }
+        else
+        {
+            _errorMessage = teamsResult.Error;
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<ResearchTeamEditDialog>
+        {
+            { x => x.Team, new ResearchTeamBase { IsActive = true, Members = [] } },
+            { x => x.IsNew, true },
+            { x => x.AvailableAgents, _agents }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<ResearchTeamEditDialog>("Create Research Team", parameters, options);
+        var dialogResult = await dialog.Result;
+
+        if (!dialogResult!.Canceled)
+        {
+            await LoadDataAsync();
+            Snackbar.Add("Research team created successfully", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditDialog(ResearchTeamBase team)
+    {
+        var parameters = new DialogParameters<ResearchTeamEditDialog>
+        {
+            { x => x.Team, team },
+            { x => x.IsNew, false },
+            { x => x.AvailableAgents, _agents }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<ResearchTeamEditDialog>("Edit Research Team", parameters, options);
+        var dialogResult = await dialog.Result;
+
+        if (!dialogResult!.Canceled)
+        {
+            await LoadDataAsync();
+            Snackbar.Add("Research team updated successfully", Severity.Success);
+        }
+    }
+
+    private async Task DuplicateTeam(ResearchTeamBase team)
+    {
+        if (!team.Id.HasValue) return;
+
+        var parameters = new DialogParameters<InputDialog>
+        {
+            { x => x.ContentText, $"Enter a name for the copy of \"{team.Name}\":" },
+            { x => x.DefaultValue, $"{team.Name} (Copy)" }
+        };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small };
+        var dialog = await DialogService.ShowAsync<InputDialog>("Duplicate Team", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled && result.Data is string newName && !string.IsNullOrWhiteSpace(newName))
+        {
+            var duplicateResult = await ResearchTeamService.DuplicateTeamAsync(team.Id.Value, newName);
+
+            duplicateResult
+                .OnSuccess(duplicatedTeam =>
+                {
+                    Snackbar.Add($"Team duplicated as \"{newName}\"", Severity.Success);
+                })
+                .OnFailure(error =>
+                {
+                    Snackbar.Add($"Failed to duplicate: {error}", Severity.Error);
+                });
+
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task ConfirmDelete(ResearchTeamBase team)
+    {
+        var parameters = new DialogParameters<ConfirmDeleteDialog>
+        {
+            { x => x.ContentText, $"Are you sure you want to delete the research team \"{team.Name}\"? This action cannot be undone." },
+            { x => x.ItemName, team.Name ?? "this team" }
+        };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small };
+        var dialog = await DialogService.ShowAsync<ConfirmDeleteDialog>("Confirm Delete", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled && team.Id.HasValue)
+        {
+            var deleteResult = await ResearchTeamService.DeleteTeamAsync(team.Id.Value);
+
+            deleteResult
+                .OnSuccess(() =>
+                {
+                    Snackbar.Add("Research team deleted successfully", Severity.Success);
+                })
+                .OnFailure(error =>
+                {
+                    Snackbar.Add($"Failed to delete: {error}", Severity.Error);
+                });
+
+            await LoadDataAsync();
+        }
+    }
+}

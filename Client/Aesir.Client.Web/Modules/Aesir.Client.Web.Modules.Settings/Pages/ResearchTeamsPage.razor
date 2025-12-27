@@ -1,0 +1,12 @@
+@page "/settings/research-teams"
+@layout ChatLayout
+@inject NavigationManager NavigationManager
+
+@* Redirect to unified settings page with tab parameter *@
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavigationManager.NavigateTo("/settings?tab=research-teams", replace: true);
+    }
+}

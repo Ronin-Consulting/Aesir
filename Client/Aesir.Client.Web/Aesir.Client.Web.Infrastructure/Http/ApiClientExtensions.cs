@@ -28,6 +28,7 @@ public static class ApiClientExtensions
         services.AddScoped<IConfigurationApiService, ConfigurationApiService>();
         services.AddScoped<IChatApiService, ChatApiService>();
         services.AddScoped<IModelApiService, ModelApiService>();
+        services.AddScoped<IResearchTeamApiService, ResearchTeamApiService>();
 
         return services;
     }
@@ -48,6 +49,7 @@ public static class ApiClientExtensions
         services.AddScoped<IConfigurationApiService, ConfigurationApiService>();
         services.AddScoped<IChatApiService, ChatApiService>();
         services.AddScoped<IModelApiService, ModelApiService>();
+        services.AddScoped<IResearchTeamApiService, ResearchTeamApiService>();
 
         return services;
     }
