@@ -310,16 +310,47 @@ public class ResearchOrchestrator : IResearchOrchestrator
 
             // Store submissions
             session.Submissions = submissions;
+            session.UpdatedAt = DateTime.UtcNow;
+            await _sessionRepository.UpdateAsync(session);
 
-            // Mark as complete (peer review and synthesis will be added in later phases)
+            // Phase 3: Anonymization
+            session.Status = ResearchStatus.Anonymizing;
+            session.CurrentPhase = ResearchPhase.Anonymization;
+            session.UpdatedAt = DateTime.UtcNow;
+            await _sessionRepository.UpdateAsync(session);
+
+            var anonymizedSubmissions = await _phaseExecutor.ExecuteAnonymizationPhaseAsync(
+                session,
+                submissions,
+                progressCallback,
+                cancellationToken);
+
+            // Phase 4: Peer Review
+            session.Status = ResearchStatus.PeerReviewing;
+            session.CurrentPhase = ResearchPhase.PeerReview;
+            session.UpdatedAt = DateTime.UtcNow;
+            await _sessionRepository.UpdateAsync(session);
+
+            var peerReviews = await _phaseExecutor.ExecutePeerReviewPhaseAsync(
+                session,
+                nonChairmanAgents,
+                anonymizedSubmissions,
+                progressCallback,
+                cancellationToken);
+
+            // Store peer reviews
+            session.PeerReviews = peerReviews;
+
+            // Mark as complete (synthesis will be added in Phase 5)
             session.Status = ResearchStatus.Completed;
             session.CurrentPhase = ResearchPhase.Synthesis;
             session.CompletedAt = DateTime.UtcNow;
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session);
 
-            _logger.LogInformation("Research session {SessionId} completed with {Count} submissions",
-                session.Id, submissions.Count);
+            _logger.LogInformation(
+                "Research session {SessionId} completed with {SubmissionCount} submissions and {ReviewCount} reviews",
+                session.Id, submissions.Count, peerReviews.Count);
         }
         catch (Exception ex)
         {

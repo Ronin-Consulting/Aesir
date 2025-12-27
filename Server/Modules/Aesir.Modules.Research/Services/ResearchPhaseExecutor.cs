@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace Aesir.Modules.Research.Services;
 
 /// <summary>
-/// Executes research phases (planning and research) for agents.
+/// Executes research phases (planning, research, anonymization, peer review) for agents.
 /// </summary>
 public interface IResearchPhaseExecutor
 {
@@ -40,6 +40,36 @@ public interface IResearchPhaseExecutor
         IReadOnlyList<ResearchAgent> agents,
         string refinedQuery,
         Dictionary<Guid, string> agentPlans,
+        Func<ResearchPhaseProgress, Task>? progressCallback = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Executes the anonymization phase to prepare submissions for peer review.
+    /// </summary>
+    /// <param name="session">The research session.</param>
+    /// <param name="submissions">The research submissions to anonymize.</param>
+    /// <param name="progressCallback">Optional callback for progress updates.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Dictionary of anonymized submissions keyed by anonymous ID.</returns>
+    Task<Dictionary<string, AnonymizedSubmission>> ExecuteAnonymizationPhaseAsync(
+        ResearchSession session,
+        IReadOnlyList<ResearchSubmission> submissions,
+        Func<ResearchPhaseProgress, Task>? progressCallback = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Executes the peer review phase where agents review each other's submissions.
+    /// </summary>
+    /// <param name="session">The research session.</param>
+    /// <param name="agents">The research agents (excluding Chairman).</param>
+    /// <param name="anonymizedSubmissions">The anonymized submissions to review.</param>
+    /// <param name="progressCallback">Optional callback for progress updates.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of peer reviews with scores.</returns>
+    Task<List<PeerReview>> ExecutePeerReviewPhaseAsync(
+        ResearchSession session,
+        IReadOnlyList<ResearchAgent> agents,
+        Dictionary<string, AnonymizedSubmission> anonymizedSubmissions,
         Func<ResearchPhaseProgress, Task>? progressCallback = null,
         CancellationToken cancellationToken = default);
 }
@@ -87,10 +117,17 @@ public class ResearchPhaseProgress
 public class ResearchPhaseExecutor : IResearchPhaseExecutor
 {
     private readonly ILogger<ResearchPhaseExecutor> _logger;
+    private readonly IAnonymizationService _anonymizationService;
+    private readonly IPeerReviewService _peerReviewService;
 
-    public ResearchPhaseExecutor(ILogger<ResearchPhaseExecutor> logger)
+    public ResearchPhaseExecutor(
+        ILogger<ResearchPhaseExecutor> logger,
+        IAnonymizationService anonymizationService,
+        IPeerReviewService peerReviewService)
     {
         _logger = logger;
+        _anonymizationService = anonymizationService;
+        _peerReviewService = peerReviewService;
     }
 
     /// <inheritdoc />
@@ -302,6 +339,103 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             _logger.LogError(ex, "Error during research for agent {Role}", agent.Role);
             return null;
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<Dictionary<string, AnonymizedSubmission>> ExecuteAnonymizationPhaseAsync(
+        ResearchSession session,
+        IReadOnlyList<ResearchSubmission> submissions,
+        Func<ResearchPhaseProgress, Task>? progressCallback = null,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Starting anonymization phase for session {SessionId} with {Count} submissions",
+            session.Id, submissions.Count);
+
+        // Report start
+        if (progressCallback != null)
+        {
+            await progressCallback(new ResearchPhaseProgress
+            {
+                Phase = ResearchPhase.Anonymization,
+                Message = "Anonymizing submissions for peer review...",
+                PercentComplete = 0
+            });
+        }
+
+        // Perform anonymization
+        var anonymized = await _anonymizationService.AnonymizeSubmissionsAsync(submissions);
+
+        // Update submission records with anonymized IDs
+        foreach (var (anonymizedId, submission) in anonymized)
+        {
+            var original = submissions.FirstOrDefault(s => s.Id == submission.OriginalSubmissionId);
+            if (original != null)
+            {
+                original.AnonymizedId = anonymizedId;
+            }
+        }
+
+        // Report completion
+        if (progressCallback != null)
+        {
+            await progressCallback(new ResearchPhaseProgress
+            {
+                Phase = ResearchPhase.Anonymization,
+                Message = $"Anonymization complete. {anonymized.Count} submissions ready for review.",
+                PercentComplete = 100,
+                IsComplete = true
+            });
+        }
+
+        _logger.LogInformation("Anonymization phase complete. {Count} submissions anonymized", anonymized.Count);
+
+        return anonymized;
+    }
+
+    /// <inheritdoc />
+    public async Task<List<PeerReview>> ExecutePeerReviewPhaseAsync(
+        ResearchSession session,
+        IReadOnlyList<ResearchAgent> agents,
+        Dictionary<string, AnonymizedSubmission> anonymizedSubmissions,
+        Func<ResearchPhaseProgress, Task>? progressCallback = null,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Starting peer review phase for session {SessionId}", session.Id);
+
+        // Report start
+        if (progressCallback != null)
+        {
+            await progressCallback(new ResearchPhaseProgress
+            {
+                Phase = ResearchPhase.PeerReview,
+                Message = "Starting peer review process...",
+                PercentComplete = 0
+            });
+        }
+
+        // Conduct peer reviews
+        var reviews = await _peerReviewService.ConductPeerReviewsAsync(
+            session,
+            agents,
+            anonymizedSubmissions,
+            progressCallback,
+            cancellationToken);
+
+        // Report completion
+        if (progressCallback != null)
+        {
+            await progressCallback(new ResearchPhaseProgress
+            {
+                Phase = ResearchPhase.PeerReview,
+                Message = $"Peer review complete. {reviews.Count} reviews generated.",
+                PercentComplete = 100,
+                IsComplete = true
+            });
+        }
+
+        _logger.LogInformation("Peer review phase complete. {Count} reviews generated", reviews.Count);
+
+        return reviews;
     }
 
     private static string GenerateStubPlan(ResearchAgent agent, string query)

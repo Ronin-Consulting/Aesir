@@ -37,6 +37,13 @@ public class ResearchModule : ModuleBase
         // Register agent orchestration services
         services.AddScoped<IResearchAgentFactory, ResearchAgentFactory>();
         services.AddScoped<IClarificationService, ClarificationService>();
+
+        // Register anonymization and peer review services
+        services.AddScoped<IAnonymizationService, AnonymizationService>();
+        services.AddScoped<IScoringCalculator, ScoringCalculator>();
+        services.AddScoped<IPeerReviewService, PeerReviewService>();
+
+        // Register phase executor (depends on anonymization and peer review)
         services.AddScoped<IResearchPhaseExecutor, ResearchPhaseExecutor>();
 
         // Note: ResearchOrchestrator requires external dependencies (agent resolver, chat service resolver)
