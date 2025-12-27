@@ -51,8 +51,9 @@ public class ResearchModule : ModuleBase
         // Register phase executor (depends on all phase services)
         services.AddScoped<IResearchPhaseExecutor, ResearchPhaseExecutor>();
 
-        // Note: ResearchOrchestrator requires external dependencies (agent resolver, chat service resolver)
-        // and should be registered by the API server with appropriate factories
+        // Register orchestrator and progress broadcaster
+        services.AddScoped<IResearchOrchestrator, ResearchOrchestrator>();
+        services.AddScoped<IResearchProgressBroadcaster, ResearchProgressBroadcaster>();
 
         Log("Research services registered successfully");
 
