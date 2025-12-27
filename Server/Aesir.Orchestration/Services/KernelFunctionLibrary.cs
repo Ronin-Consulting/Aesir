@@ -430,24 +430,39 @@ internal class SummarizeConversationDocumentPlugin<TKey, TRecord>(
                 .ToListAsync())
             .Where(r => r.ReferenceDescription!.Contains($"/{filename}")).ToList();
 
-        // just take a summary of the document
+        // Smart sampling strategy for document summarization
+        // For small documents, return everything; for large documents, sample fixed amounts
+        // from beginning, middle, and end to keep summarization manageable
         var count = results.Count;
 
-        if (count <= 25)
+        const int smallDocumentThreshold = 30;
+        const int chunksFromBeginning = 10;
+        const int chunksFromMiddle = 10;
+        const int chunksFromEnd = 10;
+
+        // For small documents, return all chunks
+        if (count <= smallDocumentThreshold)
+        {
             return results.OrderBy(r => r.CreatedAt)
                 .Select(r => new TextSearchResult(r.Text!)
                 {
                     Link = r.ReferenceLink,
                     Name = r.ReferenceDescription
                 });
+        }
 
-        var quarterSize = count / 4;
+        // For large documents, sample fixed amounts from beginning, middle, and end
+        // This prevents overwhelming the summarization with too much content
+        var orderedResults = results.OrderBy(r => r.CreatedAt).ToList();
+        var middleStart = (count / 2) - (chunksFromMiddle / 2);
 
-        return results.Take(quarterSize)
-            .Concat(results.Skip(quarterSize * 2)
-                .Take(quarterSize))
-            .Concat(results.Skip(quarterSize * 3))
-            .OrderBy(r => r.CreatedAt)
+        var beginningChunks = orderedResults.Take(chunksFromBeginning);
+        var middleChunks = orderedResults.Skip(middleStart).Take(chunksFromMiddle);
+        var endChunks = orderedResults.Skip(count - chunksFromEnd);
+
+        return beginningChunks
+            .Concat(middleChunks)
+            .Concat(endChunks)
             .Select(r => new TextSearchResult(r.Text!)
             {
                 Link = r.ReferenceLink,
