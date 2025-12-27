@@ -71,6 +71,12 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
     protected static readonly DocumentChunker DocumentChunker = new();
 
     /// <summary>
+    /// Maximum number of tokens allowed per chunk for the embedding model.
+    /// Note: This is in CL100K tokens - actual model tokenizers may count differently.
+    /// </summary>
+    protected const int MaxEmbeddingTokens = 120;
+
+    /// <summary>
     /// Represents a base service for loading and processing data records with generic support for keys and records.
     /// </summary>
     /// <typeparam name="TKey">The type of the unique key used for records.</typeparam>
@@ -155,6 +161,12 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
         record.ReferenceLink ??= fileName.StartsWith("file://") ? System.Web.HttpUtility.UrlEncode(fileName) : $"file://{System.Web.HttpUtility.UrlEncode(fileName)}";
         record.TokenCount ??= TokenCounter.CountTokens(textChunk);
 
+        if (record.TokenCount > MaxEmbeddingTokens)
+        {
+            Logger.LogWarning("Chunk exceeds embedding token limit: {TokenCount} > {MaxLimit} for {FileName}",
+                record.TokenCount, MaxEmbeddingTokens, fileName);
+        }
+
         return Task.CompletedTask;
     }
     
@@ -167,14 +179,16 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
                 Dimensions =
                     1024 // this should either be configuration or a requirement that the embedding model supports
             };
-            
+
             var sw = Stopwatch.StartNew();
-            var results = await EmbeddingGenerator
+
+            var result = await EmbeddingGenerator
                 .GenerateAsync(textChunks, options, cancellationToken: cancellationToken).ConfigureAwait(false);
+
             sw.Stop();
             Logger.LogDebug("Generated {TextChunksSize} embeddings in {ElapsedMilliseconds}ms", textChunks.Length, sw.ElapsedMilliseconds);
 
-            return results.ToArray();
+            return result.ToArray();
         }
         catch (ClientResultException ex)
         {

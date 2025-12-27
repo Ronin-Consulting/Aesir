@@ -1,7 +1,8 @@
 @inject IModelApiService ModelApiService
 
 <MudSelect T="string"
-           @bind-Value="SelectedModel"
+           Value="@SelectedModel"
+           ValueChanged="@OnValueChanged"
            Label="@Label"
            Required="@Required"
            RequiredError="@RequiredError"
@@ -160,6 +161,14 @@
 
         var selectedModelInfo = _models.FirstOrDefault(m => m.Id == modelId);
         await OnModelSelected.InvokeAsync(selectedModelInfo);
+    }
+
+    private async Task OnValueChanged(string? value)
+    {
+        if (value != SelectedModel)
+        {
+            await NotifyModelChanged(value);
+        }
     }
 
     private string GetHelperText()

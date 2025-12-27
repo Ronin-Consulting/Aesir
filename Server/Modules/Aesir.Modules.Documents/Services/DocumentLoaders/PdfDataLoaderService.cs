@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Aesir.Infrastructure.Extensions;
 using Aesir.Infrastructure.Models;
 using Aesir.Infrastructure.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Aesir.Modules.Documents.Models;
 using Microsoft.Extensions.AI;
@@ -37,12 +38,11 @@ public class PdfDataLoaderService<TKey, TRecord>(
     VectorStoreCollection<TKey, TRecord> vectorStoreRecordCollection,
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     Func<RawContent, LoadPdfRequest, TRecord> recordFactory,
-    IVisionService visionService,
     IConfigurationService configurationService,
     IServiceProvider serviceProvider,
     ILogger<PdfDataLoaderService<TKey, TRecord>> logger)
     : BaseDataLoaderService<TKey, TRecord>(uniqueKeyGenerator, vectorStoreRecordCollection, embeddingGenerator,
-        configurationService,serviceProvider, logger), IPdfDataLoaderService<TKey, TRecord>
+        configurationService, serviceProvider, logger), IPdfDataLoaderService<TKey, TRecord>
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
@@ -56,12 +56,6 @@ public class PdfDataLoaderService<TKey, TRecord>(
     /// using the provided <see cref="RawContent"/> and <see cref="LoadPdfRequest"/> data.
     /// </summary>
     private readonly Func<RawContent, LoadPdfRequest, TRecord> _recordFactory = recordFactory;
-
-    /// <summary>
-    /// Represents the vision service utilized for image processing tasks such as extracting text from images
-    /// within the <c>PdfDataLoaderService</c>.
-    /// </summary>
-    private readonly IVisionService _visionService = visionService;
 
     /// <summary>
     /// Loads a PDF file, processes its contents, and stores the parsed data into a vector store collection.
@@ -227,12 +221,16 @@ public class PdfDataLoaderService<TKey, TRecord>(
     {
         try
         {
+            // Resolve vision service using the engine ID from configuration
+            var visionService = ServiceProvider.GetKeyedService<IVisionService>(modelLocationDescriptor.InterfaceEngineId)
+                ?? throw new InvalidOperationException($"Failed to get Vision service for engine {modelLocationDescriptor.InterfaceEngineId}");
+
             using var image = Image.Load(imageBytes.Span);
             using var ms = new MemoryStream();
             await image.SaveAsPngAsync(ms, cancellationToken);
             var resizedImageBytes = new ReadOnlyMemory<byte>(ms.ToArray());
 
-            return await _visionService.GetImageTextAsync(modelLocationDescriptor, resizedImageBytes, 
+            return await visionService.GetImageTextAsync(modelLocationDescriptor, resizedImageBytes,
                     PngMimeType, cancellationToken)
                 .ConfigureAwait(false);
         }

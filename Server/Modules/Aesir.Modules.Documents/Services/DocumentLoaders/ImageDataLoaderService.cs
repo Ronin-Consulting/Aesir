@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Aesir.Common.FileTypes;
 using Aesir.Infrastructure.Models;
 using Aesir.Infrastructure.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Aesir.Modules.Documents.Models;
 using Microsoft.Extensions.AI;
@@ -38,7 +39,6 @@ public class ImageDataLoaderService<TKey, TRecord>(
     VectorStoreCollection<TKey, TRecord> vectorStoreRecordCollection,
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     Func<RawContent, LoadImageRequest, TRecord> recordFactory,
-    IVisionService visionService,
     IConfigurationService configurationService,
     IServiceProvider serviceProvider,
     ILogger<ImageDataLoaderService<TKey, TRecord>> logger)
@@ -54,13 +54,6 @@ public class ImageDataLoaderService<TKey, TRecord>(
     /// </summary>
     /// <typeparam name="TRecord">The type of the record to be created.</typeparam>
     private readonly Func<RawContent, LoadImageRequest, TRecord> _recordFactory = recordFactory;
-
-    /// <summary>
-    /// A private, readonly dependency on the <see cref="IVisionService"/> interface,
-    /// utilized for vision or image processing-related operations such as analyzing images
-    /// and extracting relevant information.
-    /// </summary>
-    private readonly IVisionService _visionService = visionService;
 
     /// <summary>
     /// Asynchronously loads and processes an image to extract textual content and metadata, and updates the vector store with the resulting records.
@@ -226,7 +219,11 @@ public class ImageDataLoaderService<TKey, TRecord>(
         ModelLocationDescriptor modelLocationDescriptor,
         CancellationToken cancellationToken)
     {
-        return await _visionService
+        // Resolve vision service using the engine ID from configuration
+        var visionService = ServiceProvider.GetKeyedService<IVisionService>(modelLocationDescriptor.InterfaceEngineId)
+            ?? throw new InvalidOperationException($"Failed to get Vision service for engine {modelLocationDescriptor.InterfaceEngineId}");
+
+        return await visionService
             .GetImageTextAsync(modelLocationDescriptor, imageBytes, contentType, cancellationToken)
             .ConfigureAwait(false);
     }

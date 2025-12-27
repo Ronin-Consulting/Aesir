@@ -183,8 +183,11 @@ public class OpenAIInferenceModule : ModuleBase
             );
         });
 
-        // Register Vision Service
-        services.AddTransient<IVisionService, VisionService>();
+        // Register Vision Service (keyed by engine ID)
+        services.AddKeyedTransient<IVisionService>(inferenceEngineIdKey, (sp, key) =>
+            new VisionService(
+                sp.GetRequiredService<ILogger<VisionService>>(),
+                sp));
 
         // Register OpenAI Client
         var apiKey = inferenceEngine.Configuration!["ApiKey"] ??

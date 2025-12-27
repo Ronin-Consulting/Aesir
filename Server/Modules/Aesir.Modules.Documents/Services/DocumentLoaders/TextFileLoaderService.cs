@@ -852,7 +852,7 @@ internal class CsvToAesirTextDataConverter<TRecord> where TRecord : ICsvTextData
     /// CSV file data. This property is used to control data segmentation, ensuring
     /// that generated text chunks remain within a predefined token limit.
     /// </summary>
-    private int MaxTokensPerChunk { get; } = 1024;
+    private int MaxTokensPerChunk { get; } = 100;
 
     /// <summary>
     /// Specifies the minimum number of columns that can be grouped together in a chunk when

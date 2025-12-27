@@ -96,7 +96,6 @@ public class DocumentsModule : ModuleBase
                         Key = Guid.Empty
                     };
                 },
-                serviceProvider.GetRequiredService<IVisionService>(),
                 serviceProvider.GetRequiredService<IConfigurationService>(),
                 serviceProvider,
                 serviceProvider.GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>>()
@@ -123,7 +122,6 @@ public class DocumentsModule : ModuleBase
                         Key = Guid.Empty
                     };
                 },
-                serviceProvider.GetRequiredService<IVisionService>(),
                 serviceProvider.GetRequiredService<IConfigurationService>(),
                 serviceProvider,
                 serviceProvider.GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
@@ -150,7 +148,6 @@ public class DocumentsModule : ModuleBase
                         Key = Guid.Empty
                     };
                 },
-                serviceProvider.GetRequiredService<IVisionService>(),
                 serviceProvider.GetRequiredService<IConfigurationService>(),
                 serviceProvider,
                 serviceProvider.GetRequiredService<ILogger<ImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()

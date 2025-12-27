@@ -1,5 +1,6 @@
 using Aesir.Common.Prompts;
 using Aesir.Infrastructure.Services;
+using Aesir.Modules.Inference.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
@@ -32,12 +33,14 @@ public class VisionService(
     public async Task<string> GetImageTextAsync(Aesir.Infrastructure.Services.ModelLocationDescriptor modelLocationDescriptor,
         ReadOnlyMemory<byte> imageBytes, string contentType, CancellationToken cancellationToken = default)
     {
-        var chatCompletionService =
-            serviceProvider.GetKeyedService<IChatCompletionService>(modelLocationDescriptor.InterfaceEngineId)
-            ?? throw new InvalidOperationException($"Failed to get Chat Completion service for engine {modelLocationDescriptor.InterfaceEngineId}");
+        var chatCompletionServiceFactory =
+            serviceProvider.GetKeyedService<IChatCompletionServiceFactory>(modelLocationDescriptor.InterfaceEngineId)
+            ?? throw new InvalidOperationException($"Failed to get Chat Completion service factory for engine {modelLocationDescriptor.InterfaceEngineId}");
 
         if (string.IsNullOrWhiteSpace(modelLocationDescriptor.ModelId))
             throw new InvalidOperationException("No vision model provided");
+
+        var chatCompletionService = chatCompletionServiceFactory.GetChatCompletionService(modelLocationDescriptor.ModelId);
 
         var chatHistory = new ChatHistory();
         chatHistory.AddSystemMessage(PromptProvider.GetSystemPrompt(PromptPersona.Ocr).Content);

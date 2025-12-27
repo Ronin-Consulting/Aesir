@@ -210,8 +210,11 @@ public class OllamaInferenceModule : ModuleBase
             );
         });
 
-        // Register Vision Service
-        services.AddTransient<IVisionService, VisionService>();
+        // Register Vision Service (keyed by engine ID)
+        services.AddKeyedTransient<IVisionService>(inferenceEngineIdKey, (sp, key) =>
+            new VisionService(
+                sp.GetRequiredService<ILogger<VisionService>>(),
+                sp));
 
         // Register HTTP Client for Ollama API
         var ollamaClientName = $"OllamaApiClient-{inferenceEngineIdKey}";

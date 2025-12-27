@@ -115,6 +115,35 @@ public class ChatService : BaseChatService
                 return content?.Trim('"') ?? "Untitled conversation";
             }
         }
+        catch (HttpOperationException ex) when (ex.Message.Contains("temperature", StringComparison.OrdinalIgnoreCase))
+        {
+            // Some models (e.g., reasoning models) don't support temperature settings other than 1
+            // Retry without temperature setting
+            _logger.LogDebug("Model does not support temperature setting, retrying without it");
+
+            var retrySettings = new OpenAIPromptExecutionSettings
+            {
+                ModelId = request.Model
+            };
+
+            try
+            {
+                var retryResults = await chatCompletionService.GetChatMessageContentsAsync(
+                    chatHistory,
+                    retrySettings,
+                    _kernel);
+
+                if (retryResults.Count > 0)
+                {
+                    var content = retryResults[0].Content;
+                    return content?.Trim('"') ?? "Untitled conversation";
+                }
+            }
+            catch (Exception retryEx)
+            {
+                _logger.LogError(retryEx, "Error generating title on retry without temperature");
+            }
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating title using Semantic Kernel IChatCompletionService");
