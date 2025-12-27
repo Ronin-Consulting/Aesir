@@ -1,4 +1,5 @@
 using Aesir.Infrastructure.Modules;
+using Aesir.Modules.Research.Agents;
 using Aesir.Modules.Research.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -30,8 +31,16 @@ public class ResearchModule : ModuleBase
         services.AddScoped<IResearchTeamRepository, ResearchTeamRepository>();
         services.AddScoped<IResearchSessionRepository, ResearchSessionRepository>();
 
-        // Register services
+        // Register team configuration services
         services.AddScoped<IResearchTeamService, ResearchTeamService>();
+
+        // Register agent orchestration services
+        services.AddScoped<IResearchAgentFactory, ResearchAgentFactory>();
+        services.AddScoped<IClarificationService, ClarificationService>();
+        services.AddScoped<IResearchPhaseExecutor, ResearchPhaseExecutor>();
+
+        // Note: ResearchOrchestrator requires external dependencies (agent resolver, chat service resolver)
+        // and should be registered by the API server with appropriate factories
 
         Log("Research services registered successfully");
 
