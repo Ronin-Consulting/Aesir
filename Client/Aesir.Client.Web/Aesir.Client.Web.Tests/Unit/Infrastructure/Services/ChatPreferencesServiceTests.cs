@@ -2,7 +2,6 @@ using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Common.Models;
 using Microsoft.JSInterop;
 using Microsoft.JSInterop.Infrastructure;
-using Moq;
 
 namespace Aesir.Client.Web.Tests.Unit.Infrastructure.Services;
 

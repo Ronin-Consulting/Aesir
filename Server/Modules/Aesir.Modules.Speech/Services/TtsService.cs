@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Aesir.Modules.Speech.Services.Audio;
 using Microsoft.Extensions.Logging;

@@ -1,4 +1,3 @@
-using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
@@ -6,9 +5,7 @@ using MudBlazor.Services;
 using Aesir.Client.Web.Infrastructure.Http;
 using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.Chat.Components;
-using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Common.Models;
-using Microsoft.JSInterop;
 
 namespace Aesir.Client.Web.Tests.Unit.Chat.Components;
 

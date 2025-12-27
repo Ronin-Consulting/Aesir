@@ -1,7 +1,5 @@
 @* Document Card Component - Displays a document with its associated chat info (list view) *@
 @using Aesir.Client.Web.Modules.Chat.Models
-@using Aesir.Client.Web.Modules.Chat.Services
-@using Aesir.Client.Web.Infrastructure.Services
 
 <div class="document-card @(Document.IsChatStarred ? "starred" : "")"
      @onmouseenter="() => _isHovered = true"

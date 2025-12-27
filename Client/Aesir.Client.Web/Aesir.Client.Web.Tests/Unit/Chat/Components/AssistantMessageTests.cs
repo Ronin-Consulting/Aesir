@@ -1,4 +1,3 @@
-using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using Aesir.Client.Web.Modules.Chat.Components;

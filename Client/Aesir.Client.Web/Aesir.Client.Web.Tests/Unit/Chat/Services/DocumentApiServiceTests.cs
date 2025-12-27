@@ -1,6 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
-using Aesir.Client.Web.Modules.Chat.Models;
 using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Client.Web.Infrastructure.Models;
 using Aesir.Client.Web.Infrastructure.Services;

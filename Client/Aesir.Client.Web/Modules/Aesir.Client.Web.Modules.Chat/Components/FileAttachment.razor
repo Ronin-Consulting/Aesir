@@ -1,5 +1,4 @@
 @* Unified file attachment display component with consistent styling across all views *@
-@using Aesir.Client.Web.Modules.Chat.Models
 
 <MudTooltip Text="@TooltipText" Placement="Placement.Top" Delay="300">
 <div class="file-attachment @ModeClass @(HasError ? "error" : "") @(IsClickable ? "clickable" : "") @(IsDeleted ? "deleted" : "")"

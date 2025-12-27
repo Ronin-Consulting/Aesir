@@ -1,5 +1,4 @@
 using Aesir.Infrastructure.Data;
-using Aesir.Infrastructure.Models;
 using Aesir.Modules.Storage.Services;
 using Microsoft.Extensions.Logging;
 using System.Data;

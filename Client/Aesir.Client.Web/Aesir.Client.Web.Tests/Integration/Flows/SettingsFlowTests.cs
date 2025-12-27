@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Aesir.Client.Web.Infrastructure.Http;
 using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.Settings.Services;
 using Aesir.Common.Models;
