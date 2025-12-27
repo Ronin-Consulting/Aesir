@@ -477,7 +477,7 @@ public class TextFileLoaderService<TKey, TRecord>(
     /// </exception>
     protected virtual async Task<string> GetTextRawContentAsync(string textFileLocalPath)
     {
-        return await File.ReadAllTextAsync(textFileLocalPath);
+        return await File.ReadAllTextAsync(textFileLocalPath).ConfigureAwait(false);
     }
 }
 
@@ -852,8 +852,9 @@ internal class CsvToAesirTextDataConverter<TRecord> where TRecord : ICsvTextData
     /// Specifies the maximum number of tokens allowed per chunk when processing
     /// CSV file data. This property is used to control data segmentation, ensuring
     /// that generated text chunks remain within a predefined token limit.
+    /// Uses BERT tokenizer for accurate counting with mxbai-embed-large-v1 (context limit: 512).
     /// </summary>
-    private int MaxTokensPerChunk { get; } = 100;
+    private int MaxTokensPerChunk { get; } = 450;
 
     /// <summary>
     /// Specifies the minimum number of columns that can be grouped together in a chunk when
@@ -894,6 +895,10 @@ internal class CsvToAesirTextDataConverter<TRecord> where TRecord : ICsvTextData
         csv.ReadHeader();
         var headers = csv.HeaderRecord!.ToList();
 
+        // Pre-compute header row and separator for small tables (optimization)
+        var headerRow = $"| {string.Join(" | ", headers)} |";
+        var separatorRow = $"| {string.Join(" | ", Enumerable.Repeat("---", headers.Count))} |";
+
         TRecord record;
 
         var rowIndex = 0;
@@ -909,8 +914,8 @@ internal class CsvToAesirTextDataConverter<TRecord> where TRecord : ICsvTextData
                 // Small row: Chunk as full Markdown table
                 var rowBuilder = new StringBuilder();
                 rowBuilder.AppendLine($"Row {rowIndex + 1}");
-                rowBuilder.AppendLine($"| {string.Join(" | ", headers)} |");
-                rowBuilder.AppendLine($"| {string.Join(" | ", Enumerable.Repeat("---", headers.Count))} |"); // Simple separator
+                rowBuilder.AppendLine(headerRow);
+                rowBuilder.AppendLine(separatorRow);
                 rowBuilder.AppendLine($"| {string.Join(" | ", rowData)} |");
 
                 // Check token count; if over, fall back to key-value text

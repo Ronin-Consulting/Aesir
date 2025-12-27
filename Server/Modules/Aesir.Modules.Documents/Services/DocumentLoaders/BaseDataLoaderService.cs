@@ -8,7 +8,6 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.VectorData;
-using Tiktoken;
 
 namespace Aesir.Modules.Documents.Services.DocumentLoaders;
 
@@ -66,20 +65,17 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
     protected readonly IEmbeddingCache EmbeddingCache;
 
     /// <summary>
-    /// A static encoder used to perform operations for counting tokens in text.
-    /// </summary>
-    protected static readonly Encoder TokenCounter = new(DocumentChunker.DefaultEncoding);
-
-    /// <summary>
     /// Utility for splitting text documents into manageable pieces based on token limits.
+    /// Also provides token counting via the BERT tokenizer.
     /// </summary>
     protected static readonly DocumentChunker DocumentChunker = new();
 
     /// <summary>
     /// Maximum number of tokens allowed per chunk for the embedding model.
-    /// Note: This is in CL100K tokens - actual model tokenizers may count differently.
+    /// Uses BERT tokenizer for accurate counting with mxbai-embed-large-v1 (context limit: 512).
+    /// Chunks exceeding this limit are automatically split by ProcessRecordsInBatchesAsync.
     /// </summary>
-    protected const int MaxEmbeddingTokens = 120;
+    protected const int MaxEmbeddingTokens = 450;
 
     /// <summary>
     /// Represents a base service for loading and processing data records with generic support for keys and records.
@@ -113,6 +109,7 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
 
     /// <summary>
     /// Processes records in batches, enriching each record with metadata and embeddings.
+    /// Oversized records are automatically split into multiple smaller records.
     /// </summary>
     /// <param name="records">The records to process.</param>
     /// <param name="fileName">The source file name for reference metadata.</param>
@@ -125,9 +122,46 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
         int batchSize,
         CancellationToken cancellationToken)
     {
-        // Avoid re-allocation if already a list/array
-        var recordsList = records as IList<TRecord> ?? records.ToList();
-        var totalCount = recordsList.Count;
+        // First pass: split any oversized records into smaller chunks
+        var expandedRecords = new List<TRecord>();
+        foreach (var record in records)
+        {
+            var text = record.Text ?? string.Empty;
+            var tokenCount = DocumentChunker.CountTokensStatic(text);
+
+            if (tokenCount <= MaxEmbeddingTokens)
+            {
+                // Record is within limits, keep as-is
+                expandedRecords.Add(record);
+            }
+            else
+            {
+                // Record is oversized - split into multiple records
+                Logger.LogDebug("Splitting oversized record ({TokenCount} tokens) into smaller chunks for {FileName}",
+                    tokenCount, fileName);
+
+                var chunks = DocumentChunker.ChunkText(text, null);
+
+                for (var chunkIndex = 0; chunkIndex < chunks.Count; chunkIndex++)
+                {
+                    // Clone the record properties to a new record
+                    // The first chunk keeps the original record, subsequent chunks are new
+                    if (chunkIndex == 0)
+                    {
+                        record.Text = chunks[chunkIndex];
+                        expandedRecords.Add(record);
+                    }
+                    else
+                    {
+                        // Create a new record by copying properties from original
+                        var newRecord = CloneRecordWithNewText(record, chunks[chunkIndex]);
+                        expandedRecords.Add(newRecord);
+                    }
+                }
+            }
+        }
+
+        var totalCount = expandedRecords.Count;
 
         // Pre-allocate result array with known size
         var processedRecords = new TRecord[totalCount];
@@ -144,7 +178,7 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
             // Enrich records and collect texts in a single pass
             for (var j = 0; j < currentBatchSize; j++)
             {
-                var record = recordsList[i + j];
+                var record = expandedRecords[i + j];
                 await EnrichRecordAsync(record, fileName, cancellationToken).ConfigureAwait(false);
                 batchTexts[j] = record.Text ?? string.Empty;
             }
@@ -154,13 +188,95 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
             // Assign embeddings and copy to result array
             for (var j = 0; j < currentBatchSize; j++)
             {
-                var record = recordsList[i + j];
+                var record = expandedRecords[i + j];
                 record.TextEmbedding = embeddings[j];
                 processedRecords[processedIndex++] = record;
             }
         }
 
         return processedRecords;
+    }
+
+    /// <summary>
+    /// Creates a shallow copy of a record with new text content.
+    /// Override this method in derived classes if TRecord requires special cloning logic.
+    /// </summary>
+    /// <param name="original">The original record to clone.</param>
+    /// <param name="newText">The new text content for the cloned record.</param>
+    /// <returns>A new record with the same properties but different text.</returns>
+    protected virtual TRecord CloneRecordWithNewText(TRecord original, string newText)
+    {
+        // Use reflection to create a new instance and copy properties
+        // This is a generic fallback - derived classes can override for better performance
+        var clone = (TRecord)Activator.CreateInstance(typeof(TRecord))!;
+
+        // Copy common AesirTextData properties
+        clone.Text = newText;
+        clone.ReferenceDescription = original.ReferenceDescription;
+        clone.ReferenceLink = original.ReferenceLink;
+        // Key and TokenCount will be set by EnrichRecordAsync
+        // TextEmbedding will be set after embedding generation
+
+        return clone;
+    }
+
+    /// <summary>
+    /// Extracts the local file path from a file URI, handling both file:// and file:/// formats.
+    /// </summary>
+    /// <param name="fileNameOrUri">The file name or file URI to process.</param>
+    /// <returns>The local file path without the file:// prefix.</returns>
+    protected static string GetLocalPathFromFileUri(string fileNameOrUri)
+    {
+        if (string.IsNullOrEmpty(fileNameOrUri) ||
+            !fileNameOrUri.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+            return fileNameOrUri;
+
+        try
+        {
+            var uri = new Uri(fileNameOrUri);
+            return uri.LocalPath;
+        }
+        catch (UriFormatException)
+        {
+            // Fallback: strip file:// or file:/// prefix manually
+            return fileNameOrUri.StartsWith("file:///")
+                ? fileNameOrUri.Substring(8)
+                : fileNameOrUri.Substring(7);
+        }
+    }
+
+    /// <summary>
+    /// Converts a file path to a properly formatted file URI.
+    /// </summary>
+    /// <param name="fileNameOrUri">The file name or existing URI.</param>
+    /// <returns>A properly formatted file URI.</returns>
+    protected static string GetFileUri(string fileNameOrUri)
+    {
+        if (string.IsNullOrEmpty(fileNameOrUri))
+            return fileNameOrUri;
+
+        if (fileNameOrUri.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+        {
+            // Already a URI, normalize it
+            try
+            {
+                return new Uri(fileNameOrUri).AbsoluteUri;
+            }
+            catch (UriFormatException)
+            {
+                return fileNameOrUri;
+            }
+        }
+
+        // Convert path to URI
+        try
+        {
+            return new Uri(fileNameOrUri).AbsoluteUri;
+        }
+        catch (UriFormatException)
+        {
+            return $"file://{System.Web.HttpUtility.UrlEncode(fileNameOrUri)}";
+        }
     }
 
     /// <summary>
@@ -175,19 +291,21 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
         var textChunk = record.Text ?? throw new InvalidOperationException("Text is null");
 
         record.Key = UniqueKeyGenerator.GenerateKey();
-        record.ReferenceDescription ??= fileName.StartsWith("file://") ? fileName.Substring(7) : fileName;
-        record.ReferenceLink ??= fileName.StartsWith("file://") ? System.Web.HttpUtility.UrlEncode(fileName) : $"file://{System.Web.HttpUtility.UrlEncode(fileName)}";
-        record.TokenCount ??= TokenCounter.CountTokens(textChunk);
+        record.ReferenceDescription ??= GetLocalPathFromFileUri(fileName);
+        record.ReferenceLink ??= GetFileUri(fileName);
+        record.TokenCount ??= DocumentChunker.CountTokensStatic(textChunk);
 
+        // Log warning if chunk is larger than expected (should have been split upstream)
         if (record.TokenCount > MaxEmbeddingTokens)
         {
-            Logger.LogWarning("Chunk exceeds embedding token limit: {TokenCount} > {MaxLimit} for {FileName}",
+            Logger.LogWarning("Chunk exceeds embedding token limit: {TokenCount} > {MaxLimit} for {FileName}. " +
+                "This should have been split by ProcessRecordsInBatchesAsync.",
                 record.TokenCount, MaxEmbeddingTokens, fileName);
         }
 
         return Task.CompletedTask;
     }
-    
+
     protected async Task<Embedding<float>[]> GenerateEmbeddingsAsync(string[] textChunks, CancellationToken cancellationToken)
     {
         var results = new Embedding<float>[textChunks.Length];
@@ -270,13 +388,16 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
                 cancellationToken: cancellationToken)
             .ToListAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        var cleanFileName = fileName.StartsWith("file://") ? fileName.Substring(7) : fileName;
+        var cleanFileName = GetLocalPathFromFileUri(fileName);
         toDelete = toDelete.Where(data =>
             data.ReferenceDescription!.Contains(cleanFileName)).ToList();
 
         if (toDelete.Count > 0)
+        {
+            Logger.LogDebug("Deleting {Count} existing records for file {FileName}", toDelete.Count, cleanFileName);
             await VectorStoreRecordCollection.DeleteAsync(
                 toDelete.Select(td => td.Key), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -306,10 +427,18 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
         // Fire-and-forget: start the tasks but don't await them
         // They will run to completion in the background
         _ = ragEmbeddingModelsService.UnloadModelsAsync([ragEmbeddingModelLocationDescriptor.ModelId])
-            .ContinueWith(t => { /* Ignore any exceptions */ }, TaskContinuationOptions.OnlyOnFaulted);
-        
+            .ContinueWith(t =>
+            {
+                Logger.LogWarning(t.Exception, "Failed to unload RAG embedding model {ModelId}",
+                    ragEmbeddingModelLocationDescriptor.ModelId);
+            }, TaskContinuationOptions.OnlyOnFaulted);
+
         _ = ragVisionModelsService.UnloadModelsAsync([ragVisionModelLocationDescriptor.ModelId])
-            .ContinueWith(t => { /* Ignore any exceptions */ }, TaskContinuationOptions.OnlyOnFaulted);
+            .ContinueWith(t =>
+            {
+                Logger.LogWarning(t.Exception, "Failed to unload RAG vision model {ModelId}",
+                    ragVisionModelLocationDescriptor.ModelId);
+            }, TaskContinuationOptions.OnlyOnFaulted);
     }
 
     /// <summary>

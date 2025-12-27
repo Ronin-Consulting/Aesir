@@ -415,10 +415,9 @@
     /* Table styling - enhanced with striping and hover */
     .assistant-message .markdown-body table {
         border-collapse: collapse;
-        width: 100%;
-        margin: 12px 0;
+        min-width: 100%;
+        width: max-content;
         border-radius: 8px;
-        overflow: hidden;
     }
 
     .assistant-message .markdown-body th,
@@ -431,6 +430,7 @@
     .assistant-message .markdown-body th {
         background-color: rgba(255, 255, 255, 0.05);
         font-weight: 600;
+        white-space: nowrap;
     }
 
     /* Striped rows */

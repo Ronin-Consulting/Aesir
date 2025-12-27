@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Aesir.Orchestration.Extensions;
 using Aesir.Infrastructure.Extensions;
 using Aesir.Infrastructure.Middleware;
+using Aesir.Infrastructure.Services;
 using NLog;
 using NLog.Web;
 
@@ -68,6 +69,10 @@ public class Program
             builder.Services.AddSwaggerGen();
 
             builder.Services.AddHealthChecks();
+
+            // Register background task queue for long-running operations (e.g., document indexing)
+            builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
+            builder.Services.AddHostedService<BackgroundTaskProcessorService>();
 
             builder.Services.AddSignalR();
 

@@ -18,10 +18,14 @@
         {
             <MudIcon Icon="@_style.Icon" Size="@IconSize" Style="@($"color: {_style.AccentColor};")" />
         }
-        @if (IsUploading)
+        @if (IsUploading || IsProcessing)
         {
             <div class="upload-overlay">
-                <MudProgressCircular Size="MudBlazor.Size.Small" Indeterminate="@(Progress <= 0)" Value="@Progress" Color="Color.Primary" />
+                @* Show indeterminate spinner for Processing status, or when progress <= 0 *@
+                <MudProgressCircular Size="MudBlazor.Size.Small"
+                                     Indeterminate="@(IsProcessing || Progress <= 0)"
+                                     Value="@Math.Max(0, Progress)"
+                                     Color="Color.Primary" />
             </div>
         }
         @if (ShowSuccess)
@@ -68,7 +72,7 @@
                                Class="action-btn remove-btn"
                                aria-label="Remove file" />
             }
-            @if (OnDownload.HasDelegate && !IsUploading)
+            @if (OnDownload.HasDelegate && !IsUploading && !IsProcessing)
             {
                 <MudIconButton Icon="@Icons.Material.Outlined.Download"
                                Size="MudBlazor.Size.Small"
@@ -80,11 +84,11 @@
         </div>
     }
 
-    @* Upload progress bar at bottom *@
-    @if (IsUploading && Progress > 0)
+    @* Upload progress bar at bottom - only show during upload, not during processing *@
+    @if (IsUploading && !IsProcessing && Progress > 0)
     {
         <div class="progress-bar">
-            <div class="progress-fill" style="width: @(Progress)%;"></div>
+            <div class="progress-fill" style="width: @(Math.Max(0, Progress))%;"></div>
         </div>
     }
 </div>
@@ -140,6 +144,10 @@
 
     /* State variants */
     .file-card.state-uploading {
+        border-color: var(--mud-palette-primary);
+    }
+
+    .file-card.state-processing {
         border-color: var(--mud-palette-primary);
     }
 
@@ -395,6 +403,9 @@
     public bool IsUploading { get; set; }
 
     [Parameter]
+    public bool IsProcessing { get; set; }
+
+    [Parameter]
     public int Progress { get; set; }
 
     [Parameter]
@@ -432,7 +443,7 @@
     private bool _thumbnailFailed;
     private string? _lastThumbnailUrl;
 
-    private bool IsClickable => OnClick.HasDelegate && !IsUploading && !IsDeleted;
+    private bool IsClickable => OnClick.HasDelegate && !IsUploading && !IsProcessing && !IsDeleted;
     private bool ShowActions => OnRemove.HasDelegate || OnDownload.HasDelegate;
 
     private string SizeClass => Size switch
@@ -449,6 +460,7 @@
             if (IsDeleted) return "state-deleted";
             if (HasError) return "state-error";
             if (ShowSuccess) return "state-success";
+            if (IsProcessing) return "state-processing";
             if (IsUploading) return "state-uploading";
             return string.Empty;
         }

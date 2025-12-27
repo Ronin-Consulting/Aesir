@@ -106,3 +106,69 @@ public class FileUploadResponse
     [JsonPropertyName("conversationId")]
     public string ConversationId { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Response from a 202 Accepted file upload indicating background processing.
+/// </summary>
+public class FileUploadAcceptedResponse
+{
+    /// <summary>
+    /// Gets or sets the status message.
+    /// </summary>
+    [JsonPropertyName("message")]
+    public string? Message { get; set; }
+
+    /// <summary>
+    /// Gets or sets the uploaded file name.
+    /// </summary>
+    [JsonPropertyName("fileName")]
+    public string? FileName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the conversation ID the file was uploaded to.
+    /// </summary>
+    [JsonPropertyName("conversationId")]
+    public string? ConversationId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the operation ID for status polling.
+    /// </summary>
+    [JsonPropertyName("operationId")]
+    public Guid? OperationId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the URL to poll for status.
+    /// </summary>
+    [JsonPropertyName("statusUrl")]
+    public string? StatusUrl { get; set; }
+}
+
+/// <summary>
+/// Response from the operation status endpoint.
+/// </summary>
+public class OperationStatusResponse
+{
+    /// <summary>
+    /// Gets or sets the operation ID.
+    /// </summary>
+    [JsonPropertyName("operationId")]
+    public Guid OperationId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the current status (in_progress, completed, failed).
+    /// </summary>
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    /// <summary>
+    /// Gets or sets the file name being processed.
+    /// </summary>
+    [JsonPropertyName("fileName")]
+    public string? FileName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the error message if status is failed.
+    /// </summary>
+    [JsonPropertyName("errorMessage")]
+    public string? ErrorMessage { get; set; }
+}

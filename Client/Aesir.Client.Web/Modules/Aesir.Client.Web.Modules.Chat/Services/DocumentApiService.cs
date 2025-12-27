@@ -1,8 +1,10 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Aesir.Client.Web.Infrastructure.Models;
 using Aesir.Client.Web.Infrastructure.Services;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.Web.Modules.Chat.Services;
 
@@ -12,10 +14,28 @@ namespace Aesir.Client.Web.Modules.Chat.Services;
 public class DocumentApiService : IDocumentApiService
 {
     private readonly HttpClient _httpClient;
+    private readonly ILogger<DocumentApiService> _logger;
 
-    public DocumentApiService(HttpClient httpClient)
+    /// <summary>
+    /// Polling interval for checking indexing status.
+    /// </summary>
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// Maximum time to wait for indexing to complete.
+    /// </summary>
+    private static readonly TimeSpan MaxPollDuration = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// Special progress value to signal that the file is being processed in the background.
+    /// The UI should show an indeterminate spinner when this value is received.
+    /// </summary>
+    public const int ProcessingProgressSignal = -1;
+
+    public DocumentApiService(HttpClient httpClient, ILogger<DocumentApiService> logger)
     {
         _httpClient = httpClient;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -50,13 +70,95 @@ public class DocumentApiService : IDocumentApiService
 
         var response = await _httpClient.PostAsync(endpoint, content, ct);
 
-        // Report completion
-        progress?.Report(100);
+        // Handle 202 Accepted - file stored, indexing in background
+        if (response.StatusCode == HttpStatusCode.Accepted)
+        {
+            var acceptedResult = await response.Content.ReadFromJsonAsync<FileUploadAcceptedResponse>(ct);
 
+            if (acceptedResult?.OperationId != null)
+            {
+                _logger.LogDebug("File stored, waiting for indexing. OperationId: {OperationId}", acceptedResult.OperationId);
+
+                // Report 100% to indicate upload is complete
+                progress?.Report(100);
+
+                // Brief pause to show the completed upload progress bar
+                await Task.Delay(300, ct);
+
+                // Signal that we're now in processing mode - UI should show indeterminate spinner
+                progress?.Report(ProcessingProgressSignal);
+
+                // Poll for indexing completion (no progress updates during polling - just wait)
+                await PollForIndexingCompletionAsync(acceptedResult.OperationId.Value, file.Name, ct);
+            }
+
+            progress?.Report(100);
+            return new FileUploadResponse
+            {
+                Message = acceptedResult?.Message ?? "Upload and indexing complete",
+                FileName = file.Name
+            };
+        }
+
+        // Handle other success responses
         response.EnsureSuccessStatusCode();
+        progress?.Report(100);
 
         var result = await response.Content.ReadFromJsonAsync<FileUploadResponse>(ct);
         return result ?? new FileUploadResponse { Message = "Upload complete", FileName = file.Name };
+    }
+
+    /// <summary>
+    /// Polls the status endpoint until indexing is complete or fails.
+    /// During this time, the UI shows an indeterminate spinner (no progress updates).
+    /// </summary>
+    private async Task PollForIndexingCompletionAsync(
+        Guid operationId,
+        string fileName,
+        CancellationToken ct)
+    {
+        var elapsed = TimeSpan.Zero;
+
+        while (elapsed < MaxPollDuration)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            try
+            {
+                var statusEndpoint = $"/document/collections/operations/{operationId}/status";
+                var statusResponse = await _httpClient.GetAsync(statusEndpoint, ct);
+
+                if (statusResponse.IsSuccessStatusCode)
+                {
+                    var status = await statusResponse.Content.ReadFromJsonAsync<OperationStatusResponse>(ct);
+
+                    if (status != null)
+                    {
+                        switch (status.Status?.ToLowerInvariant())
+                        {
+                            case "completed":
+                                _logger.LogDebug("Indexing completed for {FileName}", fileName);
+                                return;
+
+                            case "failed":
+                                var errorMessage = status.ErrorMessage ?? "Unknown error during indexing";
+                                _logger.LogWarning("Indexing failed for {FileName}: {Error}", fileName, errorMessage);
+                                throw new InvalidOperationException($"Document indexing failed: {errorMessage}");
+                        }
+                    }
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "Error polling indexing status for {FileName}", fileName);
+            }
+
+            await Task.Delay(PollInterval, ct);
+            elapsed += PollInterval;
+        }
+
+        _logger.LogWarning("Indexing timed out for {FileName} after {Duration}", fileName, MaxPollDuration);
+        throw new TimeoutException($"Document indexing did not complete within {MaxPollDuration.TotalMinutes} minutes");
     }
 
     /// <inheritdoc />

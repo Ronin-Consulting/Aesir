@@ -27,9 +27,13 @@
                                                 Size="ImageThumbnail.ThumbnailSize.Medium"
                                                 ShowOverlay="false" />
                                 <div class="thumbnail-overlay-actions">
-                                    @if (file.Status == UploadStatus.Uploading)
+                                    @if (file.Status == UploadStatus.Uploading || file.Status == UploadStatus.Processing)
                                     {
-                                        <MudProgressCircular Size="Size.Small" Indeterminate="@(file.Progress <= 0)" Value="@file.Progress" Color="Color.Primary" />
+                                        @* Show indeterminate spinner for Processing status, or when progress <= 0 *@
+                                        <MudProgressCircular Size="Size.Small"
+                                                             Indeterminate="@(file.Status == UploadStatus.Processing || file.Progress <= 0)"
+                                                             Value="@Math.Max(0, file.Progress)"
+                                                             Color="Color.Primary" />
                                     }
                                     else
                                     {
@@ -61,6 +65,7 @@
                                       FileSize="@file.FileSize"
                                       Size="FileCard.FileCardSize.Compact"
                                       IsUploading="@(file.Status == UploadStatus.Uploading)"
+                                      IsProcessing="@(file.Status == UploadStatus.Processing)"
                                       Progress="@file.Progress"
                                       HasError="@(file.Status == UploadStatus.Failed)"
                                       ShowSuccess="@(file.Status == UploadStatus.Completed)"
@@ -699,6 +704,13 @@
             var progress = new Progress<int>(p =>
             {
                 pendingFile.Progress = p;
+
+                // Detect processing signal and update status accordingly
+                if (p == DocumentApiService.ProcessingProgressSignal)
+                {
+                    pendingFile.Status = UploadStatus.Processing;
+                }
+
                 InvokeAsync(StateHasChanged);
             });
 

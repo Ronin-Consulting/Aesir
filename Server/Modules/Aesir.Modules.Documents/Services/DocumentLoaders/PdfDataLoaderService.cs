@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Infrastructure.Extensions;
 using Aesir.Infrastructure.Models;
@@ -84,8 +85,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
 
         // Rate-limited parallel processing using SemaphoreSlim
         var rateLimiter = new SemaphoreSlim(request.MaxConcurrentBatches);
-        var allRecords = new List<TRecord[]>();
-        var lockObj = new object();
+        var allRecords = new ConcurrentBag<TRecord[]>();
 
         var batchTasks = batches.Select(async batch =>
         {
@@ -93,10 +93,7 @@ public class PdfDataLoaderService<TKey, TRecord>(
             try
             {
                 var records = await ProcessBatchAsync(batch, request, cancellationToken).ConfigureAwait(false);
-                lock (lockObj)
-                {
-                    allRecords.Add(records);
-                }
+                allRecords.Add(records);
             }
             finally
             {
@@ -137,7 +134,9 @@ public class PdfDataLoaderService<TKey, TRecord>(
         if (imageContents.Count > 0)
         {
             var visionService = ServiceProvider.GetKeyedService<IVisionService>(request.ModelLocation!.InterfaceEngineId)
-                ?? throw new InvalidOperationException($"Failed to get Vision service for engine {request.ModelLocation.InterfaceEngineId}");
+                ?? throw new InvalidOperationException(
+                    $"Failed to get Vision service for engine '{request.ModelLocation.InterfaceEngineId}'. " +
+                    "Ensure the inference engine is registered and supports vision operations.");
 
             // Process images in optimal batch sizes for the provider
             for (var i = 0; i < imageContents.Count; i += visionService.MaxBatchSize)
@@ -279,7 +278,9 @@ public class PdfDataLoaderService<TKey, TRecord>(
         {
             // Resolve vision service using the engine ID from configuration
             var visionService = ServiceProvider.GetKeyedService<IVisionService>(modelLocationDescriptor.InterfaceEngineId)
-                ?? throw new InvalidOperationException($"Failed to get Vision service for engine {modelLocationDescriptor.InterfaceEngineId}");
+                ?? throw new InvalidOperationException(
+                    $"Failed to get Vision service for engine '{modelLocationDescriptor.InterfaceEngineId}'. " +
+                    "Ensure the inference engine is registered and supports vision operations.");
 
             using var image = Image.Load(imageBytes.Span);
             using var ms = new MemoryStream();

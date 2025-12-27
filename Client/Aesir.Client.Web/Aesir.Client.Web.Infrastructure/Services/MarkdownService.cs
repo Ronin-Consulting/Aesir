@@ -40,6 +40,10 @@ public partial class MarkdownService : IMarkdownService
         RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex ExternalLinkRegex();
 
+    // Regex to match table elements and wrap them for horizontal scrolling
+    [GeneratedRegex(@"<table>([\s\S]*?)</table>", RegexOptions.Compiled)]
+    private static partial Regex TableRegex();
+
     public MarkdownService()
     {
         // Standard pipeline for assistant messages
@@ -76,6 +80,9 @@ public partial class MarkdownService : IMarkdownService
 
         // Transform external links (http/https) to open in new tab
         html = TransformExternalLinks(html);
+
+        // Wrap tables in scrollable container for horizontal overflow
+        html = WrapTablesForScrolling(html);
 
         // Wrap code blocks with copy button container
         html = CodeBlockRegex().Replace(html, match =>
@@ -119,6 +126,7 @@ public partial class MarkdownService : IMarkdownService
         // Apply same transformations as standard pipeline
         html = TransformCitationLinks(html);
         html = TransformExternalLinks(html);
+        html = WrapTablesForScrolling(html);
 
         // Wrap code blocks with copy button container
         html = CodeBlockRegex().Replace(html, match =>
@@ -234,6 +242,15 @@ public partial class MarkdownService : IMarkdownService
             // rel="noopener noreferrer" prevents tab-nabbing security issues
             return $@"<a href=""{HttpUtility.HtmlEncode(url)}"" target=""_blank"" rel=""noopener noreferrer"" onclick=""window.aesirExternalLink?.open(event, this.href)"" class=""external-link"">{linkText}</a>";
         });
+    }
+
+    /// <summary>
+    /// Wraps tables in a scrollable container div for horizontal overflow handling.
+    /// </summary>
+    private static string WrapTablesForScrolling(string html)
+    {
+        return TableRegex().Replace(html, match =>
+            $@"<div class=""table-wrapper""><table>{match.Groups[1].Value}</table></div>");
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Client.Web.Infrastructure.Models;
 using Aesir.Client.Web.Infrastructure.Services;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.Logging;
 using RichardSzalay.MockHttp;
 
 namespace Aesir.Client.Web.Tests.Unit.Chat.Services;
@@ -20,7 +21,8 @@ public class DocumentApiServiceTests
         {
             BaseAddress = new Uri("https://api.test.com")
         };
-        _sut = new DocumentApiService(httpClient);
+        var logger = new Mock<ILogger<DocumentApiService>>();
+        _sut = new DocumentApiService(httpClient, logger.Object);
     }
 
     #region IsFileTypeSupported Tests

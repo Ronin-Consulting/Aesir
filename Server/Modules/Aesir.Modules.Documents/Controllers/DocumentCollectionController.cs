@@ -2,9 +2,11 @@ using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Documents.Events;
 using Aesir.Modules.Documents.Services.DocumentCollections;
+using Aesir.Modules.Logging.Services;
 using Aesir.Modules.Storage.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using IDocumentCollectionService = Aesir.Infrastructure.Services.IDocumentCollectionService;
 
@@ -23,7 +25,9 @@ public class DocumentCollectionController(
     IConfigurationService configurationService,
     IPdfThumbnailService pdfThumbnailService,
     IChatHistoryService chatHistoryService,
-    IDocumentOperationLogger documentOperationLogger)
+    IDocumentOperationLogger documentOperationLogger,
+    IDocumentLogService documentLogService,
+    IBackgroundTaskQueue backgroundTaskQueue)
     : ControllerBase
 {
     /// <summary>
@@ -112,7 +116,15 @@ public class DocumentCollectionController(
         if (!result.Success)
             return BadRequest(result.ErrorMessage);
 
-        return Ok(new { message = "File uploaded successfully", fileName = file?.FileName, categoryId });
+        // Return 202 Accepted with operation ID for status polling
+        return Accepted(new
+        {
+            message = "File uploaded. Indexing in progress.",
+            fileName = file?.FileName,
+            categoryId,
+            operationId = result.OperationId,
+            statusUrl = $"/document/collections/operations/{result.OperationId}/status"
+        });
     }
 
     /// <summary>
@@ -220,7 +232,15 @@ public class DocumentCollectionController(
         if (!result.Success)
             return BadRequest(result.ErrorMessage);
 
-        return Ok(new { message = "File uploaded successfully", fileName = file?.FileName, conversationId });
+        // Return 202 Accepted with operation ID for status polling
+        return Accepted(new
+        {
+            message = "File uploaded. Indexing in progress.",
+            fileName = file?.FileName,
+            conversationId,
+            operationId = result.OperationId,
+            statusUrl = $"/document/collections/operations/{result.OperationId}/status"
+        });
     }
 
     /// <summary>
@@ -404,6 +424,32 @@ public class DocumentCollectionController(
                 sourceConversationId, targetConversationId);
             return StatusCode(500, "An error occurred while migrating files.");
         }
+    }
+
+    #endregion
+
+    #region Operation Status
+
+    /// <summary>
+    /// Gets the status of a document processing operation.
+    /// Used by clients to poll for indexing completion after file upload.
+    /// </summary>
+    /// <param name="operationId">The operation ID returned from the upload endpoint.</param>
+    /// <returns>The current status of the operation.</returns>
+    [HttpGet("operations/{operationId}/status")]
+    public async Task<IActionResult> GetOperationStatusAsync([FromRoute] Guid operationId)
+    {
+        var log = await documentLogService.GetByIdAsync(operationId);
+        if (log == null)
+            return NotFound();
+
+        return Ok(new
+        {
+            operationId = log.Id,
+            status = log.Status.ToString().ToLowerInvariant(),
+            fileName = log.FileName,
+            errorMessage = log.ErrorMessage
+        });
     }
 
     #endregion
@@ -647,29 +693,31 @@ public class DocumentCollectionController(
     }
 
     /// <summary>
-    /// Processes the file upload by validating the file, determining its storage location based on the folder type,
-    /// and storing the file in the specified location.
+    /// Processes the file upload by validating the file, storing it in the database,
+    /// and queueing the indexing work for background processing.
     /// </summary>
     /// <param name="file">The file to be uploaded, provided as an IFormFile object.</param>
     /// <param name="folderId">The unique identifier of the folder in which the file should be stored.</param>
     /// <param name="folderType">The type of folder where the file will be uploaded, indicating its context (e.g., Global or Conversation).</param>
+    /// <param name="cancellationToken">Cancellation token for the file storage operation (not used for indexing).</param>
     /// <returns>
     /// A tuple containing:
-    /// - Success: A boolean indicating whether the file upload was successful.
-    /// - ErrorMessage: A string containing an error message if the upload fails; null if successful.
-    /// - VirtualFilename: A string representing the virtual file path where the uploaded file is stored; null if unsuccessful.
+    /// - Success: A boolean indicating whether the file storage was successful.
+    /// - ErrorMessage: A string containing an error message if storage fails; null if successful.
+    /// - VirtualFilename: A string representing the virtual file path where the file is stored.
+    /// - OperationId: The ID of the indexing operation for status polling.
     /// </returns>
-    private async Task<(bool Success, string? ErrorMessage, string? VirtualFilename)> ProcessFileUploadAsync(
+    private async Task<(bool Success, string? ErrorMessage, string? VirtualFilename, Guid? OperationId)> ProcessFileUploadAsync(
         IFormFile? file, string folderId, FolderType folderType, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(folderId))
-            return (false, $"{folderType.ToString()} ID is required.", null);
+            return (false, $"{folderType.ToString()} ID is required.", null, null);
 
         if (file == null || file.Length == 0)
-            return (false, "No file uploaded.", null);
+            return (false, "No file uploaded.", null, null);
 
         if (file.Length > MaxFileSize)
-            return (false, "File size exceeds 100MB limit.", null);
+            return (false, "File size exceeds 100MB limit.", null, null);
 
         var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
 
@@ -766,9 +814,7 @@ public class DocumentCollectionController(
                 fileContent = null!;
             }
 
-            // Check for cancellation after DB storage but before indexing
-            cancellationToken.ThrowIfCancellationRequested();
-
+            // Build args for document collection
             IDictionary<string, object>? args = null;
             switch (folderType)
             {
@@ -788,13 +834,68 @@ public class DocumentCollectionController(
                     throw new ArgumentOutOfRangeException(nameof(folderType), folderType, null);
             }
 
-            // assume we are using the global RAG vision inference engine and model, but
-            // at some point the agent being used may identify its separate version
+            // Get RAG vision model for indexing
             var ragVisionModelLocationDescriptor = await GetRagVisionModelLocationDescriptorAsync();
 
-            await documentCollectionService.LoadDocumentAsync(tempFilePath, ragVisionModelLocationDescriptor, args, cancellationToken);
+            // Start logging the indexing operation BEFORE queuing
+            // This creates the log record that clients will poll for status
+            Guid? indexingConversationIdGuid = folderType == FolderType.Conversation && Guid.TryParse(folderId, out var convId) ? convId : null;
+            var indexLogId = await documentOperationLogger.StartOperationAsync(
+                DocumentOperationType.EmbeddingsGenerated,
+                fileName,
+                virtualFilename,
+                file.Length,
+                mimeType,
+                indexingConversationIdGuid);
 
-            return (true, null, virtualFilename);
+            // Keep temp file for background processing (don't delete in finally block)
+            var indexingTempFilePath = tempFilePath;
+            tempFilePath = null; // Prevent deletion in finally block
+
+            // Capture values for closure
+            var capturedVirtualFilename = virtualFilename;
+            var capturedArgs = args;
+            var capturedRagVisionModel = ragVisionModelLocationDescriptor;
+            var capturedLogId = indexLogId;
+
+            // Queue indexing for background processing
+            await backgroundTaskQueue.QueueBackgroundWorkItemAsync(async (serviceProvider, ct) =>
+            {
+                var scopedDocumentCollectionService = serviceProvider.GetRequiredService<IDocumentCollectionService>();
+                var scopedDocumentOperationLogger = serviceProvider.GetRequiredService<IDocumentOperationLogger>();
+                var scopedLogger = serviceProvider.GetRequiredService<ILogger<DocumentCollectionController>>();
+
+                try
+                {
+                    scopedLogger.LogInformation("Starting background indexing for {VirtualFilename}", capturedVirtualFilename);
+
+                    await scopedDocumentCollectionService.LoadDocumentAsync(
+                        indexingTempFilePath,
+                        capturedRagVisionModel,
+                        capturedArgs,
+                        ct);
+
+                    await scopedDocumentOperationLogger.CompleteOperationAsync(capturedLogId, cancellationToken: ct);
+
+                    scopedLogger.LogInformation("Background indexing completed for {VirtualFilename}", capturedVirtualFilename);
+                }
+                catch (Exception ex)
+                {
+                    scopedLogger.LogError(ex, "Background indexing failed for {VirtualFilename}", capturedVirtualFilename);
+                    await scopedDocumentOperationLogger.FailOperationAsync(capturedLogId, ex.Message, ct);
+                }
+                finally
+                {
+                    // Clean up temp file
+                    if (System.IO.File.Exists(indexingTempFilePath))
+                    {
+                        System.IO.File.Delete(indexingTempFilePath);
+                    }
+                }
+            });
+
+            // Return immediately with operation ID so client can poll for status
+            return (true, null, virtualFilename, indexLogId);
         }
         catch (OperationCanceledException)
         {
@@ -819,12 +920,12 @@ public class DocumentCollectionController(
                 }
             }
 
-            return (false, "File upload was cancelled.", null);
+            return (false, "File upload was cancelled.", null, null);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error uploading file");
-            return (false, $"An error occurred while uploading the file. Message: {ex.Message}", null);
+            return (false, $"An error occurred while uploading the file. Message: {ex.Message}", null, null);
         }
         finally
         {

@@ -1,3 +1,4 @@
+using System.ClientModel;
 using System.Diagnostics.CodeAnalysis;
 using Aesir.Common.FileTypes;
 using Aesir.Infrastructure.Models;
@@ -78,7 +79,7 @@ public class ImageDataLoaderService<TKey, TRecord>(
                 FileTypeManager.MimeTypes.Jpeg,
                 FileTypeManager.MimeTypes.Tiff
             ))
-            throw new NotSupportedException($"Only PNG images are currently supported and not: {actualContentType}");
+            throw new NotSupportedException($"Only PNG, JPEG, and TIFF images are currently supported, not: {actualContentType}");
 
         if (request.ModelLocation == null)
             throw new InvalidOperationException("ModelLocation is empty");
@@ -140,13 +141,9 @@ public class ImageDataLoaderService<TKey, TRecord>(
                     var record = _recordFactory(chunkContent, request);
                     record.Text ??= chunk;
                     
-                    var cleanFileName = request.ImageFileName!.StartsWith("file://")
-                        ? request.ImageFileName!.Substring(7)
-                        : request.ImageFileName;
-                    var fileUri = request.ImageFileName!.StartsWith("file://")
-                        ? System.Web.HttpUtility.UrlEncode(request.ImageFileName) 
-                        : $"file://{System.Web.HttpUtility.UrlEncode(request.ImageFileName)}";
-                    
+                    var cleanFileName = GetLocalPathFromFileUri(request.ImageFileName!);
+                    var fileUri = GetFileUri(request.ImageFileName!);
+
                     record.ReferenceDescription ??= $"{cleanFileName}#page={chunkContent.PageNumber}";
                     record.ReferenceLink ??= $"{fileUri}#page={chunkContent.PageNumber}";
                     
@@ -220,12 +217,23 @@ public class ImageDataLoaderService<TKey, TRecord>(
         ModelLocationDescriptor modelLocationDescriptor,
         CancellationToken cancellationToken)
     {
-        // Resolve vision service using the engine ID from configuration
-        var visionService = ServiceProvider.GetKeyedService<IVisionService>(modelLocationDescriptor.InterfaceEngineId)
-            ?? throw new InvalidOperationException($"Failed to get Vision service for engine {modelLocationDescriptor.InterfaceEngineId}");
+        try
+        {
+            // Resolve vision service using the engine ID from configuration
+            var visionService = ServiceProvider.GetKeyedService<IVisionService>(modelLocationDescriptor.InterfaceEngineId)
+                ?? throw new InvalidOperationException(
+                    $"Failed to get Vision service for engine '{modelLocationDescriptor.InterfaceEngineId}'. " +
+                    "Ensure the inference engine is registered and supports vision operations.");
 
-        return await visionService
-            .GetImageTextAsync(modelLocationDescriptor, imageBytes, contentType, cancellationToken)
-            .ConfigureAwait(false);
+            return await visionService
+                .GetImageTextAsync(modelLocationDescriptor, imageBytes, contentType, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (ClientResultException ex)
+        {
+            logger.LogError("Failed to generate text from image. Error: {HttpOperationException}",
+                ex.GetRawResponse()?.Content.ToString() ?? ex.ToString());
+            throw;
+        }
     }
 }

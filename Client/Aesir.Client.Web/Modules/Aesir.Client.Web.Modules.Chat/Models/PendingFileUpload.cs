@@ -75,6 +75,11 @@ public enum UploadStatus
     Uploading,
 
     /// <summary>
+    /// File has been uploaded and is being processed/indexed in the background.
+    /// </summary>
+    Processing,
+
+    /// <summary>
     /// File was uploaded successfully.
     /// </summary>
     Completed,
