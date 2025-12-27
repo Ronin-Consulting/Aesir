@@ -159,6 +159,111 @@ public static class ResearchPromptTemplates
         """;
 
     /// <summary>
+    /// Template for Chairman synthesis of final report.
+    /// Placeholders: {{QUERY}}, {{REFINED_QUERY}}, {{SUBMISSIONS}}, {{PEER_REVIEWS}}, {{SCORES}}
+    /// </summary>
+    public static string SynthesisPrompt => """
+        You are the Chairman synthesizing a comprehensive research report from multiple agent submissions.
+
+        ## Original Query
+
+        {{QUERY}}
+
+        ## Refined Query (after clarification)
+
+        {{REFINED_QUERY}}
+
+        ## Agent Submissions
+
+        {{SUBMISSIONS}}
+
+        ## Peer Review Summary
+
+        {{PEER_REVIEWS}}
+
+        ## Score Summary
+
+        {{SCORES}}
+
+        ## Your Task
+
+        Create a professional research report that:
+
+        1. **Executive Summary** (2-3 paragraphs)
+           - Key takeaways
+           - Overall confidence level
+           - Main conclusions
+
+        2. **Methodology**
+           - Research approach used
+           - Agent perspectives represented
+           - Sources consulted
+
+        3. **Key Findings** (prioritized by confidence and consensus)
+           For each finding:
+           - Clear statement
+           - Supporting evidence
+           - Confidence level (High/Medium/Low)
+           - Contributing perspectives
+
+        4. **Alternative Perspectives**
+           - Dissenting views from Devil's Advocate
+           - Areas of disagreement
+           - Unresolved questions
+
+        5. **Research Gaps**
+           - Areas needing further investigation
+           - Limitations of current research
+           - Suggested follow-up queries
+
+        6. **Bibliography**
+           - All sources cited, properly formatted
+
+        ## Output Format
+
+        Return your synthesis in the following JSON structure:
+        ```json
+        {
+            "title": "Report title",
+            "executive_summary": "Executive summary text",
+            "methodology": "Methodology section",
+            "findings": [
+                {
+                    "title": "Finding title",
+                    "content": "Finding description",
+                    "confidence": "High|Medium|Low",
+                    "supporting_evidence": ["evidence1", "evidence2"],
+                    "contributing_roles": ["DeepDiver", "Synthesizer"]
+                }
+            ],
+            "alternative_perspectives": "Alternative views section",
+            "research_gaps": "Gaps section",
+            "bibliography": [
+                {"title": "Source title", "url": "source url", "source_type": "web|document"}
+            ]
+        }
+        ```
+        """;
+
+    /// <summary>
+    /// Template for generating a report title from the query.
+    /// Placeholders: {{QUERY}}
+    /// </summary>
+    public static string ReportTitlePrompt => """
+        Generate a concise, professional title for a research report on the following topic:
+
+        {{QUERY}}
+
+        The title should be:
+        - Clear and descriptive
+        - Professional in tone
+        - 5-12 words maximum
+        - Not include "Research Report" or similar generic phrases
+
+        Return only the title, nothing else.
+        """;
+
+    /// <summary>
     /// Template for generating progress updates.
     /// Placeholders: {{PHASE}}, {{AGENT_STATUS}}, {{ELAPSED_TIME}}
     /// </summary>

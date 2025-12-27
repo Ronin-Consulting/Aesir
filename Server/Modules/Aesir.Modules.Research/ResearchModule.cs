@@ -43,7 +43,12 @@ public class ResearchModule : ModuleBase
         services.AddScoped<IScoringCalculator, ScoringCalculator>();
         services.AddScoped<IPeerReviewService, PeerReviewService>();
 
-        // Register phase executor (depends on anonymization and peer review)
+        // Register synthesis and report generation services
+        services.AddScoped<IConfidenceCalculator, ConfidenceCalculator>();
+        services.AddScoped<IResearchTrailService, ResearchTrailService>();
+        services.AddScoped<IReportGeneratorService, ReportGeneratorService>();
+
+        // Register phase executor (depends on all phase services)
         services.AddScoped<IResearchPhaseExecutor, ResearchPhaseExecutor>();
 
         // Note: ResearchOrchestrator requires external dependencies (agent resolver, chat service resolver)

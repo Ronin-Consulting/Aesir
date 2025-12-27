@@ -72,6 +72,20 @@ public interface IResearchPhaseExecutor
         Dictionary<string, AnonymizedSubmission> anonymizedSubmissions,
         Func<ResearchPhaseProgress, Task>? progressCallback = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Executes the synthesis phase where the Chairman generates the final report.
+    /// </summary>
+    /// <param name="session">The research session with submissions and reviews.</param>
+    /// <param name="chairmanAgent">The Chairman agent.</param>
+    /// <param name="progressCallback">Optional callback for progress updates.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The generated research report.</returns>
+    Task<ResearchReport> ExecuteSynthesisPhaseAsync(
+        ResearchSession session,
+        ResearchAgent chairmanAgent,
+        Func<ResearchPhaseProgress, Task>? progressCallback = null,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -119,15 +133,21 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
     private readonly ILogger<ResearchPhaseExecutor> _logger;
     private readonly IAnonymizationService _anonymizationService;
     private readonly IPeerReviewService _peerReviewService;
+    private readonly IReportGeneratorService _reportGeneratorService;
+    private readonly IScoringCalculator _scoringCalculator;
 
     public ResearchPhaseExecutor(
         ILogger<ResearchPhaseExecutor> logger,
         IAnonymizationService anonymizationService,
-        IPeerReviewService peerReviewService)
+        IPeerReviewService peerReviewService,
+        IReportGeneratorService reportGeneratorService,
+        IScoringCalculator scoringCalculator)
     {
         _logger = logger;
         _anonymizationService = anonymizationService;
         _peerReviewService = peerReviewService;
+        _reportGeneratorService = reportGeneratorService;
+        _scoringCalculator = scoringCalculator;
     }
 
     /// <inheritdoc />
@@ -436,6 +456,108 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         _logger.LogInformation("Peer review phase complete. {Count} reviews generated", reviews.Count);
 
         return reviews;
+    }
+
+    /// <inheritdoc />
+    public async Task<ResearchReport> ExecuteSynthesisPhaseAsync(
+        ResearchSession session,
+        ResearchAgent chairmanAgent,
+        Func<ResearchPhaseProgress, Task>? progressCallback = null,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Starting synthesis phase for session {SessionId}", session.Id);
+
+        // Report start
+        if (progressCallback != null)
+        {
+            await progressCallback(new ResearchPhaseProgress
+            {
+                Phase = ResearchPhase.Synthesis,
+                AgentRole = ResearchRole.Chairman,
+                Message = "Chairman is synthesizing the final report...",
+                PercentComplete = 0
+            });
+        }
+
+        // Calculate submission scores from peer reviews
+        var submissionScores = CalculateSubmissionScores(session);
+
+        // Report progress
+        if (progressCallback != null)
+        {
+            await progressCallback(new ResearchPhaseProgress
+            {
+                Phase = ResearchPhase.Synthesis,
+                AgentRole = ResearchRole.Chairman,
+                Message = "Analyzing peer review scores...",
+                PercentComplete = 30
+            });
+        }
+
+        // Generate the report
+        var report = await _reportGeneratorService.GenerateReportAsync(
+            session,
+            submissionScores,
+            chairmanAgent,
+            cancellationToken);
+
+        // Report completion
+        if (progressCallback != null)
+        {
+            await progressCallback(new ResearchPhaseProgress
+            {
+                Phase = ResearchPhase.Synthesis,
+                AgentRole = ResearchRole.Chairman,
+                Message = $"Report generated: {report.Title}",
+                PercentComplete = 100,
+                IsComplete = true
+            });
+        }
+
+        _logger.LogInformation(
+            "Synthesis phase complete. Report '{Title}' generated with {FindingCount} findings",
+            report.Title, report.Findings?.Count ?? 0);
+
+        return report;
+    }
+
+    private List<SubmissionScore> CalculateSubmissionScores(ResearchSession session)
+    {
+        var scores = new List<SubmissionScore>();
+        var submissions = session.Submissions ?? [];
+        var peerReviews = session.PeerReviews ?? [];
+
+        foreach (var submission in submissions)
+        {
+            var reviewsForSubmission = peerReviews
+                .Where(r => r.SubmissionId == submission.Id)
+                .ToList();
+
+            if (reviewsForSubmission.Count > 0)
+            {
+                var score = _scoringCalculator.CalculateAggregateScore(reviewsForSubmission);
+                score.SubmissionId = submission.Id;
+                scores.Add(score);
+            }
+            else
+            {
+                // No reviews - assign default score
+                scores.Add(new SubmissionScore
+                {
+                    SubmissionId = submission.Id,
+                    AverageScore = 5.0,
+                    MedianScore = 5.0,
+                    MinScore = 5.0,
+                    MaxScore = 5.0,
+                    StandardDeviation = 0,
+                    ReviewCount = 0,
+                    EndorsementCount = 0,
+                    Confidence = ConfidenceLevel.Low
+                });
+            }
+        }
+
+        return scores;
     }
 
     private static string GenerateStubPlan(ResearchAgent agent, string query)

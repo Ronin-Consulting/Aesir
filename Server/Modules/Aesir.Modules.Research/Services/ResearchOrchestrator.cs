@@ -340,17 +340,49 @@ public class ResearchOrchestrator : IResearchOrchestrator
 
             // Store peer reviews
             session.PeerReviews = peerReviews;
+            session.UpdatedAt = DateTime.UtcNow;
+            await _sessionRepository.UpdateAsync(session);
 
-            // Mark as complete (synthesis will be added in Phase 5)
-            session.Status = ResearchStatus.Completed;
+            // Phase 5: Synthesis
+            session.Status = ResearchStatus.Synthesizing;
             session.CurrentPhase = ResearchPhase.Synthesis;
+            session.UpdatedAt = DateTime.UtcNow;
+            await _sessionRepository.UpdateAsync(session);
+
+            // Get Chairman agent for synthesis
+            var chairman = researchAgents.FirstOrDefault(a => a.IsChairman);
+            if (chairman == null)
+            {
+                // Create a default Chairman if none configured
+                chairman = new ResearchAgent
+                {
+                    TeamMemberId = Guid.Empty,
+                    Role = ResearchRole.Chairman,
+                    RoleName = "Chairman",
+                    BaseAgentId = Guid.Empty,
+                    Temperature = 0.5,
+                    Persona = "You are a research synthesis expert."
+                };
+            }
+
+            var report = await _phaseExecutor.ExecuteSynthesisPhaseAsync(
+                session,
+                chairman,
+                progressCallback,
+                cancellationToken);
+
+            // Store report
+            session.Report = report;
+
+            // Mark as complete
+            session.Status = ResearchStatus.Completed;
             session.CompletedAt = DateTime.UtcNow;
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session);
 
             _logger.LogInformation(
-                "Research session {SessionId} completed with {SubmissionCount} submissions and {ReviewCount} reviews",
-                session.Id, submissions.Count, peerReviews.Count);
+                "Research session {SessionId} completed with {SubmissionCount} submissions, {ReviewCount} reviews, and report '{Title}'",
+                session.Id, submissions.Count, peerReviews.Count, report.Title);
         }
         catch (Exception ex)
         {
