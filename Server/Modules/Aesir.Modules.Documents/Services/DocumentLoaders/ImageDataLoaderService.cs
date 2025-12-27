@@ -41,9 +41,10 @@ public class ImageDataLoaderService<TKey, TRecord>(
     Func<RawContent, LoadImageRequest, TRecord> recordFactory,
     IConfigurationService configurationService,
     IServiceProvider serviceProvider,
+    IEmbeddingCache embeddingCache,
     ILogger<ImageDataLoaderService<TKey, TRecord>> logger)
     : BaseDataLoaderService<TKey, TRecord>(uniqueKeyGenerator, vectorStoreRecordCollection, embeddingGenerator,
-        configurationService, serviceProvider, logger), IImageDataLoaderService<TKey, TRecord>
+        configurationService, serviceProvider, embeddingCache, logger), IImageDataLoaderService<TKey, TRecord>
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {

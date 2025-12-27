@@ -61,6 +61,11 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
     protected readonly ILogger Logger;
 
     /// <summary>
+    /// Cache for storing generated embeddings to avoid redundant API calls.
+    /// </summary>
+    protected readonly IEmbeddingCache EmbeddingCache;
+
+    /// <summary>
     /// A static encoder used to perform operations for counting tokens in text.
     /// </summary>
     protected static readonly Encoder TokenCounter = new(DocumentChunker.DefaultEncoding);
@@ -84,7 +89,9 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
     /// <param name="uniqueKeyGenerator">The generator responsible for creating unique keys.</param>
     /// <param name="vectorStoreRecordCollection">The collection used for storing and managing vectorized representations of records.</param>
     /// <param name="embeddingGenerator">The generator used to compute embeddings for data.</param>
-    /// <param name="modelsService">The service handling AI/ML models for processing tasks.</param>
+    /// <param name="configurationService">The service for accessing configuration settings.</param>
+    /// <param name="serviceProvider">The service provider for resolving dependencies.</param>
+    /// <param name="embeddingCache">The cache for storing generated embeddings.</param>
     /// <param name="logger">The logger used for logging operations within the service.</param>
     protected BaseDataLoaderService(
         UniqueKeyGenerator<TKey> uniqueKeyGenerator,
@@ -92,6 +99,7 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
         IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
         IConfigurationService configurationService,
         IServiceProvider serviceProvider,
+        IEmbeddingCache embeddingCache,
         ILogger logger)
     {
         UniqueKeyGenerator = uniqueKeyGenerator;
@@ -99,6 +107,7 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
         EmbeddingGenerator = embeddingGenerator;
         ConfigurationService = configurationService;
         ServiceProvider = serviceProvider;
+        EmbeddingCache = embeddingCache;
         Logger = logger;
     }
 
@@ -116,33 +125,42 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
         int batchSize,
         CancellationToken cancellationToken)
     {
-        var processedRecords = new List<TRecord>();
-        var recordsArray = records.ToArray();
+        // Avoid re-allocation if already a list/array
+        var recordsList = records as IList<TRecord> ?? records.ToList();
+        var totalCount = recordsList.Count;
 
-        for (var i = 0; i < recordsArray.Length; i += batchSize)
+        // Pre-allocate result array with known size
+        var processedRecords = new TRecord[totalCount];
+        var processedIndex = 0;
+
+        for (var i = 0; i < totalCount; i += batchSize)
         {
-            var batch = recordsArray.Skip(i).Take(batchSize).ToList();
-            var enrichRecordTasks = batch.Select(async record =>
+            var batchEnd = Math.Min(i + batchSize, totalCount);
+            var currentBatchSize = batchEnd - i;
+
+            // Single allocation for text batch per iteration
+            var batchTexts = new string[currentBatchSize];
+
+            // Enrich records and collect texts in a single pass
+            for (var j = 0; j < currentBatchSize; j++)
             {
+                var record = recordsList[i + j];
                 await EnrichRecordAsync(record, fileName, cancellationToken).ConfigureAwait(false);
-                return record;
-            }).ToArray();
-            
-            var embeddingTasks = GenerateEmbeddingsAsync(
-                batch.Select(r => r.Text ?? string.Empty).ToArray(), 
-            cancellationToken);
-            
-            var enrichedRecords = await Task.WhenAll(enrichRecordTasks).ConfigureAwait(false);
-            var embeddings = await embeddingTasks.ConfigureAwait(false);
-            for (var j = 0; j < enrichedRecords.Length; j++)
-            {
-                enrichedRecords[j].TextEmbedding = embeddings[j];
+                batchTexts[j] = record.Text ?? string.Empty;
             }
 
-            processedRecords.AddRange(enrichedRecords);
+            var embeddings = await GenerateEmbeddingsAsync(batchTexts, cancellationToken).ConfigureAwait(false);
+
+            // Assign embeddings and copy to result array
+            for (var j = 0; j < currentBatchSize; j++)
+            {
+                var record = recordsList[i + j];
+                record.TextEmbedding = embeddings[j];
+                processedRecords[processedIndex++] = record;
+            }
         }
 
-        return processedRecords.ToArray();
+        return processedRecords;
     }
 
     /// <summary>
@@ -172,30 +190,70 @@ public abstract class BaseDataLoaderService<TKey, TRecord>
     
     protected async Task<Embedding<float>[]> GenerateEmbeddingsAsync(string[] textChunks, CancellationToken cancellationToken)
     {
-        try
+        var results = new Embedding<float>[textChunks.Length];
+        var uncachedIndices = new List<int>();
+        var uncachedTexts = new List<string>();
+
+        // Check cache for existing embeddings
+        for (var i = 0; i < textChunks.Length; i++)
         {
-            var options = new EmbeddingGenerationOptions()
+            var cached = EmbeddingCache.Get(textChunks[i]);
+            if (cached != null)
             {
-                Dimensions =
-                    1024 // this should either be configuration or a requirement that the embedding model supports
-            };
-
-            var sw = Stopwatch.StartNew();
-
-            var result = await EmbeddingGenerator
-                .GenerateAsync(textChunks, options, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            sw.Stop();
-            Logger.LogDebug("Generated {TextChunksSize} embeddings in {ElapsedMilliseconds}ms", textChunks.Length, sw.ElapsedMilliseconds);
-
-            return result.ToArray();
+                results[i] = cached;
+            }
+            else
+            {
+                uncachedIndices.Add(i);
+                uncachedTexts.Add(textChunks[i]);
+            }
         }
-        catch (ClientResultException ex)
+
+        // Generate embeddings only for uncached texts
+        if (uncachedTexts.Count > 0)
         {
-            Logger.LogError("Failed to generate embeddings. Error: {HttpOperationException}",
-                ex.GetRawResponse()?.Content.ToString() ?? ex.ToString());
-            throw;
+            var cacheHits = textChunks.Length - uncachedTexts.Count;
+            Logger.LogDebug("Generating {Count} embeddings (cache hits: {Hits})", uncachedTexts.Count, cacheHits);
+
+            try
+            {
+                var options = new EmbeddingGenerationOptions
+                {
+                    Dimensions = 1024 // this should either be configuration or a requirement that the embedding model supports
+                };
+
+                var sw = Stopwatch.StartNew();
+
+                var generated = await EmbeddingGenerator
+                    .GenerateAsync(uncachedTexts, options, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                var generatedArray = generated.ToArray();
+
+                sw.Stop();
+                Logger.LogDebug("Generated {Count} embeddings in {Ms}ms", generatedArray.Length, sw.ElapsedMilliseconds);
+
+                // Store in cache and assign to results
+                for (var i = 0; i < uncachedIndices.Count; i++)
+                {
+                    var embedding = generatedArray[i];
+                    var originalIndex = uncachedIndices[i];
+                    results[originalIndex] = embedding;
+                    EmbeddingCache.Set(uncachedTexts[i], embedding);
+                }
+            }
+            catch (ClientResultException ex)
+            {
+                Logger.LogError("Failed to generate embeddings. Error: {HttpOperationException}",
+                    ex.GetRawResponse()?.Content.ToString() ?? ex.ToString());
+                throw;
+            }
         }
+        else
+        {
+            Logger.LogDebug("All {Count} embeddings served from cache", textChunks.Length);
+        }
+
+        return results;
     }
 
     /// <summary>

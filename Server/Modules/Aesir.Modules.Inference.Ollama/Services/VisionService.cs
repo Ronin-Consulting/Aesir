@@ -29,6 +29,10 @@ public class VisionService(
     /// </summary>
     private static readonly IPromptProvider PromptProvider = DefaultPromptProvider.Instance;
 
+    /// <inheritdoc />
+    /// <remarks>Ollama processes one image at a time, so batch size is 1.</remarks>
+    public int MaxBatchSize => 1;
+
     /// <summary>
     /// Extracts and returns the textual content from the provided image using the configured vision model.
     /// </summary>
@@ -93,5 +97,44 @@ public class VisionService(
             .ConfigureAwait(false);
 
         return string.Join("\n", result.Select(x => x.Content));
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Ollama doesn't support batch image processing, so this method processes images
+    /// in parallel with throttling to avoid overwhelming the server.
+    /// </remarks>
+    public async Task<string[]> GetImageTextBatchAsync(
+        ModelLocationDescriptor modelLocationDescriptor,
+        IReadOnlyList<(ReadOnlyMemory<byte> ImageBytes, string ContentType)> images,
+        CancellationToken cancellationToken = default)
+    {
+        if (images.Count == 0)
+            return [];
+
+        // Process images in parallel with throttling
+        var throttler = new SemaphoreSlim(Environment.ProcessorCount);
+        var results = new string[images.Count];
+
+        var tasks = images.Select(async (img, index) =>
+        {
+            await throttler.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                results[index] = await GetImageTextAsync(
+                    modelLocationDescriptor,
+                    img.ImageBytes,
+                    img.ContentType,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                throttler.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        return results;
     }
 }

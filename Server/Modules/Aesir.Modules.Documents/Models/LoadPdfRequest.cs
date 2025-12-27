@@ -24,8 +24,15 @@ public sealed class LoadPdfRequest
     public int BatchSize { get; set; } = Math.Max(Environment.ProcessorCount / 2 + 1, 10);
 
     /// <summary>
+    /// Gets or sets the maximum number of concurrent batch operations.
+    /// Controls parallelism during PDF processing for rate limiting.
+    /// </summary>
+    public int MaxConcurrentBatches { get; set; } = Environment.ProcessorCount;
+
+    /// <summary>
     /// Gets or sets the delay, in milliseconds, between processing batches of PDF data during loading.
     /// </summary>
+    [Obsolete("Use MaxConcurrentBatches for rate limiting instead. This property is ignored.")]
     public int BetweenBatchDelayInMs { get; set; } = 50;
 
     /// <summary>

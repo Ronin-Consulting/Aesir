@@ -28,9 +28,9 @@ namespace Aesir.Modules.Documents.Services.DocumentLoaders;
 /// <param name="vectorStoreRecordCollection">The collection used to store vectorized data for search and retrieval.</param>
 /// <param name="embeddingGenerator">Service for generating embeddings from provided text content.</param>
 /// <param name="recordFactory">A factory function used to create a record from raw content and load requests.</param>
-/// <param name="visionService">Service capable of extracting and processing visual content within PDFs.</param>
 /// <param name="configurationService">Service for loading configuration.</param>
 /// <param name="serviceProvider">Service locator.</param>
+/// <param name="embeddingCache">Cache for storing generated embeddings.</param>
 /// <param name="logger">Logger instance for diagnostic or operational logging purposes.</param>
 [Experimental("SKEXP0001")]
 public class PdfDataLoaderService<TKey, TRecord>(
@@ -40,9 +40,10 @@ public class PdfDataLoaderService<TKey, TRecord>(
     Func<RawContent, LoadPdfRequest, TRecord> recordFactory,
     IConfigurationService configurationService,
     IServiceProvider serviceProvider,
+    IEmbeddingCache embeddingCache,
     ILogger<PdfDataLoaderService<TKey, TRecord>> logger)
     : BaseDataLoaderService<TKey, TRecord>(uniqueKeyGenerator, vectorStoreRecordCollection, embeddingGenerator,
-        configurationService, serviceProvider, logger), IPdfDataLoaderService<TKey, TRecord>
+        configurationService, serviceProvider, embeddingCache, logger), IPdfDataLoaderService<TKey, TRecord>
     where TKey : notnull
     where TRecord : AesirTextData<TKey>
 {
@@ -76,67 +77,122 @@ public class PdfDataLoaderService<TKey, TRecord>(
 
         // Load the text and images from the PDF file and split them into batches.
         var pages = LoadTextAndImages(request.PdfLocalPath, cancellationToken);
+        var batches = pages.Chunk(request.BatchSize).ToList();
 
-        var batches = pages.Chunk(request.BatchSize);
+        logger.LogDebug("Processing {BatchCount} batches with max {MaxConcurrent} concurrent operations",
+            batches.Count, request.MaxConcurrentBatches);
 
-        // Process each batch of content items.
-        foreach (var page in batches)
+        // Rate-limited parallel processing using SemaphoreSlim
+        var rateLimiter = new SemaphoreSlim(request.MaxConcurrentBatches);
+        var allRecords = new List<TRecord[]>();
+        var lockObj = new object();
+
+        var batchTasks = batches.Select(async batch =>
         {
-            // Convert any images to text.
-            var extractTextTasks = page.Select(async content =>
+            await rateLimiter.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                if (content.Text != null)
+                var records = await ProcessBatchAsync(batch, request, cancellationToken).ConfigureAwait(false);
+                lock (lockObj)
                 {
-                    return content;
+                    allRecords.Add(records);
                 }
-
-                var textFromImage = await ConvertImageToTextAsync(
-                    content.Image!.Value,
-                    request.ModelLocation,
-                    cancellationToken).ConfigureAwait(false);
-
-                return new RawContent { Text = textFromImage, PageNumber = content.PageNumber };
-            });
-            var rawTextContents = await Task.WhenAll(extractTextTasks).ConfigureAwait(false);
-
-            // now need to break all the pages into smaller chunks with overlap to preserve mean context
-            var chunkingTasks = rawTextContents.Select(rawTextContent =>
-                Task.Run(() =>
-                {
-                    var chunkHeader = $"File: {request.PdfFileName}\nPage: {rawTextContent.PageNumber}\n";
-                    logger.LogDebug("Created Chunk: {ChunkHeader}", chunkHeader);
-                    var textChunks = DocumentChunker.ChunkText(rawTextContent.Text!, chunkHeader);
-                    return textChunks.Select(textChunk => new RawContent
-                    {
-                        Text = textChunk,
-                        PageNumber = rawTextContent.PageNumber
-                    });
-                }, cancellationToken)
-            );
-            var chunkedResults = await Task.WhenAll(chunkingTasks).ConfigureAwait(false);
-            var textContents = chunkedResults.SelectMany(x => x);
-
-            // Create records from content and process them
-            var records = textContents.Select(content =>
+            }
+            finally
             {
-                var record = _recordFactory(content, request);
-                record.Text ??= content.Text;
-                record.ReferenceDescription ??=
-                    $"{request.PdfFileName!.TrimStart("file://")}#page={content.PageNumber}";
-                record.ReferenceLink ??=
-                    $"{new Uri($"file://{request.PdfFileName!.TrimStart("file://")}").AbsoluteUri}#page={content.PageNumber}";
-                return record;
-            }).ToArray();
+                rateLimiter.Release();
+            }
+        });
 
-            var processedRecords =
-                await ProcessRecordsInBatchesAsync(records, request.PdfFileName!, request.BatchSize, cancellationToken);
-            
-            await UpsertRecordsAsync(processedRecords, cancellationToken);
+        await Task.WhenAll(batchTasks).ConfigureAwait(false);
 
-            await Task.Delay(request.BetweenBatchDelayInMs, cancellationToken).ConfigureAwait(false);
+        // Upsert all records at once
+        var flattenedRecords = allRecords.SelectMany(r => r).ToArray();
+        if (flattenedRecords.Length > 0)
+        {
+            await UpsertRecordsAsync(flattenedRecords, cancellationToken);
         }
 
         await UnloadModelsAsync();
+    }
+
+    /// <summary>
+    /// Processes a batch of raw content items by converting images to text, chunking, and generating embeddings.
+    /// </summary>
+    /// <param name="batch">The batch of raw content items to process.</param>
+    /// <param name="request">The load PDF request containing configuration.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <returns>An array of processed records with embeddings.</returns>
+    private async Task<TRecord[]> ProcessBatchAsync(
+        RawContent[] batch,
+        LoadPdfRequest request,
+        CancellationToken cancellationToken)
+    {
+        // Separate text and image content
+        var textContentsFromBatch = batch.Where(c => c.Text != null).ToList();
+        var imageContents = batch.Where(c => c.Image.HasValue).ToList();
+
+        // Process images using batch vision API
+        var convertedImageContents = new List<RawContent>();
+        if (imageContents.Count > 0)
+        {
+            var visionService = ServiceProvider.GetKeyedService<IVisionService>(request.ModelLocation!.InterfaceEngineId)
+                ?? throw new InvalidOperationException($"Failed to get Vision service for engine {request.ModelLocation.InterfaceEngineId}");
+
+            // Process images in optimal batch sizes for the provider
+            for (var i = 0; i < imageContents.Count; i += visionService.MaxBatchSize)
+            {
+                var imageBatch = imageContents
+                    .Skip(i)
+                    .Take(visionService.MaxBatchSize)
+                    .Select(c => (ConvertToPng(c.Image!.Value), PngMimeType))
+                    .ToList();
+
+                var extractedTexts = await visionService.GetImageTextBatchAsync(
+                    request.ModelLocation!,
+                    imageBatch,
+                    cancellationToken).ConfigureAwait(false);
+
+                for (var j = 0; j < extractedTexts.Length; j++)
+                {
+                    convertedImageContents.Add(new RawContent
+                    {
+                        Text = extractedTexts[j],
+                        PageNumber = imageContents[i + j].PageNumber
+                    });
+                }
+            }
+        }
+
+        var rawTextContents = textContentsFromBatch.Concat(convertedImageContents).ToArray();
+
+        // Break content into smaller chunks with headers
+        var textContents = rawTextContents.SelectMany(rawTextContent =>
+        {
+            var chunkHeader = $"File: {request.PdfFileName}\nPage: {rawTextContent.PageNumber}\n";
+            logger.LogDebug("Created Chunk: {ChunkHeader}", chunkHeader);
+            var textChunks = DocumentChunker.ChunkText(rawTextContent.Text!, chunkHeader);
+            return textChunks.Select(textChunk => new RawContent
+            {
+                Text = textChunk,
+                PageNumber = rawTextContent.PageNumber
+            });
+        }).ToList();
+
+        // Create records from content
+        var records = textContents.Select(content =>
+        {
+            var record = _recordFactory(content, request);
+            record.Text ??= content.Text;
+            record.ReferenceDescription ??=
+                $"{request.PdfFileName!.TrimStart("file://")}#page={content.PageNumber}";
+            record.ReferenceLink ??=
+                $"{new Uri($"file://{request.PdfFileName!.TrimStart("file://")}").AbsoluteUri}#page={content.PageNumber}";
+            return record;
+        }).ToArray();
+
+        // Process records to generate embeddings
+        return await ProcessRecordsInBatchesAsync(records, request.PdfFileName!, request.BatchSize, cancellationToken);
     }
 
 

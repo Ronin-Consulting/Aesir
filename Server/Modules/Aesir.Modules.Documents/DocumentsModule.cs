@@ -4,6 +4,7 @@ using Aesir.Infrastructure.Models;
 using Aesir.Infrastructure.Modules;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Documents.Models;
+using Aesir.Modules.Documents.Services;
 using Aesir.Modules.Documents.Services.DocumentCollections;
 using Aesir.Modules.Documents.Services.DocumentLoaders;
 using Microsoft.Extensions.AI;
@@ -76,6 +77,9 @@ public class DocumentsModule : ModuleBase
         // Register unique key generator
         services.AddSingleton(new UniqueKeyGenerator<Guid>(Guid.NewGuid));
 
+        // Register embedding cache for performance optimization
+        services.AddSingleton<IEmbeddingCache, EmbeddingCache>();
+
         // Register PDF data loader for global documents
         services.AddSingleton<IPdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>(serviceProvider =>
         {
@@ -98,6 +102,7 @@ public class DocumentsModule : ModuleBase
                 },
                 serviceProvider.GetRequiredService<IConfigurationService>(),
                 serviceProvider,
+                serviceProvider.GetRequiredService<IEmbeddingCache>(),
                 serviceProvider.GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirGlobalDocumentTextData<Guid>>>>()
             );
         });
@@ -124,6 +129,7 @@ public class DocumentsModule : ModuleBase
                 },
                 serviceProvider.GetRequiredService<IConfigurationService>(),
                 serviceProvider,
+                serviceProvider.GetRequiredService<IEmbeddingCache>(),
                 serviceProvider.GetRequiredService<ILogger<PdfDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
         });
@@ -150,6 +156,7 @@ public class DocumentsModule : ModuleBase
                 },
                 serviceProvider.GetRequiredService<IConfigurationService>(),
                 serviceProvider,
+                serviceProvider.GetRequiredService<IEmbeddingCache>(),
                 serviceProvider.GetRequiredService<ILogger<ImageDataLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
         });
@@ -203,6 +210,7 @@ public class DocumentsModule : ModuleBase
                 },
                 serviceProvider.GetRequiredService<IConfigurationService>(),
                 serviceProvider,
+                serviceProvider.GetRequiredService<IEmbeddingCache>(),
                 serviceProvider.GetRequiredService<ILogger<TextFileLoaderService<Guid, AesirConversationDocumentTextData<Guid>>>>()
             );
         });
