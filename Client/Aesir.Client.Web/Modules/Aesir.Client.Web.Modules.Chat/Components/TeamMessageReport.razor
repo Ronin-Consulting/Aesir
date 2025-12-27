@@ -1,0 +1,367 @@
+@using Aesir.Client.Web.Infrastructure.Services
+
+<div class="research-report">
+    @* Report Header *@
+    <div class="report-header">
+        <div class="report-title-section">
+            <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Medium" Class="report-icon" />
+            <div class="report-title-info">
+                <span class="report-title">@Report.Title</span>
+                <span class="report-meta">
+                    @Report.FindingCount findings &bull; @Report.SourceCount sources
+                </span>
+            </div>
+        </div>
+        <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle">
+            Complete
+        </MudChip>
+    </div>
+
+    @* Executive Summary *@
+    @if (!string.IsNullOrEmpty(Report.ExecutiveSummary))
+    {
+        <div class="executive-summary">
+            <div class="summary-label">
+                <MudIcon Icon="@Icons.Material.Filled.Summarize" Size="Size.Small" />
+                <span>Executive Summary</span>
+            </div>
+            <div class="summary-content">
+                @Report.ExecutiveSummary
+            </div>
+        </div>
+    }
+
+    @* Quick Stats *@
+    <div class="report-stats">
+        <div class="stat-item">
+            <div class="stat-value">@Report.FindingCount</div>
+            <div class="stat-label">Key Findings</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">@Report.SourceCount</div>
+            <div class="stat-label">Sources Cited</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value">@GetDuration()</div>
+            <div class="stat-label">Duration</div>
+        </div>
+    </div>
+
+    @* View Full Report Button *@
+    <div class="report-actions">
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.OpenInNew"
+                   OnClick="@(() => _fullReportExpanded = !_fullReportExpanded)">
+            @(_fullReportExpanded ? "Hide Full Report" : "View Full Report")
+        </MudButton>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   StartIcon="@Icons.Material.Filled.Download"
+                   OnClick="HandleDownload">
+            Download
+        </MudButton>
+    </div>
+
+    @* Expanded Full Report Preview *@
+    @if (_fullReportExpanded)
+    {
+        <div class="full-report-preview">
+            <MudDivider Class="my-3" />
+            <div class="full-report-content">
+                @if (!string.IsNullOrEmpty(_fullMarkdown))
+                {
+                    <MudPaper Elevation="0" Class="report-paper">
+                        @((MarkupString)_fullMarkdown)
+                    </MudPaper>
+                }
+                else
+                {
+                    <div class="report-loading">
+                        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                        <span>Loading full report...</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .research-report {
+        background: linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(156, 39, 176, 0.05) 100%);
+        border: 1px solid rgba(33, 150, 243, 0.2);
+        border-radius: 12px;
+        padding: 16px;
+        margin: 12px 0;
+    }
+
+    /* Report Header */
+    .research-report .report-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+    }
+
+    .research-report .report-title-section {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .research-report .report-icon {
+        color: #2196F3;
+        margin-top: 2px;
+    }
+
+    .research-report .report-title-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .research-report .report-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: var(--mud-palette-text-primary);
+        line-height: 1.3;
+    }
+
+    .research-report .report-meta {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    /* Executive Summary */
+    .research-report .executive-summary {
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 16px;
+    }
+
+    .research-report .summary-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--mud-palette-text-secondary);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
+    .research-report .summary-content {
+        font-size: 0.9rem;
+        line-height: 1.6;
+        color: var(--mud-palette-text-primary);
+    }
+
+    /* Stats */
+    .research-report .report-stats {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 16px;
+        padding: 12px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .research-report .stat-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex: 1;
+    }
+
+    .research-report .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2196F3;
+    }
+
+    .research-report .stat-label {
+        font-size: 0.7rem;
+        color: var(--mud-palette-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Actions */
+    .research-report .report-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-start;
+    }
+
+    /* Full Report Preview */
+    .research-report .full-report-preview {
+        margin-top: 16px;
+    }
+
+    .research-report .full-report-content {
+        max-height: 500px;
+        overflow-y: auto;
+        padding: 16px;
+        background-color: rgba(0, 0, 0, 0.02);
+        border-radius: 8px;
+    }
+
+    .research-report .report-paper {
+        background: transparent;
+        padding: 0;
+    }
+
+    .research-report .report-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 24px;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    /* Markdown content in full report */
+    .research-report .full-report-content h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin: 16px 0 12px 0;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .research-report .full-report-content h2 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin: 14px 0 10px 0;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .research-report .full-report-content h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 12px 0 8px 0;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .research-report .full-report-content p {
+        margin: 8px 0;
+        line-height: 1.6;
+    }
+
+    .research-report .full-report-content ul,
+    .research-report .full-report-content ol {
+        margin: 8px 0;
+        padding-left: 24px;
+    }
+
+    .research-report .full-report-content li {
+        margin-bottom: 4px;
+    }
+
+    .research-report .full-report-content blockquote {
+        border-left: 3px solid #2196F3;
+        padding-left: 12px;
+        margin: 12px 0;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .research-report .full-report-content code {
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+
+    .research-report .full-report-content pre {
+        background-color: #1e1e2e;
+        border-radius: 8px;
+        padding: 12px;
+        overflow-x: auto;
+        margin: 12px 0;
+    }
+
+    .research-report .full-report-content pre code {
+        background-color: transparent;
+        padding: 0;
+        color: #e0e0e0;
+    }
+</style>
+
+@code {
+    private bool _fullReportExpanded = false;
+    private string? _fullMarkdown;
+
+    [Parameter]
+    public required ResearchReportSummaryBase Report { get; set; }
+
+    [Inject]
+    private IResearchSessionApiService? ResearchApi { get; set; }
+
+    [Inject]
+    private IMarkdownService? MarkdownService { get; set; }
+
+    [Inject]
+    private IJSRuntime? JSRuntime { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_fullReportExpanded && string.IsNullOrEmpty(_fullMarkdown) && ResearchApi != null)
+        {
+            await LoadFullReport();
+        }
+    }
+
+    private async Task LoadFullReport()
+    {
+        if (ResearchApi == null || MarkdownService == null) return;
+
+        try
+        {
+            // Note: This would require the session ID to be passed in or accessed differently
+            // For now, we'll use the report ID
+            var result = await ResearchApi.GetReportMarkdownAsync(Report.Id);
+            if (result.IsSuccess && result.Value != null)
+            {
+                _fullMarkdown = MarkdownService.ToHtml(result.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load full report: {ex.Message}");
+        }
+    }
+
+    private string GetDuration()
+    {
+        if (Report.CreatedAt == default)
+            return "--";
+
+        // Approximate duration based on creation time
+        // In a real implementation, you'd calculate from session start to completion
+        return "~" + Math.Max(1, (int)(DateTime.UtcNow - Report.CreatedAt).TotalMinutes) + "m";
+    }
+
+    private async Task HandleDownload()
+    {
+        if (ResearchApi == null || JSRuntime == null) return;
+
+        try
+        {
+            var result = await ResearchApi.GetReportMarkdownAsync(Report.Id);
+            if (result.IsSuccess && result.Value != null)
+            {
+                var fileName = $"research-report-{Report.Id:N}.md";
+                var content = result.Value;
+
+                // Create a download using JavaScript
+                await JSRuntime.InvokeVoidAsync("downloadText", content, fileName, "text/markdown");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to download report: {ex.Message}");
+        }
+    }
+}

@@ -1,13 +1,20 @@
-@* Compact Agent Selector for Input Area (Claude-style model selector) *@
+@* Compact Agent/Team Selector for Input Area (Claude-style model selector with tabs) *@
 @inject IConfigurationApiService ConfigurationApi
+@inject IResearchTeamApiService ResearchTeamApi
 @inject IChatStateService ChatState
+@inject IResearchStateService ResearchState
 
 <MudMenu AnchorOrigin="Origin.TopCenter"
          TransformOrigin="Origin.BottomCenter"
          Class="agent-selector-compact">
     <ActivatorContent>
         <div class="selector-button">
-            @if (ChatState.SelectedAgent != null)
+            @if (ResearchState.IsTeamSelected && ResearchState.SelectedTeam != null)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" Class="selector-icon team-icon" />
+                <span class="agent-name team-name">@ResearchState.SelectedTeam.Name</span>
+            }
+            else if (ChatState.SelectedAgent != null)
             {
                 <span class="agent-name">@ChatState.SelectedAgent.Name</span>
             }
@@ -25,35 +32,104 @@
         </div>
     </ActivatorContent>
     <ChildContent>
-        @if (_agents.Any())
-        {
-            @foreach (var agent in _agents)
+        <div class="selector-content">
+            @* Tabs for switching between Agents and Teams *@
+            <div class="selector-tabs">
+                <button class="tab-button @(_selectedTab == "agents" ? "active" : "")"
+                        @onclick="SelectAgentsTab">
+                    <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" />
+                    <span>Agents</span>
+                </button>
+                <button class="tab-button @(_selectedTab == "teams" ? "active" : "")"
+                        @onclick="SelectTeamsTab">
+                    <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
+                    <span>Teams</span>
+                </button>
+            </div>
+
+            <MudDivider Class="my-1" />
+
+            @if (_selectedTab == "agents")
             {
-                <MudMenuItem OnClick="@(() => SelectAgent(agent))" Class="agent-menu-item">
-                    <div class="agent-item @(ChatState.SelectedAgentId == agent.Id ? "selected" : "")">
-                        <div class="agent-info">
-                            <span class="agent-item-name">@agent.Name</span>
-                            @if (!string.IsNullOrWhiteSpace(agent.ChatModel))
-                            {
-                                <span class="agent-model">@agent.ChatModel</span>
-                            }
-                        </div>
-                        @if (ChatState.SelectedAgentId == agent.Id)
-                        {
-                            <MudIcon Icon="@Icons.Material.Filled.Check"
-                                     Size="Size.Small"
-                                     Class="check-icon" />
-                        }
-                    </div>
-                </MudMenuItem>
+                @* Agents List *@
+                @if (_agents.Any())
+                {
+                    @foreach (var agent in _agents)
+                    {
+                        <MudMenuItem OnClick="@(() => SelectAgent(agent))" Class="agent-menu-item">
+                            <div class="agent-item @(ChatState.SelectedAgentId == agent.Id && !ResearchState.IsTeamSelected ? "selected" : "")">
+                                <div class="agent-info">
+                                    <span class="agent-item-name">@agent.Name</span>
+                                    @if (!string.IsNullOrWhiteSpace(agent.ChatModel))
+                                    {
+                                        <span class="agent-model">@agent.ChatModel</span>
+                                    }
+                                </div>
+                                @if (ChatState.SelectedAgentId == agent.Id && !ResearchState.IsTeamSelected)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Check"
+                                             Size="Size.Small"
+                                             Class="check-icon" />
+                                }
+                            </div>
+                        </MudMenuItem>
+                    }
+                }
+                else if (!_isLoading)
+                {
+                    <MudMenuItem Disabled="true">
+                        <span class="no-items">No agents configured</span>
+                    </MudMenuItem>
+                }
             }
-        }
-        else if (!_isLoading)
-        {
-            <MudMenuItem Disabled="true">
-                <span class="no-agents">No agents configured</span>
-            </MudMenuItem>
-        }
+            else
+            {
+                @* Research Teams List *@
+                @if (_teams.Any())
+                {
+                    @foreach (var team in _teams)
+                    {
+                        <MudMenuItem OnClick="@(() => SelectTeam(team))" Class="agent-menu-item">
+                            <div class="team-item @(ResearchState.SelectedTeam?.Id == team.Id ? "selected" : "")">
+                                <div class="team-info">
+                                    <div class="team-header-row">
+                                        <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" Class="team-list-icon" />
+                                        <span class="team-item-name">@team.Name</span>
+                                    </div>
+                                    @if (team.Members?.Count > 0)
+                                    {
+                                        <span class="team-members">@team.Members.Count members</span>
+                                    }
+                                </div>
+                                @if (ResearchState.SelectedTeam?.Id == team.Id)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Check"
+                                             Size="Size.Small"
+                                             Class="check-icon" />
+                                }
+                            </div>
+                        </MudMenuItem>
+                    }
+                }
+                else if (!_isLoading)
+                {
+                    <MudMenuItem Disabled="true">
+                        <span class="no-items">No research teams configured</span>
+                    </MudMenuItem>
+                }
+
+                @if (_teams.Any() && ResearchState.IsTeamSelected)
+                {
+                    <MudDivider Class="my-1" />
+                    <MudMenuItem OnClick="ClearTeamSelection" Class="agent-menu-item">
+                        <div class="clear-selection">
+                            <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+                            <span>Use Agent Instead</span>
+                        </div>
+                    </MudMenuItem>
+                }
+            }
+        </div>
     </ChildContent>
 </MudMenu>
 
@@ -74,10 +150,22 @@
         background-color: rgba(255, 255, 255, 0.05);
     }
 
+    .agent-selector-compact .selector-icon {
+        margin-right: 4px;
+    }
+
+    .agent-selector-compact .team-icon {
+        color: #9C27B0;
+    }
+
     .agent-selector-compact .agent-name {
         font-size: 0.875rem;
         font-weight: 500;
         color: var(--mud-palette-text-primary);
+    }
+
+    .agent-selector-compact .agent-name.team-name {
+        color: #9C27B0;
     }
 
     .agent-selector-compact .agent-name.placeholder {
@@ -89,12 +177,56 @@
         transition: transform 0.2s ease;
     }
 
+    /* Selector Content */
+    .selector-content {
+        min-width: 240px;
+    }
+
+    /* Tabs */
+    .selector-tabs {
+        display: flex;
+        padding: 8px;
+        gap: 4px;
+    }
+
+    .tab-button {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 12px;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-secondary);
+        transition: all 0.15s ease;
+    }
+
+    .tab-button:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-button.active {
+        background-color: rgba(84, 169, 255, 0.1);
+        border-color: rgba(84, 169, 255, 0.3);
+        color: #54A9FF;
+    }
+
+    .tab-button.active:last-child {
+        background-color: rgba(156, 39, 176, 0.1);
+        border-color: rgba(156, 39, 176, 0.3);
+        color: #9C27B0;
+    }
+
     /* Menu styling */
     .agent-menu-item {
         padding: 0 !important;
     }
 
-    .agent-item {
+    .agent-item, .team-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -107,23 +239,42 @@
         background-color: rgba(84, 169, 255, 0.1);
     }
 
+    .team-item:hover {
+        background-color: rgba(156, 39, 176, 0.1);
+    }
+
     .agent-item.selected {
         background-color: rgba(84, 169, 255, 0.15);
     }
 
-    .agent-info {
+    .team-item.selected {
+        background-color: rgba(156, 39, 176, 0.15);
+    }
+
+    .agent-info, .team-info {
         display: flex;
         flex-direction: column;
         gap: 2px;
     }
 
-    .agent-item-name {
+    .team-header-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .team-list-icon {
+        color: #9C27B0;
+        font-size: 1rem;
+    }
+
+    .agent-item-name, .team-item-name {
         font-size: 0.875rem;
         font-weight: 500;
         color: var(--mud-palette-text-primary);
     }
 
-    .agent-model {
+    .agent-model, .team-members {
         font-size: 0.75rem;
         color: var(--mud-palette-text-secondary);
     }
@@ -132,10 +283,27 @@
         color: #54A9FF;
     }
 
-    .no-agents {
+    .team-item .check-icon {
+        color: #9C27B0;
+    }
+
+    .no-items {
         font-size: 0.875rem;
         color: var(--mud-palette-text-secondary);
         font-style: italic;
+    }
+
+    .clear-selection {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        color: var(--mud-palette-text-secondary);
+        font-size: 0.85rem;
+    }
+
+    .clear-selection:hover {
+        background-color: rgba(255, 255, 255, 0.05);
     }
 </style>
 
@@ -143,29 +311,46 @@
     [Parameter]
     public EventCallback<AesirAgentBase> OnAgentSelected { get; set; }
 
+    [Parameter]
+    public EventCallback<ResearchTeamBase> OnTeamSelected { get; set; }
+
     private List<AesirAgentBase> _agents = [];
+    private List<ResearchTeamBase> _teams = [];
     private bool _isLoading = true;
+    private string _selectedTab = "agents";
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadAgentsAsync();
+        await LoadDataAsync();
     }
 
-    private async Task LoadAgentsAsync()
+    private async Task LoadDataAsync()
     {
         _isLoading = true;
         StateHasChanged();
 
-        var result = await ConfigurationApi.GetAgentsAsync();
-        result.OnSuccess(agents =>
+        // Load agents and teams in parallel
+        var agentsTask = ConfigurationApi.GetAgentsAsync();
+        var teamsTask = ResearchTeamApi.GetActiveTeamsAsync();
+
+        await Task.WhenAll(agentsTask, teamsTask);
+
+        var agentsResult = await agentsTask;
+        agentsResult.OnSuccess(agents =>
         {
             _agents = agents.ToList();
 
-            // Auto-select first agent if none selected
-            if (ChatState.SelectedAgent == null && _agents.Any())
+            // Auto-select first agent if none selected and no team selected
+            if (ChatState.SelectedAgent == null && _agents.Any() && !ResearchState.IsTeamSelected)
             {
                 ChatState.SelectAgent(_agents.First());
             }
+        });
+
+        var teamsResult = await teamsTask;
+        teamsResult.OnSuccess(teams =>
+        {
+            _teams = teams.ToList();
         });
 
         _isLoading = false;
@@ -173,7 +358,31 @@
 
     private async Task SelectAgent(AesirAgentBase agent)
     {
+        // Clear team selection when selecting an agent
+        ResearchState.SelectTeam(null);
+
         ChatState.SelectAgent(agent);
         await OnAgentSelected.InvokeAsync(agent);
+    }
+
+    private async Task SelectTeam(ResearchTeamBase team)
+    {
+        ResearchState.SelectTeam(team);
+        await OnTeamSelected.InvokeAsync(team);
+    }
+
+    private void ClearTeamSelection()
+    {
+        ResearchState.SelectTeam(null);
+    }
+
+    private void SelectAgentsTab()
+    {
+        _selectedTab = "agents";
+    }
+
+    private void SelectTeamsTab()
+    {
+        _selectedTab = "teams";
     }
 }

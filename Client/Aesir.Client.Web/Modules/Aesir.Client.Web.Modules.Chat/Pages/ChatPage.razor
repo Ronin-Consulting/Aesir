@@ -8,6 +8,7 @@
 @inject IDocumentApiService DocumentService
 @inject IAgentToolsService AgentToolsService
 @inject IConfigurationApiService ConfigurationService
+@inject IResearchStateService ResearchState
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
@@ -79,6 +80,11 @@
                                       ShowThinking="@(ChatState.SelectedAgent?.IsThinkingAvailable ?? false)"
                                       IsLatestMessage="@(message == lastAssistantMessage && !isCurrentlyStreaming)"
                                       ToolCalls="@message.ToolCalls" />
+                }
+                else if (message.IsResearchTeamMessage)
+                {
+                    <TeamMessage Message="message"
+                                 Session="@GetResearchSessionForMessage(message)" />
                 }
             }
             @if (_isWaitingForResponse || _isThinking || _isStreaming)
@@ -264,6 +270,11 @@
         ChatState.OnNewChat += HandleNewChat;
         HistoryService.OnSessionSelected += HandleSessionSelected;
         ToolCallStateService.OnToolCallsChanged += HandleToolCallsChanged;
+
+        // Research state event handlers
+        ResearchState.OnSessionChanged += HandleResearchSessionChanged;
+        ResearchState.OnResearchCompleted += HandleResearchCompleted;
+        ResearchState.OnResearchError += HandleResearchError;
 
         // Initialize with empty conversation (with ID for API validation)
         _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
@@ -1233,7 +1244,66 @@
         ChatState.OnNewChat -= HandleNewChat;
         HistoryService.OnSessionSelected -= HandleSessionSelected;
         ToolCallStateService.OnToolCallsChanged -= HandleToolCallsChanged;
+        ResearchState.OnSessionChanged -= HandleResearchSessionChanged;
+        ResearchState.OnResearchCompleted -= HandleResearchCompleted;
+        ResearchState.OnResearchError -= HandleResearchError;
         _streamingCts?.Cancel();
         _streamingCts?.Dispose();
+    }
+
+    // Research state handlers
+
+    private void HandleResearchSessionChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleResearchCompleted(ResearchSessionBase session)
+    {
+        InvokeAsync(async () =>
+        {
+            // Add final team message with report
+            if (session.Report != null)
+            {
+                var teamMessage = AesirChatMessage.NewResearchTeamMessage(
+                    $"Research complete: {session.Report.Title}",
+                    session.Id,
+                    session.ResearchTeamId ?? Guid.Empty,
+                    ResearchState.SelectedTeam?.Name ?? "Research Team");
+                _conversation.Messages.Add(teamMessage);
+                _hasMessages = true;
+            }
+
+            ResearchState.ClearSession();
+            StateHasChanged();
+            await ScrollToBottomAsync();
+        });
+    }
+
+    private void HandleResearchError(string error)
+    {
+        InvokeAsync(() =>
+        {
+            Snackbar.Add($"Research error: {error}", Severity.Error);
+            StateHasChanged();
+        });
+    }
+
+    /// <summary>
+    /// Gets the research session associated with a research team message.
+    /// Returns the active session if the message's session ID matches, otherwise null.
+    /// </summary>
+    private ResearchSessionBase? GetResearchSessionForMessage(AesirChatMessage message)
+    {
+        if (!message.IsResearchTeamMessage || !message.ResearchSessionId.HasValue)
+            return null;
+
+        // Return active session if it matches this message
+        if (ResearchState.ActiveSession?.Id == message.ResearchSessionId.Value)
+            return ResearchState.ActiveSession;
+
+        // For historical messages, we'd need to load from API
+        // For now, return null (UI will show basic message without session details)
+        return null;
     }
 }

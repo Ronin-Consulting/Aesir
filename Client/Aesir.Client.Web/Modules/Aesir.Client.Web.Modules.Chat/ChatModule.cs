@@ -45,6 +45,9 @@ public class ChatModule : ClientModuleBase
         // Register documents view service for the Documents panel
         services.AddScoped<IDocumentsViewService, DocumentsViewService>();
 
+        // Register research state service for managing research sessions in chat
+        services.AddScoped<IResearchStateService, ResearchStateService>();
+
         // Note: IDocumentApiService is registered in Program.cs with a typed HttpClient
         // that has the proper base URL configured (same as IApiClient)
     }

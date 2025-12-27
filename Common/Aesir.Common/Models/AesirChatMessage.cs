@@ -31,6 +31,24 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
     public IReadOnlyList<AesirToolCallInfo>? ToolCalls { get; set; }
 
     /// <summary>
+    /// Gets or sets the research session ID for research_team messages.
+    /// </summary>
+    [JsonPropertyName("research_session_id")]
+    public Guid? ResearchSessionId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the research team ID for research_team messages.
+    /// </summary>
+    [JsonPropertyName("research_team_id")]
+    public Guid? ResearchTeamId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the research team name for research_team messages.
+    /// </summary>
+    [JsonPropertyName("research_team_name")]
+    public string? ResearchTeamName { get; set; }
+
+    /// <summary>
     /// Gets or sets when the message was created (UTC).
     /// Nullable to handle migration of existing data without timestamps.
     /// </summary>
@@ -257,6 +275,36 @@ public class AesirChatMessage : IEquatable<AesirChatMessage>
             CreatedAt = DateTimeOffset.UtcNow
         };
     }
+
+    /// <summary>
+    /// Creates a new research team message with the specified content.
+    /// </summary>
+    /// <param name="content">The content of the research team message (typically the report or status).</param>
+    /// <param name="sessionId">The research session ID.</param>
+    /// <param name="teamId">The research team ID.</param>
+    /// <param name="teamName">The research team name.</param>
+    /// <returns>A new instance of <see cref="AesirChatMessage"/> representing a research team message.</returns>
+    public static AesirChatMessage NewResearchTeamMessage(
+        string content,
+        Guid sessionId,
+        Guid teamId,
+        string teamName)
+    {
+        return new AesirChatMessage()
+        {
+            Role = "research_team",
+            Content = content,
+            ResearchSessionId = sessionId,
+            ResearchTeamId = teamId,
+            ResearchTeamName = teamName,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// Checks if this message is a research team message.
+    /// </summary>
+    public bool IsResearchTeamMessage => Role == "research_team";
 
     /// <summary>
     /// Determines whether the specified AesirChatMessage is equal to the current instance.

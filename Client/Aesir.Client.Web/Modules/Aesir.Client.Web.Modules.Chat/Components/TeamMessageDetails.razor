@@ -1,0 +1,424 @@
+@using Aesir.Common.Models
+
+<div class="research-details">
+    <MudDivider Class="my-3" />
+
+    @* Session Information *@
+    <div class="details-section">
+        <div class="section-header">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+            <span>Session Details</span>
+        </div>
+        <div class="details-grid">
+            <div class="detail-item">
+                <span class="detail-label">Session ID</span>
+                <span class="detail-value mono">@Session.Id.ToString("N")[..8]...</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Mode</span>
+                <span class="detail-value">@GetModeName(Session.Mode)</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Status</span>
+                <MudChip T="string" Size="Size.Small" Color="@GetStatusColor()" Class="detail-chip">
+                    @Session.Status
+                </MudChip>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Created</span>
+                <span class="detail-value">@Session.CreatedAt.ToString("MMM d, yyyy h:mm tt")</span>
+            </div>
+            @if (Session.StartedAt.HasValue)
+            {
+                <div class="detail-item">
+                    <span class="detail-label">Started</span>
+                    <span class="detail-value">@Session.StartedAt.Value.ToString("h:mm:ss tt")</span>
+                </div>
+            }
+            @if (Session.CompletedAt.HasValue)
+            {
+                <div class="detail-item">
+                    <span class="detail-label">Completed</span>
+                    <span class="detail-value">@Session.CompletedAt.Value.ToString("h:mm:ss tt")</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Duration</span>
+                    <span class="detail-value">@GetDuration()</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Original Query *@
+    <div class="details-section">
+        <div class="section-header">
+            <MudIcon Icon="@Icons.Material.Filled.QuestionAnswer" Size="Size.Small" />
+            <span>Research Query</span>
+        </div>
+        <div class="query-content">
+            <div class="query-block">
+                <span class="query-label">Original Query</span>
+                <div class="query-text">@Session.Query</div>
+            </div>
+            @if (!string.IsNullOrEmpty(Session.RefinedQuery) && Session.RefinedQuery != Session.Query)
+            {
+                <div class="query-block refined">
+                    <span class="query-label">Refined Query</span>
+                    <div class="query-text">@Session.RefinedQuery</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Phase Timeline *@
+    <div class="details-section">
+        <div class="section-header">
+            <MudIcon Icon="@Icons.Material.Filled.Timeline" Size="Size.Small" />
+            <span>Research Timeline</span>
+        </div>
+        <div class="timeline">
+            @foreach (var phase in GetPhaseTimeline())
+            {
+                <div class="timeline-item @phase.Status">
+                    <div class="timeline-marker">
+                        @if (phase.Status == "completed")
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
+                        }
+                        else if (phase.Status == "active")
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Outlined.Circle" Size="Size.Small" />
+                        }
+                    </div>
+                    <div class="timeline-content">
+                        <span class="timeline-phase">@phase.Name</span>
+                        <span class="timeline-description">@phase.Description</span>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* Error Information (if failed) *@
+    @if (Session.Status == ResearchStatusBase.Failed && !string.IsNullOrEmpty(Session.ErrorMessage))
+    {
+        <div class="details-section error-section">
+            <div class="section-header error">
+                <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small" />
+                <span>Error Details</span>
+            </div>
+            <div class="error-content">
+                @Session.ErrorMessage
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .research-details {
+        padding: 0 8px;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Section Styling */
+    .research-details .details-section {
+        margin-bottom: 20px;
+    }
+
+    .research-details .section-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 12px;
+    }
+
+    .research-details .section-header.error {
+        color: #F44336;
+    }
+
+    /* Details Grid */
+    .research-details .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+    }
+
+    .research-details .detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .research-details .detail-label {
+        font-size: 0.7rem;
+        color: var(--mud-palette-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .research-details .detail-value {
+        font-size: 0.9rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .research-details .detail-value.mono {
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    .research-details .detail-chip {
+        width: fit-content;
+    }
+
+    /* Query Content */
+    .research-details .query-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .research-details .query-block {
+        background-color: rgba(0, 0, 0, 0.03);
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    .research-details .query-block.refined {
+        background-color: rgba(156, 39, 176, 0.05);
+        border-left: 3px solid #9C27B0;
+    }
+
+    .research-details .query-label {
+        font-size: 0.7rem;
+        color: var(--mud-palette-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        display: block;
+        margin-bottom: 6px;
+    }
+
+    .research-details .query-text {
+        font-size: 0.9rem;
+        line-height: 1.5;
+        color: var(--mud-palette-text-primary);
+    }
+
+    /* Timeline */
+    .research-details .timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        position: relative;
+    }
+
+    .research-details .timeline-item {
+        display: flex;
+        gap: 12px;
+        padding: 8px 0;
+        position: relative;
+    }
+
+    .research-details .timeline-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        left: 11px;
+        top: 32px;
+        bottom: 0;
+        width: 2px;
+        background-color: rgba(156, 39, 176, 0.2);
+    }
+
+    .research-details .timeline-item.completed:not(:last-child)::after {
+        background-color: #4CAF50;
+    }
+
+    .research-details .timeline-marker {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+        z-index: 1;
+        background-color: var(--mud-palette-background);
+    }
+
+    .research-details .timeline-item.pending .timeline-marker {
+        color: var(--mud-palette-text-disabled);
+    }
+
+    .research-details .timeline-item.active .timeline-marker {
+        color: #9C27B0;
+    }
+
+    .research-details .timeline-item.completed .timeline-marker {
+        color: #4CAF50;
+    }
+
+    .research-details .timeline-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .research-details .timeline-phase {
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .research-details .timeline-item.pending .timeline-phase {
+        color: var(--mud-palette-text-disabled);
+    }
+
+    .research-details .timeline-item.active .timeline-phase {
+        color: #9C27B0;
+    }
+
+    .research-details .timeline-item.completed .timeline-phase {
+        color: var(--mud-palette-text-primary);
+    }
+
+    .research-details .timeline-description {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    /* Error Section */
+    .research-details .error-section {
+        background-color: rgba(244, 67, 54, 0.05);
+        border: 1px solid rgba(244, 67, 54, 0.2);
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    .research-details .error-content {
+        font-size: 0.85rem;
+        color: #F44336;
+        font-family: 'Consolas', 'Monaco', monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public required ResearchSessionBase Session { get; set; }
+
+    private string GetModeName(ResearchModeBase mode)
+    {
+        return mode switch
+        {
+            ResearchModeBase.Quick => "Quick (No Peer Review)",
+            ResearchModeBase.Standard => "Standard (Single Round)",
+            ResearchModeBase.Deep => "Deep (Iterative)",
+            _ => mode.ToString()
+        };
+    }
+
+    private Color GetStatusColor()
+    {
+        return Session.Status switch
+        {
+            ResearchStatusBase.Completed => Color.Success,
+            ResearchStatusBase.Failed => Color.Error,
+            ResearchStatusBase.Cancelled => Color.Default,
+            ResearchStatusBase.AwaitingClarification => Color.Warning,
+            _ => Color.Info
+        };
+    }
+
+    private string GetDuration()
+    {
+        if (!Session.StartedAt.HasValue || !Session.CompletedAt.HasValue)
+            return "--";
+
+        var duration = Session.CompletedAt.Value - Session.StartedAt.Value;
+
+        if (duration.TotalMinutes < 1)
+            return $"{(int)duration.TotalSeconds}s";
+        if (duration.TotalHours < 1)
+            return $"{(int)duration.TotalMinutes}m {duration.Seconds}s";
+
+        return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+    }
+
+    private record PhaseInfo(string Name, string Description, string Status);
+
+    private List<PhaseInfo> GetPhaseTimeline()
+    {
+        var phases = new List<(ResearchPhaseBase Phase, string Name, string Description)>
+        {
+            (ResearchPhaseBase.Planning, "Planning", "Agents plan their research approaches"),
+            (ResearchPhaseBase.Research, "Research", "Agents conduct independent research"),
+            (ResearchPhaseBase.Anonymization, "Anonymization", "Submissions prepared for blind review"),
+            (ResearchPhaseBase.PeerReview, "Peer Review", "Agents review each other's work"),
+            (ResearchPhaseBase.Synthesis, "Synthesis", "Chairman compiles final report")
+        };
+
+        var currentPhaseOrder = Session.CurrentPhase.HasValue
+            ? GetPhaseOrder(Session.CurrentPhase.Value)
+            : -1;
+
+        var isComplete = Session.Status == ResearchStatusBase.Completed;
+        var isFailed = Session.Status == ResearchStatusBase.Failed;
+        var isCancelled = Session.Status == ResearchStatusBase.Cancelled;
+
+        return phases.Select((p, _) =>
+        {
+            var phaseOrder = GetPhaseOrder(p.Phase);
+            string status;
+
+            if (isComplete)
+            {
+                status = "completed";
+            }
+            else if (isFailed || isCancelled)
+            {
+                status = phaseOrder <= currentPhaseOrder ? "completed" : "pending";
+                if (phaseOrder == currentPhaseOrder)
+                    status = isFailed ? "completed" : "pending";
+            }
+            else if (phaseOrder < currentPhaseOrder)
+            {
+                status = "completed";
+            }
+            else if (phaseOrder == currentPhaseOrder)
+            {
+                status = "active";
+            }
+            else
+            {
+                status = "pending";
+            }
+
+            return new PhaseInfo(p.Name, p.Description, status);
+        }).ToList();
+    }
+
+    private int GetPhaseOrder(ResearchPhaseBase phase)
+    {
+        return phase switch
+        {
+            ResearchPhaseBase.Clarification => 0,
+            ResearchPhaseBase.Planning => 1,
+            ResearchPhaseBase.Research => 2,
+            ResearchPhaseBase.Anonymization => 3,
+            ResearchPhaseBase.PeerReview => 4,
+            ResearchPhaseBase.Synthesis => 5,
+            _ => 0
+        };
+    }
+}

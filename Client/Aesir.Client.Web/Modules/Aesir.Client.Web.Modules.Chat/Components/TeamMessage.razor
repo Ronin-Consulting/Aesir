@@ -1,0 +1,504 @@
+@inject IMarkdownService MarkdownService
+@inject IResearchStateService ResearchState
+@inject IJSRuntime JSRuntime
+
+<div class="team-message @ThemeClass">
+    <div class="message-container">
+        @* Team Header with Icon and Status *@
+        <div class="team-header">
+            <div class="team-info">
+                <div class="team-icon">
+                    <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Medium" />
+                </div>
+                <div class="team-details">
+                    <span class="team-name">@(Message.ResearchTeamName ?? "Research Team")</span>
+                    <span class="team-status @GetStatusClass()">@GetStatusText()</span>
+                </div>
+            </div>
+            @if (Session != null)
+            {
+                <div class="session-actions">
+                    @if (Session.Status == ResearchStatusBase.AwaitingClarification)
+                    {
+                        <MudChip T="string" Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.QuestionAnswer">
+                            Needs Input
+                        </MudChip>
+                    }
+                    else if (IsResearchActive)
+                    {
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Stop"
+                                   OnClick="HandleCancel">
+                            Cancel
+                        </MudButton>
+                    }
+                </div>
+            }
+        </div>
+
+        @* Progress Section (when research is active) *@
+        @if (IsResearchActive && Session != null)
+        {
+            <TeamMessageProgress Session="Session"
+                                 ProgressMessage="@ResearchState.CurrentProgressMessage"
+                                 ProgressPercent="@ResearchState.CurrentProgressPercent" />
+        }
+
+        @* Clarification Section (when awaiting input) *@
+        @if (Session?.Status == ResearchStatusBase.AwaitingClarification && Session.ClarificationQuestions?.Count > 0)
+        {
+            <div class="clarification-section">
+                <MudText Typo="Typo.subtitle2" Class="clarification-title">
+                    <MudIcon Icon="@Icons.Material.Filled.Help" Size="Size.Small" Class="mr-1" />
+                    Please provide clarification:
+                </MudText>
+                <div class="clarification-questions">
+                    @foreach (var question in Session.ClarificationQuestions)
+                    {
+                        <div class="clarification-question">
+                            <MudTextField @bind-Value="_clarificationAnswers[question]"
+                                          Label="@question"
+                                          Variant="Variant.Outlined"
+                                          Lines="2"
+                                          FullWidth="true" />
+                        </div>
+                    }
+                </div>
+                <div class="clarification-actions">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="SubmitClarification"
+                               Disabled="@(!HasAllAnswers)">
+                        Submit Answers
+                    </MudButton>
+                </div>
+            </div>
+        }
+
+        @* Error Section *@
+        @if (Session?.Status == ResearchStatusBase.Failed)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">
+                @(Session.ErrorMessage ?? "Research failed. Please try again.")
+            </MudAlert>
+        }
+
+        @* Report Section (when completed) *@
+        @if (Session?.Status == ResearchStatusBase.Completed && Session.Report != null)
+        {
+            <TeamMessageReport Report="Session.Report" />
+        }
+
+        @* Main Message Content *@
+        @if (!string.IsNullOrEmpty(Message.Content))
+        {
+            <div class="message-content markdown-body">
+                @((MarkupString)MarkdownService.ToHtml(Message.Content))
+            </div>
+        }
+    </div>
+
+    @* Message metadata *@
+    <div class="message-metadata">
+        @if (Message.CreatedAt.HasValue)
+        {
+            <span class="message-timestamp">@FormatTimestamp()</span>
+        }
+        <div class="response-actions">
+            <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
+                           Size="Size.Small"
+                           Class="action-btn"
+                           Title="Copy content"
+                           OnClick="CopyToClipboard" />
+            @if (Session?.Status == ResearchStatusBase.Completed)
+            {
+                <MudIconButton Icon="@(_detailsExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                               Size="Size.Small"
+                               Class="action-btn"
+                               Title="@(_detailsExpanded ? "Hide details" : "Show details")"
+                               OnClick="ToggleDetails" />
+            }
+        </div>
+    </div>
+
+    @* Expanded Details Section *@
+    @if (_detailsExpanded && Session != null)
+    {
+        <TeamMessageDetails Session="Session" />
+    }
+</div>
+
+<style>
+    .team-message {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 8px;
+        padding: 0 48px;
+        max-width: 100%;
+    }
+
+    /* Message Container with research team accent */
+    .team-message .message-container {
+        background-color: rgba(156, 39, 176, 0.03);
+        border: 1px solid rgba(156, 39, 176, 0.15);
+        border-radius: 12px;
+        padding: 16px;
+        width: 100%;
+    }
+
+    .team-message.theme-dark .message-container {
+        background-color: rgba(156, 39, 176, 0.05);
+        border-color: rgba(156, 39, 176, 0.2);
+    }
+
+    .team-message.theme-light .message-container {
+        background-color: rgba(156, 39, 176, 0.03);
+        border-color: rgba(156, 39, 176, 0.12);
+    }
+
+    /* Team Header */
+    .team-message .team-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(156, 39, 176, 0.1);
+    }
+
+    .team-message .team-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .team-message .team-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+        border-radius: 10px;
+        color: white;
+    }
+
+    .team-message .team-details {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .team-message .team-name {
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .team-message .team-status {
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .team-message .team-status.status-active {
+        color: #4CAF50;
+    }
+
+    .team-message .team-status.status-pending {
+        color: #FFC107;
+    }
+
+    .team-message .team-status.status-completed {
+        color: #2196F3;
+    }
+
+    .team-message .team-status.status-failed {
+        color: #F44336;
+    }
+
+    .team-message .team-status.status-cancelled {
+        color: #9E9E9E;
+    }
+
+    .team-message .session-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    /* Clarification Section */
+    .team-message .clarification-section {
+        background-color: rgba(255, 193, 7, 0.08);
+        border: 1px solid rgba(255, 193, 7, 0.3);
+        border-radius: 8px;
+        padding: 16px;
+        margin: 12px 0;
+    }
+
+    .team-message .clarification-title {
+        display: flex;
+        align-items: center;
+        color: #F59E0B;
+        margin-bottom: 12px;
+    }
+
+    .team-message .clarification-questions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .team-message .clarification-question {
+        margin-bottom: 8px;
+    }
+
+    .team-message .clarification-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 12px;
+    }
+
+    /* Message Content */
+    .team-message .message-content {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        line-height: 1.6;
+        color: var(--mud-palette-text-primary);
+        margin-top: 12px;
+    }
+
+    /* Message metadata */
+    .team-message .message-metadata {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+        padding-right: 8px;
+        width: 100%;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .team-message:hover .message-metadata {
+        opacity: 1;
+    }
+
+    .team-message .message-timestamp {
+        font-size: 0.65rem;
+        color: var(--mud-palette-text-secondary);
+        opacity: 0.6;
+    }
+
+    .team-message .response-actions {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .team-message .action-btn {
+        color: var(--mud-palette-text-secondary);
+        width: 32px;
+        height: 32px;
+    }
+
+    .team-message .action-btn:hover {
+        color: var(--mud-palette-text-primary);
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Markdown styling (shared with assistant) */
+    .team-message .markdown-body p {
+        margin: 0 0 0.75em 0;
+    }
+
+    .team-message .markdown-body p:last-child {
+        margin-bottom: 0;
+    }
+
+    .team-message .markdown-body pre {
+        background-color: #1e1e2e;
+        border-radius: 8px;
+        padding: 16px;
+        overflow-x: auto;
+        margin: 12px 0;
+        color: #e0e0e0;
+    }
+
+    .team-message .markdown-body code {
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 0.9em;
+    }
+
+    .team-message .markdown-body pre code {
+        background-color: transparent;
+        padding: 0;
+        color: #e0e0e0;
+    }
+
+    .team-message .markdown-body ul,
+    .team-message .markdown-body ol {
+        margin: 8px 0;
+        padding-left: 24px;
+    }
+
+    .team-message .markdown-body li {
+        margin-bottom: 4px;
+        line-height: 1.6;
+    }
+
+    .team-message .markdown-body a {
+        color: #9C27B0;
+        text-decoration: none;
+    }
+
+    .team-message .markdown-body a:hover {
+        text-decoration: underline;
+    }
+
+    .team-message .markdown-body h1,
+    .team-message .markdown-body h2,
+    .team-message .markdown-body h3,
+    .team-message .markdown-body h4 {
+        margin-top: 16px;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .team-message .markdown-body h1 { font-size: 1.5em; }
+    .team-message .markdown-body h2 { font-size: 1.3em; }
+    .team-message .markdown-body h3 { font-size: 1.1em; }
+</style>
+
+@code {
+    private bool _detailsExpanded = false;
+    private Dictionary<string, string> _clarificationAnswers = new();
+
+    [Parameter]
+    public required AesirChatMessage Message { get; set; }
+
+    [Parameter]
+    public ResearchSessionBase? Session { get; set; }
+
+    [CascadingParameter(Name = "IsDarkMode")]
+    private bool IsDarkMode { get; set; }
+
+    private string ThemeClass => IsDarkMode ? "theme-dark" : "theme-light";
+
+    private bool IsResearchActive => Session != null &&
+        Session.Status != ResearchStatusBase.Completed &&
+        Session.Status != ResearchStatusBase.Failed &&
+        Session.Status != ResearchStatusBase.Cancelled &&
+        Session.Status != ResearchStatusBase.AwaitingClarification;
+
+    private bool HasAllAnswers => Session?.ClarificationQuestions?.All(q =>
+        _clarificationAnswers.TryGetValue(q, out var answer) &&
+        !string.IsNullOrWhiteSpace(answer)) ?? false;
+
+    protected override void OnParametersSet()
+    {
+        // Initialize clarification answers dictionary when questions change
+        if (Session?.ClarificationQuestions != null)
+        {
+            foreach (var question in Session.ClarificationQuestions)
+            {
+                if (!_clarificationAnswers.ContainsKey(question))
+                {
+                    _clarificationAnswers[question] = string.Empty;
+                }
+            }
+        }
+    }
+
+    private string GetStatusClass()
+    {
+        if (Session == null) return "";
+
+        return Session.Status switch
+        {
+            ResearchStatusBase.Created or
+            ResearchStatusBase.Planning or
+            ResearchStatusBase.Researching or
+            ResearchStatusBase.Anonymizing or
+            ResearchStatusBase.PeerReviewing or
+            ResearchStatusBase.Synthesizing => "status-active",
+            ResearchStatusBase.AwaitingClarification => "status-pending",
+            ResearchStatusBase.Completed => "status-completed",
+            ResearchStatusBase.Failed => "status-failed",
+            ResearchStatusBase.Cancelled => "status-cancelled",
+            _ => ""
+        };
+    }
+
+    private string GetStatusText()
+    {
+        if (Session == null) return "Initializing";
+
+        return Session.Status switch
+        {
+            ResearchStatusBase.Created => "Starting",
+            ResearchStatusBase.AwaitingClarification => "Awaiting Input",
+            ResearchStatusBase.Planning => "Planning",
+            ResearchStatusBase.Researching => "Researching",
+            ResearchStatusBase.Anonymizing => "Anonymizing",
+            ResearchStatusBase.PeerReviewing => "Peer Review",
+            ResearchStatusBase.Synthesizing => "Synthesizing",
+            ResearchStatusBase.Completed => "Completed",
+            ResearchStatusBase.Failed => "Failed",
+            ResearchStatusBase.Cancelled => "Cancelled",
+            _ => "Unknown"
+        };
+    }
+
+    private async Task HandleCancel()
+    {
+        await ResearchState.CancelResearchAsync();
+    }
+
+    private async Task SubmitClarification()
+    {
+        if (!HasAllAnswers) return;
+
+        await ResearchState.SubmitClarificationAsync(_clarificationAnswers);
+        _clarificationAnswers.Clear();
+    }
+
+    private void ToggleDetails()
+    {
+        _detailsExpanded = !_detailsExpanded;
+    }
+
+    private async Task CopyToClipboard()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Message.Content);
+    }
+
+    private string FormatTimestamp()
+    {
+        if (!Message.CreatedAt.HasValue)
+            return string.Empty;
+
+        var local = Message.CreatedAt.Value.ToLocalTime();
+        var now = DateTimeOffset.Now;
+        var today = now.Date;
+        var messageDate = local.Date;
+
+        if (messageDate == today)
+            return local.ToString("h:mm tt");
+
+        if (messageDate == today.AddDays(-1))
+            return $"Yesterday {local.ToString("h:mm tt")}";
+
+        if (local.Year == now.Year)
+            return local.ToString("MMM d");
+
+        return local.ToString("MMM d, yyyy");
+    }
+}

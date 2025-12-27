@@ -1,0 +1,280 @@
+@using Aesir.Common.Models
+
+<div class="research-progress">
+    @* Progress Header with Phase *@
+    <div class="progress-header">
+        <div class="phase-indicator">
+            <MudIcon Icon="@GetPhaseIcon()" Size="Size.Small" Class="phase-icon" />
+            <span class="phase-name">@GetPhaseName()</span>
+        </div>
+        <span class="progress-percent">@ProgressPercent%</span>
+    </div>
+
+    @* Progress Bar *@
+    <div class="progress-bar-container">
+        <MudProgressLinear Value="@ProgressPercent"
+                           Color="Color.Secondary"
+                           Striped="true"
+                           Size="Size.Medium"
+                           Class="progress-bar" />
+    </div>
+
+    @* Progress Message *@
+    @if (!string.IsNullOrEmpty(ProgressMessage))
+    {
+        <div class="progress-message">
+            <MudIcon Icon="@Icons.Material.Filled.DoubleArrow" Size="Size.Small" Class="message-icon" />
+            <span>@ProgressMessage</span>
+        </div>
+    }
+
+    @* Phase Steps *@
+    <div class="phase-steps">
+        @foreach (var phase in _phases)
+        {
+            var status = GetPhaseStatus(phase.Phase);
+            <div class="phase-step @status">
+                <div class="step-indicator">
+                    @if (status == "completed")
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
+                    }
+                    else if (status == "active")
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Outlined.Circle" Size="Size.Small" />
+                    }
+                </div>
+                <span class="step-name">@phase.Name</span>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .research-progress {
+        background-color: rgba(156, 39, 176, 0.05);
+        border-radius: 8px;
+        padding: 16px;
+        margin: 8px 0;
+    }
+
+    /* Progress Header */
+    .research-progress .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .research-progress .phase-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .research-progress .phase-icon {
+        color: #9C27B0;
+    }
+
+    .research-progress .phase-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .research-progress .progress-percent {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #9C27B0;
+    }
+
+    /* Progress Bar */
+    .research-progress .progress-bar-container {
+        margin-bottom: 12px;
+    }
+
+    .research-progress .progress-bar {
+        border-radius: 4px;
+    }
+
+    /* Progress Message */
+    .research-progress .progress-message {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background-color: rgba(156, 39, 176, 0.08);
+        border-radius: 6px;
+        margin-bottom: 12px;
+    }
+
+    .research-progress .message-icon {
+        color: #9C27B0;
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
+    }
+
+    .research-progress .progress-message span {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    /* Phase Steps */
+    .research-progress .phase-steps {
+        display: flex;
+        justify-content: space-between;
+        gap: 4px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(156, 39, 176, 0.1);
+    }
+
+    .research-progress .phase-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .research-progress .step-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+    }
+
+    .research-progress .phase-step.pending .step-indicator {
+        color: var(--mud-palette-text-disabled);
+    }
+
+    .research-progress .phase-step.active .step-indicator {
+        color: #9C27B0;
+    }
+
+    .research-progress .phase-step.completed .step-indicator {
+        color: #4CAF50;
+    }
+
+    .research-progress .step-name {
+        font-size: 0.65rem;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+
+    .research-progress .phase-step.pending .step-name {
+        color: var(--mud-palette-text-disabled);
+    }
+
+    .research-progress .phase-step.active .step-name {
+        color: #9C27B0;
+        font-weight: 600;
+    }
+
+    .research-progress .phase-step.completed .step-name {
+        color: #4CAF50;
+    }
+
+    /* Responsive: hide step names on small screens */
+    @@media (max-width: 600px) {
+        .research-progress .step-name {
+            display: none;
+        }
+    }
+</style>
+
+@code {
+    [Parameter]
+    public required ResearchSessionBase Session { get; set; }
+
+    [Parameter]
+    public string? ProgressMessage { get; set; }
+
+    [Parameter]
+    public int ProgressPercent { get; set; }
+
+    private readonly List<(ResearchPhaseBase Phase, string Name)> _phases = new()
+    {
+        (ResearchPhaseBase.Planning, "Planning"),
+        (ResearchPhaseBase.Research, "Research"),
+        (ResearchPhaseBase.Anonymization, "Anonymize"),
+        (ResearchPhaseBase.PeerReview, "Review"),
+        (ResearchPhaseBase.Synthesis, "Synthesis")
+    };
+
+    private string GetPhaseIcon()
+    {
+        if (Session.CurrentPhase == null)
+            return Icons.Material.Filled.HourglassTop;
+
+        return Session.CurrentPhase switch
+        {
+            ResearchPhaseBase.Clarification => Icons.Material.Filled.QuestionAnswer,
+            ResearchPhaseBase.Planning => Icons.Material.Filled.EditNote,
+            ResearchPhaseBase.Research => Icons.Material.Filled.Search,
+            ResearchPhaseBase.Anonymization => Icons.Material.Filled.VisibilityOff,
+            ResearchPhaseBase.PeerReview => Icons.Material.Filled.RateReview,
+            ResearchPhaseBase.Synthesis => Icons.Material.Filled.AutoAwesome,
+            _ => Icons.Material.Filled.HourglassTop
+        };
+    }
+
+    private string GetPhaseName()
+    {
+        if (Session.CurrentPhase == null)
+            return "Initializing";
+
+        return Session.CurrentPhase switch
+        {
+            ResearchPhaseBase.Clarification => "Clarification",
+            ResearchPhaseBase.Planning => "Planning Research",
+            ResearchPhaseBase.Research => "Conducting Research",
+            ResearchPhaseBase.Anonymization => "Anonymizing Work",
+            ResearchPhaseBase.PeerReview => "Peer Review",
+            ResearchPhaseBase.Synthesis => "Synthesizing Report",
+            _ => "Processing"
+        };
+    }
+
+    private string GetPhaseStatus(ResearchPhaseBase phase)
+    {
+        if (Session.CurrentPhase == null)
+            return "pending";
+
+        var currentPhaseOrder = GetPhaseOrder(Session.CurrentPhase.Value);
+        var checkPhaseOrder = GetPhaseOrder(phase);
+
+        if (checkPhaseOrder < currentPhaseOrder)
+            return "completed";
+        else if (checkPhaseOrder == currentPhaseOrder)
+            return "active";
+        else
+            return "pending";
+    }
+
+    private int GetPhaseOrder(ResearchPhaseBase phase)
+    {
+        return phase switch
+        {
+            ResearchPhaseBase.Clarification => 0,
+            ResearchPhaseBase.Planning => 1,
+            ResearchPhaseBase.Research => 2,
+            ResearchPhaseBase.Anonymization => 3,
+            ResearchPhaseBase.PeerReview => 4,
+            ResearchPhaseBase.Synthesis => 5,
+            _ => 0
+        };
+    }
+}
