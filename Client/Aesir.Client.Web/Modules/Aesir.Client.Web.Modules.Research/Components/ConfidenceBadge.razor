@@ -1,0 +1,89 @@
+@* Badge displaying confidence level with color coding *@
+
+<MudChip T="string"
+         Size="Size.Small"
+         Color="@GetColor()"
+         Variant="Variant.Outlined"
+         Class="@($"confidence-badge {GetLevelClass()}")">
+    <div class="badge-content">
+        <MudIcon Icon="@GetIcon()" Size="Size.Small" />
+        <span>@Level</span>
+    </div>
+</MudChip>
+
+<style>
+    .confidence-badge {
+        font-weight: 500;
+        font-size: 0.75rem;
+    }
+
+    .confidence-badge .badge-content {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .confidence-badge.high {
+        border-color: #4CAF50 !important;
+        color: #4CAF50 !important;
+    }
+
+    .confidence-badge.medium {
+        border-color: #FF9800 !important;
+        color: #FF9800 !important;
+    }
+
+    .confidence-badge.low {
+        border-color: #F44336 !important;
+        color: #F44336 !important;
+    }
+
+    .confidence-badge.very-high {
+        border-color: #2E7D32 !important;
+        color: #2E7D32 !important;
+        background-color: rgba(46, 125, 50, 0.1) !important;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The confidence level (High, Medium, Low, VeryHigh).
+    /// </summary>
+    [Parameter]
+    public string Level { get; set; } = "Medium";
+
+    private Color GetColor()
+    {
+        return Level.ToLowerInvariant() switch
+        {
+            "high" or "veryhigh" or "very high" => Color.Success,
+            "medium" => Color.Warning,
+            "low" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetIcon()
+    {
+        return Level.ToLowerInvariant() switch
+        {
+            "veryhigh" or "very high" => Icons.Material.Filled.VerifiedUser,
+            "high" => Icons.Material.Filled.CheckCircle,
+            "medium" => Icons.Material.Filled.Info,
+            "low" => Icons.Material.Filled.Warning,
+            _ => Icons.Material.Filled.Help
+        };
+    }
+
+    private string GetLevelClass()
+    {
+        return Level.ToLowerInvariant() switch
+        {
+            "veryhigh" or "very high" => "very-high",
+            "high" => "high",
+            "medium" => "medium",
+            "low" => "low",
+            _ => ""
+        };
+    }
+}

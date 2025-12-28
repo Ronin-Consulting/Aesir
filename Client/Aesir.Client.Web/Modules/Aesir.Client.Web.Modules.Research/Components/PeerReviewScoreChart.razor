@@ -1,0 +1,296 @@
+@* Chart displaying peer review scores across different dimensions *@
+
+<div class="peer-review-chart">
+    <div class="chart-header">
+        <MudIcon Icon="@Icons.Material.Filled.RateReview" Size="Size.Small" />
+        <span class="chart-title">Peer Review Scores</span>
+        @if (OverallScore.HasValue)
+        {
+            <div class="overall-score @GetOverallScoreClass()">
+                <span class="score-value">@OverallScore.Value.ToString("F1")</span>
+                <span class="score-max">/10</span>
+            </div>
+        }
+    </div>
+
+    <div class="scores-container">
+        @foreach (var score in Scores)
+        {
+            <div class="score-row">
+                <div class="score-label">
+                    <MudIcon Icon="@GetDimensionIcon(score.Dimension)" Size="Size.Small" />
+                    <span>@score.Dimension</span>
+                </div>
+                <div class="score-bar-container">
+                    <div class="score-bar @GetScoreClass(score.Value)"
+                         style="width: @(score.Value * 10)%">
+                    </div>
+                </div>
+                <span class="score-value-text @GetScoreClass(score.Value)">
+                    @score.Value.ToString("F1")
+                </span>
+            </div>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(Strengths) || !string.IsNullOrEmpty(Improvements))
+    {
+        <div class="review-summary">
+            @if (!string.IsNullOrEmpty(Strengths))
+            {
+                <div class="summary-section strengths">
+                    <div class="summary-header">
+                        <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Size="Size.Small" />
+                        <span>Strengths</span>
+                    </div>
+                    <p>@Strengths</p>
+                </div>
+            }
+            @if (!string.IsNullOrEmpty(Improvements))
+            {
+                <div class="summary-section improvements">
+                    <div class="summary-header">
+                        <MudIcon Icon="@Icons.Material.Filled.TipsAndUpdates" Size="Size.Small" />
+                        <span>Areas for Improvement</span>
+                    </div>
+                    <p>@Improvements</p>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .peer-review-chart {
+        background-color: var(--mud-palette-surface);
+        border: 1px solid rgba(156, 39, 176, 0.15);
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .chart-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        color: #9C27B0;
+    }
+
+    .chart-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        flex: 1;
+    }
+
+    .overall-score {
+        display: flex;
+        align-items: baseline;
+        gap: 2px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        background-color: rgba(156, 39, 176, 0.1);
+    }
+
+    .overall-score.high {
+        background-color: rgba(76, 175, 80, 0.1);
+        color: #4CAF50;
+    }
+
+    .overall-score.medium {
+        background-color: rgba(255, 152, 0, 0.1);
+        color: #FF9800;
+    }
+
+    .overall-score.low {
+        background-color: rgba(244, 67, 54, 0.1);
+        color: #F44336;
+    }
+
+    .overall-score .score-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+
+    .overall-score .score-max {
+        font-size: 0.75rem;
+        opacity: 0.7;
+    }
+
+    .scores-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .score-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .score-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 120px;
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .score-label .mud-icon-root {
+        font-size: 1rem;
+        opacity: 0.7;
+    }
+
+    .score-bar-container {
+        flex: 1;
+        height: 8px;
+        background-color: rgba(0, 0, 0, 0.08);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .score-bar {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.5s ease-out;
+    }
+
+    .score-bar.high {
+        background: linear-gradient(90deg, #4CAF50, #66BB6A);
+    }
+
+    .score-bar.medium {
+        background: linear-gradient(90deg, #FF9800, #FFB74D);
+    }
+
+    .score-bar.low {
+        background: linear-gradient(90deg, #F44336, #EF5350);
+    }
+
+    .score-value-text {
+        min-width: 30px;
+        text-align: right;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .score-value-text.high { color: #4CAF50; }
+    .score-value-text.medium { color: #FF9800; }
+    .score-value-text.low { color: #F44336; }
+
+    .review-summary {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .summary-section {
+        padding: 12px;
+        border-radius: 8px;
+    }
+
+    .summary-section.strengths {
+        background-color: rgba(76, 175, 80, 0.05);
+    }
+
+    .summary-section.improvements {
+        background-color: rgba(255, 152, 0, 0.05);
+    }
+
+    .summary-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .summary-section.strengths .summary-header {
+        color: #4CAF50;
+    }
+
+    .summary-section.improvements .summary-header {
+        color: #FF9800;
+    }
+
+    .summary-section p {
+        margin: 0;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        color: var(--mud-palette-text-secondary);
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// List of dimension scores.
+    /// </summary>
+    [Parameter]
+    public List<DimensionScore> Scores { get; set; } = [];
+
+    /// <summary>
+    /// Overall weighted score.
+    /// </summary>
+    [Parameter]
+    public double? OverallScore { get; set; }
+
+    /// <summary>
+    /// Summary of strengths.
+    /// </summary>
+    [Parameter]
+    public string? Strengths { get; set; }
+
+    /// <summary>
+    /// Summary of areas for improvement.
+    /// </summary>
+    [Parameter]
+    public string? Improvements { get; set; }
+
+    private string GetOverallScoreClass()
+    {
+        if (!OverallScore.HasValue) return "";
+        return OverallScore.Value switch
+        {
+            >= 7 => "high",
+            >= 5 => "medium",
+            _ => "low"
+        };
+    }
+
+    private string GetScoreClass(double value)
+    {
+        return value switch
+        {
+            >= 7 => "high",
+            >= 5 => "medium",
+            _ => "low"
+        };
+    }
+
+    private string GetDimensionIcon(string dimension)
+    {
+        return dimension.ToLowerInvariant() switch
+        {
+            "depth" => Icons.Material.Filled.Layers,
+            "accuracy" => Icons.Material.Filled.FactCheck,
+            "source quality" or "sourcequality" => Icons.Material.Filled.MenuBook,
+            "novelty" => Icons.Material.Filled.AutoAwesome,
+            "coherence" => Icons.Material.Filled.Link,
+            _ => Icons.Material.Filled.Star
+        };
+    }
+
+    /// <summary>
+    /// Represents a score for a single dimension.
+    /// </summary>
+    public class DimensionScore
+    {
+        public string Dimension { get; set; } = string.Empty;
+        public double Value { get; set; }
+    }
+}

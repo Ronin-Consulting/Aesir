@@ -1,0 +1,455 @@
+@* Main view for displaying a complete research report *@
+@inject IMarkdownService MarkdownService
+@inject ISnackbar Snackbar
+
+<div class="research-report-view">
+    @* Report Header *@
+    <div class="report-header">
+        <div class="header-content">
+            <div class="header-icon">
+                <MudIcon Icon="@Icons.Material.Filled.Article" Size="Size.Large" />
+            </div>
+            <div class="header-text">
+                <h1 class="report-title">@Report.Title</h1>
+                <div class="report-meta">
+                    <span class="meta-item">
+                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" />
+                        @Report.CreatedAt.ToLocalTime().ToString("MMMM d, yyyy")
+                    </span>
+                    @if (Report.Findings?.Any() == true)
+                    {
+                        <span class="meta-item">
+                            <MudIcon Icon="@Icons.Material.Filled.Lightbulb" Size="Size.Small" />
+                            @Report.Findings.Count findings
+                        </span>
+                    }
+                    @if (Report.Bibliography?.Any() == true)
+                    {
+                        <span class="meta-item">
+                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" />
+                            @Report.Bibliography.Count sources
+                        </span>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <ExportMenu Report="@Report"
+                        ReportTitle="@Report.Title"
+                        OnExportComplete="HandleExportComplete" />
+        </div>
+    </div>
+
+    @* Tab Navigation *@
+    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Class="report-tabs">
+        <MudTabPanel Text="Summary" Icon="@Icons.Material.Filled.Summarize">
+            <div class="tab-content">
+                @* Executive Summary *@
+                @if (!string.IsNullOrEmpty(Report.ExecutiveSummary))
+                {
+                    <section class="report-section">
+                        <h2 class="section-title">
+                            <MudIcon Icon="@Icons.Material.Filled.Stars" />
+                            Executive Summary
+                        </h2>
+                        <div class="section-content markdown-content">
+                            @((MarkupString)MarkdownService.ToHtml(Report.ExecutiveSummary))
+                        </div>
+                    </section>
+                }
+
+                @* Methodology *@
+                @if (!string.IsNullOrEmpty(Report.MethodologySection))
+                {
+                    <section class="report-section">
+                        <h2 class="section-title">
+                            <MudIcon Icon="@Icons.Material.Filled.Science" />
+                            Methodology
+                        </h2>
+                        <div class="section-content markdown-content">
+                            @((MarkupString)MarkdownService.ToHtml(Report.MethodologySection))
+                        </div>
+                    </section>
+                }
+            </div>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Findings" Icon="@Icons.Material.Filled.Lightbulb" BadgeData="@Report.Findings?.Count" BadgeColor="Color.Secondary">
+            <div class="tab-content">
+                @if (Report.Findings?.Any() == true)
+                {
+                    <div class="findings-list">
+                        @foreach (var finding in Report.Findings)
+                        {
+                            <FindingCard Finding="@finding" />
+                        }
+                    </div>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">No findings recorded in this report.</MudAlert>
+                }
+            </div>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Analysis" Icon="@Icons.Material.Filled.Analytics">
+            <div class="tab-content">
+                @* Alternative Perspectives *@
+                @if (!string.IsNullOrEmpty(Report.AlternativePerspectives))
+                {
+                    <section class="report-section">
+                        <h2 class="section-title">
+                            <MudIcon Icon="@Icons.Material.Filled.Psychology" />
+                            Alternative Perspectives
+                        </h2>
+                        <div class="section-content markdown-content">
+                            @((MarkupString)MarkdownService.ToHtml(Report.AlternativePerspectives))
+                        </div>
+                    </section>
+                }
+
+                @* Research Gaps *@
+                @if (!string.IsNullOrEmpty(Report.ResearchGaps))
+                {
+                    <section class="report-section">
+                        <h2 class="section-title">
+                            <MudIcon Icon="@Icons.Material.Filled.HelpCenter" />
+                            Research Gaps & Future Directions
+                        </h2>
+                        <div class="section-content markdown-content">
+                            @((MarkupString)MarkdownService.ToHtml(Report.ResearchGaps))
+                        </div>
+                    </section>
+                }
+
+                @if (string.IsNullOrEmpty(Report.AlternativePerspectives) && string.IsNullOrEmpty(Report.ResearchGaps))
+                {
+                    <MudAlert Severity="Severity.Info">No additional analysis available.</MudAlert>
+                }
+            </div>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Sources" Icon="@Icons.Material.Filled.MenuBook" BadgeData="@Report.Bibliography?.Count" BadgeColor="Color.Info">
+            <div class="tab-content">
+                @if (Report.Bibliography?.Any() == true)
+                {
+                    <div class="sources-list">
+                        @foreach (var (source, index) in Report.Bibliography.Select((s, i) => (s, i)))
+                        {
+                            <div class="source-card">
+                                <div class="source-number">@(index + 1)</div>
+                                <div class="source-content">
+                                    <h4 class="source-title">@source.Title</h4>
+                                    @if (!string.IsNullOrEmpty(source.Author) || source.PublishedDate.HasValue)
+                                    {
+                                        <div class="source-meta">
+                                            @if (!string.IsNullOrEmpty(source.Author))
+                                            {
+                                                <span>@source.Author</span>
+                                            }
+                                            @if (source.PublishedDate.HasValue)
+                                            {
+                                                <span>@source.PublishedDate.Value.ToString("MMM yyyy")</span>
+                                            }
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(source.Snippet))
+                                    {
+                                        <p class="source-snippet">@source.Snippet</p>
+                                    }
+                                    @if (!string.IsNullOrEmpty(source.Url))
+                                    {
+                                        <a href="@source.Url" target="_blank" rel="noopener" class="source-link">
+                                            <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" />
+                                            View Source
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">No bibliography available.</MudAlert>
+                }
+            </div>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Full Report" Icon="@Icons.Material.Filled.Description">
+            <div class="tab-content">
+                @if (!string.IsNullOrEmpty(Report.FullMarkdown))
+                {
+                    <div class="full-report markdown-content">
+                        @((MarkupString)MarkdownService.ToHtml(Report.FullMarkdown))
+                    </div>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">Full report content not available.</MudAlert>
+                }
+            </div>
+        </MudTabPanel>
+    </MudTabs>
+</div>
+
+<style>
+    .research-report-view {
+        background-color: var(--mud-palette-surface);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    /* Header */
+    .report-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 24px;
+        background: linear-gradient(135deg, rgba(156, 39, 176, 0.08), rgba(156, 39, 176, 0.02));
+        border-bottom: 1px solid rgba(156, 39, 176, 0.1);
+    }
+
+    .header-content {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .header-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background-color: rgba(156, 39, 176, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9C27B0;
+    }
+
+    .header-text {
+        flex: 1;
+    }
+
+    .report-title {
+        margin: 0 0 8px;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--mud-palette-text-primary);
+        line-height: 1.3;
+    }
+
+    .report-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .meta-item .mud-icon-root {
+        font-size: 1rem;
+        opacity: 0.7;
+    }
+
+    /* Tabs */
+    .report-tabs {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .tab-content {
+        padding: 24px;
+        min-height: 300px;
+    }
+
+    /* Sections */
+    .report-section {
+        margin-bottom: 32px;
+    }
+
+    .report-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 16px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #9C27B0;
+    }
+
+    .section-title .mud-icon-root {
+        font-size: 1.25rem;
+    }
+
+    .section-content {
+        padding-left: 34px;
+    }
+
+    /* Markdown Content */
+    .markdown-content {
+        font-size: 0.95rem;
+        line-height: 1.7;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .markdown-content p {
+        margin: 0 0 12px;
+    }
+
+    .markdown-content p:last-child {
+        margin-bottom: 0;
+    }
+
+    .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+        margin-top: 24px;
+        margin-bottom: 12px;
+    }
+
+    .markdown-content ul, .markdown-content ol {
+        margin: 12px 0;
+        padding-left: 24px;
+    }
+
+    .markdown-content li {
+        margin-bottom: 6px;
+    }
+
+    .markdown-content code {
+        background-color: rgba(0, 0, 0, 0.05);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+
+    .markdown-content pre {
+        background-color: rgba(0, 0, 0, 0.05);
+        padding: 16px;
+        border-radius: 8px;
+        overflow-x: auto;
+    }
+
+    /* Findings */
+    .findings-list {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Sources */
+    .sources-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .source-card {
+        display: flex;
+        gap: 16px;
+        padding: 16px;
+        background-color: rgba(0, 0, 0, 0.02);
+        border-radius: 8px;
+        border-left: 3px solid #9C27B0;
+    }
+
+    .source-number {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background-color: #9C27B0;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+
+    .source-content {
+        flex: 1;
+    }
+
+    .source-title {
+        margin: 0 0 6px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .source-meta {
+        display: flex;
+        gap: 12px;
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-secondary);
+        margin-bottom: 8px;
+    }
+
+    .source-snippet {
+        margin: 0 0 8px;
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-secondary);
+        font-style: italic;
+    }
+
+    .source-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.8rem;
+        color: #9C27B0;
+        text-decoration: none;
+    }
+
+    .source-link:hover {
+        text-decoration: underline;
+    }
+
+    /* Full Report */
+    .full-report {
+        max-width: 800px;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The research report to display.
+    /// </summary>
+    [Parameter]
+    public required ResearchReportBase Report { get; set; }
+
+    /// <summary>
+    /// Optional peer review scores to display.
+    /// </summary>
+    [Parameter]
+    public List<PeerReviewScoreChart.DimensionScore>? PeerReviewScores { get; set; }
+
+    /// <summary>
+    /// Optional trail entries to display.
+    /// </summary>
+    [Parameter]
+    public List<ResearchTrailTimeline.TrailEntry>? TrailEntries { get; set; }
+
+    private void HandleExportComplete(ExportMenu.ExportResult result)
+    {
+        if (result.Success)
+        {
+            var message = result.Format == ExportMenu.ExportFormat.Clipboard
+                ? "Report copied to clipboard"
+                : $"Report exported as {result.Filename}";
+            Snackbar.Add(message, Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add($"Export failed: {result.Error}", Severity.Error);
+        }
+    }
+}

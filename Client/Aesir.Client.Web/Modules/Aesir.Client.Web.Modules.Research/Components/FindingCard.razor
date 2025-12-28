@@ -1,0 +1,159 @@
+@* Card displaying a research finding with confidence and evidence *@
+
+<div class="finding-card">
+    <div class="finding-header">
+        <div class="finding-title-row">
+            <MudIcon Icon="@Icons.Material.Filled.Lightbulb" Class="finding-icon" />
+            <h4 class="finding-title">@Finding.Title</h4>
+        </div>
+        <ConfidenceBadge Level="@Finding.Confidence" />
+    </div>
+
+    <div class="finding-content">
+        @((MarkupString)Finding.Content)
+    </div>
+
+    @if (Finding.SupportingEvidence?.Any() == true)
+    {
+        <div class="supporting-evidence">
+            <button class="evidence-toggle" @onclick="ToggleEvidence">
+                <MudIcon Icon="@(ShowEvidence ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                         Size="Size.Small" />
+                <span>@Finding.SupportingEvidence.Count Supporting Evidence</span>
+            </button>
+
+            @if (ShowEvidence)
+            {
+                <ul class="evidence-list">
+                    @foreach (var evidence in Finding.SupportingEvidence)
+                    {
+                        <li class="evidence-item">
+                            <MudIcon Icon="@Icons.Material.Filled.FormatQuote" Size="Size.Small" />
+                            <span>@evidence</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .finding-card {
+        background-color: var(--mud-palette-surface);
+        border: 1px solid rgba(156, 39, 176, 0.15);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .finding-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .finding-title-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+    }
+
+    .finding-icon {
+        color: #9C27B0;
+        font-size: 1.25rem;
+    }
+
+    .finding-title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-primary);
+        line-height: 1.4;
+    }
+
+    .finding-content {
+        font-size: 0.9rem;
+        line-height: 1.6;
+        color: var(--mud-palette-text-secondary);
+        padding-left: 34px;
+    }
+
+    .finding-content p {
+        margin: 0 0 8px;
+    }
+
+    .finding-content p:last-child {
+        margin-bottom: 0;
+    }
+
+    .supporting-evidence {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .evidence-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: none;
+        border: none;
+        color: #9C27B0;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.15s ease;
+    }
+
+    .evidence-toggle:hover {
+        background-color: rgba(156, 39, 176, 0.08);
+    }
+
+    .evidence-list {
+        list-style: none;
+        padding: 0;
+        margin: 12px 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .evidence-item {
+        display: flex;
+        gap: 8px;
+        padding: 10px 12px;
+        background-color: rgba(0, 0, 0, 0.02);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .evidence-item .mud-icon-root {
+        color: #9C27B0;
+        opacity: 0.6;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The research finding to display.
+    /// </summary>
+    [Parameter]
+    public required ResearchFindingBase Finding { get; set; }
+
+    private bool ShowEvidence { get; set; }
+
+    private void ToggleEvidence()
+    {
+        ShowEvidence = !ShowEvidence;
+    }
+}

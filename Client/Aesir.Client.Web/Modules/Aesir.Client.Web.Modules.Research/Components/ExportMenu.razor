@@ -1,0 +1,269 @@
+@* Menu for exporting research reports in various formats *@
+@inject IJSRuntime JSRuntime
+
+<MudMenu AnchorOrigin="Origin.BottomRight"
+         TransformOrigin="Origin.TopRight"
+         Class="export-menu">
+    <ActivatorContent>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Download"
+                   EndIcon="@Icons.Material.Filled.ArrowDropDown"
+                   Size="Size.Small"
+                   Disabled="@IsExporting">
+            @if (IsExporting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Exporting...</span>
+            }
+            else
+            {
+                <span>Export</span>
+            }
+        </MudButton>
+    </ActivatorContent>
+    <ChildContent>
+        <MudMenuItem OnClick="@(() => ExportAsync(ExportFormat.Markdown))">
+            <div class="menu-item-content">
+                <MudIcon Icon="@Icons.Custom.FileFormats.FileDocument" Size="Size.Small" />
+                <div class="menu-item-text">
+                    <span class="menu-item-title">Markdown</span>
+                    <span class="menu-item-description">Plain text formatting</span>
+                </div>
+            </div>
+        </MudMenuItem>
+        <MudMenuItem OnClick="@(() => ExportAsync(ExportFormat.Html))">
+            <div class="menu-item-content">
+                <MudIcon Icon="@Icons.Custom.FileFormats.FileCode" Size="Size.Small" />
+                <div class="menu-item-text">
+                    <span class="menu-item-title">HTML</span>
+                    <span class="menu-item-description">Web page format</span>
+                </div>
+            </div>
+        </MudMenuItem>
+        <MudDivider Class="my-1" />
+        <MudMenuItem OnClick="@(() => CopyToClipboardAsync())">
+            <div class="menu-item-content">
+                <MudIcon Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" />
+                <div class="menu-item-text">
+                    <span class="menu-item-title">Copy to Clipboard</span>
+                    <span class="menu-item-description">Copy markdown text</span>
+                </div>
+            </div>
+        </MudMenuItem>
+    </ChildContent>
+</MudMenu>
+
+<style>
+    .export-menu .menu-item-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 4px 0;
+    }
+
+    .export-menu .menu-item-content .mud-icon-root {
+        color: #9C27B0;
+    }
+
+    .export-menu .menu-item-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .export-menu .menu-item-title {
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .export-menu .menu-item-description {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The report to export.
+    /// </summary>
+    [Parameter]
+    public ResearchReportBase? Report { get; set; }
+
+    /// <summary>
+    /// The report title for the filename.
+    /// </summary>
+    [Parameter]
+    public string? ReportTitle { get; set; }
+
+    /// <summary>
+    /// Callback when export completes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<ExportResult> OnExportComplete { get; set; }
+
+    private bool IsExporting { get; set; }
+
+    private async Task ExportAsync(ExportFormat format)
+    {
+        if (Report == null || string.IsNullOrEmpty(Report.FullMarkdown))
+            return;
+
+        IsExporting = true;
+        StateHasChanged();
+
+        try
+        {
+            var content = format switch
+            {
+                ExportFormat.Html => ConvertToHtml(Report.FullMarkdown),
+                _ => Report.FullMarkdown
+            };
+
+            var extension = format switch
+            {
+                ExportFormat.Html => "html",
+                _ => "md"
+            };
+
+            var mimeType = format switch
+            {
+                ExportFormat.Html => "text/html",
+                _ => "text/markdown"
+            };
+
+            var filename = SanitizeFilename(ReportTitle ?? Report.Title ?? "Research Report");
+
+            await DownloadFileAsync($"{filename}.{extension}", content, mimeType);
+
+            await OnExportComplete.InvokeAsync(new ExportResult
+            {
+                Success = true,
+                Format = format,
+                Filename = $"{filename}.{extension}"
+            });
+        }
+        catch (Exception ex)
+        {
+            await OnExportComplete.InvokeAsync(new ExportResult
+            {
+                Success = false,
+                Format = format,
+                Error = ex.Message
+            });
+        }
+        finally
+        {
+            IsExporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CopyToClipboardAsync()
+    {
+        if (Report == null || string.IsNullOrEmpty(Report.FullMarkdown))
+            return;
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Report.FullMarkdown);
+            await OnExportComplete.InvokeAsync(new ExportResult
+            {
+                Success = true,
+                Format = ExportFormat.Clipboard
+            });
+        }
+        catch (Exception ex)
+        {
+            await OnExportComplete.InvokeAsync(new ExportResult
+            {
+                Success = false,
+                Format = ExportFormat.Clipboard,
+                Error = ex.Message
+            });
+        }
+    }
+
+    private async Task DownloadFileAsync(string filename, string content, string mimeType)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        var base64 = Convert.ToBase64String(bytes);
+        var dataUrl = $"data:{mimeType};base64,{base64}";
+
+        await JSRuntime.InvokeVoidAsync("eval", $@"
+            const link = document.createElement('a');
+            link.href = '{dataUrl}';
+            link.download = '{filename}';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        ");
+    }
+
+    private string ConvertToHtml(string markdown)
+    {
+        // Basic markdown to HTML conversion
+        // In production, use a proper markdown library
+        var html = markdown
+            .Replace("&", "&amp;")
+            .Replace("<", "&lt;")
+            .Replace(">", "&gt;");
+
+        // Headers
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"^### (.+)$", "<h3>$1</h3>", System.Text.RegularExpressions.RegexOptions.Multiline);
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"^## (.+)$", "<h2>$1</h2>", System.Text.RegularExpressions.RegexOptions.Multiline);
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"^# (.+)$", "<h1>$1</h1>", System.Text.RegularExpressions.RegexOptions.Multiline);
+
+        // Bold and italic
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*(.+?)\*", "<em>$1</em>");
+
+        // Line breaks
+        html = html.Replace("\n\n", "</p><p>");
+        html = $"<p>{html}</p>";
+
+        return $@"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=""UTF-8"">
+    <title>{System.Net.WebUtility.HtmlEncode(ReportTitle ?? Report?.Title ?? "Research Report")}</title>
+    <style>
+        body {{ font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; }}
+        h1 {{ color: #9C27B0; border-bottom: 2px solid #9C27B0; padding-bottom: 8px; }}
+        h2 {{ color: #7B1FA2; margin-top: 32px; }}
+        h3 {{ color: #6A1B9A; margin-top: 24px; }}
+        p {{ margin: 16px 0; }}
+    </style>
+</head>
+<body>
+{html}
+</body>
+</html>";
+    }
+
+    private string SanitizeFilename(string filename)
+    {
+        var invalid = System.IO.Path.GetInvalidFileNameChars();
+        foreach (var c in invalid)
+        {
+            filename = filename.Replace(c, '_');
+        }
+        return filename.Trim().Replace(" ", "_");
+    }
+
+    public enum ExportFormat
+    {
+        Markdown,
+        Html,
+        Clipboard
+    }
+
+    public class ExportResult
+    {
+        public bool Success { get; set; }
+        public ExportFormat Format { get; set; }
+        public string? Filename { get; set; }
+        public string? Error { get; set; }
+    }
+}

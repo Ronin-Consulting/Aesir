@@ -1,0 +1,256 @@
+@* Timeline showing research trail events *@
+
+<div class="research-trail-timeline">
+    <div class="timeline-header">
+        <MudIcon Icon="@Icons.Material.Filled.Timeline" Size="Size.Small" />
+        <span class="timeline-title">Research Trail</span>
+        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text">
+            @Entries.Count events
+        </MudChip>
+    </div>
+
+    <div class="timeline-container">
+        @foreach (var (entry, index) in Entries.Select((e, i) => (e, i)))
+        {
+            var isLast = index == Entries.Count - 1;
+            <div class="timeline-entry @GetEventClass(entry.EventType)">
+                <div class="entry-marker">
+                    <div class="marker-dot">
+                        <MudIcon Icon="@GetEventIcon(entry.EventType)" Size="Size.Small" />
+                    </div>
+                    @if (!isLast)
+                    {
+                        <div class="marker-line"></div>
+                    }
+                </div>
+                <div class="entry-content">
+                    <div class="entry-header">
+                        <span class="entry-type">@GetEventTypeName(entry.EventType)</span>
+                        @if (!string.IsNullOrEmpty(entry.AgentRole))
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="role-chip">
+                                @entry.AgentRole
+                            </MudChip>
+                        }
+                        <span class="entry-time">@FormatTime(entry.Timestamp)</span>
+                    </div>
+                    <p class="entry-description">@entry.Description</p>
+                    @if (entry.DurationMs.HasValue)
+                    {
+                        <div class="entry-duration">
+                            <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" />
+                            <span>@FormatDuration(entry.DurationMs.Value)</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .research-trail-timeline {
+        background-color: var(--mud-palette-surface);
+        border: 1px solid rgba(156, 39, 176, 0.15);
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .timeline-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        color: #9C27B0;
+    }
+
+    .timeline-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        flex: 1;
+    }
+
+    .timeline-container {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .timeline-entry {
+        display: flex;
+        gap: 12px;
+        min-height: 60px;
+    }
+
+    .entry-marker {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 32px;
+    }
+
+    .marker-dot {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(156, 39, 176, 0.1);
+        color: #9C27B0;
+        flex-shrink: 0;
+    }
+
+    .timeline-entry.phase-change .marker-dot {
+        background-color: rgba(33, 150, 243, 0.1);
+        color: #2196F3;
+    }
+
+    .timeline-entry.completed .marker-dot {
+        background-color: rgba(76, 175, 80, 0.1);
+        color: #4CAF50;
+    }
+
+    .timeline-entry.error .marker-dot {
+        background-color: rgba(244, 67, 54, 0.1);
+        color: #F44336;
+    }
+
+    .marker-line {
+        width: 2px;
+        flex: 1;
+        background-color: rgba(156, 39, 176, 0.2);
+        margin: 4px 0;
+    }
+
+    .entry-content {
+        flex: 1;
+        padding-bottom: 16px;
+    }
+
+    .entry-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+        flex-wrap: wrap;
+    }
+
+    .entry-type {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .role-chip {
+        font-size: 0.7rem !important;
+        height: 20px !important;
+    }
+
+    .entry-time {
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-disabled);
+        margin-left: auto;
+    }
+
+    .entry-description {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-secondary);
+        line-height: 1.5;
+    }
+
+    .entry-duration {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 6px;
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-disabled);
+    }
+
+    .entry-duration .mud-icon-root {
+        font-size: 0.9rem;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// List of trail entries to display.
+    /// </summary>
+    [Parameter]
+    public List<TrailEntry> Entries { get; set; } = [];
+
+    private string GetEventClass(string eventType)
+    {
+        return eventType.ToLowerInvariant() switch
+        {
+            "phasechanged" or "phase_changed" => "phase-change",
+            "sessioncompleted" or "researchcompleted" or "session_completed" => "completed",
+            "error" or "sessionfailed" or "session_failed" => "error",
+            _ => ""
+        };
+    }
+
+    private string GetEventIcon(string eventType)
+    {
+        return eventType.ToLowerInvariant() switch
+        {
+            "sessioncreated" or "session_created" => Icons.Material.Filled.AddCircle,
+            "phasechanged" or "phase_changed" => Icons.Material.Filled.SwapHoriz,
+            "agentstarted" or "agent_started" => Icons.Material.Filled.PlayCircle,
+            "agentcompleted" or "agent_completed" => Icons.Material.Filled.CheckCircle,
+            "submissioncreated" or "submission_created" => Icons.Material.Filled.NoteAdd,
+            "peerreviewcreated" or "peer_review_created" => Icons.Material.Filled.RateReview,
+            "reportgenerated" or "report_generated" => Icons.Material.Filled.Article,
+            "sessioncompleted" or "session_completed" or "researchcompleted" => Icons.Material.Filled.TaskAlt,
+            "error" or "sessionfailed" or "session_failed" => Icons.Material.Filled.Error,
+            _ => Icons.Material.Filled.Circle
+        };
+    }
+
+    private string GetEventTypeName(string eventType)
+    {
+        return eventType.Replace("_", " ") switch
+        {
+            var s when s.Contains("session created", StringComparison.OrdinalIgnoreCase) => "Session Created",
+            var s when s.Contains("phase changed", StringComparison.OrdinalIgnoreCase) => "Phase Changed",
+            var s when s.Contains("agent started", StringComparison.OrdinalIgnoreCase) => "Agent Started",
+            var s when s.Contains("agent completed", StringComparison.OrdinalIgnoreCase) => "Agent Completed",
+            var s when s.Contains("submission", StringComparison.OrdinalIgnoreCase) => "Submission Created",
+            var s when s.Contains("peer review", StringComparison.OrdinalIgnoreCase) => "Peer Review",
+            var s when s.Contains("report", StringComparison.OrdinalIgnoreCase) => "Report Generated",
+            var s when s.Contains("completed", StringComparison.OrdinalIgnoreCase) => "Completed",
+            var s when s.Contains("error", StringComparison.OrdinalIgnoreCase) ||
+                       s.Contains("failed", StringComparison.OrdinalIgnoreCase) => "Error",
+            _ => eventType
+        };
+    }
+
+    private string FormatTime(DateTime timestamp)
+    {
+        var local = timestamp.ToLocalTime();
+        return local.ToString("h:mm:ss tt");
+    }
+
+    private string FormatDuration(int milliseconds)
+    {
+        var duration = TimeSpan.FromMilliseconds(milliseconds);
+        if (duration.TotalMinutes < 1)
+            return $"{duration.TotalSeconds:F1}s";
+        if (duration.TotalHours < 1)
+            return $"{(int)duration.TotalMinutes}m {duration.Seconds}s";
+        return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+    }
+
+    /// <summary>
+    /// Represents a trail entry for display.
+    /// </summary>
+    public class TrailEntry
+    {
+        public string EventType { get; set; } = string.Empty;
+        public string? AgentRole { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public int? DurationMs { get; set; }
+        public DateTime Timestamp { get; set; }
+    }
+}
