@@ -1,0 +1,165 @@
+@* Dialog for answering research clarification questions *@
+
+<MudDialog>
+    <TitleContent>
+        <div class="clarification-title">
+            <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Class="title-icon" />
+            <span>Clarification Needed</span>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="clarification-content">
+            <MudText Typo="Typo.body2" Class="intro-text">
+                The research team needs some clarification before proceeding. Please answer the following questions:
+            </MudText>
+
+            @if (Questions != null && Questions.Any())
+            {
+                <div class="questions-list">
+                    @for (var i = 0; i < Questions.Count; i++)
+                    {
+                        var index = i;
+                        <div class="question-item">
+                            <div class="question-header">
+                                <MudIcon Icon="@Icons.Material.Filled.QuestionAnswer" Size="Size.Small" />
+                                <span class="question-number">Question @(index + 1)</span>
+                            </div>
+                            <MudText Typo="Typo.body1" Class="question-text">
+                                @Questions[index]
+                            </MudText>
+                            <MudTextField @bind-Value="_answers[index]"
+                                          Label="Your Answer"
+                                          Variant="Variant.Outlined"
+                                          Lines="3"
+                                          Class="answer-field"
+                                          Placeholder="Enter your answer..." />
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info">No clarification questions provided.</MudAlert>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel Research</MudButton>
+        <MudButton OnClick="Submit"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="@(!AllQuestionsAnswered)">
+            Submit Answers
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .clarification-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .clarification-title .title-icon {
+        color: #9C27B0;
+    }
+
+    .clarification-content {
+        min-width: 400px;
+        max-width: 600px;
+    }
+
+    .clarification-content .intro-text {
+        color: var(--mud-palette-text-secondary);
+        margin-bottom: 20px;
+    }
+
+    .questions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .question-item {
+        background-color: rgba(156, 39, 176, 0.03);
+        border: 1px solid rgba(156, 39, 176, 0.1);
+        border-radius: 8px;
+        padding: 16px;
+    }
+
+    .question-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #9C27B0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
+    .question-text {
+        margin-bottom: 12px;
+        line-height: 1.5;
+    }
+
+    .answer-field {
+        margin-top: 8px;
+    }
+</style>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+
+    /// <summary>
+    /// The list of clarification questions to display.
+    /// </summary>
+    [Parameter]
+    public List<string>? Questions { get; set; }
+
+    /// <summary>
+    /// The session ID for context.
+    /// </summary>
+    [Parameter]
+    public Guid SessionId { get; set; }
+
+    private Dictionary<int, string> _answers = [];
+
+    protected override void OnParametersSet()
+    {
+        if (Questions != null)
+        {
+            // Initialize answers dictionary
+            for (var i = 0; i < Questions.Count; i++)
+            {
+                if (!_answers.ContainsKey(i))
+                {
+                    _answers[i] = string.Empty;
+                }
+            }
+        }
+    }
+
+    private bool AllQuestionsAnswered =>
+        Questions != null &&
+        Questions.Count > 0 &&
+        _answers.Count == Questions.Count &&
+        _answers.Values.All(a => !string.IsNullOrWhiteSpace(a));
+
+    private void Submit()
+    {
+        var answersDict = _answers
+            .OrderBy(kvp => kvp.Key)
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Trim());
+
+        MudDialog?.Close(DialogResult.Ok(answersDict));
+    }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+}

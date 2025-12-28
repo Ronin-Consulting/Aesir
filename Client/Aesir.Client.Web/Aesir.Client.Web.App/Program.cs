@@ -12,6 +12,7 @@ using Aesir.Client.Web.Modules.Wizard;
 using Aesir.Client.Web.Modules.Observability;
 using Aesir.Client.Web.Modules.Observability.Components;
 using Aesir.Client.Web.Modules.HandsFree;
+using Aesir.Client.Web.Modules.Research;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -66,6 +67,7 @@ builder.Services.AddModule<SettingsModule>();
 builder.Services.AddModule<WizardModule>();
 builder.Services.AddModule<ObservabilityModule>();
 builder.Services.AddModule<HandsFreeModule>();
+builder.Services.AddModule<ResearchModule>();
 
 // Build the app
 var app = builder.Build();

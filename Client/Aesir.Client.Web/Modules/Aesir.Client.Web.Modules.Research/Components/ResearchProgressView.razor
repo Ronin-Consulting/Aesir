@@ -1,0 +1,380 @@
+@* Main progress view component for research sessions *@
+@inject IResearchSignalRService SignalRService
+
+<div class="research-progress-view">
+    @* Header with session info *@
+    <div class="progress-header">
+        <div class="header-left">
+            <MudIcon Icon="@Icons.Material.Filled.Groups" Class="team-icon" />
+            <div class="session-info">
+                <span class="team-name">@(TeamName ?? "Research Team")</span>
+                <span class="session-status @GetStatusClass()">
+                    @GetStatusText()
+                </span>
+            </div>
+        </div>
+        @if (Session != null && IsActiveStatus(Session.Status))
+        {
+            <MudButton Size="Size.Small"
+                       Variant="Variant.Text"
+                       Color="Color.Error"
+                       StartIcon="@Icons.Material.Filled.Cancel"
+                       OnClick="OnCancelRequested">
+                Cancel
+            </MudButton>
+        }
+    </div>
+
+    @* Phase Progress Bar *@
+    <PhaseProgressBar CurrentPhase="@Session?.CurrentPhase"
+                      IsCompleted="@(Session?.Status == ResearchStatusBase.Completed)"
+                      IsFailed="@(Session?.Status == ResearchStatusBase.Failed)" />
+
+    @* Current Phase Detail *@
+    @if (Session?.CurrentPhase != null && IsActiveStatus(Session.Status))
+    {
+        <div class="current-phase-detail">
+            <div class="phase-info">
+                <MudIcon Icon="@GetPhaseIcon(Session.CurrentPhase.Value)" Size="Size.Medium" Class="phase-icon" />
+                <div class="phase-text">
+                    <span class="phase-name">@GetPhaseName(Session.CurrentPhase.Value)</span>
+                    <span class="phase-description">@GetPhaseDescription(Session.CurrentPhase.Value)</span>
+                </div>
+            </div>
+            @if (ProgressPercent > 0)
+            {
+                <MudProgressLinear Value="@ProgressPercent"
+                                   Color="Color.Secondary"
+                                   Class="phase-progress" />
+            }
+        </div>
+    }
+
+    @* Agent Activity Grid *@
+    @if (AgentActivities.Any())
+    {
+        <div class="agent-activities">
+            <div class="activities-header">
+                <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
+                <span>Team Members</span>
+            </div>
+            <div class="activities-grid">
+                @foreach (var activity in AgentActivities)
+                {
+                    <AgentActivityCard Role="@activity.Role"
+                                       AgentName="@activity.AgentName"
+                                       Status="@activity.Status"
+                                       CurrentTask="@activity.CurrentTask"
+                                       TokensUsed="@activity.TokensUsed"
+                                       Duration="@activity.Duration"
+                                       ErrorMessage="@activity.ErrorMessage" />
+                }
+            </div>
+        </div>
+    }
+
+    @* Error Display *@
+    @if (Session?.Status == ResearchStatusBase.Failed && !string.IsNullOrEmpty(Session.ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-3">
+            <div class="error-alert">
+                <strong>Research Failed</strong>
+                <p>@Session.ErrorMessage</p>
+            </div>
+        </MudAlert>
+    }
+
+    @* Elapsed Time *@
+    @if (Session?.StartedAt != null)
+    {
+        <div class="elapsed-time">
+            <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" />
+            <span>Elapsed: @GetElapsedTime()</span>
+        </div>
+    }
+</div>
+
+<style>
+    .research-progress-view {
+        background-color: var(--mud-palette-surface);
+        border: 1px solid rgba(156, 39, 176, 0.15);
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .progress-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .team-icon {
+        color: #9C27B0;
+        font-size: 1.5rem;
+    }
+
+    .session-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .team-name {
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .session-status {
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .session-status.in-progress {
+        color: #9C27B0;
+    }
+
+    .session-status.completed {
+        color: #4CAF50;
+    }
+
+    .session-status.failed {
+        color: #F44336;
+    }
+
+    .session-status.awaiting {
+        color: #FF9800;
+    }
+
+    .current-phase-detail {
+        background-color: rgba(156, 39, 176, 0.05);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .phase-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .phase-icon {
+        color: #9C27B0;
+    }
+
+    .phase-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .phase-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #9C27B0;
+    }
+
+    .phase-description {
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .phase-progress {
+        margin-top: 8px;
+    }
+
+    .agent-activities {
+        margin-top: 16px;
+    }
+
+    .activities-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        margin-bottom: 12px;
+    }
+
+    .activities-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+    }
+
+    .error-alert p {
+        margin: 4px 0 0;
+        font-size: 0.9rem;
+    }
+
+    .elapsed-time {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-secondary);
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The research session to display.
+    /// </summary>
+    [Parameter]
+    public ResearchSessionBase? Session { get; set; }
+
+    /// <summary>
+    /// The name of the research team.
+    /// </summary>
+    [Parameter]
+    public string? TeamName { get; set; }
+
+    /// <summary>
+    /// The list of agent activities.
+    /// </summary>
+    [Parameter]
+    public List<AgentActivity> AgentActivities { get; set; } = [];
+
+    /// <summary>
+    /// Progress percentage for the current phase (0-100).
+    /// </summary>
+    [Parameter]
+    public int ProgressPercent { get; set; }
+
+    /// <summary>
+    /// Callback when cancel is requested.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnCancelRequested { get; set; }
+
+    private bool IsActiveStatus(ResearchStatusBase status)
+    {
+        return status is ResearchStatusBase.Planning or
+            ResearchStatusBase.Researching or
+            ResearchStatusBase.Anonymizing or
+            ResearchStatusBase.PeerReviewing or
+            ResearchStatusBase.Synthesizing;
+    }
+
+    private string GetStatusClass()
+    {
+        return Session?.Status switch
+        {
+            ResearchStatusBase.Researching or ResearchStatusBase.Planning or
+            ResearchStatusBase.Anonymizing or ResearchStatusBase.PeerReviewing or
+            ResearchStatusBase.Synthesizing => "in-progress",
+            ResearchStatusBase.Completed => "completed",
+            ResearchStatusBase.Failed => "failed",
+            ResearchStatusBase.AwaitingClarification => "awaiting",
+            _ => ""
+        };
+    }
+
+    private string GetStatusText()
+    {
+        return Session?.Status switch
+        {
+            ResearchStatusBase.Created => "Created",
+            ResearchStatusBase.Planning => "Planning...",
+            ResearchStatusBase.Researching => "Researching...",
+            ResearchStatusBase.Anonymizing => "Anonymizing...",
+            ResearchStatusBase.PeerReviewing => "Peer Reviewing...",
+            ResearchStatusBase.Synthesizing => "Synthesizing...",
+            ResearchStatusBase.AwaitingClarification => "Awaiting Clarification",
+            ResearchStatusBase.Completed => "Completed",
+            ResearchStatusBase.Failed => "Failed",
+            ResearchStatusBase.Cancelled => "Cancelled",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetPhaseIcon(ResearchPhaseBase phase)
+    {
+        return phase switch
+        {
+            ResearchPhaseBase.Clarification => Icons.Material.Filled.HelpOutline,
+            ResearchPhaseBase.Planning => Icons.Material.Filled.EditNote,
+            ResearchPhaseBase.Research => Icons.Material.Filled.Search,
+            ResearchPhaseBase.Anonymization => Icons.Material.Filled.VisibilityOff,
+            ResearchPhaseBase.PeerReview => Icons.Material.Filled.RateReview,
+            ResearchPhaseBase.Synthesis => Icons.Material.Filled.AutoAwesome,
+            _ => Icons.Material.Filled.Circle
+        };
+    }
+
+    private string GetPhaseName(ResearchPhaseBase phase)
+    {
+        return phase switch
+        {
+            ResearchPhaseBase.Clarification => "Clarification",
+            ResearchPhaseBase.Planning => "Planning",
+            ResearchPhaseBase.Research => "Research",
+            ResearchPhaseBase.Anonymization => "Anonymization",
+            ResearchPhaseBase.PeerReview => "Peer Review",
+            ResearchPhaseBase.Synthesis => "Synthesis",
+            _ => phase.ToString()
+        };
+    }
+
+    private string GetPhaseDescription(ResearchPhaseBase phase)
+    {
+        return phase switch
+        {
+            ResearchPhaseBase.Clarification => "Gathering additional context for the query",
+            ResearchPhaseBase.Planning => "Agents are planning their research approaches",
+            ResearchPhaseBase.Research => "Agents are conducting independent research",
+            ResearchPhaseBase.Anonymization => "Preparing submissions for blind peer review",
+            ResearchPhaseBase.PeerReview => "Agents are reviewing each other's work",
+            ResearchPhaseBase.Synthesis => "Chairman is compiling the final report",
+            _ => ""
+        };
+    }
+
+    private string GetElapsedTime()
+    {
+        if (Session?.StartedAt == null)
+            return "--";
+
+        var endTime = Session.CompletedAt ?? DateTime.UtcNow;
+        var elapsed = endTime - Session.StartedAt.Value;
+
+        if (elapsed.TotalMinutes < 1)
+            return $"{(int)elapsed.TotalSeconds}s";
+        if (elapsed.TotalHours < 1)
+            return $"{(int)elapsed.TotalMinutes}m {elapsed.Seconds}s";
+
+        return $"{(int)elapsed.TotalHours}h {elapsed.Minutes}m";
+    }
+
+    /// <summary>
+    /// Represents the activity state of an agent.
+    /// </summary>
+    public class AgentActivity
+    {
+        public ResearchRoleBase Role { get; set; }
+        public string? AgentName { get; set; }
+        public AgentActivityCard.AgentActivityStatus Status { get; set; } = AgentActivityCard.AgentActivityStatus.Pending;
+        public string? CurrentTask { get; set; }
+        public int? TokensUsed { get; set; }
+        public TimeSpan? Duration { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
+}
