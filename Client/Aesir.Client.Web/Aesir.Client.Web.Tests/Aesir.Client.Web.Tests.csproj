@@ -33,6 +33,7 @@
     <ProjectReference Include="..\Modules\Aesir.Client.Web.Modules.Wizard\Aesir.Client.Web.Modules.Wizard.csproj" />
     <ProjectReference Include="..\Modules\Aesir.Client.Web.Modules.Observability\Aesir.Client.Web.Modules.Observability.csproj" />
     <ProjectReference Include="..\Modules\Aesir.Client.Web.Modules.HandsFree\Aesir.Client.Web.Modules.HandsFree.csproj" />
+    <ProjectReference Include="..\Modules\Aesir.Client.Web.Modules.Research\Aesir.Client.Web.Modules.Research.csproj" />
     <ProjectReference Include="..\Aesir.Client.Web.App\Aesir.Client.Web.App.csproj" />
   </ItemGroup>
 
