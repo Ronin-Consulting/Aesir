@@ -1,8 +1,11 @@
+using System.Text.Json.Serialization;
+
 namespace Aesir.Modules.Research.Models;
 
 /// <summary>
 /// Research agent roles in a research team.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ResearchRole
 {
     /// <summary>

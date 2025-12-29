@@ -11,6 +11,7 @@ public class ResearchTeamBase
     /// Unique identifier for the research team.
     /// </summary>
     [JsonPropertyName("id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Guid? Id { get; set; }
 
     /// <summary>
@@ -47,12 +48,14 @@ public class ResearchTeamBase
     /// When the team was created.
     /// </summary>
     [JsonPropertyName("created_at")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DateTime? CreatedAt { get; set; }
 
     /// <summary>
     /// When the team was last updated.
     /// </summary>
     [JsonPropertyName("updated_at")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DateTime? UpdatedAt { get; set; }
 }
 
@@ -65,12 +68,14 @@ public class ResearchTeamMemberBase
     /// Unique identifier for this team member assignment.
     /// </summary>
     [JsonPropertyName("id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Guid? Id { get; set; }
 
     /// <summary>
     /// The team this member belongs to.
     /// </summary>
     [JsonPropertyName("research_team_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Guid? ResearchTeamId { get; set; }
 
     /// <summary>
@@ -92,40 +97,10 @@ public class ResearchTeamMemberBase
     public bool IsActive { get; set; } = true;
 
     /// <summary>
-    /// Override: Custom temperature for this role.
+    /// Override: Custom temperature/creativity for this role.
     /// </summary>
     [JsonPropertyName("override_temperature")]
     public double? OverrideTemperature { get; set; }
-
-    /// <summary>
-    /// Override: Custom persona/system prompt.
-    /// </summary>
-    [JsonPropertyName("override_persona")]
-    public string? OverridePersona { get; set; }
-
-    /// <summary>
-    /// Override: Custom planning phase prompt.
-    /// </summary>
-    [JsonPropertyName("override_planning_prompt")]
-    public string? OverridePlanningPrompt { get; set; }
-
-    /// <summary>
-    /// Override: Custom research phase prompt.
-    /// </summary>
-    [JsonPropertyName("override_research_prompt")]
-    public string? OverrideResearchPrompt { get; set; }
-
-    /// <summary>
-    /// Override: Specific thinking mode.
-    /// </summary>
-    [JsonPropertyName("override_thinking_mode")]
-    public string? OverrideThinkingMode { get; set; }
-
-    /// <summary>
-    /// Override: Specific tool IDs to use.
-    /// </summary>
-    [JsonPropertyName("override_tools")]
-    public List<string>? OverrideTools { get; set; }
 }
 
 /// <summary>

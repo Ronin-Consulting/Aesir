@@ -29,7 +29,7 @@
             <MudTabPanel Text="Team Members" Icon="@Icons.Material.Filled.Group">
                 <MudStack Spacing="3">
                     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
-                        Assign agents to research roles. Each team needs at least a Deep Diver, Synthesizer, and Devil's Advocate.
+                        Assign agents to research roles. Each team requires exactly 4 members: Deep Diver, Synthesizer, Devil's Advocate, and Chairman.
                     </MudText>
 
                     @if (_members.Count == 0)
@@ -39,119 +39,128 @@
                         </MudAlert>
                     }
 
-                    @foreach (var member in _members)
-                    {
-                        var memberIndex = _members.IndexOf(member);
-                        <MudPaper Elevation="0" Class="pa-3" Style="border: 1px solid var(--mud-palette-lines-default); border-radius: 4px;">
-                            <MudStack Spacing="2">
-                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                                    <MudText Typo="Typo.subtitle2">Member @(memberIndex + 1)</MudText>
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                   Size="Size.Small"
-                                                   Color="Color.Error"
-                                                   OnClick="@(() => RemoveMember(member))" />
-                                </MudStack>
-
-                                <MudGrid Spacing="2">
-                                    <MudItem xs="12" sm="6">
-                                        <MudSelect T="ResearchRoleBase"
-                                                   @bind-Value="member.Role"
-                                                   Label="Role"
-                                                   Required="true"
-                                                   Variant="Variant.Outlined"
-                                                   AnchorOrigin="Origin.BottomCenter">
-                                            <MudSelectItem Value="ResearchRoleBase.DeepDiver">Deep Diver</MudSelectItem>
-                                            <MudSelectItem Value="ResearchRoleBase.Synthesizer">Synthesizer</MudSelectItem>
-                                            <MudSelectItem Value="ResearchRoleBase.DevilsAdvocate">Devil's Advocate</MudSelectItem>
-                                            <MudSelectItem Value="ResearchRoleBase.Chairman">Chairman</MudSelectItem>
-                                        </MudSelect>
-                                    </MudItem>
-
-                                    <MudItem xs="12" sm="6">
-                                        <MudSelect T="Guid"
-                                                   @bind-Value="member.AgentId"
-                                                   Label="Agent"
-                                                   Required="true"
-                                                   Variant="Variant.Outlined"
-                                                   AnchorOrigin="Origin.BottomCenter">
-                                            @foreach (var agent in AvailableAgents.Where(a => a.Id.HasValue))
-                                            {
-                                                <MudSelectItem Value="@agent.Id!.Value">@agent.Name</MudSelectItem>
-                                            }
-                                        </MudSelect>
-                                    </MudItem>
-                                </MudGrid>
-
-                                <MudSwitch @bind-Value="member.IsActive"
-                                           Label="Active"
-                                           Color="Color.Primary"
-                                           Size="Size.Small" />
-
-                                <MudExpansionPanels Elevation="0">
-                                    <MudExpansionPanel Text="Override Settings" Dense="true">
-                                        <MudStack Spacing="2" Class="pt-2">
-                                            <MudNumericField @bind-Value="member.OverrideTemperature"
-                                                             Label="Temperature Override"
-                                                             Min="0.0"
-                                                             Max="2.0"
-                                                             Step="0.1"
-                                                             Variant="Variant.Outlined"
-                                                             HelperText="Leave empty to use agent default"
-                                                             Clearable="true" />
-
-                                            <MudTextField @bind-Value="member.OverridePersona"
-                                                          Label="Persona Override"
-                                                          Lines="3"
-                                                          Variant="Variant.Outlined"
-                                                          HelperText="Custom system prompt for this role"
-                                                          Clearable="true" />
-
-                                            <MudTextField @bind-Value="member.OverridePlanningPrompt"
-                                                          Label="Planning Prompt Override"
-                                                          Lines="2"
-                                                          Variant="Variant.Outlined"
-                                                          HelperText="Custom prompt for planning phase"
-                                                          Clearable="true" />
-
-                                            <MudTextField @bind-Value="member.OverrideResearchPrompt"
-                                                          Label="Research Prompt Override"
-                                                          Lines="2"
-                                                          Variant="Variant.Outlined"
-                                                          HelperText="Custom prompt for research phase"
-                                                          Clearable="true" />
-
-                                            <MudSelect T="string"
-                                                       @bind-Value="member.OverrideThinkingMode"
-                                                       Label="Thinking Mode Override"
-                                                       Variant="Variant.Outlined"
-                                                       AnchorOrigin="Origin.BottomCenter"
-                                                       Clearable="true">
-                                                <MudSelectItem Value="@("default")">Default</MudSelectItem>
-                                                <MudSelectItem Value="@("enabled")">Enabled</MudSelectItem>
-                                                <MudSelectItem Value="@("disabled")">Disabled</MudSelectItem>
-                                                <MudSelectItem Value="@("high")">High</MudSelectItem>
-                                                <MudSelectItem Value="@("medium")">Medium</MudSelectItem>
-                                                <MudSelectItem Value="@("low")">Low</MudSelectItem>
-                                            </MudSelect>
+                    <MudExpansionPanels MultiExpansion="true" Elevation="0">
+                        @foreach (var member in _members)
+                        {
+                            <MudExpansionPanel Dense="true" Style="border: 1px solid var(--mud-palette-lines-default); margin-bottom: 8px;">
+                                <TitleContent>
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                            <MudIcon Icon="@GetRoleIcon(member.Role)" Size="Size.Small" />
+                                            <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                                                @GetRoleDisplayName(member.Role)
+                                            </MudText>
+                                            <span @onclick:stopPropagation="true">
+                                                <MudTooltip Text="@GetRoleDescription(member.Role)" Arrow="true" Placement="Placement.Top">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Info" Style="cursor: pointer;" />
+                                                </MudTooltip>
+                                            </span>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                - @GetAgentName(member.AgentId)
+                                            </MudText>
                                         </MudStack>
-                                    </MudExpansionPanel>
-                                </MudExpansionPanels>
-                            </MudStack>
-                        </MudPaper>
-                    }
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                            @if (member.IsActive)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Active</MudChip>
+                                            }
+                                            else
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">Inactive</MudChip>
+                                            }
+                                            <span @onclick:stopPropagation="true">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                               Size="Size.Small"
+                                                               Color="Color.Error"
+                                                               OnClick="@(() => RemoveMember(member))" />
+                                            </span>
+                                        </MudStack>
+                                    </MudStack>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MudStack Spacing="2" Class="pa-2">
+                                        <MudGrid Spacing="2">
+                                            <MudItem xs="12" sm="6">
+                                                <MudSelect T="ResearchRoleBase"
+                                                           @bind-Value="member.Role"
+                                                           Label="Role"
+                                                           Required="true"
+                                                           Variant="Variant.Outlined"
+                                                           AnchorOrigin="Origin.BottomCenter">
+                                                    <MudSelectItem Value="ResearchRoleBase.DeepDiver">Deep Diver</MudSelectItem>
+                                                    <MudSelectItem Value="ResearchRoleBase.Synthesizer">Synthesizer</MudSelectItem>
+                                                    <MudSelectItem Value="ResearchRoleBase.DevilsAdvocate">Devil's Advocate</MudSelectItem>
+                                                    <MudSelectItem Value="ResearchRoleBase.Chairman">Chairman</MudSelectItem>
+                                                </MudSelect>
+                                            </MudItem>
 
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Add"
-                               OnClick="AddMember"
-                               FullWidth="true">
-                        Add Team Member
-                    </MudButton>
+                                            <MudItem xs="12" sm="6">
+                                                <MudSelect T="Guid"
+                                                           @bind-Value="member.AgentId"
+                                                           Label="Agent"
+                                                           Required="true"
+                                                           Variant="Variant.Outlined"
+                                                           AnchorOrigin="Origin.BottomCenter">
+                                                    @foreach (var agent in AvailableAgents.Where(a => a.Id.HasValue))
+                                                    {
+                                                        <MudSelectItem Value="@agent.Id!.Value">@agent.Name</MudSelectItem>
+                                                    }
+                                                </MudSelect>
+                                            </MudItem>
+                                        </MudGrid>
+
+                                        <MudSwitch @bind-Value="member.IsActive"
+                                                   Label="Active"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small" />
+
+                                        <MudExpansionPanels Elevation="0">
+                                            <MudExpansionPanel Text="Override Settings" Dense="true">
+                                                <MudStack Spacing="2" Class="pt-2">
+                                                    @if (IsReasoningModel(member.AgentId))
+                                                    {
+                                                        <MudAlert Severity="Severity.Warning" Dense="true">
+                                                            The selected agent uses a reasoning model which ignores creativity settings.
+                                                        </MudAlert>
+                                                    }
+                                                    <MudNumericField @bind-Value="member.OverrideTemperature"
+                                                                     Label="Creativity"
+                                                                     Min="0.0"
+                                                                     Max="2.0"
+                                                                     Step="0.1"
+                                                                     Variant="Variant.Outlined"
+                                                                     HelperText="Higher = more creative/varied, Lower = more focused/consistent"
+                                                                     Clearable="true" />
+                                                </MudStack>
+                                            </MudExpansionPanel>
+                                        </MudExpansionPanels>
+                                    </MudStack>
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        }
+                    </MudExpansionPanels>
+
+                    @if (_members.Count < MaxMembers)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="AddMember"
+                                   FullWidth="true">
+                            Add Team Member (@(_members.Count)/@MaxMembers)
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Success" Dense="true">
+                            All @MaxMembers team member slots filled.
+                        </MudAlert>
+                    }
 
                     @if (!HasRequiredRoles)
                     {
                         <MudAlert Severity="Severity.Warning" Dense="true">
-                            Team requires at least one Deep Diver, Synthesizer, and Devil's Advocate.
+                            Team requires all 4 roles: Deep Diver, Synthesizer, Devil's Advocate, and Chairman.
                             Missing: @string.Join(", ", GetMissingRoles())
                         </MudAlert>
                     }
@@ -171,6 +180,8 @@
 </MudDialog>
 
 @code {
+    private const int MaxMembers = 4;
+
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
 
     [Parameter] public ResearchTeamBase Team { get; set; } = new();
@@ -194,7 +205,8 @@
     private bool HasRequiredRoles =>
         _members.Any(m => m.Role == ResearchRoleBase.DeepDiver && m.IsActive) &&
         _members.Any(m => m.Role == ResearchRoleBase.Synthesizer && m.IsActive) &&
-        _members.Any(m => m.Role == ResearchRoleBase.DevilsAdvocate && m.IsActive);
+        _members.Any(m => m.Role == ResearchRoleBase.DevilsAdvocate && m.IsActive) &&
+        _members.Any(m => m.Role == ResearchRoleBase.Chairman && m.IsActive);
 
     protected override void OnParametersSet()
     {
@@ -208,12 +220,7 @@
             Role = m.Role,
             AgentId = m.AgentId,
             IsActive = m.IsActive,
-            OverrideTemperature = m.OverrideTemperature,
-            OverridePersona = m.OverridePersona,
-            OverridePlanningPrompt = m.OverridePlanningPrompt,
-            OverrideResearchPrompt = m.OverrideResearchPrompt,
-            OverrideThinkingMode = m.OverrideThinkingMode,
-            OverrideTools = m.OverrideTools?.ToList()
+            OverrideTemperature = m.OverrideTemperature
         }).ToList() ?? [];
     }
 
@@ -252,11 +259,59 @@
             yield return "Synthesizer";
         if (!_members.Any(m => m.Role == ResearchRoleBase.DevilsAdvocate && m.IsActive))
             yield return "Devil's Advocate";
+        if (!_members.Any(m => m.Role == ResearchRoleBase.Chairman && m.IsActive))
+            yield return "Chairman";
     }
 
     private void RemoveMember(ResearchTeamMemberBase member)
     {
         _members.Remove(member);
+    }
+
+    private string GetAgentName(Guid agentId) =>
+        AvailableAgents.FirstOrDefault(a => a.Id == agentId)?.Name ?? "Not assigned";
+
+    private string GetRoleDisplayName(ResearchRoleBase role) => role switch
+    {
+        ResearchRoleBase.DeepDiver => "Deep Diver",
+        ResearchRoleBase.Synthesizer => "Synthesizer",
+        ResearchRoleBase.DevilsAdvocate => "Devil's Advocate",
+        ResearchRoleBase.Chairman => "Chairman",
+        _ => role.ToString()
+    };
+
+    private string GetRoleIcon(ResearchRoleBase role) => role switch
+    {
+        ResearchRoleBase.DeepDiver => Icons.Material.Filled.Search,
+        ResearchRoleBase.Synthesizer => Icons.Material.Filled.AutoAwesome,
+        ResearchRoleBase.DevilsAdvocate => Icons.Material.Filled.Psychology,
+        ResearchRoleBase.Chairman => Icons.Material.Filled.Groups,
+        _ => Icons.Material.Filled.Person
+    };
+
+    private string GetRoleDescription(ResearchRoleBase role) => role switch
+    {
+        ResearchRoleBase.DeepDiver => "Conducts thorough, in-depth research on specific topics. Digs deep into sources, extracts detailed information, and provides comprehensive analysis.",
+        ResearchRoleBase.Synthesizer => "Combines and integrates findings from multiple sources. Creates cohesive summaries, identifies patterns, and produces unified conclusions.",
+        ResearchRoleBase.DevilsAdvocate => "Challenges assumptions and findings. Questions conclusions, identifies weaknesses, and ensures research is robust and well-reasoned.",
+        ResearchRoleBase.Chairman => "Coordinates the research team. Assigns tasks, manages workflow, consolidates final results, and ensures quality and completeness.",
+        _ => "Research team member."
+    };
+
+    private bool IsReasoningModel(Guid agentId)
+    {
+        var agent = AvailableAgents.FirstOrDefault(a => a.Id == agentId);
+        if (agent?.ChatModel == null) return false;
+
+        var model = agent.ChatModel.ToLowerInvariant();
+
+        // OpenAI reasoning models: o1, o1-mini, o1-pro, o3, o3-mini, o4-mini, gpt-5, gpt-oss
+        // These models either ignore temperature (reasoning) or strongly recommend temp=1 (gpt-oss)
+        return model.StartsWith("o1") ||
+               model.StartsWith("o3") ||
+               model.StartsWith("o4") ||
+               model.StartsWith("gpt-5") ||
+               model.StartsWith("gpt-oss");
     }
 
     private async Task Save()

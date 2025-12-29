@@ -118,7 +118,10 @@ public class ResearchTeamService(
     public async Task<bool> ValidateAgentIdsAsync(IEnumerable<Guid> agentIds)
     {
         var agents = await configurationService.GetAgentsAsync();
-        var validAgentIds = agents.Select(a => a.Id).ToHashSet();
+        var validAgentIds = agents
+            .Where(a => a.Id.HasValue)
+            .Select(a => a.Id!.Value)
+            .ToHashSet();
 
         foreach (var agentId in agentIds)
         {
@@ -155,12 +158,7 @@ public class ResearchTeamService(
                 Role = m.Role,
                 AgentId = m.AgentId,
                 IsActive = m.IsActive,
-                OverrideTemperature = m.OverrideTemperature,
-                OverridePersona = m.OverridePersona,
-                OverridePlanningPrompt = m.OverridePlanningPrompt,
-                OverrideResearchPrompt = m.OverrideResearchPrompt,
-                OverrideThinkingMode = m.OverrideThinkingMode,
-                OverrideTools = m.OverrideTools?.ToList()
+                OverrideTemperature = m.OverrideTemperature
             }).ToList()
         };
 

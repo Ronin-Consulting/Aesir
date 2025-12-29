@@ -244,6 +244,24 @@ var sql = "SELECT * FROM product WHERE name = @Name";
 - **URL**: https://aesir.localhost/swagger
 - **OpenAPI Version**: v1
 
+### API Routes
+
+**IMPORTANT**: API routes do NOT use an `/api/` prefix. Use the module route directly:
+
+| Module | Route |
+|--------|-------|
+| Configuration | `/configuration/...` |
+| Research | `/research/...` |
+| Chat | `/chat/...` |
+
+```bash
+# CORRECT
+curl https://aesir.localhost/configuration/agents
+
+# WRONG - will return 404
+curl https://aesir.localhost/api/configuration/agents
+```
+
 ---
 
 ## Code Style Guidelines
@@ -266,6 +284,57 @@ var sql = "SELECT * FROM product WHERE name = @Name";
 
 - Use code-behind pattern for complex logic
 - See [Blazor WebAssembly Client](#blazor-webassembly-client) section
+
+### JSON Serialization (CRITICAL)
+
+**Client-Server JSON communication uses `snake_case` property names.**
+
+The Blazor client models in `Aesir.Common` use `[JsonPropertyName("snake_case")]` attributes. Server models in `Aesir.Modules.*` **MUST also use matching `[JsonPropertyName]` attributes** to ensure proper deserialization.
+
+**Common Issue**: 400 Bad Request errors when saving data often indicate a JSON property name mismatch between client and server.
+
+**Required for all API models:**
+
+```csharp
+using System.Text.Json.Serialization;
+
+public class MyEntity : IEntity
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("user_id")]
+    public string UserId { get; set; } = string.Empty;
+
+    [JsonPropertyName("is_active")]
+    public bool IsActive { get; set; }
+
+    [JsonPropertyName("created_at")]
+    public DateTime CreatedAt { get; set; }
+
+    // Navigation properties should be ignored
+    [JsonIgnore]
+    public ParentEntity? Parent { get; set; }
+}
+```
+
+**Enum Serialization**: Enums shared between client/server MUST have `[JsonConverter(typeof(JsonStringEnumConverter))]`:
+
+```csharp
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum MyStatus
+{
+    Pending,
+    Active,
+    Completed
+}
+```
+
+**Checklist for new API models:**
+1. Add `[JsonPropertyName("snake_case")]` to ALL public properties
+2. Add `[JsonIgnore]` to navigation properties
+3. Add `[JsonConverter(typeof(JsonStringEnumConverter))]` to enums
+4. Match property names exactly with corresponding `Aesir.Common` models
 
 ---
 
@@ -550,6 +619,31 @@ Connection strings use Docker service names (`pgdb`) which only resolve within D
 | Swagger | https://aesir.localhost/swagger |
 | Traefik Dashboard | http://localhost:8080 |
 | PostgreSQL | localhost:5432 |
+
+### Database Access
+
+**Connection Details:**
+- **Host**: `pgdb` (Docker) / `localhost` (external)
+- **Port**: `5432`
+- **Database**: `postgres`
+- **Schema**: `aesir` (NOT public)
+- **User**: `postgres`
+- **Password**: `RaGn4r0k!!`
+
+**IMPORTANT**: All application tables are in the `aesir` schema, not `public`. Always prefix table names with `aesir.` in SQL queries.
+
+**CLI Access:**
+```bash
+# Query agents (note the aesir. schema prefix)
+PGPASSWORD="RaGn4r0k!!" docker exec aesir-pgdb-1 psql -U postgres -d postgres -c "SELECT * FROM aesir.aesir_agent;"
+
+# List all aesir tables
+PGPASSWORD="RaGn4r0k!!" docker exec aesir-pgdb-1 psql -U postgres -d postgres -c "\dt aesir.*"
+```
+
+**Configuration Mode:**
+- `LoadFromDatabase: true` → Uses database tables (`aesir_agent`, etc.)
+- `LoadFromDatabase: false` → Uses `appsettings.json` configuration
 
 ---
 

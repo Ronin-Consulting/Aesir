@@ -39,12 +39,7 @@ public class ResearchTeamRepository(
                 agent_id as AgentId,
                 role as Role,
                 is_active as IsActive,
-                override_temperature as OverrideTemperature,
-                override_persona as OverridePersona,
-                override_planning_prompt as OverridePlanningPrompt,
-                override_research_prompt as OverrideResearchPrompt,
-                override_thinking_mode as OverrideThinkingMode,
-                override_tools as OverrideTools
+                override_temperature as OverrideTemperature
             FROM aesir.aesir_research_team_member
             WHERE research_team_id = @TeamId";
 
@@ -62,7 +57,7 @@ public class ResearchTeamRepository(
     /// <inheritdoc />
     public async Task<IEnumerable<ResearchTeam>> GetByUserIdAsync(string userId)
     {
-        const string sql = @"
+        const string teamSql = @"
             SELECT
                 id as Id,
                 user_id as UserId,
@@ -75,14 +70,41 @@ public class ResearchTeamRepository(
             WHERE user_id = @UserId
             ORDER BY created_at DESC";
 
+        const string membersSql = @"
+            SELECT
+                id as Id,
+                research_team_id as ResearchTeamId,
+                agent_id as AgentId,
+                role as Role,
+                is_active as IsActive,
+                override_temperature as OverrideTemperature
+            FROM aesir.aesir_research_team_member
+            WHERE research_team_id = ANY(@TeamIds)";
+
         return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<ResearchTeam>(sql, new { UserId = userId }));
+        {
+            var teams = (await connection.QueryAsync<ResearchTeam>(teamSql, new { UserId = userId })).ToList();
+
+            if (teams.Count > 0)
+            {
+                var teamIds = teams.Select(t => t.Id).ToArray();
+                var members = await connection.QueryAsync<ResearchTeamMember>(membersSql, new { TeamIds = teamIds });
+                var membersByTeam = members.GroupBy(m => m.ResearchTeamId).ToDictionary(g => g.Key, g => g.ToList());
+
+                foreach (var team in teams)
+                {
+                    team.Members = membersByTeam.TryGetValue(team.Id, out var teamMembers) ? teamMembers : [];
+                }
+            }
+
+            return teams;
+        });
     }
 
     /// <inheritdoc />
     public async Task<IEnumerable<ResearchTeam>> GetActiveByUserIdAsync(string userId)
     {
-        const string sql = @"
+        const string teamSql = @"
             SELECT
                 id as Id,
                 user_id as UserId,
@@ -95,8 +117,35 @@ public class ResearchTeamRepository(
             WHERE user_id = @UserId AND is_active = true
             ORDER BY created_at DESC";
 
+        const string membersSql = @"
+            SELECT
+                id as Id,
+                research_team_id as ResearchTeamId,
+                agent_id as AgentId,
+                role as Role,
+                is_active as IsActive,
+                override_temperature as OverrideTemperature
+            FROM aesir.aesir_research_team_member
+            WHERE research_team_id = ANY(@TeamIds)";
+
         return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<ResearchTeam>(sql, new { UserId = userId }));
+        {
+            var teams = (await connection.QueryAsync<ResearchTeam>(teamSql, new { UserId = userId })).ToList();
+
+            if (teams.Count > 0)
+            {
+                var teamIds = teams.Select(t => t.Id).ToArray();
+                var members = await connection.QueryAsync<ResearchTeamMember>(membersSql, new { TeamIds = teamIds });
+                var membersByTeam = members.GroupBy(m => m.ResearchTeamId).ToDictionary(g => g.Key, g => g.ToList());
+
+                foreach (var team in teams)
+                {
+                    team.Members = membersByTeam.TryGetValue(team.Id, out var teamMembers) ? teamMembers : [];
+                }
+            }
+
+            return teams;
+        });
     }
 
     /// <inheritdoc />
@@ -117,13 +166,9 @@ public class ResearchTeamRepository(
 
         const string memberSql = @"
             INSERT INTO aesir.aesir_research_team_member
-                (id, research_team_id, agent_id, role, is_active, override_temperature,
-                 override_persona, override_planning_prompt, override_research_prompt,
-                 override_thinking_mode, override_tools)
+                (id, research_team_id, agent_id, role, is_active, override_temperature)
             VALUES
-                (@Id, @ResearchTeamId, @AgentId, @Role, @IsActive, @OverrideTemperature,
-                 @OverridePersona, @OverridePlanningPrompt, @OverrideResearchPrompt,
-                 @OverrideThinkingMode, @OverrideTools::jsonb)";
+                (@Id, @ResearchTeamId, @AgentId, @Role, @IsActive, @OverrideTemperature)";
 
         await dbContext.UnitOfWorkAsync(async connection =>
         {
@@ -167,13 +212,9 @@ public class ResearchTeamRepository(
 
         const string memberSql = @"
             INSERT INTO aesir.aesir_research_team_member
-                (id, research_team_id, agent_id, role, is_active, override_temperature,
-                 override_persona, override_planning_prompt, override_research_prompt,
-                 override_thinking_mode, override_tools)
+                (id, research_team_id, agent_id, role, is_active, override_temperature)
             VALUES
-                (@Id, @ResearchTeamId, @AgentId, @Role, @IsActive, @OverrideTemperature,
-                 @OverridePersona, @OverridePlanningPrompt, @OverrideResearchPrompt,
-                 @OverrideThinkingMode, @OverrideTools::jsonb)";
+                (@Id, @ResearchTeamId, @AgentId, @Role, @IsActive, @OverrideTemperature)";
 
         var rowsAffected = await dbContext.UnitOfWorkAsync(async connection =>
         {

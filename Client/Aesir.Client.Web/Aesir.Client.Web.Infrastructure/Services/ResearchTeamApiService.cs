@@ -17,7 +17,7 @@ public class ResearchTeamApiService : IResearchTeamApiService
         _apiClient = apiClient;
     }
 
-    public async Task<ApiResult<IReadOnlyList<ResearchTeamBase>>> GetTeamsAsync(string userId = "default", CancellationToken ct = default)
+    public async Task<ApiResult<IReadOnlyList<ResearchTeamBase>>> GetTeamsAsync(string userId = "blangford@gmail.com", CancellationToken ct = default)
     {
         return await ExecuteAsync(async () =>
         {
@@ -26,7 +26,7 @@ public class ResearchTeamApiService : IResearchTeamApiService
         });
     }
 
-    public async Task<ApiResult<IReadOnlyList<ResearchTeamBase>>> GetActiveTeamsAsync(string userId = "default", CancellationToken ct = default)
+    public async Task<ApiResult<IReadOnlyList<ResearchTeamBase>>> GetActiveTeamsAsync(string userId = "blangford@gmail.com", CancellationToken ct = default)
     {
         return await ExecuteAsync(async () =>
         {
@@ -48,6 +48,8 @@ public class ResearchTeamApiService : IResearchTeamApiService
     {
         return await ExecuteAsync(async () =>
         {
+            // Set default user ID (hardcoded for now)
+            team.UserId ??= "blangford@gmail.com";
             var result = await _apiClient.PostAsync<ResearchTeamBase>($"{BaseUrl}", team, ct);
             return result ?? throw new InvalidOperationException("Failed to create research team");
         });

@@ -186,9 +186,23 @@
 
     private async Task OpenEditDialog(ResearchTeamBase team)
     {
+        if (!team.Id.HasValue)
+        {
+            Snackbar.Add("Cannot edit team: ID is missing", Severity.Error);
+            return;
+        }
+
+        // Fetch the full team with members
+        var teamResult = await ResearchTeamService.GetTeamAsync(team.Id.Value);
+        if (!teamResult.IsSuccess || teamResult.Value is null)
+        {
+            Snackbar.Add($"Failed to load team: {teamResult.Error}", Severity.Error);
+            return;
+        }
+
         var parameters = new DialogParameters<ResearchTeamEditDialog>
         {
-            { x => x.Team, team },
+            { x => x.Team, teamResult.Value },
             { x => x.IsNew, false },
             { x => x.AvailableAgents, _agents }
         };

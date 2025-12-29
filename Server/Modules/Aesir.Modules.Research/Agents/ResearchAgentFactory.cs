@@ -46,7 +46,7 @@ public class ResearchAgentFactory : IResearchAgentFactory
         // Get default config for the role
         var roleConfig = ResearchRoleDefinitions.GetConfig(teamMember.Role);
 
-        // Apply overrides from team member configuration
+        // Apply temperature override from team member, use role defaults for other settings
         var agent = new ResearchAgent
         {
             TeamMemberId = teamMember.Id,
@@ -59,33 +59,15 @@ public class ResearchAgentFactory : IResearchAgentFactory
             Model = baseAgent.ChatModel,
             MaxTokens = baseAgent.ChatMaxTokens,
 
-            // Temperature: use override, else role default
+            // Temperature: use override (Creativity setting), else role default
             Temperature = teamMember.OverrideTemperature ?? roleConfig.Temperature,
 
-            // Persona: use override, else role default
-            Persona = !string.IsNullOrWhiteSpace(teamMember.OverridePersona)
-                ? teamMember.OverridePersona
-                : roleConfig.Persona,
-
-            // Planning prompt: use override, else role default
-            PlanningPrompt = !string.IsNullOrWhiteSpace(teamMember.OverridePlanningPrompt)
-                ? teamMember.OverridePlanningPrompt
-                : roleConfig.PlanningPrompt,
-
-            // Research prompt: use override, else role default
-            ResearchPrompt = !string.IsNullOrWhiteSpace(teamMember.OverrideResearchPrompt)
-                ? teamMember.OverrideResearchPrompt
-                : roleConfig.ResearchPrompt,
-
-            // Chairman-specific prompts (no override supported currently)
+            // Role-specific prompts (no overrides - uses role defaults)
+            Persona = roleConfig.Persona,
+            PlanningPrompt = roleConfig.PlanningPrompt,
+            ResearchPrompt = roleConfig.ResearchPrompt,
             ClarificationPrompt = roleConfig.ClarificationPrompt,
-            SynthesisPrompt = roleConfig.SynthesisPrompt,
-
-            // Thinking mode: use override if specified
-            ThinkingMode = teamMember.OverrideThinkingMode,
-
-            // Tools: use override if specified, else use base agent's tools
-            ToolIds = teamMember.OverrideTools?.ToList()
+            SynthesisPrompt = roleConfig.SynthesisPrompt
         };
 
         _logger.LogDebug(
@@ -202,16 +184,6 @@ public class ResearchAgent
     /// Prompt template for synthesis (Chairman only).
     /// </summary>
     public string? SynthesisPrompt { get; set; }
-
-    /// <summary>
-    /// Thinking mode override (null = use default).
-    /// </summary>
-    public string? ThinkingMode { get; set; }
-
-    /// <summary>
-    /// Tool IDs to use (null = use base agent's tools).
-    /// </summary>
-    public List<string>? ToolIds { get; set; }
 
     /// <summary>
     /// Gets whether this agent is the Chairman role.

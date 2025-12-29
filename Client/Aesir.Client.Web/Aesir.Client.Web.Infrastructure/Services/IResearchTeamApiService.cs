@@ -12,16 +12,16 @@ public interface IResearchTeamApiService
     /// <summary>
     /// Gets all research teams for a user.
     /// </summary>
-    /// <param name="userId">The user ID (defaults to "default").</param>
+    /// <param name="userId">The user ID (defaults to hardcoded user).</param>
     /// <param name="ct">Cancellation token.</param>
-    Task<ApiResult<IReadOnlyList<ResearchTeamBase>>> GetTeamsAsync(string userId = "default", CancellationToken ct = default);
+    Task<ApiResult<IReadOnlyList<ResearchTeamBase>>> GetTeamsAsync(string userId = "blangford@gmail.com", CancellationToken ct = default);
 
     /// <summary>
     /// Gets all active research teams for a user.
     /// </summary>
-    /// <param name="userId">The user ID (defaults to "default").</param>
+    /// <param name="userId">The user ID (defaults to hardcoded user).</param>
     /// <param name="ct">Cancellation token.</param>
-    Task<ApiResult<IReadOnlyList<ResearchTeamBase>>> GetActiveTeamsAsync(string userId = "default", CancellationToken ct = default);
+    Task<ApiResult<IReadOnlyList<ResearchTeamBase>>> GetActiveTeamsAsync(string userId = "blangford@gmail.com", CancellationToken ct = default);
 
     /// <summary>
     /// Gets a research team by ID.
