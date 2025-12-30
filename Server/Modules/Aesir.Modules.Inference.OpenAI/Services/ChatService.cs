@@ -200,10 +200,12 @@ public class ChatService : BaseChatService
     /// Executes a streaming chat completion request and yields content chunks with their completion statuses.
     /// </summary>
     /// <param name="request">The chat request containing conversations, messages, and prompt settings.</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation if needed (e.g., timeout).</param>
     /// <returns>An asynchronous stream of tuples, where each tuple includes a content chunk, a boolean indicating whether the system is "thinking," and a boolean indicating if completion is final.</returns>
     protected override async IAsyncEnumerable<(string content, bool isThinking, bool isComplete)>
         ExecuteStreamingChatCompletionAsync(
-            AesirChatRequestBase request)
+            AesirChatRequestBase request,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = CreateChatHistory(request.Conversation.Messages);
@@ -227,10 +229,11 @@ public class ChatService : BaseChatService
                 var streamingResults = chatCompletionService.GetStreamingChatMessageContentsAsync(
                     chatHistory,
                     settings,
-                    _kernel);
+                    _kernel,
+                    cancellationToken);
 
                 // STOPGAP: Merge reasoning content with regular content
-                await foreach (var result in MergeReasoningAndContent_Stopgap(streamingResults, reasoningCollector))
+                await foreach (var result in MergeReasoningAndContent_Stopgap(streamingResults, reasoningCollector).WithCancellation(cancellationToken))
                 {
                     yield return result;
                 }

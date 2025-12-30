@@ -60,6 +60,12 @@ public abstract class BaseChatService : IChatService
     private readonly IInferenceLogService? _inferenceLogService;
 
     /// <summary>
+    /// Default timeout in seconds for chat completion requests.
+    /// This prevents runaway requests from hanging indefinitely.
+    /// </summary>
+    private const int DefaultRequestTimeoutSeconds = 120;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="BaseChatService"/> class.
     /// </summary>
     protected BaseChatService(
@@ -232,9 +238,26 @@ public abstract class BaseChatService : IChatService
 
         _logger.LogDebug("About to call ExecuteStreamingChatCompletionAsync");
 
+        // Create timeout cancellation token to prevent runaway requests
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(DefaultRequestTimeoutSeconds));
+
         try
         {
-            streamingResults = ExecuteStreamingChatCompletionAsync(request);
+            streamingResults = ExecuteStreamingChatCompletionAsync(request, timeoutCts.Token);
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+        {
+            _logger.LogWarning("Chat completion request timed out after {Timeout} seconds", DefaultRequestTimeoutSeconds);
+
+            initializationError = true;
+            errorMessage = AesirChatMessage.NewAssistantMessage(
+                "The request took too long to process. Please try a simpler query.");
+            request.Conversation.Messages.Add(errorMessage);
+            title = await titleTask;
+            await PersistChatSessionAsync(request, request.Conversation, title);
+
+            // Log failed inference due to timeout
+            await PersistInferenceLogAsync(logCollector, null, "Request timed out");
         }
         catch (Exception ex)
         {
@@ -502,6 +525,9 @@ public abstract class BaseChatService : IChatService
     /// The chat request containing user input details and conversation context necessary for generating
     /// the streamed chat responses.
     /// </param>
+    /// <param name="cancellationToken">
+    /// A cancellation token to cancel the operation if needed (e.g., timeout).
+    /// </param>
     /// <returns>
     /// An asynchronous enumerable of tuples, where each tuple consists of the generated content as a string,
     /// a boolean indicating if the system is processing ("isThinking"), and a boolean indicating if the stream
@@ -511,7 +537,7 @@ public abstract class BaseChatService : IChatService
     /// Thrown if the provided <paramref name="request"/> is null.
     /// </exception>
     protected abstract IAsyncEnumerable<(string content, bool isThinking, bool isComplete)>
-        ExecuteStreamingChatCompletionAsync(AesirChatRequestBase request);
+        ExecuteStreamingChatCompletionAsync(AesirChatRequestBase request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Persists the chat session by saving or updating the session's details in the chat history service.

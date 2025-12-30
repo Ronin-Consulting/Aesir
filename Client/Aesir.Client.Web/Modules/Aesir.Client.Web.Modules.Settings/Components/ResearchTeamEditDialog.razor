@@ -123,14 +123,34 @@
                                                             The selected agent uses a reasoning model which ignores creativity settings.
                                                         </MudAlert>
                                                     }
-                                                    <MudNumericField @bind-Value="member.OverrideTemperature"
-                                                                     Label="Creativity"
-                                                                     Min="0.0"
-                                                                     Max="2.0"
-                                                                     Step="0.1"
-                                                                     Variant="Variant.Outlined"
-                                                                     HelperText="Higher = more creative/varied, Lower = more focused/consistent"
-                                                                     Clearable="true" />
+                                                    <MudStack Spacing="1">
+                                                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                                            <MudText Typo="Typo.body2">
+                                                                Creativity: @GetDisplayTemperature(member)
+                                                            </MudText>
+                                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                                Role default: @GetRoleDefaultTemperature(member.Role).ToString("F1")
+                                                            </MudText>
+                                                        </MudStack>
+
+                                                        <MudSlider T="double"
+                                                                   Value="@GetSliderValue(member)"
+                                                                   ValueChanged="@(v => SetSliderValue(member, v))"
+                                                                   Min="0.0"
+                                                                   Max="1.0"
+                                                                   Step="0.01"
+                                                                   Color="Color.Primary">
+                                                            Higher = more creative, Lower = more focused
+                                                        </MudSlider>
+
+                                                        <MudButton Size="Size.Small"
+                                                                   Variant="Variant.Text"
+                                                                   StartIcon="@Icons.Material.Filled.Refresh"
+                                                                   OnClick="@(() => ResetToDefault(member))"
+                                                                   Disabled="@(member.OverrideTemperature == null)">
+                                                            Reset to role default
+                                                        </MudButton>
+                                                    </MudStack>
                                                 </MudStack>
                                             </MudExpansionPanel>
                                         </MudExpansionPanels>
@@ -297,6 +317,31 @@
         ResearchRoleBase.Chairman => "Coordinates the research team. Assigns tasks, manages workflow, consolidates final results, and ensures quality and completeness.",
         _ => "Research team member."
     };
+
+    private static double GetRoleDefaultTemperature(ResearchRoleBase role) => role switch
+    {
+        ResearchRoleBase.DeepDiver => 0.3,
+        ResearchRoleBase.Synthesizer => 0.5,
+        ResearchRoleBase.DevilsAdvocate => 0.4,
+        ResearchRoleBase.Chairman => 0.2,
+        _ => 0.5
+    };
+
+    private string GetDisplayTemperature(ResearchTeamMemberBase member)
+    {
+        var value = member.OverrideTemperature ?? GetRoleDefaultTemperature(member.Role);
+        var suffix = member.OverrideTemperature == null ? " (default)" : "";
+        return $"{value:F2}{suffix}";
+    }
+
+    private double GetSliderValue(ResearchTeamMemberBase member) =>
+        member.OverrideTemperature ?? GetRoleDefaultTemperature(member.Role);
+
+    private void SetSliderValue(ResearchTeamMemberBase member, double value) =>
+        member.OverrideTemperature = value;
+
+    private void ResetToDefault(ResearchTeamMemberBase member) =>
+        member.OverrideTemperature = null;
 
     private bool IsReasoningModel(Guid agentId)
     {

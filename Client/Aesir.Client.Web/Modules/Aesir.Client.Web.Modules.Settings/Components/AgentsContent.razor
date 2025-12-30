@@ -1,5 +1,4 @@
 @namespace Aesir.Client.Web.Modules.Settings.Components
-@using Aesir.Common.Prompts
 
 <div class="settings-content-container">
     @* Header Section *@
@@ -43,26 +42,16 @@
                      LoadingProgressColor="Color.Primary">
             <Columns>
                 <PropertyColumn Property="x => x.Agent.Name" Title="Name" />
-                <PropertyColumn Property="x => x.Agent.ChatModel" Title="Model" />
+                <PropertyColumn Property="x => x.Agent.Description" Title="Description" />
                 <TemplateColumn Title="Inference Engine" Sortable="false">
                     <CellTemplate>
                         <MudText Typo="Typo.body2">@GetInferenceEngineName(context.Item.Agent.ChatInferenceEngineId)</MudText>
                     </CellTemplate>
                 </TemplateColumn>
-                <PropertyColumn Property="x => x.Agent.Description" Title="Description" />
                 <TemplateColumn Title="Tools" Sortable="false">
                     <CellTemplate>
                         <MudChip T="string" Size="Size.Small" Color="Color.Info">
                             @context.Item.ToolCount tools
-                        </MudChip>
-                    </CellTemplate>
-                </TemplateColumn>
-                <TemplateColumn Title="Persona" Sortable="false">
-                    <CellTemplate>
-                        <MudChip T="string"
-                                 Size="Size.Small"
-                                 Color="@GetPersonaColor(context.Item.Agent.ChatPromptPersona)">
-                            @GetPersonaDisplayName(context.Item.Agent.ChatPromptPersona)
                         </MudChip>
                     </CellTemplate>
                 </TemplateColumn>
@@ -278,26 +267,6 @@
         var engine = _inferenceEngines.FirstOrDefault(e => e.Id == engineId);
         return engine?.Name ?? "Unknown";
     }
-
-    private static Color GetPersonaColor(PromptPersona? persona) => persona switch
-    {
-        PromptPersona.Business => Color.Primary,
-        PromptPersona.Military => Color.Warning,
-        PromptPersona.Ocr => Color.Info,
-        PromptPersona.Custom => Color.Secondary,
-        null => Color.Default,
-        _ => Color.Default
-    };
-
-    private static string GetPersonaDisplayName(PromptPersona? persona) => persona switch
-    {
-        PromptPersona.Business => "Business",
-        PromptPersona.Military => "Military",
-        PromptPersona.Ocr => "OCR",
-        PromptPersona.Custom => "Custom",
-        null => "Default",
-        _ => persona.ToString() ?? "Unknown"
-    };
 
     private class AgentViewModel
     {

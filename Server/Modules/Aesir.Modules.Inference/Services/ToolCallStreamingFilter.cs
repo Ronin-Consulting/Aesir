@@ -26,6 +26,13 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
     /// </summary>
     private const int MaxResultLength = 500;
 
+    /// <summary>
+    /// Maximum number of auto-invocation iterations allowed per request.
+    /// This prevents endless loops when models repeatedly call tools.
+    /// Must match the limit specified in system prompt templates.
+    /// </summary>
+    private const int MaxAutoInvokeIterations = 8;
+
     public ToolCallStreamingFilter(ILogger<ToolCallStreamingFilter> logger)
     {
         _logger = logger;
@@ -36,8 +43,18 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
         AutoFunctionInvocationContext context,
         Func<AutoFunctionInvocationContext, Task> next)
     {
-        _logger.LogDebug("ToolCallStreamingFilter invoked for function: {FunctionName} (Plugin: {PluginName})",
-            context.Function.Name, context.Function.PluginName);
+        // Check iteration limit BEFORE executing to prevent endless loops
+        if (context.RequestSequenceIndex >= MaxAutoInvokeIterations)
+        {
+            _logger.LogWarning(
+                "Tool call iteration limit reached ({Current}/{Max}). Terminating auto-invocation for function: {FunctionName}",
+                context.RequestSequenceIndex, MaxAutoInvokeIterations, context.Function.Name);
+            context.Terminate = true;
+            return;
+        }
+
+        _logger.LogDebug("ToolCallStreamingFilter invoked for function: {FunctionName} (Plugin: {PluginName}) [Iteration: {Iteration}]",
+            context.Function.Name, context.Function.PluginName, context.RequestSequenceIndex);
 
         // Get the current broadcaster scope from Kernel.Data (for streaming to UI)
         var broadcasterScope = ToolCallBroadcaster.GetScope(context.Kernel);

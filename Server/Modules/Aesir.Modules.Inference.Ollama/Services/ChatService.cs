@@ -195,9 +195,12 @@ public class ChatService : BaseChatService
     /// Executes a streaming chat completion request and returns content chunks with completion status.
     /// </summary>
     /// <param name="request">The chat request containing the necessary data for processing the chat completion.</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation if needed (e.g., timeout).</param>
     /// <returns>An asynchronous enumerable of tuples where each tuple includes a content chunk, a boolean indicating if the system is still processing, and a boolean indicating if the completion is finalized.</returns>
     protected override async IAsyncEnumerable<(string content, bool isThinking, bool isComplete)>
-        ExecuteStreamingChatCompletionAsync(AesirChatRequestBase request)
+        ExecuteStreamingChatCompletionAsync(
+            AesirChatRequestBase request,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
         var chatHistory = await CreateChatHistoryAsync(request);
@@ -210,12 +213,13 @@ public class ChatService : BaseChatService
         var results = chatCompletionService.GetStreamingChatMessageContentsAsync(
             chatHistory,
             settings,
-            _kernel
+            _kernel,
+            cancellationToken
         );
 
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        await foreach (var completion in results)
+        await foreach (var completion in results.WithCancellation(cancellationToken))
         {
             //_logger.LogDebug("Received Chat Completion Response from Ollama backend: {Json}", JsonConvert.SerializeObject(completion));
 
