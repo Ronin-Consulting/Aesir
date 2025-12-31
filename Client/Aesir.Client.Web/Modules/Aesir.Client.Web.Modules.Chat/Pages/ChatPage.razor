@@ -66,7 +66,7 @@
                 {
                     <UserMessage Message="message"
                                  MessageIndex="@index"
-                                 ConversationId="@ChatState.CurrentSessionId"
+                                 ConversationId="@GetOrCreateConversationId()"
                                  ExistingFiles="@ConversationFiles"
                                  FilesLoaded="@ConversationFilesLoaded"
                                  RecentlyUploadedFiles="@_recentlyUploadedFiles"
