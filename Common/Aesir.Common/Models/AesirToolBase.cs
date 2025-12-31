@@ -48,6 +48,7 @@ public class AesirToolBase
     public string? IconName { get; set; }
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ToolType
 {
     [Description("Internal")]
