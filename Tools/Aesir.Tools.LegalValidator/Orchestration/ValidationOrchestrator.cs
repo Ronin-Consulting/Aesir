@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using Aesir.Common.Prompts;
 using Aesir.Tools.LegalValidator.Configuration;
 using Aesir.Tools.LegalValidator.Models;
 using Aesir.Tools.LegalValidator.Services;
@@ -129,12 +130,20 @@ public partial class ValidationOrchestrator : IValidationOrchestrator
         }
 
         // 5. Generate prompt adjustments
+        // Determine effective system prompt (from CLI or agent configuration)
+        var effectiveSystemPrompt = GetEffectiveSystemPrompt(agents, customSystemPrompt);
+
+        if (string.IsNullOrEmpty(effectiveSystemPrompt))
+        {
+            _logger.LogWarning("No system prompt available for prompt adjustment analysis");
+        }
+
         var allIssues = resultsByAgent.Values.SelectMany(e => e).SelectMany(e => e.IssuesFound).ToList();
         _logger.LogInformation("[Phase 5/6] Prompt Adjustments: Analyzing {IssueCount} issues to generate recommendations",
             allIssues.Count);
 
         var adjustments = await _claudeEvaluator.GeneratePromptAdjustmentsAsync(
-            resultsByAgent, customSystemPrompt, ct).ConfigureAwait(false);
+            resultsByAgent, effectiveSystemPrompt, ct).ConfigureAwait(false);
 
         _logger.LogInformation("  Generated {Count} prompt adjustment recommendations", adjustments.Count());
 
@@ -169,7 +178,7 @@ public partial class ValidationOrchestrator : IValidationOrchestrator
             AgentSummaries = summaries,
             RawResponses = responses,
             PromptAdjustments = adjustments.ToList(),
-            SystemPromptUsed = customSystemPrompt,
+            SystemPromptUsed = effectiveSystemPrompt,
             ValidationDurationSeconds = stopwatch.Elapsed.TotalSeconds
         };
     }
@@ -312,5 +321,61 @@ public partial class ValidationOrchestrator : IValidationOrchestrator
             .Replace("\\?", ".") + "$";
 
         return new Regex(regexPattern, RegexOptions.IgnoreCase);
+    }
+
+    /// <summary>
+    /// Gets the effective system prompt to use for prompt adjustment analysis.
+    /// If a custom prompt was provided via CLI, uses that.
+    /// Otherwise, extracts the prompt from the agents (all must use the same prompt).
+    /// </summary>
+    private string? GetEffectiveSystemPrompt(List<AgentInfo> agents, string? customSystemPrompt)
+    {
+        // If custom prompt provided via CLI, use it
+        if (!string.IsNullOrEmpty(customSystemPrompt))
+        {
+            _logger.LogDebug("Using custom system prompt provided via CLI");
+            return customSystemPrompt;
+        }
+
+        // No agents to check
+        if (agents.Count == 0)
+        {
+            return null;
+        }
+
+        // Get first agent's prompt config as baseline
+        var firstAgent = agents[0];
+        var baselinePersona = firstAgent.ChatPromptPersona;
+        var baselineContent = firstAgent.ChatCustomPromptContent;
+
+        // Verify all agents use the same prompt configuration
+        foreach (var agent in agents.Skip(1))
+        {
+            if (agent.ChatPromptPersona != baselinePersona ||
+                agent.ChatCustomPromptContent != baselineContent)
+            {
+                throw new InvalidOperationException(
+                    $"Agents have different prompt configurations. " +
+                    $"Agent '{firstAgent.Name}' uses {baselinePersona} persona, " +
+                    $"but agent '{agent.Name}' uses {agent.ChatPromptPersona} persona. " +
+                    $"All agents must use the same prompt for prompt adjustment analysis.");
+            }
+        }
+
+        // Resolve the actual prompt content
+        if (baselinePersona == PromptPersona.Custom && !string.IsNullOrEmpty(baselineContent))
+        {
+            _logger.LogDebug("Using custom prompt from agent configuration");
+            return baselineContent;
+        }
+        else if (baselinePersona.HasValue)
+        {
+            // Get predefined prompt content from DefaultPromptProvider
+            _logger.LogDebug("Resolving {Persona} prompt from DefaultPromptProvider", baselinePersona);
+            var prompt = DefaultPromptProvider.Instance.GetSystemPrompt(baselinePersona.Value);
+            return prompt.Content;
+        }
+
+        return null;
     }
 }

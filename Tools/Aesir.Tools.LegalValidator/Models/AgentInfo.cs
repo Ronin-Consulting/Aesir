@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Aesir.Common.Prompts;
 
 namespace Aesir.Tools.LegalValidator.Models;
 
@@ -36,4 +37,16 @@ public class AgentInfo
     /// </summary>
     [JsonPropertyName("chat_temperature")]
     public double ChatTemperature { get; set; }
+
+    /// <summary>
+    /// The prompt persona used by the agent.
+    /// </summary>
+    [JsonPropertyName("chat_prompt_persona")]
+    public PromptPersona? ChatPromptPersona { get; set; }
+
+    /// <summary>
+    /// Custom prompt content when using Custom persona.
+    /// </summary>
+    [JsonPropertyName("chat_custom_prompt_content")]
+    public string? ChatCustomPromptContent { get; set; }
 }
