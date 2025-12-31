@@ -26,7 +26,7 @@
                                                 FileObjectUrl="@file.ObjectUrl"
                                                 Size="ImageThumbnail.ThumbnailSize.Medium"
                                                 ShowOverlay="false" />
-                                <div class="thumbnail-overlay-actions">
+                                <div class="thumbnail-overlay-actions @(file.Status == UploadStatus.Uploading || file.Status == UploadStatus.Processing ? "active" : "")">
                                     @if (file.Status == UploadStatus.Uploading || file.Status == UploadStatus.Processing)
                                     {
                                         @* Show indeterminate spinner for Processing status, or when progress <= 0 *@
@@ -265,7 +265,8 @@
         transition: opacity 0.15s ease;
     }
 
-    .pending-file-item:hover .thumbnail-overlay-actions {
+    .pending-file-item:hover .thumbnail-overlay-actions,
+    .thumbnail-overlay-actions.active {
         opacity: 1;
     }
 
