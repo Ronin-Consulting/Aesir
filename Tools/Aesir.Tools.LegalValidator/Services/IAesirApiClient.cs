@@ -1,3 +1,4 @@
+using Aesir.Common.Models;
 using Aesir.Tools.LegalValidator.Models;
 
 namespace Aesir.Tools.LegalValidator.Services;
@@ -21,6 +22,14 @@ public interface IAesirApiClient
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Agent information or null if not found.</returns>
     Task<AgentInfo?> GetAgentAsync(Guid agentId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the tools configured for an agent.
+    /// </summary>
+    /// <param name="agentId">The agent ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>List of tools the agent has access to.</returns>
+    Task<IReadOnlyList<AesirToolBase>> GetAgentToolsAsync(Guid agentId, CancellationToken ct = default);
 
     /// <summary>
     /// Sends a question to an agent and gets the response.

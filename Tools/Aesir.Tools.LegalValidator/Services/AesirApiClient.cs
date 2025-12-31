@@ -67,6 +67,27 @@ public class AesirApiClient : IAesirApiClient
             .ConfigureAwait(false);
     }
 
+    public async Task<IReadOnlyList<AesirToolBase>> GetAgentToolsAsync(Guid agentId, CancellationToken ct = default)
+    {
+        _logger.LogDebug("Fetching tools for agent {AgentId}", agentId);
+
+        var response = await _httpClient.GetAsync($"/configuration/agents/{agentId}/tools", ct)
+            .ConfigureAwait(false);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return [];
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var tools = await response.Content.ReadFromJsonAsync<List<AesirToolBase>>(JsonOptions, ct)
+            .ConfigureAwait(false);
+
+        _logger.LogDebug("Retrieved {Count} tools for agent {AgentId}", tools?.Count ?? 0, agentId);
+        return tools ?? [];
+    }
+
     public async Task<AgentResponse> SendQuestionAsync(
         Guid agentId,
         LegalQuestion question,
@@ -82,6 +103,16 @@ public class AesirApiClient : IAesirApiClient
             // Get agent info for the name
             var agentInfo = await GetAgentAsync(agentId, ct).ConfigureAwait(false);
             var agentName = agentInfo?.Name ?? agentId.ToString();
+
+            // Fetch agent's configured tools and filter to internal tools only (Web Search, RAG)
+            var agentTools = await GetAgentToolsAsync(agentId, ct).ConfigureAwait(false);
+            var toolRequests = agentTools
+                .Where(t => t.Type == ToolType.Internal && !string.IsNullOrEmpty(t.ToolName))
+                .Select(t => new ToolRequest { ToolName = t.ToolName!, McpServerName = null })
+                .ToList();
+
+            _logger.LogDebug("Agent {AgentId} has {Count} enabled tools: {Tools}",
+                agentId, toolRequests.Count, string.Join(", ", toolRequests.Select(t => t.ToolName)));
 
             // Build the request
             var request = new AesirAgentChatRequest
@@ -101,7 +132,7 @@ public class AesirApiClient : IAesirApiClient
                     ]
                 },
                 EnableThinking = false,
-                Tools = []
+                Tools = toolRequests
             };
 
             // Apply custom system prompt if provided
