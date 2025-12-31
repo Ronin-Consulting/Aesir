@@ -1,0 +1,589 @@
+[
+  {
+    "id": "FD001",
+    "category": "FactualDefinitional",
+    "question": "What is the difference between a tort and a breach of contract?",
+    "expected_elements": [
+      "Tort duties imposed by law vs contract duties from agreement",
+      "Different remedies (compensatory vs expectation damages)",
+      "Relationship requirements differ",
+      "Intent considerations"
+    ],
+    "difficulty": "Basic"
+  },
+  {
+    "id": "FD002",
+    "category": "FactualDefinitional",
+    "question": "What are the elements required to prove negligence?",
+    "expected_elements": [
+      "Duty of care",
+      "Breach of duty",
+      "Causation (actual and proximate)",
+      "Damages",
+      "Reasonable person standard"
+    ],
+    "difficulty": "Basic"
+  },
+  {
+    "id": "FD003",
+    "category": "FactualDefinitional",
+    "question": "What is the difference between civil law and criminal law?",
+    "expected_elements": [
+      "Burden of proof differences",
+      "Parties involved (state vs private)",
+      "Penalties vs damages",
+      "Purpose (punishment vs compensation)"
+    ],
+    "difficulty": "Basic"
+  },
+  {
+    "id": "FD004",
+    "category": "FactualDefinitional",
+    "question": "What are the essential elements of a valid contract?",
+    "expected_elements": [
+      "Offer",
+      "Acceptance",
+      "Consideration",
+      "Capacity",
+      "Legality",
+      "Mutual assent"
+    ],
+    "difficulty": "Basic"
+  },
+  {
+    "id": "FD005",
+    "category": "FactualDefinitional",
+    "question": "What is the difference between actual authority and apparent authority in agency law?",
+    "expected_elements": [
+      "Actual authority from principal's manifestation to agent",
+      "Apparent authority from principal's manifestation to third party",
+      "Express vs implied actual authority",
+      "Reasonable belief standard"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "FD006",
+    "category": "FactualDefinitional",
+    "question": "What is the parol evidence rule?",
+    "expected_elements": [
+      "Bars extrinsic evidence contradicting written contract",
+      "Applies to integrated agreements",
+      "Exceptions (fraud, ambiguity, conditions precedent)",
+      "Partial vs complete integration"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "FD007",
+    "category": "FactualDefinitional",
+    "question": "What is the difference between a misdemeanor and a felony?",
+    "expected_elements": [
+      "Severity of punishment",
+      "Typical incarceration thresholds (usually 1 year)",
+      "Procedural differences",
+      "Long-term consequences (civil rights)"
+    ],
+    "difficulty": "Basic"
+  },
+  {
+    "id": "FD008",
+    "category": "FactualDefinitional",
+    "question": "What is res judicata and how does it differ from collateral estoppel?",
+    "expected_elements": [
+      "Res judicata bars entire claims",
+      "Collateral estoppel bars specific issues",
+      "Same parties requirement",
+      "Final judgment on merits requirement"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "PR001",
+    "category": "Procedural",
+    "question": "What is the process for filing a small claims court case?",
+    "expected_elements": [
+      "Determine jurisdiction and dollar limits",
+      "File complaint/claim form",
+      "Pay filing fee",
+      "Serve defendant",
+      "Attend hearing",
+      "Judgment collection"
+    ],
+    "difficulty": "Basic"
+  },
+  {
+    "id": "PR002",
+    "category": "Procedural",
+    "question": "When can a case be removed from state court to federal court?",
+    "expected_elements": [
+      "Federal question jurisdiction (28 U.S.C. § 1331)",
+      "Diversity jurisdiction (28 U.S.C. § 1332)",
+      "30-day timing from service",
+      "Only defendants can remove",
+      "Forum defendant rule",
+      "Amount in controversy over $75,000"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "PR003",
+    "category": "Procedural",
+    "question": "What are the requirements for service of process in federal court?",
+    "expected_elements": [
+      "Rule 4 FRCP requirements",
+      "Personal service",
+      "Waiver of service option",
+      "Time limits for service (90 days)",
+      "Service on corporations"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "PR004",
+    "category": "Procedural",
+    "question": "What is the procedure for filing a motion for summary judgment?",
+    "expected_elements": [
+      "Rule 56 FRCP",
+      "No genuine dispute of material fact",
+      "Entitled to judgment as matter of law",
+      "Supporting evidence requirements",
+      "Response deadlines"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "PR005",
+    "category": "Procedural",
+    "question": "What are the steps in a civil litigation process from filing to trial?",
+    "expected_elements": [
+      "Complaint filing",
+      "Service of process",
+      "Answer/responsive pleading",
+      "Discovery phase",
+      "Pre-trial motions",
+      "Trial",
+      "Post-trial motions and appeals"
+    ],
+    "difficulty": "Basic"
+  },
+  {
+    "id": "PR006",
+    "category": "Procedural",
+    "question": "What is the process for appealing a federal district court decision?",
+    "expected_elements": [
+      "Notice of appeal filing",
+      "Time limits (usually 30 days)",
+      "Record on appeal",
+      "Briefing schedule",
+      "Standards of review",
+      "Circuit court jurisdiction"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "JS001",
+    "category": "JurisdictionSpecific",
+    "question": "What is the statute of limitations for personal injury claims in California?",
+    "expected_elements": [
+      "2 years general rule (CCP § 335.1)",
+      "Discovery rule",
+      "Government claims (6 months notice)",
+      "Medical malpractice exceptions (CCP § 340.5)",
+      "Tolling for minors"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "JS002",
+    "category": "JurisdictionSpecific",
+    "question": "What are the requirements for forming an LLC in Delaware?",
+    "expected_elements": [
+      "Certificate of Formation",
+      "Registered agent requirement",
+      "Operating agreement (recommended)",
+      "Annual franchise tax",
+      "Delaware Division of Corporations filing"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "JS003",
+    "category": "JurisdictionSpecific",
+    "question": "What are the grounds for divorce in New York?",
+    "expected_elements": [
+      "No-fault (irretrievable breakdown)",
+      "Separation agreement",
+      "Cruel and inhuman treatment",
+      "Abandonment",
+      "Imprisonment",
+      "Adultery"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "JS004",
+    "category": "JurisdictionSpecific",
+    "question": "What is the homestead exemption for bankruptcy in Texas?",
+    "expected_elements": [
+      "Unlimited value exemption",
+      "Acreage limits (10 acres urban, 100 acres rural)",
+      "Primary residence requirement",
+      "1215-day residency rule for full exemption"
+    ],
+    "difficulty": "Advanced"
+  },
+  {
+    "id": "AN001",
+    "category": "Analytical",
+    "question": "A contractor agreed to renovate a kitchen for $20,000. Halfway through, they abandoned the project. What legal remedies might the homeowner have?",
+    "expected_elements": [
+      "Breach of contract claim",
+      "Expectation damages",
+      "Cost of completion",
+      "Restitution/quantum meruit",
+      "Specific performance unlikely",
+      "Mitigation of damages duty"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "AN002",
+    "category": "Analytical",
+    "question": "An employee was fired one week after filing a workplace safety complaint. What legal claims might they have?",
+    "expected_elements": [
+      "Retaliation claim (whistleblower protection)",
+      "Wrongful termination",
+      "OSHA protections",
+      "Temporal proximity as evidence",
+      "Burden shifting framework",
+      "State-specific protections"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "AN003",
+    "category": "Analytical",
+    "question": "A company's CEO made false statements about quarterly earnings, causing stock prices to rise. Investors bought shares and then lost money when the truth came out. What securities law violations may have occurred?",
+    "expected_elements": [
+      "Securities fraud (Rule 10b-5)",
+      "Material misrepresentation",
+      "Scienter requirement",
+      "Reliance",
+      "Loss causation",
+      "SEC enforcement vs private action"
+    ],
+    "difficulty": "Advanced"
+  },
+  {
+    "id": "AN004",
+    "category": "Analytical",
+    "question": "A patient underwent surgery and later discovered the surgeon left a sponge inside them. What claims might the patient have?",
+    "expected_elements": [
+      "Medical malpractice",
+      "Res ipsa loquitur doctrine",
+      "Standard of care",
+      "Expert testimony requirements",
+      "Damages (medical costs, pain/suffering)",
+      "Statute of limitations / discovery rule"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "AN005",
+    "category": "Analytical",
+    "question": "Two companies are considering a merger. One has 40% market share and the other has 25%. What antitrust concerns might arise?",
+    "expected_elements": [
+      "Clayton Act Section 7",
+      "HHI concentration analysis",
+      "Market definition",
+      "Hart-Scott-Rodino filing requirements",
+      "FTC/DOJ review process",
+      "Potential remedies (divestiture)"
+    ],
+    "difficulty": "Advanced"
+  },
+  {
+    "id": "EC001",
+    "category": "NuancedEdgeCase",
+    "question": "Can a verbal agreement to sell land be enforceable? Under what circumstances?",
+    "expected_elements": [
+      "Statute of Frauds general requirement",
+      "Part performance doctrine",
+      "Equitable estoppel",
+      "Detrimental reliance",
+      "State-specific variations"
+    ],
+    "difficulty": "Advanced"
+  },
+  {
+    "id": "EC002",
+    "category": "NuancedEdgeCase",
+    "question": "What factors determine whether someone is an independent contractor versus an employee?",
+    "expected_elements": [
+      "Control test",
+      "Economic realities test",
+      "ABC test (some states)",
+      "IRS factors",
+      "Right to control manner and means",
+      "Integration into business"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "EC003",
+    "category": "NuancedEdgeCase",
+    "question": "When can an employer be held liable for an employee's intentional tort under respondeat superior?",
+    "expected_elements": [
+      "Scope of employment",
+      "Frolic vs detour distinction",
+      "Foreseeable conduct",
+      "Job-created opportunity",
+      "Exceptions for intentional torts"
+    ],
+    "difficulty": "Advanced"
+  },
+  {
+    "id": "EC004",
+    "category": "NuancedEdgeCase",
+    "question": "Can a non-compete agreement be enforced against a former employee? What factors do courts consider?",
+    "expected_elements": [
+      "Reasonableness of scope",
+      "Geographic limitations",
+      "Time limitations",
+      "Legitimate business interest",
+      "Consideration requirement",
+      "State-specific rules (California ban)",
+      "Blue pencil doctrine"
+    ],
+    "difficulty": "Advanced"
+  },
+  {
+    "id": "ET001",
+    "category": "EthicsProfessional",
+    "question": "When does a conflict of interest require an attorney to decline or withdraw from representation?",
+    "expected_elements": [
+      "Model Rule 1.7 (current clients)",
+      "Model Rule 1.9 (former clients)",
+      "Informed consent exception",
+      "Material limitation on representation",
+      "Reasonable lawyer standard",
+      "Non-waivable conflicts"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "ET002",
+    "category": "EthicsProfessional",
+    "question": "What are an attorney's obligations regarding client confidentiality?",
+    "expected_elements": [
+      "Model Rule 1.6",
+      "Duty of confidentiality scope",
+      "Exceptions (prevent death/substantial bodily harm)",
+      "Distinction from attorney-client privilege",
+      "Duration of obligation"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "ET003",
+    "category": "EthicsProfessional",
+    "question": "What are the rules regarding attorney advertising and solicitation?",
+    "expected_elements": [
+      "Model Rules 7.1-7.3",
+      "Truthfulness requirement",
+      "Prohibition on direct solicitation (with exceptions)",
+      "State-specific rules",
+      "First Amendment considerations"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "CT001",
+    "category": "Contracts",
+    "question": "What is the difference between a material breach and a minor breach of contract?",
+    "expected_elements": [
+      "Material breach allows termination",
+      "Minor breach only allows damages",
+      "Substantial performance doctrine",
+      "Factors for materiality",
+      "Effect on remaining obligations"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "CT002",
+    "category": "Contracts",
+    "question": "What defenses can be raised to avoid enforcement of a contract?",
+    "expected_elements": [
+      "Lack of capacity",
+      "Duress",
+      "Undue influence",
+      "Misrepresentation/fraud",
+      "Unconscionability",
+      "Illegality",
+      "Mistake (mutual/unilateral)",
+      "Statute of Frauds"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "CT003",
+    "category": "Contracts",
+    "question": "What is the difference between express and implied warranties under the UCC?",
+    "expected_elements": [
+      "Express warranty (UCC 2-313)",
+      "Implied warranty of merchantability (UCC 2-314)",
+      "Implied warranty of fitness (UCC 2-315)",
+      "Disclaimer requirements",
+      "Privity issues"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "TO001",
+    "category": "Torts",
+    "question": "What are the elements of defamation?",
+    "expected_elements": [
+      "False statement of fact",
+      "Publication to third party",
+      "Fault (negligence or actual malice)",
+      "Damages",
+      "Public figure distinction",
+      "Defenses (truth, privilege, opinion)"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "TO002",
+    "category": "Torts",
+    "question": "What is the difference between strict liability and negligence?",
+    "expected_elements": [
+      "No fault requirement for strict liability",
+      "Abnormally dangerous activities",
+      "Product liability applications",
+      "Wild animals",
+      "Policy rationales"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "TO003",
+    "category": "Torts",
+    "question": "What are the elements of intentional infliction of emotional distress?",
+    "expected_elements": [
+      "Intentional or reckless conduct",
+      "Extreme and outrageous behavior",
+      "Causation",
+      "Severe emotional distress",
+      "High threshold for outrageousness"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "CR001",
+    "category": "Criminal",
+    "question": "What are the elements typically required to prove a criminal offense?",
+    "expected_elements": [
+      "Actus reus (guilty act)",
+      "Mens rea (guilty mind)",
+      "Concurrence",
+      "Causation (for result crimes)",
+      "Strict liability exceptions"
+    ],
+    "difficulty": "Basic"
+  },
+  {
+    "id": "CR002",
+    "category": "Criminal",
+    "question": "What are the differences between first-degree murder, second-degree murder, and manslaughter?",
+    "expected_elements": [
+      "Premeditation for first-degree",
+      "Intent but no premeditation for second-degree",
+      "Voluntary manslaughter (heat of passion)",
+      "Involuntary manslaughter (criminal negligence)",
+      "Felony murder rule"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "CR003",
+    "category": "Criminal",
+    "question": "What constitutional protections apply during a criminal arrest and interrogation?",
+    "expected_elements": [
+      "Fourth Amendment (search and seizure)",
+      "Fifth Amendment (self-incrimination)",
+      "Sixth Amendment (right to counsel)",
+      "Miranda warnings",
+      "Exclusionary rule"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "CN001",
+    "category": "Constitutional",
+    "question": "What are the levels of scrutiny used in equal protection analysis?",
+    "expected_elements": [
+      "Rational basis (minimum)",
+      "Intermediate scrutiny",
+      "Strict scrutiny",
+      "Classifications triggering each level",
+      "Burden of proof differences"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "CN002",
+    "category": "Constitutional",
+    "question": "What is the state action doctrine and why does it matter?",
+    "expected_elements": [
+      "Constitutional rights apply to government action",
+      "Private actors generally not bound",
+      "Public function exception",
+      "Entanglement/joint action tests",
+      "Importance for civil rights claims"
+    ],
+    "difficulty": "Advanced"
+  },
+  {
+    "id": "CB001",
+    "category": "Corporate",
+    "question": "What is the business judgment rule and when does it apply?",
+    "expected_elements": [
+      "Presumption of good faith",
+      "Informed decision making",
+      "No personal interest",
+      "Rational business purpose",
+      "Protection from liability",
+      "When presumption is rebutted"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "CB002",
+    "category": "Corporate",
+    "question": "What are the fiduciary duties of corporate directors?",
+    "expected_elements": [
+      "Duty of care",
+      "Duty of loyalty",
+      "Duty of good faith",
+      "Corporate opportunity doctrine",
+      "Self-dealing transactions"
+    ],
+    "difficulty": "Intermediate"
+  },
+  {
+    "id": "CB003",
+    "category": "Corporate",
+    "question": "What are the key differences between Chapter 7 and Chapter 13 bankruptcy?",
+    "expected_elements": [
+      "Liquidation vs reorganization",
+      "Asset disposition",
+      "Debt discharge scope",
+      "Eligibility requirements",
+      "Payment plans",
+      "Effect on secured vs unsecured debts"
+    ],
+    "difficulty": "Intermediate"
+  }
+]

@@ -103,6 +103,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Modules.Research.Test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Client.Web.Modules.Research", "Client\Aesir.Client.Web\Modules\Aesir.Client.Web.Modules.Research\Aesir.Client.Web.Modules.Research.csproj", "{D3B7103C-69CC-41A5-9E63-22BBECC7FBC7}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{07C2787E-EAC7-C090-1BA3-A61EC2A24D84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aesir.Tools.LegalValidator", "Tools\Aesir.Tools.LegalValidator\Aesir.Tools.LegalValidator.csproj", "{AE0F7B14-DF70-456C-A833-C6FF81A85F12}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -485,6 +489,18 @@ Global
 		{D3B7103C-69CC-41A5-9E63-22BBECC7FBC7}.Release|x64.Build.0 = Release|Any CPU
 		{D3B7103C-69CC-41A5-9E63-22BBECC7FBC7}.Release|x86.ActiveCfg = Release|Any CPU
 		{D3B7103C-69CC-41A5-9E63-22BBECC7FBC7}.Release|x86.Build.0 = Release|Any CPU
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12}.Debug|x64.Build.0 = Debug|Any CPU
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12}.Debug|x86.Build.0 = Debug|Any CPU
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12}.Release|x64.ActiveCfg = Release|Any CPU
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12}.Release|x64.Build.0 = Release|Any CPU
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12}.Release|x86.ActiveCfg = Release|Any CPU
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -525,5 +541,6 @@ Global
 		{3ECC58E6-E6CB-40FC-951B-690E6E98550E} = {F19752C3-6DB2-4011-AF99-30730D2CDFA0}
 		{57DE07AE-BA9F-492A-96E0-C13229468DDF} = {F19752C3-6DB2-4011-AF99-30730D2CDFA0}
 		{D3B7103C-69CC-41A5-9E63-22BBECC7FBC7} = {8EB20F60-ACA4-A2FA-1B47-1AFCC4CAD3B4}
+		{AE0F7B14-DF70-456C-A833-C6FF81A85F12} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
 	EndGlobalSection
 EndGlobal

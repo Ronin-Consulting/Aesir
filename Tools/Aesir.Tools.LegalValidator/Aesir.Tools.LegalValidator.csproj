@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>13</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Aesir.Tools.LegalValidator</RootNamespace>
+    <AssemblyName>Aesir.Tools.LegalValidator</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- CLI parsing -->
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+
+    <!-- HTTP client with retry -->
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.0" />
+    <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
+
+    <!-- Logging -->
+    <PackageReference Include="NLog.Extensions.Logging" Version="6.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+
+    <!-- Configuration -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
+
+    <!-- DI -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Common\Aesir.Common\Aesir.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\legal_questions.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="nlog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
