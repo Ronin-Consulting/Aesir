@@ -257,7 +257,7 @@ public class ChatService : BaseChatService
         var results =
             await promptExecutionSettingsBuilder.BuildAsync(request);
 
-        RenderSystemPrompt(request.Conversation, results.SystemPromptVariables);
+        RenderSystemPrompt(request.Conversation, results.SystemPromptVariables, request.ChatPromptPersona, request.ChatCustomPromptContent);
 
         return results.Settings;
     }

@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Channels;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Inference.Models;
 using Aesir.Modules.Logging.Services;
@@ -571,7 +572,7 @@ public abstract class BaseChatService : IChatService
 
     /// <summary>
     /// Renders the system prompt within the conversation by applying the provided arguments to the system message template.
-    /// If no system message exists in the conversation, a default one will be added.
+    /// The system prompt content is ALWAYS regenerated from the configured persona to ensure template updates are reflected.
     /// </summary>
     /// <param name="conversation">
     /// The conversation containing the messages, including the system message that needs to be rendered with the given arguments.
@@ -579,26 +580,46 @@ public abstract class BaseChatService : IChatService
     /// <param name="arguments">
     /// A dictionary of key-value pairs representing the variables to replace in the system message template.
     /// </param>
-    protected void RenderSystemPrompt(AesirConversation conversation, Dictionary<string, object> arguments)
+    /// <param name="persona">
+    /// The prompt persona to use for selecting the appropriate system prompt. Defaults to Business if not specified.
+    /// </param>
+    /// <param name="customPromptContent">
+    /// Custom prompt content to use when persona is set to Custom. Ignored for other personas.
+    /// </param>
+    protected void RenderSystemPrompt(
+        AesirConversation conversation,
+        Dictionary<string, object> arguments,
+        PromptPersona? persona = null,
+        string? customPromptContent = null)
     {
-        var systemPromptMessage = conversation.Messages.FirstOrDefault(m => m.Role == "system");
-
-        // If no system message exists, add a default one
-        if (systemPromptMessage == null)
+        // ALWAYS get fresh prompt content from persona (templates may have been updated)
+        string promptContent;
+        if (persona == PromptPersona.Custom && !string.IsNullOrWhiteSpace(customPromptContent))
         {
-            systemPromptMessage = new AesirChatMessage
-            {
-                Role = "system",
-                Content = "You are a helpful AI assistant."
-            };
-            conversation.Messages.Insert(0, systemPromptMessage);
+            promptContent = customPromptContent;
+        }
+        else
+        {
+            var selectedPrompt = DefaultPromptProvider.Instance.GetSystemPrompt(persona ?? PromptPersona.Business);
+            promptContent = selectedPrompt.Content;
         }
 
-        var systemPromptTemplate = new PromptTemplate(
-            systemPromptMessage.Content
-        );
+        // Create or update system message
+        var systemPromptMessage = conversation.Messages.FirstOrDefault(m => m.Role == "system");
+        if (systemPromptMessage == null)
+        {
+            systemPromptMessage = new AesirChatMessage { Role = "system" };
+            conversation.Messages.Insert(0, systemPromptMessage);
+        }
+        systemPromptMessage.Content = promptContent;
 
+        // Render template variables (e.g., {{currentDateTime}}, {{webSearchtoolsEnabled}})
+        var systemPromptTemplate = new PromptTemplate(systemPromptMessage.Content);
         systemPromptMessage.Content = systemPromptTemplate.Render(arguments);
+
+        _logger.LogDebug("[RenderSystemPrompt] Persona: {Persona}, Final rendered system prompt:\n{SystemPrompt}",
+            persona?.ToString() ?? "Default (Business)",
+            systemPromptMessage.Content);
     }
 
     /// <summary>

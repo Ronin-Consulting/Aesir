@@ -455,3 +455,6 @@ $RECYCLE.BIN/
 !.vscode/launch.json
 !.vscode/extensions.json
 .playwright-mcp/
+
+# Legal Validator output
+Tools/Aesir.Tools.LegalValidator/validation_results/

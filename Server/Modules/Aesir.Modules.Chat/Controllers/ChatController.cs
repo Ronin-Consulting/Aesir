@@ -61,7 +61,9 @@ namespace Aesir.Modules.Chat.Controllers
                 TopP = agent.ChatTopP ?? 0.1,
                 User = request.User,
                 Tools = filteredTools,
-                ThinkValue = effectiveThinkValue
+                ThinkValue = effectiveThinkValue,
+                ChatPromptPersona = agent.ChatPromptPersona,
+                ChatCustomPromptContent = agent.ChatCustomPromptContent
             };
 
             // Resolve the correct ChatService based on the agent's inference engine
@@ -111,7 +113,9 @@ namespace Aesir.Modules.Chat.Controllers
                 TopP = agent.ChatTopP ?? 0.1,
                 User = request.User,
                 Tools = filteredTools,
-                ThinkValue = effectiveThinkValue
+                ThinkValue = effectiveThinkValue,
+                ChatPromptPersona = agent.ChatPromptPersona,
+                ChatCustomPromptContent = agent.ChatCustomPromptContent
             };
 
             // Resolve the correct ChatService based on the agent's inference engine

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Aesir.Common.Prompts;
 
 namespace Aesir.Common.Models;
 
@@ -30,4 +31,16 @@ public class AesirChatRequestBase : ChatRequestBase
     /// </summary>
     [JsonPropertyName("max_tokens")]
     public int? MaxTokens { get; set; }
+
+    /// <summary>
+    /// Gets or sets the prompt persona to use for system prompt selection.
+    /// </summary>
+    [JsonPropertyName("chat_prompt_persona")]
+    public PromptPersona? ChatPromptPersona { get; set; }
+
+    /// <summary>
+    /// Gets or sets custom prompt content when using the Custom persona.
+    /// </summary>
+    [JsonPropertyName("chat_custom_prompt_content")]
+    public string? ChatCustomPromptContent { get; set; }
 }

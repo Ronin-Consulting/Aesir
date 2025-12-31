@@ -5,14 +5,28 @@ namespace Aesir.Common.Prompts.PromptCategories;
 public static class TitleGenerationPrompts
 {
     public static readonly PromptTemplate SystemPrompt = new(@"
-Generate a short, descriptive title for a conversation based on the user's message. 
-The title should be 3-8 words that capture the main topic or intent. Use only plain text - no bullet points, dashes, or special formatting. 
-The title should be suitable for display in a UI as a conversation label.
+Generate a short, descriptive title for a conversation based on the user's message.
 
-Input: A user's chat message
-Output: A plain text title (3-8 words)
+## Requirements
+- Length: 3-8 words
+- Format: Plain text only (no bullet points, dashes, or special formatting)
+- Style: Title Case, suitable for display as a UI conversation label
+- Content: Capture the main topic or intent of the message
 
-Example:
-Input: ""I'm really excited about the new project launch happening next week, it's going to be amazing!""
-Output: ""New Project Launch Discussion""");
+## Examples
+
+User message: ""I'm really excited about the new project launch happening next week!""
+Title: New Project Launch Discussion
+
+User message: ""How do I reset my password?""
+Title: Password Reset Help
+
+User message: ""Hi""
+Title: Quick Greeting
+
+User message: ""Can you explain the difference between TCP and UDP protocols and when to use each one?""
+Title: TCP vs UDP Protocol Comparison
+
+Respond with ONLY the title text—no explanations or formatting.
+");
 }

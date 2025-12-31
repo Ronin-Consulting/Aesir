@@ -36,6 +36,7 @@ public class DefaultPromptProvider : IPromptProvider
             PromptPersona.Business => BusinessPrompts.SystemPrompt,
             PromptPersona.Military => MilitaryPrompts.SystemPrompt,
             PromptPersona.Ocr => OcrPrompt.SystemPrompt,
+            PromptPersona.Legal => LegalPrompts.SystemPrompt,
             PromptPersona.Custom => CustomPrompts.SystemPrompt,
             _ => BusinessPrompts.SystemPrompt
         };

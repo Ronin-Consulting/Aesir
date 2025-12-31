@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 using Aesir.Common.Models;
 
 namespace Aesir.Common.Prompts;
@@ -14,7 +15,7 @@ public interface IPromptProvider
     /// Retrieves a system-level prompt template based on the specified prompt context.
     /// </summary>
     /// <param name="context">The context used to determine the type of system prompt.
-    /// Examples include predefined contexts such as Business, Military, Ocr, or Custom.</param>
+    /// Examples include predefined contexts such as Business, Military, Legal, Ocr, or Custom.</param>
     /// <returns>An instance of <see cref="PromptTemplate"/> corresponding to the specified context.</returns>
     PromptTemplate GetSystemPrompt(PromptPersona context);
 
@@ -37,6 +38,7 @@ public interface IPromptProvider
 /// <summary>
 /// Represents various personas or roles that can be used to generate context-specific prompts.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum PromptPersona
 {
     /// <summary>
@@ -61,6 +63,12 @@ public enum PromptPersona
     [Description("Ocr")] Ocr,
 
     /// <summary>
+    /// Represents prompts designed for legal professionals, including attorneys and partners,
+    /// with emphasis on attorney-client privilege, confidentiality, and legal precision.
+    /// </summary>
+    [Description("Legal")] Legal,
+
+    /// <summary>
     /// Represents a user-defined or customized prompt context, allowing flexibility to tailor the prompt according to specific needs beyond predefined categories.
     /// </summary>
     [Description("Custom")] Custom,
@@ -75,7 +83,7 @@ public static class PromptPersonaExtensions
     /// <summary>
     /// Maps a description string to its corresponding <see cref="PromptPersona"/> enumeration value.
     /// </summary>
-    /// <param name="description">The description string representing a valid prompt persona, such as "Business", "Military", "Ocr", or "Custom".</param>
+    /// <param name="description">The description string representing a valid prompt persona, such as "Business", "Military", "Legal", "Ocr", or "Custom".</param>
     /// <returns>The <see cref="PromptPersona"/> value that matches the given description.</returns>
     /// <exception cref="ArgumentException">Thrown when no matching <see cref="PromptPersona"/> is found for the provided description.</exception>
     public static PromptPersona PromptPersonaFromDescription(this string description)
