@@ -601,5 +601,85 @@ public class UserMessageTests : TestContext
         classAttr.Should().Contain("state-deleted");
     }
 
+    [Fact]
+    public void FileCard_DoesNotShowAsDeleted_WhenFileInRecentlyUploadedFiles()
+    {
+        // Arrange - File is in message, not in ExistingFiles, but IS in RecentlyUploadedFiles
+        // This tests the grace period for recently uploaded files
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "<file>new-upload.pdf</file>Check this file"
+        };
+
+        var recentlyUploaded = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "new-upload.pdf"
+        };
+
+        // Act - FilesLoaded is true, file NOT in ExistingFiles, but IS in RecentlyUploadedFiles
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message)
+            .Add(p => p.FilesLoaded, true)
+            .Add(p => p.ExistingFiles, Array.Empty<ConversationFile>())
+            .Add(p => p.RecentlyUploadedFiles, recentlyUploaded));
+
+        // Assert - File should NOT show as deleted (grace period)
+        var fileCard = cut.Find(".file-card");
+        var classAttr = fileCard.GetAttribute("class");
+        classAttr.Should().NotContain("state-deleted");
+    }
+
+    [Fact]
+    public void FileCard_ShowsAsDeleted_WhenNotInRecentlyUploadedFilesAndNotInExistingFiles()
+    {
+        // Arrange - File is in message, not in ExistingFiles, NOT in RecentlyUploadedFiles
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "<file>old-deleted-file.pdf</file>Check this file"
+        };
+
+        var recentlyUploaded = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "different-file.pdf"  // Different file in recently uploaded
+        };
+
+        // Act
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message)
+            .Add(p => p.FilesLoaded, true)
+            .Add(p => p.ExistingFiles, Array.Empty<ConversationFile>())
+            .Add(p => p.RecentlyUploadedFiles, recentlyUploaded));
+
+        // Assert - File SHOULD show as deleted
+        var fileCard = cut.Find(".file-card");
+        var classAttr = fileCard.GetAttribute("class");
+        classAttr.Should().Contain("state-deleted");
+    }
+
+    [Fact]
+    public void FileCard_ShowsAsDeleted_WhenRecentlyUploadedFilesIsNull()
+    {
+        // Arrange - RecentlyUploadedFiles is null (default case)
+        // This ensures existing behavior is preserved
+        var message = new AesirChatMessage
+        {
+            Role = "user",
+            Content = "<file>missing-file.pdf</file>Check this file"
+        };
+
+        // Act - RecentlyUploadedFiles not provided (null)
+        var cut = RenderComponent<UserMessage>(parameters => parameters
+            .Add(p => p.Message, message)
+            .Add(p => p.FilesLoaded, true)
+            .Add(p => p.ExistingFiles, Array.Empty<ConversationFile>()));
+
+        // Assert - File SHOULD show as deleted (existing behavior preserved)
+        var fileCard = cut.Find(".file-card");
+        var classAttr = fileCard.GetAttribute("class");
+        classAttr.Should().Contain("state-deleted");
+    }
+
     #endregion
 }

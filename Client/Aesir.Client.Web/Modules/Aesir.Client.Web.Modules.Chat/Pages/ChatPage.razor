@@ -66,9 +66,10 @@
                 {
                     <UserMessage Message="message"
                                  MessageIndex="@index"
-                                 ConversationId="@ChatState.CurrentSessionId"
+                                 ConversationId="@GetOrCreateConversationId()"
                                  ExistingFiles="@ConversationFiles"
                                  FilesLoaded="@ConversationFilesLoaded"
+                                 RecentlyUploadedFiles="@_recentlyUploadedFiles"
                                  IsStreaming="@isCurrentlyStreaming"
                                  OnEdit="@HandleEditMessage"
                                  OnRerun="@HandleRerunMessage" />
@@ -249,6 +250,10 @@
 
     // Tool call state - populated during streaming from IToolCallStateService
     private IReadOnlyList<AesirToolCallInfo> _currentToolCalls = [];
+
+    // Recently uploaded files - grace period to prevent "deleted" display race condition
+    // Files are added when uploaded and removed after 5 seconds
+    private readonly HashSet<string> _recentlyUploadedFiles = new(StringComparer.OrdinalIgnoreCase);
 
     // Property to create the streaming message object
     private AesirChatMessage _streamingMessage => new AesirChatMessage
@@ -1022,6 +1027,10 @@
         foreach (var uploadedFile in successfullyUploadedFiles)
         {
             userMessage.AddFile(uploadedFile.FileName);
+
+            // Add to recently uploaded set to prevent "deleted" display race condition
+            _recentlyUploadedFiles.Add(uploadedFile.FileName);
+            _ = RemoveFromRecentlyUploadedAfterDelayAsync(uploadedFile.FileName, TimeSpan.FromSeconds(5));
         }
 
         await SendMessageWithFileAsync(userMessage);
@@ -1049,6 +1058,17 @@
         conversationId = Guid.NewGuid();
         _conversation.Id = conversationId.ToString();
         return conversationId;
+    }
+
+    /// <summary>
+    /// Removes a filename from the recently uploaded set after a delay.
+    /// This provides a grace period for the API to sync before we mark files as deleted.
+    /// </summary>
+    private async Task RemoveFromRecentlyUploadedAfterDelayAsync(string fileName, TimeSpan delay)
+    {
+        await Task.Delay(delay);
+        _recentlyUploadedFiles.Remove(fileName);
+        await InvokeAsync(StateHasChanged);
     }
 
     /// <summary>

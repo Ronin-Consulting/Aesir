@@ -471,6 +471,14 @@
     public bool FilesLoaded { get; set; }
 
     /// <summary>
+    /// Set of filenames that were recently uploaded (within grace period).
+    /// These won't be marked as deleted even if not yet in ExistingFiles,
+    /// to handle the race condition where API hasn't synced yet.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<string>? RecentlyUploadedFiles { get; set; }
+
+    /// <summary>
     /// Index of this message in the conversation (used for edit operations).
     /// </summary>
     [Parameter]
@@ -541,6 +549,11 @@
         // If the files list hasn't been loaded yet, assume files exist
         // to avoid showing false "deleted" states during initial load
         if (!FilesLoaded)
+            return false;
+
+        // Grace period: don't mark recently uploaded files as deleted
+        // This handles the race condition where the API hasn't synced yet
+        if (RecentlyUploadedFiles?.Contains(fileName) == true)
             return false;
 
         // File is deleted if it's not in the existing files list
