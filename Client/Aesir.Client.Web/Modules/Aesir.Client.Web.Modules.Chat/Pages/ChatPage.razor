@@ -758,7 +758,16 @@
 
     private async Task SendMessageAsync(string message)
     {
-        if (string.IsNullOrWhiteSpace(message) || ChatState.SelectedAgent == null) return;
+        if (string.IsNullOrWhiteSpace(message)) return;
+
+        // Handle Research Team messages differently
+        if (ResearchState.IsTeamSelected && ResearchState.SelectedTeam != null)
+        {
+            await SendResearchMessageAsync(message);
+            return;
+        }
+
+        if (ChatState.SelectedAgent == null) return;
 
         var userMessage = AesirChatMessage.NewUserMessage(message);
         await SendMessageWithFileAsync(userMessage);
@@ -952,11 +961,79 @@
         }
     }
 
+    /// <summary>
+    /// Sends a message to a Research Team, initiating a multi-agent research session.
+    /// </summary>
+    private async Task SendResearchMessageAsync(string message)
+    {
+        if (ResearchState.SelectedTeam?.Id == null) return;
+        var selectedTeam = ResearchState.SelectedTeam;
+
+        _errorMessage = null;
+        _isWaitingForResponse = true;
+        _hasMessages = true;
+
+        try
+        {
+            // Add user message to conversation
+            var userMessage = AesirChatMessage.NewUserMessage(message);
+            _conversation.Messages.Add(userMessage);
+            StateHasChanged();
+            await ScrollToBottomAsync();
+
+            // Start the research session
+            var session = await ResearchState.StartResearchAsync(
+                message,
+                selectedTeam.Id!.Value);
+
+            if (session != null)
+            {
+                // Create a team message to show the research is in progress
+                var teamMessage = AesirChatMessage.NewResearchTeamMessage(
+                    $"Research started: {message}",
+                    session.Id,
+                    selectedTeam.Id!.Value,
+                    selectedTeam.Name ?? "Research Team");
+
+                _conversation.Messages.Add(teamMessage);
+                StateHasChanged();
+                await ScrollToBottomAsync();
+            }
+            else
+            {
+                Snackbar.Add("Failed to start research session", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Research error: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _isWaitingForResponse = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task SendMessageWithFilesAsync((string Message, List<PendingFileUpload> Files) data)
     {
         var (message, files) = data;
 
-        if (ChatState.SelectedAgent == null || string.IsNullOrWhiteSpace(message)) return;
+        if (string.IsNullOrWhiteSpace(message)) return;
+
+        // Handle Research Team messages - files not supported yet for research
+        if (ResearchState.IsTeamSelected && ResearchState.SelectedTeam != null)
+        {
+            if (files.Count > 0)
+            {
+                Snackbar.Add("File attachments are not yet supported for Research Teams", Severity.Warning);
+            }
+            await SendResearchMessageAsync(message);
+            return;
+        }
+
+        if (ChatState.SelectedAgent == null) return;
 
         // Get conversation ID (may already exist from immediate upload)
         var conversationId = GetOrCreateConversationId();

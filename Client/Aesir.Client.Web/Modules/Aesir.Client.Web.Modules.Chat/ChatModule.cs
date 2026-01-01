@@ -1,6 +1,7 @@
 using Aesir.Client.Web.Infrastructure.Modules;
 using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.Chat.Services;
+using Aesir.Client.Web.Modules.Research.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Aesir.Client.Web.Modules.Chat;

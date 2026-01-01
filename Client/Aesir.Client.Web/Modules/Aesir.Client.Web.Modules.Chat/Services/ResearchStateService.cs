@@ -1,4 +1,5 @@
 using Aesir.Client.Web.Infrastructure.Services;
+using Aesir.Client.Web.Modules.Research.Services;
 using Aesir.Common.Models;
 using Microsoft.Extensions.Logging;
 
@@ -10,14 +11,69 @@ namespace Aesir.Client.Web.Modules.Chat.Services;
 public class ResearchStateService : IResearchStateService
 {
     private readonly IResearchSessionApiService _sessionApi;
+    private readonly IResearchSignalRService _signalRService;
     private readonly ILogger<ResearchStateService>? _logger;
 
     public ResearchStateService(
         IResearchSessionApiService sessionApi,
+        IResearchSignalRService signalRService,
         ILogger<ResearchStateService>? logger = null)
     {
         _sessionApi = sessionApi;
+        _signalRService = signalRService;
         _logger = logger;
+
+        // Wire up SignalR event handlers
+        WireUpSignalREvents();
+    }
+
+    /// <summary>
+    /// Wires up SignalR event handlers to update state.
+    /// </summary>
+    private void WireUpSignalREvents()
+    {
+        _signalRService.OnStatusUpdate += (update) =>
+        {
+            if (ActiveSession?.Id != update.SessionId) return;
+
+            _logger?.LogDebug("SignalR status update: {Status} - {Phase} - {Message}",
+                update.Status, update.Phase, update.Message);
+
+            HandleProgressUpdate(new ResearchProgressBase
+            {
+                SessionId = update.SessionId,
+                Status = update.Status,
+                Phase = update.Phase ?? ResearchPhaseBase.Planning,
+                Message = update.Message ?? GetStatusMessage(update.Status),
+                ProgressPercent = CurrentProgressPercent
+            });
+        };
+
+        _signalRService.OnResearchCompleted += (e) =>
+        {
+            if (ActiveSession?.Id != e.SessionId) return;
+
+            _logger?.LogInformation("SignalR research completed: {SessionId}", e.SessionId);
+
+            // Refresh to get the full report
+            _ = RefreshSessionAsync();
+        };
+
+        _signalRService.OnResearchError += (e) =>
+        {
+            if (ActiveSession?.Id != e.SessionId) return;
+
+            _logger?.LogWarning("SignalR research error: {SessionId} - {Error}", e.SessionId, e.ErrorMessage);
+            OnResearchError?.Invoke(e.ErrorMessage);
+        };
+
+        _signalRService.OnProgress += (e) =>
+        {
+            if (ActiveSession?.Id != e.SessionId) return;
+
+            _logger?.LogDebug("SignalR progress event: {EventType}", e.EventType);
+            // Handle generic progress events if needed
+        };
     }
 
     /// <inheritdoc />
@@ -78,6 +134,17 @@ public class ResearchStateService : IResearchStateService
         {
             _logger?.LogInformation("Starting research for team {TeamId}: {Query}", teamId, query);
 
+            // Ensure SignalR is connected before starting research
+            if (!_signalRService.IsConnected)
+            {
+                _logger?.LogDebug("Connecting to SignalR...");
+                var connected = await _signalRService.ConnectAsync();
+                if (!connected)
+                {
+                    _logger?.LogWarning("Failed to connect to SignalR, research will not receive real-time updates");
+                }
+            }
+
             var request = new CreateResearchSessionRequestBase
             {
                 Query = query,
@@ -94,6 +161,20 @@ public class ResearchStateService : IResearchStateService
                 CurrentProgressMessage = GetStatusMessage(result.Value.Status);
                 CurrentProgressPercent = 0;
                 OnSessionChanged?.Invoke();
+
+                // Subscribe to session updates via SignalR
+                if (_signalRService.IsConnected)
+                {
+                    try
+                    {
+                        await _signalRService.SubscribeToSessionAsync(result.Value.Id);
+                        _logger?.LogDebug("Subscribed to SignalR session: {SessionId}", result.Value.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to subscribe to SignalR session, polling will be used instead");
+                    }
+                }
 
                 _logger?.LogInformation("Research session started: {SessionId}", result.Value.Id);
                 return result.Value;

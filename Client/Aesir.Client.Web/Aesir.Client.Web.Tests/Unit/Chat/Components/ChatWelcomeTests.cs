@@ -5,6 +5,7 @@ using MudBlazor.Services;
 using Aesir.Client.Web.Infrastructure.Http;
 using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.Chat.Components;
+using Aesir.Client.Web.Modules.Chat.Services;
 using Aesir.Common.Models;
 
 namespace Aesir.Client.Web.Tests.Unit.Chat.Components;
@@ -15,6 +16,8 @@ public class ChatWelcomeTests : TestContext
     private readonly Mock<IChatStateService> _mockChatStateService;
     private readonly Mock<IDocumentApiService> _mockDocumentApiService;
     private readonly Mock<IAgentToolsService> _mockAgentToolsService;
+    private readonly Mock<IResearchStateService> _mockResearchStateService;
+    private readonly Mock<IResearchTeamApiService> _mockResearchTeamApiService;
 
     public ChatWelcomeTests()
     {
@@ -22,11 +25,21 @@ public class ChatWelcomeTests : TestContext
         _mockChatStateService = new Mock<IChatStateService>();
         _mockDocumentApiService = new Mock<IDocumentApiService>();
         _mockAgentToolsService = new Mock<IAgentToolsService>();
+        _mockResearchStateService = new Mock<IResearchStateService>();
+        _mockResearchTeamApiService = new Mock<IResearchTeamApiService>();
+
+        // Setup default return for research teams
+        _mockResearchTeamApiService.Setup(x => x.GetTeamsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<ResearchTeamBase>>.Success(new List<ResearchTeamBase>()));
+        _mockResearchTeamApiService.Setup(x => x.GetActiveTeamsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<ResearchTeamBase>>.Success(new List<ResearchTeamBase>()));
 
         Services.AddSingleton(_mockApiService.Object);
         Services.AddSingleton(_mockChatStateService.Object);
         Services.AddSingleton(_mockDocumentApiService.Object);
         Services.AddSingleton(_mockAgentToolsService.Object);
+        Services.AddSingleton(_mockResearchStateService.Object);
+        Services.AddSingleton(_mockResearchTeamApiService.Object);
         Services.AddMudServices();
 
         JSInterop.Mode = JSRuntimeMode.Loose;

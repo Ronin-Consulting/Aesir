@@ -69,6 +69,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
     private readonly IResearchAgentFactory _agentFactory;
     private readonly IClarificationService _clarificationService;
     private readonly IResearchPhaseExecutor _phaseExecutor;
+    private readonly IResearchProgressBroadcaster _progressBroadcaster;
 
     public ResearchOrchestrator(
         ILogger<ResearchOrchestrator> logger,
@@ -76,7 +77,8 @@ public class ResearchOrchestrator : IResearchOrchestrator
         IResearchTeamRepository teamRepository,
         IResearchAgentFactory agentFactory,
         IClarificationService clarificationService,
-        IResearchPhaseExecutor phaseExecutor)
+        IResearchPhaseExecutor phaseExecutor,
+        IResearchProgressBroadcaster progressBroadcaster)
     {
         _logger = logger;
         _sessionRepository = sessionRepository;
@@ -84,6 +86,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
         _agentFactory = agentFactory;
         _clarificationService = clarificationService;
         _phaseExecutor = phaseExecutor;
+        _progressBroadcaster = progressBroadcaster;
     }
 
     /// <inheritdoc />
@@ -278,6 +281,9 @@ public class ResearchOrchestrator : IResearchOrchestrator
     {
         try
         {
+            // Set the session ID for broadcasting progress updates
+            _progressBroadcaster.SetCurrentSession(session.Id);
+
             var nonChairmanAgents = researchAgents.Where(a => !a.IsChairman).ToList();
 
             // Phase 1: Planning
@@ -286,6 +292,8 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.StartedAt = DateTime.UtcNow;
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session);
+            await _progressBroadcaster.BroadcastStatusChangeAsync(
+                session.Id, session.Status, session.CurrentPhase, "Starting planning phase...");
 
             var plans = await _phaseExecutor.ExecutePlanningPhaseAsync(
                 session,
@@ -299,6 +307,8 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.CurrentPhase = ResearchPhase.Research;
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session);
+            await _progressBroadcaster.BroadcastStatusChangeAsync(
+                session.Id, session.Status, session.CurrentPhase, "Agents are conducting research...");
 
             var submissions = await _phaseExecutor.ExecuteResearchPhaseAsync(
                 session,
@@ -318,6 +328,8 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.CurrentPhase = ResearchPhase.Anonymization;
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session);
+            await _progressBroadcaster.BroadcastStatusChangeAsync(
+                session.Id, session.Status, session.CurrentPhase, "Anonymizing submissions for peer review...");
 
             var anonymizedSubmissions = await _phaseExecutor.ExecuteAnonymizationPhaseAsync(
                 session,
@@ -330,6 +342,8 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.CurrentPhase = ResearchPhase.PeerReview;
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session);
+            await _progressBroadcaster.BroadcastStatusChangeAsync(
+                session.Id, session.Status, session.CurrentPhase, "Agents are reviewing each other's work...");
 
             var peerReviews = await _phaseExecutor.ExecutePeerReviewPhaseAsync(
                 session,
@@ -348,6 +362,8 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.CurrentPhase = ResearchPhase.Synthesis;
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session);
+            await _progressBroadcaster.BroadcastStatusChangeAsync(
+                session.Id, session.Status, session.CurrentPhase, "Chairman is synthesizing the final report...");
 
             // Get Chairman agent for synthesis
             var chairman = researchAgents.FirstOrDefault(a => a.IsChairman);
@@ -383,6 +399,9 @@ public class ResearchOrchestrator : IResearchOrchestrator
             _logger.LogInformation(
                 "Research session {SessionId} completed with {SubmissionCount} submissions, {ReviewCount} reviews, and report '{Title}'",
                 session.Id, submissions.Count, peerReviews.Count, report.Title);
+
+            // Broadcast completion event
+            await _progressBroadcaster.BroadcastCompletionAsync(session.Id, report.Id);
         }
         catch (Exception ex)
         {
@@ -393,6 +412,9 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.CompletedAt = DateTime.UtcNow;
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session);
+
+            // Broadcast error event
+            await _progressBroadcaster.BroadcastErrorAsync(session.Id, ex.Message);
 
             throw;
         }

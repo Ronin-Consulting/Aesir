@@ -21,6 +21,8 @@ public class ChatPageTests : TestContext
     private readonly Mock<ICitationStateService> _mockCitationStateService;
     private readonly Mock<IAgentToolsService> _mockAgentToolsService;
     private readonly Mock<IDocumentApiService> _mockDocumentApiService;
+    private readonly Mock<IResearchStateService> _mockResearchStateService;
+    private readonly Mock<IResearchTeamApiService> _mockResearchTeamApiService;
 
     public ChatPageTests()
     {
@@ -33,6 +35,14 @@ public class ChatPageTests : TestContext
         _mockCitationStateService = new Mock<ICitationStateService>();
         _mockAgentToolsService = new Mock<IAgentToolsService>();
         _mockDocumentApiService = new Mock<IDocumentApiService>();
+        _mockResearchStateService = new Mock<IResearchStateService>();
+        _mockResearchTeamApiService = new Mock<IResearchTeamApiService>();
+
+        // Setup default return for research teams
+        _mockResearchTeamApiService.Setup(x => x.GetTeamsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<ResearchTeamBase>>.Success(new List<ResearchTeamBase>()));
+        _mockResearchTeamApiService.Setup(x => x.GetActiveTeamsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<ResearchTeamBase>>.Success(new List<ResearchTeamBase>()));
 
         Services.AddSingleton(_mockApiService.Object);
         Services.AddSingleton(_mockChatStateService.Object);
@@ -43,6 +53,8 @@ public class ChatPageTests : TestContext
         Services.AddSingleton(_mockCitationStateService.Object);
         Services.AddSingleton(_mockAgentToolsService.Object);
         Services.AddSingleton(_mockDocumentApiService.Object);
+        Services.AddSingleton(_mockResearchStateService.Object);
+        Services.AddSingleton(_mockResearchTeamApiService.Object);
         Services.AddSingleton<IMarkdownService, MarkdownService>();
         Services.AddMudServices();
 
