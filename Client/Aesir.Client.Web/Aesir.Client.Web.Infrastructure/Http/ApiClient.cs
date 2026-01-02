@@ -123,4 +123,38 @@ public class ApiClient : IApiClient
             }
         }
     }
+
+    /// <inheritdoc />
+    public async Task<FileDownloadResult> DownloadFileAsync(string endpoint, CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync(endpoint, ct).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return FileDownloadResult.Failed($"HTTP {(int)response.StatusCode}: {response.ReasonPhrase}");
+            }
+
+            var data = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+            var contentType = response.Content.Headers.ContentType?.MediaType;
+
+            // Try to get filename from Content-Disposition header
+            string? fileName = null;
+            if (response.Content.Headers.ContentDisposition?.FileName is { } fn)
+            {
+                fileName = fn.Trim('"');
+            }
+            else if (response.Content.Headers.ContentDisposition?.FileNameStar is { } fns)
+            {
+                fileName = fns.Trim('"');
+            }
+
+            return FileDownloadResult.Succeeded(data, contentType, fileName);
+        }
+        catch (Exception ex)
+        {
+            return FileDownloadResult.Failed(ex.Message);
+        }
+    }
 }

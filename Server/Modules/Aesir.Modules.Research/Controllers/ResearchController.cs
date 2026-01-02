@@ -1,7 +1,9 @@
+using Aesir.Infrastructure.Documents;
 using Aesir.Modules.Research.Contracts;
 using Aesir.Modules.Research.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using DocFormat = Aesir.Infrastructure.Documents.DocumentFormat;
 
 namespace Aesir.Modules.Research.Controllers;
 
@@ -16,7 +18,8 @@ public class ResearchController(
     ILogger<ResearchController> logger,
     IResearchOrchestrator orchestrator,
     IResearchSessionRepository sessionRepository,
-    IResearchProgressBroadcaster progressBroadcaster) : ControllerBase
+    IResearchProgressBroadcaster progressBroadcaster,
+    IResearchReportExporter reportExporter) : ControllerBase
 {
     /// <summary>
     /// Gets all research sessions for a user.
@@ -284,4 +287,100 @@ public class ResearchController(
             return StatusCode(500, "An error occurred while deleting the research session");
         }
     }
+
+    /// <summary>
+    /// Exports the research report as a PDF document.
+    /// </summary>
+    /// <param name="id">The session ID.</param>
+    /// <returns>The report as a PDF file.</returns>
+    [HttpGet("{id:guid}/report/export/pdf")]
+    [Produces("application/pdf")]
+    public async Task<IActionResult> ExportReportPdf(Guid id)
+    {
+        return await ExportReport(id, DocFormat.Pdf);
+    }
+
+    /// <summary>
+    /// Exports the research report as a Word document.
+    /// </summary>
+    /// <param name="id">The session ID.</param>
+    /// <returns>The report as a Word file.</returns>
+    [HttpGet("{id:guid}/report/export/word")]
+    [Produces("application/vnd.openxmlformats-officedocument.wordprocessingml.document")]
+    public async Task<IActionResult> ExportReportWord(Guid id)
+    {
+        return await ExportReport(id, DocFormat.Word);
+    }
+
+    /// <summary>
+    /// Gets the available export formats for reports.
+    /// </summary>
+    /// <returns>A list of available export formats.</returns>
+    [HttpGet("export-formats")]
+    public IActionResult GetExportFormats()
+    {
+        var formats = reportExporter.GetAvailableFormats()
+            .Select(f => new
+            {
+                Format = f.ToString(),
+                ContentType = GetContentTypeForFormat(f),
+                Extension = GetExtensionForFormat(f)
+            })
+            .ToList();
+
+        return Ok(formats);
+    }
+
+    /// <summary>
+    /// Helper method to export a report in the specified format.
+    /// </summary>
+    private async Task<IActionResult> ExportReport(Guid sessionId, DocFormat format)
+    {
+        try
+        {
+            var session = await sessionRepository.GetByIdAsync(sessionId);
+            if (session == null)
+            {
+                return NotFound();
+            }
+
+            if (session.Report == null)
+            {
+                return NotFound("Report not yet generated");
+            }
+
+            var result = await reportExporter.ExportAsync(session.Report, format);
+
+            if (!result.Success)
+            {
+                logger.LogWarning(
+                    "Failed to export report for session {SessionId} to {Format}: {Error}",
+                    sessionId,
+                    format,
+                    result.ErrorMessage);
+                return StatusCode(500, result.ErrorMessage);
+            }
+
+            return File(result.Data!, result.ContentType!, result.FileName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error exporting report for session {SessionId} to {Format}", sessionId, format);
+            return StatusCode(500, "An error occurred while exporting the research report");
+        }
+    }
+
+    private static string GetContentTypeForFormat(DocFormat format) => format switch
+    {
+        DocFormat.Pdf => "application/pdf",
+        DocFormat.Word => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        _ => "application/octet-stream"
+    };
+
+    private static string GetExtensionForFormat(DocFormat format) => format switch
+    {
+        DocFormat.Pdf => ".pdf",
+        DocFormat.Word => ".docx",
+        _ => ".bin"
+    };
 }

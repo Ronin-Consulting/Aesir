@@ -1,5 +1,11 @@
+using System.Text;
+using Aesir.Common.Models;
+using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
+using Aesir.Modules.Research.Hubs;
 using Aesir.Modules.Research.Models;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Modules.Research.Services;
@@ -126,11 +132,15 @@ public class ResearchPhaseProgress
 
 /// <summary>
 /// Implementation of the research phase executor.
-/// Note: Full chat integration will be added when wiring to the inference module.
+/// Uses IChatService with streaming to perform real-time LLM-based research,
+/// broadcasting progress updates via SignalR.
 /// </summary>
 public class ResearchPhaseExecutor : IResearchPhaseExecutor
 {
     private readonly ILogger<ResearchPhaseExecutor> _logger;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IHubContext<ResearchHub> _hubContext;
+    private readonly IConfigurationService _configurationService;
     private readonly IAnonymizationService _anonymizationService;
     private readonly IPeerReviewService _peerReviewService;
     private readonly IReportGeneratorService _reportGeneratorService;
@@ -138,12 +148,18 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
 
     public ResearchPhaseExecutor(
         ILogger<ResearchPhaseExecutor> logger,
+        IServiceProvider serviceProvider,
+        IHubContext<ResearchHub> hubContext,
+        IConfigurationService configurationService,
         IAnonymizationService anonymizationService,
         IPeerReviewService peerReviewService,
         IReportGeneratorService reportGeneratorService,
         IScoringCalculator scoringCalculator)
     {
         _logger = logger;
+        _serviceProvider = serviceProvider;
+        _hubContext = hubContext;
+        _configurationService = configurationService;
         _anonymizationService = anonymizationService;
         _peerReviewService = peerReviewService;
         _reportGeneratorService = reportGeneratorService;
@@ -167,7 +183,8 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         // Execute planning for each agent in parallel
         foreach (var agent in agents.Where(a => !a.IsChairman))
         {
-            tasks.Add(ExecuteAgentPlanningAsync(
+            tasks.Add(ExecuteAgentPlanningStreamedAsync(
+                session,
                 agent,
                 refinedQuery,
                 progressCallback,
@@ -210,7 +227,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         {
             var plan = agentPlans.TryGetValue(agent.TeamMemberId, out var p) ? p : "";
 
-            tasks.Add(ExecuteAgentResearchAsync(
+            tasks.Add(ExecuteAgentResearchStreamedAsync(
                 session,
                 agent,
                 refinedQuery,
@@ -235,7 +252,11 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         return submissions;
     }
 
-    private async Task<(Guid TeamMemberId, string Plan)> ExecuteAgentPlanningAsync(
+    /// <summary>
+    /// Executes planning for a single agent using streaming, broadcasting updates via SignalR.
+    /// </summary>
+    private async Task<(Guid TeamMemberId, string Plan)> ExecuteAgentPlanningStreamedAsync(
+        ResearchSession session,
         ResearchAgent agent,
         string refinedQuery,
         Func<ResearchPhaseProgress, Task>? progressCallback,
@@ -243,7 +264,12 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
     {
         try
         {
-            // Report start
+            // Notify phase change
+            await _hubContext.SendAgentPhaseChangedAsync(
+                session.Id, agent.TeamMemberId, agent.Role, "planning",
+                $"{agent.RoleName} is creating research plan...");
+
+            // Report start via callback
             if (progressCallback != null)
             {
                 await progressCallback(new ResearchPhaseProgress
@@ -256,14 +282,30 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 });
             }
 
-            // TODO: Integrate with IChatService when available
-            // For now, create a stub plan based on the role
-            var plan = GenerateStubPlan(agent, refinedQuery);
+            // Get the chat service for this agent's inference engine
+            var chatService = GetChatServiceForAgent(agent);
+            if (chatService == null)
+            {
+                _logger.LogWarning("No chat service found for agent {Role} with inference engine {EngineId}",
+                    agent.Role, agent.InferenceEngineId);
+                return (agent.TeamMemberId, "");
+            }
 
-            // Simulate some work
-            await Task.Delay(100, cancellationToken);
+            // Build the planning prompt
+            var planningPrompt = agent.PlanningPrompt?
+                .Replace("{{QUERY}}", refinedQuery)
+                ?? $"Create a research plan for: {refinedQuery}";
 
-            // Report completion
+            // Create the chat request with tools and thinking enabled
+            var request = await CreateChatRequestAsync(agent, planningPrompt);
+
+            _logger.LogDebug("Sending streaming planning request to LLM for agent {Role}", agent.Role);
+
+            // Execute streaming LLM call and broadcast updates
+            var (content, toolCalls) = await StreamChatCompletionAsync(
+                session, agent, chatService, request, cancellationToken);
+
+            // Report completion via callback
             if (progressCallback != null)
             {
                 await progressCallback(new ResearchPhaseProgress
@@ -277,10 +319,10 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 });
             }
 
-            _logger.LogDebug("Agent {Role} created plan with {Length} characters",
-                agent.Role, plan.Length);
+            _logger.LogDebug("Agent {Role} created plan with {Length} characters, {ToolCount} tool calls",
+                agent.Role, content.Length, toolCalls.Count);
 
-            return (agent.TeamMemberId, plan);
+            return (agent.TeamMemberId, content);
         }
         catch (Exception ex)
         {
@@ -289,7 +331,10 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         }
     }
 
-    private async Task<ResearchSubmission?> ExecuteAgentResearchAsync(
+    /// <summary>
+    /// Executes research for a single agent using streaming, broadcasting updates via SignalR.
+    /// </summary>
+    private async Task<ResearchSubmission?> ExecuteAgentResearchStreamedAsync(
         ResearchSession session,
         ResearchAgent agent,
         string refinedQuery,
@@ -299,7 +344,12 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
     {
         try
         {
-            // Report start
+            // Notify phase change
+            await _hubContext.SendAgentPhaseChangedAsync(
+                session.Id, agent.TeamMemberId, agent.Role, "researching",
+                $"{agent.RoleName} is researching...");
+
+            // Report start via callback
             if (progressCallback != null)
             {
                 await progressCallback(new ResearchPhaseProgress
@@ -312,12 +362,32 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 });
             }
 
-            // TODO: Integrate with IChatService when available
-            // For now, create a stub research result
-            var content = GenerateStubResearch(agent, refinedQuery, plan);
+            // Get the chat service for this agent's inference engine
+            var chatService = GetChatServiceForAgent(agent);
+            if (chatService == null)
+            {
+                _logger.LogWarning("No chat service found for agent {Role} with inference engine {EngineId}",
+                    agent.Role, agent.InferenceEngineId);
+                return CreateFailedSubmission(session, agent, plan);
+            }
 
-            // Simulate some work
-            await Task.Delay(100, cancellationToken);
+            // Build context from plan and any clarification answers
+            var refinedContext = BuildResearchContext(session, plan);
+
+            // Build the research prompt
+            var researchPrompt = agent.ResearchPrompt?
+                .Replace("{{QUERY}}", refinedQuery)
+                .Replace("{{REFINED_CONTEXT}}", refinedContext)
+                ?? $"Research the following query: {refinedQuery}\n\nContext:\n{refinedContext}";
+
+            // Create the chat request with tools and thinking enabled
+            var request = await CreateChatRequestAsync(agent, researchPrompt);
+
+            _logger.LogDebug("Sending streaming research request to LLM for agent {Role}", agent.Role);
+
+            // Execute streaming LLM call and broadcast updates
+            var (content, toolCalls) = await StreamChatCompletionAsync(
+                session, agent, chatService, request, cancellationToken);
 
             // Create submission
             var submission = new ResearchSubmission
@@ -330,12 +400,12 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 Content = content,
                 Status = string.IsNullOrEmpty(content) ? SubmissionStatus.Failed : SubmissionStatus.Completed,
                 Sources = [],
-                ToolCalls = [],
+                ToolCalls = toolCalls,
                 CreatedAt = DateTime.UtcNow,
                 CompletedAt = DateTime.UtcNow
             };
 
-            // Report completion
+            // Report completion via callback
             if (progressCallback != null)
             {
                 await progressCallback(new ResearchPhaseProgress
@@ -349,8 +419,8 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 });
             }
 
-            _logger.LogDebug("Agent {Role} created submission with {Length} characters",
-                agent.Role, content.Length);
+            _logger.LogDebug("Agent {Role} created submission with {Length} characters, {ToolCount} tool calls",
+                agent.Role, content.Length, toolCalls.Count);
 
             return submission;
         }
@@ -359,6 +429,76 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             _logger.LogError(ex, "Error during research for agent {Role}", agent.Role);
             return null;
         }
+    }
+
+    /// <summary>
+    /// Streams a chat completion, broadcasting thinking, content, and tool calls via SignalR.
+    /// Returns the accumulated content and tool calls.
+    /// </summary>
+    private async Task<(string Content, List<ResearchToolCall> ToolCalls)> StreamChatCompletionAsync(
+        ResearchSession session,
+        ResearchAgent agent,
+        IChatService chatService,
+        AesirChatRequestBase request,
+        CancellationToken cancellationToken)
+    {
+        var contentBuilder = new StringBuilder();
+        var thinkingBuilder = new StringBuilder();
+        var toolCalls = new List<ResearchToolCall>();
+
+        await foreach (var chunk in chatService.ChatCompletionsStreamedAsync(request)
+            .WithCancellation(cancellationToken))
+        {
+            // Handle thinking/reasoning content
+            if (chunk.IsThinking && chunk.Delta?.Content != null)
+            {
+                thinkingBuilder.Append(chunk.Delta.Content);
+                await _hubContext.SendAgentThinkingAsync(
+                    session.Id, agent.TeamMemberId, agent.Role, chunk.Delta.Content);
+            }
+            // Handle tool calls
+            else if (chunk.ToolCall != null)
+            {
+                if (chunk.EventType == StreamEventType.ToolCallStart)
+                {
+                    await _hubContext.SendAgentToolCallStartAsync(
+                        session.Id, agent.TeamMemberId, agent.Role,
+                        chunk.ToolCall.ToolCallId ?? "",
+                        chunk.ToolCall.FunctionName ?? "",
+                        chunk.ToolCall.PluginName,
+                        chunk.ToolCall.Arguments);
+                }
+                else if (chunk.EventType == StreamEventType.ToolCallResult)
+                {
+                    // Convert AesirToolCallInfo to ResearchToolCall
+                    toolCalls.Add(new ResearchToolCall
+                    {
+                        ToolName = chunk.ToolCall.FunctionName ?? "",
+                        Input = chunk.ToolCall.Arguments != null
+                            ? System.Text.Json.JsonSerializer.Serialize(chunk.ToolCall.Arguments)
+                            : null,
+                        Output = chunk.ToolCall.Result,
+                        DurationMs = chunk.ToolCall.DurationMs,
+                        Timestamp = chunk.ToolCall.StartedAt.UtcDateTime
+                    });
+                    await _hubContext.SendAgentToolCallResultAsync(
+                        session.Id, agent.TeamMemberId, agent.Role,
+                        chunk.ToolCall.ToolCallId ?? "",
+                        chunk.ToolCall.FunctionName ?? "",
+                        chunk.ToolCall.Result,
+                        chunk.ToolCall.Status == ToolCallStatus.Completed);
+                }
+            }
+            // Handle regular content
+            else if (chunk.Delta?.Content != null)
+            {
+                contentBuilder.Append(chunk.Delta.Content);
+                await _hubContext.SendAgentContentAsync(
+                    session.Id, agent.TeamMemberId, agent.Role, chunk.Delta.Content);
+            }
+        }
+
+        return (contentBuilder.ToString(), toolCalls);
     }
 
     /// <inheritdoc />
@@ -560,124 +700,164 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         return scores;
     }
 
-    private static string GenerateStubPlan(ResearchAgent agent, string query)
+    /// <summary>
+    /// Resolves the IChatService for a research agent based on its inference engine ID.
+    /// </summary>
+    private IChatService? GetChatServiceForAgent(ResearchAgent agent)
     {
-        return agent.Role switch
+        if (!agent.InferenceEngineId.HasValue)
         {
-            ResearchRole.DeepDiver => $"""
-                # Research Plan: Deep Diver
+            _logger.LogWarning("Agent {Role} has no inference engine ID configured", agent.Role);
+            return null;
+        }
 
-                Query: {query}
+        var chatService = _serviceProvider.GetKeyedService<IChatService>(agent.InferenceEngineId.Value.ToString());
 
-                ## Approach
-                1. Break down query into sub-questions
-                2. Identify primary sources
-                3. Deep-dive into each source
-                4. Document findings with citations
+        if (chatService == null)
+        {
+            _logger.LogWarning("No IChatService found for inference engine ID: {EngineId}", agent.InferenceEngineId);
+        }
 
-                ## Expected Deliverables
-                - Comprehensive findings
-                - Citation list
-                - Confidence assessments
-                """,
+        return chatService;
+    }
 
-            ResearchRole.Synthesizer => $"""
-                # Research Plan: Synthesizer
+    /// <summary>
+    /// Creates a chat request configured for a research agent, including tools and thinking settings.
+    /// </summary>
+    private async Task<AesirChatRequestBase> CreateChatRequestAsync(ResearchAgent agent, string userPrompt)
+    {
+        var systemMessage = new AesirChatMessage
+        {
+            Role = "system",
+            Content = agent.Persona,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
 
-                Query: {query}
+        var userMessage = new AesirChatMessage
+        {
+            Role = "user",
+            Content = userPrompt,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
 
-                ## Approach
-                1. Cast wide net across domains
-                2. Identify cross-cutting themes
-                3. Build integrated narrative
-                4. Highlight unexpected connections
+        var conversation = new AesirConversation
+        {
+            Id = Guid.NewGuid().ToString(),
+            Messages = [systemMessage, userMessage]
+        };
 
-                ## Expected Deliverables
-                - Pattern analysis
-                - Cross-domain insights
-                - Unified narrative
-                """,
+        // Load tools and thinking settings from the base agent
+        var tools = new List<ToolRequest>();
+        bool? enableThinking = null;
+        ThinkValue? thinkValue = null;
 
-            ResearchRole.DevilsAdvocate => $"""
-                # Research Plan: Devil's Advocate
+        try
+        {
+            // Get base agent configuration for tools and thinking settings
+            var baseAgent = await _configurationService.GetAgentAsync(agent.BaseAgentId);
 
-                Query: {query}
+            // Get thinking settings from base agent
+            enableThinking = baseAgent.AllowThinking;
+            thinkValue = baseAgent.ThinkValue;
 
-                ## Approach
-                1. Identify key assumptions
-                2. Search for contradictory evidence
-                3. Propose alternative hypotheses
-                4. Stress-test conclusions
+            // Load tools configured for this agent
+            var agentTools = await _configurationService.GetToolsUsedByAgentAsync(agent.BaseAgentId);
+            var mcpServers = await _configurationService.GetMcpServersAsync();
 
-                ## Expected Deliverables
-                - Challenged assumptions
-                - Counter-evidence
-                - Alternative explanations
-                """,
+            foreach (var tool in agentTools)
+            {
+                string? mcpServerName = null;
 
-            _ => $"Research plan for {query}"
+                // Check if this is an MCP server tool
+                if (tool.McpServerId.HasValue)
+                {
+                    var mcpServer = mcpServers.FirstOrDefault(m => m.Id == tool.McpServerId);
+                    if (mcpServer != null)
+                    {
+                        mcpServerName = mcpServer.Name;
+                    }
+                }
+
+                tools.Add(new ToolRequest
+                {
+                    ToolName = tool.ToolName ?? "",
+                    McpServerName = mcpServerName
+                });
+            }
+
+            _logger.LogDebug("Loaded {ToolCount} tools for agent {Role}, thinking={EnableThinking}",
+                tools.Count, agent.Role, enableThinking);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load configuration for agent {Role}", agent.Role);
+        }
+
+        return new AesirChatRequestBase
+        {
+            Model = agent.Model ?? "gpt-4",
+            Temperature = agent.Temperature,
+            MaxTokens = agent.MaxTokens ?? 8192,
+            Conversation = conversation,
+            User = "research-orchestrator",
+            Title = $"Research: {agent.RoleName}",
+            Tools = tools,
+            EnableThinking = enableThinking,
+            ThinkValue = thinkValue
         };
     }
 
-    private static string GenerateStubResearch(ResearchAgent agent, string query, string plan)
+    /// <summary>
+    /// Builds the research context from the session's plan and clarification answers.
+    /// </summary>
+    private static string BuildResearchContext(ResearchSession session, string plan)
     {
-        return agent.Role switch
+        var context = new StringBuilder();
+
+        // Add the research plan
+        if (!string.IsNullOrEmpty(plan))
         {
-            ResearchRole.DeepDiver => $"""
-                # Deep Diver Research Report
+            context.AppendLine("## Your Research Plan");
+            context.AppendLine(plan);
+            context.AppendLine();
+        }
 
-                Query: {query}
+        // Add any clarification answers
+        if (session.ClarificationAnswers?.Count > 0)
+        {
+            context.AppendLine("## Clarifications Provided by User");
+            foreach (var (question, answer) in session.ClarificationAnswers)
+            {
+                context.AppendLine($"Q: {question}");
+                context.AppendLine($"A: {answer}");
+                context.AppendLine();
+            }
+        }
 
-                ## Findings
+        return context.ToString();
+    }
 
-                *Note: This is a stub response. Full integration with inference engine pending.*
-
-                ### Finding 1
-                [Placeholder for deep research finding]
-                Confidence: Medium
-
-                ### Finding 2
-                [Placeholder for deep research finding]
-                Confidence: Medium
-
-                ## Sources
-                - Source 1: [Pending]
-                - Source 2: [Pending]
-                """,
-
-            ResearchRole.Synthesizer => $"""
-                # Synthesizer Research Report
-
-                Query: {query}
-
-                ## Synthesis
-
-                *Note: This is a stub response. Full integration with inference engine pending.*
-
-                ### Pattern Analysis
-                [Placeholder for pattern analysis]
-
-                ### Cross-Domain Insights
-                [Placeholder for cross-domain insights]
-                """,
-
-            ResearchRole.DevilsAdvocate => $"""
-                # Devil's Advocate Analysis
-
-                Query: {query}
-
-                ## Critical Analysis
-
-                *Note: This is a stub response. Full integration with inference engine pending.*
-
-                ### Challenged Assumptions
-                [Placeholder for challenged assumptions]
-
-                ### Alternative Hypotheses
-                [Placeholder for alternative hypotheses]
-                """,
-
-            _ => $"Research for {query}"
+    /// <summary>
+    /// Creates a failed submission record when LLM call fails.
+    /// </summary>
+    private static ResearchSubmission CreateFailedSubmission(
+        ResearchSession session,
+        ResearchAgent agent,
+        string plan)
+    {
+        return new ResearchSubmission
+        {
+            Id = Guid.NewGuid(),
+            SessionId = session.Id,
+            AgentId = agent.BaseAgentId,
+            Role = agent.Role,
+            Plan = plan,
+            Content = string.Empty,
+            Status = SubmissionStatus.Failed,
+            Sources = [],
+            ToolCalls = [],
+            CreatedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow
         };
     }
 }

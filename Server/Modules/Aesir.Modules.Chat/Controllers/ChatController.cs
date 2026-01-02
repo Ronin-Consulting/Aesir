@@ -3,7 +3,6 @@ using Aesir.Modules.Chat.Models;
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Models;
 using Aesir.Infrastructure.Services;
-using Aesir.Modules.Inference.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

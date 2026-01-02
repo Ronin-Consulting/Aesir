@@ -179,4 +179,128 @@ public static class ResearchHubExtensions
                 Timestamp = DateTime.UtcNow
             });
     }
+
+    /// <summary>
+    /// Notifies clients of an agent's reasoning/thinking content chunk.
+    /// </summary>
+    public static async Task SendAgentThinkingAsync(
+        this IHubContext<ResearchHub> hubContext,
+        Guid sessionId,
+        Guid teamMemberId,
+        ResearchRole role,
+        string thinkingChunk)
+    {
+        await hubContext.Clients
+            .Group($"research-{sessionId}")
+            .SendAsync("AgentThinking", new
+            {
+                SessionId = sessionId,
+                TeamMemberId = teamMemberId,
+                Role = role,
+                ThinkingChunk = thinkingChunk,
+                Timestamp = DateTime.UtcNow
+            });
+    }
+
+    /// <summary>
+    /// Notifies clients of an agent's content chunk (non-thinking response).
+    /// </summary>
+    public static async Task SendAgentContentAsync(
+        this IHubContext<ResearchHub> hubContext,
+        Guid sessionId,
+        Guid teamMemberId,
+        ResearchRole role,
+        string contentChunk)
+    {
+        await hubContext.Clients
+            .Group($"research-{sessionId}")
+            .SendAsync("AgentContent", new
+            {
+                SessionId = sessionId,
+                TeamMemberId = teamMemberId,
+                Role = role,
+                ContentChunk = contentChunk,
+                Timestamp = DateTime.UtcNow
+            });
+    }
+
+    /// <summary>
+    /// Notifies clients of an agent's tool call starting.
+    /// </summary>
+    public static async Task SendAgentToolCallStartAsync(
+        this IHubContext<ResearchHub> hubContext,
+        Guid sessionId,
+        Guid teamMemberId,
+        ResearchRole role,
+        string toolCallId,
+        string functionName,
+        string? pluginName,
+        object? arguments)
+    {
+        await hubContext.Clients
+            .Group($"research-{sessionId}")
+            .SendAsync("AgentToolCallStart", new
+            {
+                SessionId = sessionId,
+                TeamMemberId = teamMemberId,
+                Role = role,
+                ToolCallId = toolCallId,
+                FunctionName = functionName,
+                PluginName = pluginName,
+                Arguments = arguments,
+                Timestamp = DateTime.UtcNow
+            });
+    }
+
+    /// <summary>
+    /// Notifies clients of an agent's tool call completing.
+    /// </summary>
+    public static async Task SendAgentToolCallResultAsync(
+        this IHubContext<ResearchHub> hubContext,
+        Guid sessionId,
+        Guid teamMemberId,
+        ResearchRole role,
+        string toolCallId,
+        string functionName,
+        object? result,
+        bool success)
+    {
+        await hubContext.Clients
+            .Group($"research-{sessionId}")
+            .SendAsync("AgentToolCallResult", new
+            {
+                SessionId = sessionId,
+                TeamMemberId = teamMemberId,
+                Role = role,
+                ToolCallId = toolCallId,
+                FunctionName = functionName,
+                Result = result,
+                Success = success,
+                Timestamp = DateTime.UtcNow
+            });
+    }
+
+    /// <summary>
+    /// Notifies clients of an agent's phase change (planning -> researching).
+    /// </summary>
+    public static async Task SendAgentPhaseChangedAsync(
+        this IHubContext<ResearchHub> hubContext,
+        Guid sessionId,
+        Guid teamMemberId,
+        ResearchRole role,
+        string phase,
+        string? message = null)
+    {
+        await hubContext.Clients
+            .Group($"research-{sessionId}")
+            .SendAsync("AgentPhaseChanged", new
+            {
+                SessionId = sessionId,
+                TeamMemberId = teamMemberId,
+                Role = role,
+                Phase = phase,
+                Message = message,
+                Timestamp = DateTime.UtcNow
+            });
+    }
 }

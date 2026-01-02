@@ -1,9 +1,10 @@
 using Aesir.Common.Models;
 
-namespace Aesir.Modules.Inference.Services;
+namespace Aesir.Infrastructure.Services;
 
 /// <summary>
 /// Provides chat completion functionality for AI models.
+/// This interface is defined in Infrastructure to allow cross-module usage.
 /// </summary>
 public interface IChatService
 {

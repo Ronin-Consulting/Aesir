@@ -89,6 +89,25 @@ public class ResearchSessionApiService : IResearchSessionApiService
         });
     }
 
+    public async Task<FileDownloadResult> ExportReportPdfAsync(Guid sessionId, CancellationToken ct = default)
+    {
+        return await _apiClient.DownloadFileAsync($"{BaseUrl}/{sessionId}/report/export/pdf", ct);
+    }
+
+    public async Task<FileDownloadResult> ExportReportWordAsync(Guid sessionId, CancellationToken ct = default)
+    {
+        return await _apiClient.DownloadFileAsync($"{BaseUrl}/{sessionId}/report/export/word", ct);
+    }
+
+    public async Task<ApiResult<List<ExportFormatInfo>>> GetExportFormatsAsync(CancellationToken ct = default)
+    {
+        return await ExecuteAsync(async () =>
+        {
+            var result = await _apiClient.GetAsync<List<ExportFormatInfo>>($"{BaseUrl}/export-formats", ct);
+            return result ?? new List<ExportFormatInfo>();
+        });
+    }
+
     // Helper methods
 
     private static async Task<ApiResult<T>> ExecuteAsync<T>(Func<Task<T>> action)

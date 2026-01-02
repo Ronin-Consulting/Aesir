@@ -1,4 +1,5 @@
 using Aesir.Common.Models;
+using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
 using Aesir.Modules.Research.Models;
 using Microsoft.Extensions.Logging;
@@ -59,7 +60,6 @@ public interface IResearchOrchestrator
 
 /// <summary>
 /// Implementation of the research orchestrator.
-/// Note: Full integration with external services will be added in later phases.
 /// </summary>
 public class ResearchOrchestrator : IResearchOrchestrator
 {
@@ -70,6 +70,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
     private readonly IClarificationService _clarificationService;
     private readonly IResearchPhaseExecutor _phaseExecutor;
     private readonly IResearchProgressBroadcaster _progressBroadcaster;
+    private readonly IConfigurationService _configurationService;
 
     public ResearchOrchestrator(
         ILogger<ResearchOrchestrator> logger,
@@ -78,7 +79,8 @@ public class ResearchOrchestrator : IResearchOrchestrator
         IResearchAgentFactory agentFactory,
         IClarificationService clarificationService,
         IResearchPhaseExecutor phaseExecutor,
-        IResearchProgressBroadcaster progressBroadcaster)
+        IResearchProgressBroadcaster progressBroadcaster,
+        IConfigurationService configurationService)
     {
         _logger = logger;
         _sessionRepository = sessionRepository;
@@ -87,6 +89,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
         _clarificationService = clarificationService;
         _phaseExecutor = phaseExecutor;
         _progressBroadcaster = progressBroadcaster;
+        _configurationService = configurationService;
     }
 
     /// <inheritdoc />
@@ -108,20 +111,8 @@ public class ResearchOrchestrator : IResearchOrchestrator
             throw new KeyNotFoundException($"Research team {teamId} not found");
         }
 
-        // TODO: Resolve base agents when integration is complete
-        // For now, create agents with minimal config
-        var agentDict = new Dictionary<Guid, AesirAgentBase>();
-        foreach (var member in team.Members ?? [])
-        {
-            // Create stub agent - will be replaced with actual resolution
-            agentDict[member.AgentId] = new AesirAgentBase
-            {
-                Id = member.AgentId,
-                Name = $"Agent-{member.Role}",
-                ChatModel = "gpt-4",
-                ChatTemperature = 0.7
-            };
-        }
+        // Resolve base agents from configuration
+        var agentDict = await ResolveBaseAgentsAsync(team);
 
         // Create research agents
         var researchAgents = _agentFactory.CreateAgentsForTeam(team, agentDict);
@@ -154,6 +145,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
         if (chairman != null)
         {
             var questions = await _clarificationService.GenerateClarificationQuestionsAsync(
+                session.Id,
                 query,
                 chairman,
                 cancellationToken);
@@ -213,18 +205,8 @@ public class ResearchOrchestrator : IResearchOrchestrator
             throw new KeyNotFoundException($"Research team {session.ResearchTeamId} not found");
         }
 
-        // TODO: Resolve base agents when integration is complete
-        var agentDict = new Dictionary<Guid, AesirAgentBase>();
-        foreach (var member in team.Members ?? [])
-        {
-            agentDict[member.AgentId] = new AesirAgentBase
-            {
-                Id = member.AgentId,
-                Name = $"Agent-{member.Role}",
-                ChatModel = "gpt-4",
-                ChatTemperature = 0.7
-            };
-        }
+        // Resolve base agents from configuration
+        var agentDict = await ResolveBaseAgentsAsync(team);
 
         var researchAgents = _agentFactory.CreateAgentsForTeam(team, agentDict);
         var chairman = researchAgents.FirstOrDefault(a => a.IsChairman);
@@ -233,6 +215,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
         if (chairman != null && session.ClarificationQuestions?.Count > 0)
         {
             session.RefinedQuery = await _clarificationService.RefineQueryAsync(
+                session.Id,
                 session.Query,
                 session.ClarificationQuestions,
                 answers,
@@ -418,5 +401,45 @@ public class ResearchOrchestrator : IResearchOrchestrator
 
             throw;
         }
+    }
+
+    /// <summary>
+    /// Resolves base agents from configuration for each team member.
+    /// </summary>
+    /// <param name="team">The research team.</param>
+    /// <returns>Dictionary mapping agent IDs to their base agent configurations.</returns>
+    private async Task<Dictionary<Guid, AesirAgentBase>> ResolveBaseAgentsAsync(ResearchTeam team)
+    {
+        var agentDict = new Dictionary<Guid, AesirAgentBase>();
+
+        foreach (var member in team.Members ?? [])
+        {
+            try
+            {
+                var baseAgent = await _configurationService.GetAgentAsync(member.AgentId);
+                agentDict[member.AgentId] = baseAgent;
+                _logger.LogDebug("Resolved agent {AgentId} ({Name}) for role {Role}",
+                    member.AgentId, baseAgent.Name, member.Role);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to resolve agent {AgentId} for role {Role}, using fallback",
+                    member.AgentId, member.Role);
+
+                // Fallback to basic configuration
+                agentDict[member.AgentId] = new AesirAgentBase
+                {
+                    Id = member.AgentId,
+                    Name = $"Agent-{member.Role}",
+                    ChatModel = "gpt-4",
+                    ChatTemperature = 0.7
+                };
+            }
+        }
+
+        _logger.LogInformation("Resolved {Count} agents for research team {TeamId}",
+            agentDict.Count, team.Id);
+
+        return agentDict;
     }
 }

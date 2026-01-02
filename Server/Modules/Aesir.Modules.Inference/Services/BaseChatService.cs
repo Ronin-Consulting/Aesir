@@ -23,7 +23,7 @@ namespace Aesir.Modules.Inference.Services;
 /// <param name="inferenceLogService">The service for persisting inference operation logs for observability.</param>
 /// <param name="inferenceEngineIdKey">The service key used to register this keyed service.</param>
 [Experimental("SKEXP0070")]
-public abstract class BaseChatService : IChatService
+public abstract class BaseChatService : Aesir.Infrastructure.Services.IChatService
 {
     /// <summary>
     /// A protected instance of <see cref="ILogger"/> utilized for logging operations within the service.
