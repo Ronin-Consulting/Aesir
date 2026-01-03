@@ -171,63 +171,33 @@ public Guid? ProjectId { get; set; }
 
 ## Phase 2: Project Knowledge Base (RAG)
 
-### 2.1 Vector Storage Model
+### 2.1 Leverage Existing GlobalDocumentCollectionService
 
-**File: `Server/Aesir.Infrastructure/Models/AesirProjectDocumentTextData.cs`**
-```csharp
-public class AesirProjectDocumentTextData<TKey> : AesirTextData<TKey>
-{
-    [VectorStoreRecordData]
-    public string ProjectId { get; set; } = string.Empty;
-}
-```
+**No new services or controllers needed!** We reuse the existing infrastructure:
 
-### 2.2 Project Document Collection Service
+- **Service**: `GlobalDocumentCollectionService` (already exists)
+- **Vector Storage**: `aesir_global_document` Qdrant collection (already exists)
+- **Scoping**: Use `ProjectId` as the `CategoryId` parameter
 
-**Interface: `IProjectDocumentCollectionService`**
-```csharp
-public interface IProjectDocumentCollectionService
-{
-    Task<bool> LoadDocumentAsync(
-        string filePath,
-        IDictionary<string, object> fileMetaData,
-        CancellationToken cancellationToken = default);
+### 2.2 Existing Endpoints (Reused)
 
-    Task<bool> DeleteDocumentAsync(
-        string projectId,
-        string filename,
-        CancellationToken cancellationToken = default);
+The existing `/document/collections/globals/{categoryId}/...` endpoints work as-is:
 
-    Task<bool> DeleteDocumentsAsync(
-        string projectId,
-        CancellationToken cancellationToken = default);
+| Method | Route | Usage for Projects |
+|--------|-------|-------------------|
+| POST | `/document/collections/globals/{projectId}/upload/file` | Upload document to project |
+| GET | `/document/collections/globals/{projectId}/files` | List project documents |
+| GET | `/document/collections/globals/{projectId}/files/{filename}/content` | Get document content |
+| DELETE | `/document/collections/globals/{projectId}/files/{filename}` | Delete document |
 
-    Task<List<KernelFunction>> GetKernelPluginFunctionsAsync(
-        string projectId,
-        CancellationToken cancellationToken = default);
-}
-```
+**Key insight**: The `categoryId` parameter in the global endpoints is just a string identifier. By passing the `ProjectId` (as string), we get project-scoped document storage without any new code.
 
-### 2.3 Document Upload Endpoints
+### 2.3 How It Works
 
-**Add to DocumentCollectionController:**
-| Method | Route | Description |
-|--------|-------|-------------|
-| POST | `/document/collections/projects/{projectId}/upload/file` | Upload document to project |
-| GET | `/document/collections/projects/{projectId}/files` | List project documents |
-| GET | `/document/collections/projects/{projectId}/files/{filename}/content` | Get document content |
-| DELETE | `/document/collections/projects/{projectId}/files/{filename}` | Delete document |
-
-### 2.4 Qdrant Collection
-
-Register new Qdrant collection:
-```csharp
-services.AddKeyedQdrantCollection<Guid, AesirProjectDocumentTextData<Guid>>(
-    serviceKey: null,
-    name: "aesir_project_document",
-    clientProvider,
-    optionsProvider);
-```
+1. **Upload**: Client calls `/document/collections/globals/{projectId}/upload/file`
+2. **Storage**: Document stored with `Category = projectId` in Qdrant
+3. **Search**: `GlobalDocumentCollectionService.GetKernelPluginFunctionsAsync(projectId)` returns search functions filtered by project
+4. **Inference**: Project documents exposed as tools during chat (same as global documents)
 
 ---
 
@@ -279,16 +249,27 @@ if (request.ProjectId.HasValue)
 
 ### 3.4 Expose Project Documents as Tool
 
-**Update `KernelPluginService`** to include project document search when project ID is present:
+**Update inference flow** to include project document search when project ID is present:
+
 ```csharp
-if (args is ProjectDocumentCollectionArgs projectArgs)
+// In BasePromptExecutionSettingsBuilder or ChatController
+if (request.ProjectId.HasValue)
 {
-    var projectId = projectArgs.GetProjectId();
-    var projectFunctions = await _projectDocumentCollectionService
-        .GetKernelPluginFunctionsAsync(projectId, cancellationToken);
-    kernelFunctions.AddRange(projectFunctions);
+    // Use existing GlobalDocumentCollectionService with ProjectId as CategoryId
+    var globalDocArgs = GlobalDocumentCollectionArgs.Default;
+    globalDocArgs.SetCategoryId(request.ProjectId.Value.ToString());
+
+    var projectDocFunctions = await _globalDocumentCollectionService
+        .GetKernelPluginFunctionsAsync(
+            request.ProjectId.Value.ToString(),
+            cancellationToken);
+
+    // Add to kernel plugins for this chat session
+    kernelFunctions.AddRange(projectDocFunctions);
 }
 ```
+
+This reuses the existing `GlobalDocumentCollectionService` - no new service needed.
 
 ---
 
@@ -412,23 +393,26 @@ public class ProjectModule : ClientModuleBase
 ### New Files
 | File | Description |
 |------|-------------|
-| `Server/Modules/Aesir.Modules.Projects/` | New server module |
+| `Server/Modules/Aesir.Modules.Projects/` | New server module (controller, service, repository, migrations) |
 | `Server/Aesir.Infrastructure/Models/AesirProject.cs` | Server model |
-| `Server/Aesir.Infrastructure/Models/AesirProjectDocumentTextData.cs` | Vector data model |
-| `Server/Aesir.Infrastructure/Services/IProjectDocumentCollectionService.cs` | Interface |
-| `Common/Aesir.Common/Models/AesirProjectBase.cs` | Shared model |
+| `Common/Aesir.Common/Models/AesirProjectBase.cs` | Shared model for client/server |
 | `Client/Modules/Aesir.Client.Web.Modules.Projects/` | New client module |
 
 ### Modified Files
 | File | Change |
 |------|--------|
-| `Server/Aesir.Infrastructure/Models/AesirChatSession.cs` | Add `ProjectId` |
-| `Server/Modules/Aesir.Modules.Documents/DocumentsModule.cs` | Register project collection |
-| `Server/Modules/Aesir.Modules.Documents/Controllers/DocumentCollectionController.cs` | Add project endpoints |
-| `Server/Modules/Aesir.Modules.Inference/Services/BaseChatService.cs` | Append project instructions |
-| `Common/Aesir.Common/Models/AesirChatRequestBase.cs` | Add `ProjectId` |
+| `Server/Aesir.Infrastructure/Models/AesirChatSession.cs` | Add `ProjectId` property |
+| `Server/Modules/Aesir.Modules.Inference/Services/BaseChatService.cs` | Append project instructions to system prompt |
+| `Common/Aesir.Common/Models/AesirChatRequestBase.cs` | Add `ProjectId` property |
 | `Client/Aesir.Client.Web.App/Program.cs` | Register Projects module |
-| `Client/Aesir.Client.Web.App/App.razor` | Add module assembly |
+| `Client/Aesir.Client.Web.App/App.razor` | Add module assembly reference |
+
+### Reused (No Changes Needed)
+| File | Reused For |
+|------|-----------|
+| `GlobalDocumentCollectionService` | Project document storage (using ProjectId as CategoryId) |
+| `DocumentCollectionController` | Existing `/globals/{categoryId}/*` endpoints work for projects |
+| `aesir_global_document` (Qdrant) | Vector storage for project documents |
 
 ---
 
