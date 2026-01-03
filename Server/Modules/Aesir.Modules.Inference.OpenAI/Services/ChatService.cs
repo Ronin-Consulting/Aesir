@@ -34,6 +34,13 @@ public class ChatService : BaseChatService
     private readonly IConversationDocumentCollectionService? _conversationDocumentCollectionService;
 
     /// <summary>
+    /// Service used for managing global document collections (including project documents),
+    /// enabling RAG search functionality for project-scoped documents.
+    /// This service is optional and will be null if no embedding engine is configured.
+    /// </summary>
+    private readonly IGlobalDocumentCollectionService? _globalDocumentCollectionService;
+
+    /// <summary>
     /// Service responsible for managing and orchestrating plugins within the kernel, enabling the
     /// integration of additional functionalities or extensions into the core behavior of the system.
     /// </summary>
@@ -64,6 +71,7 @@ public class ChatService : BaseChatService
     /// <param name="inferenceEngineIdKey">The service key used to register this keyed service.</param>
     /// <param name="chatHistoryService">Service for persisting and managing chat history.</param>
     /// <param name="conversationDocumentCollectionService">Service for handling access and search functionalities for documents within conversations.</param>
+    /// <param name="globalDocumentCollectionService">Service for handling global document collections including project documents.</param>
     public ChatService(
         ILogger<ChatService> logger,
         ILoggerFactory loggerFactory,
@@ -74,10 +82,12 @@ public class ChatService : BaseChatService
         IInferenceLogService? inferenceLogService,
         string inferenceEngineIdKey,
         IChatHistoryService chatHistoryService,
-        IConversationDocumentCollectionService? conversationDocumentCollectionService)
+        IConversationDocumentCollectionService? conversationDocumentCollectionService,
+        IGlobalDocumentCollectionService? globalDocumentCollectionService)
         : base(logger, chatHistoryService, kernel, serviceProvider, toolCallBroadcaster, inferenceLogService, inferenceEngineIdKey)
     {
         _conversationDocumentCollectionService = conversationDocumentCollectionService;
+        _globalDocumentCollectionService = globalDocumentCollectionService;
         _kernelPluginService = kernelPluginService;
         _loggerFactory = loggerFactory;
     }
@@ -308,12 +318,12 @@ public class ChatService : BaseChatService
     {
         var settingsBuilderLogger = _loggerFactory.CreateLogger<OpenAiPromptExecutionSettingsBuilder>();
         var promptExecutionSettingsBuilder = new OpenAiPromptExecutionSettingsBuilder(
-            _kernel, _conversationDocumentCollectionService, _kernelPluginService, settingsBuilderLogger);
+            _kernel, _conversationDocumentCollectionService, _globalDocumentCollectionService, _kernelPluginService, settingsBuilderLogger);
 
         var results =
             await promptExecutionSettingsBuilder.BuildAsync(request);
 
-        RenderSystemPrompt(request.Conversation, results.SystemPromptVariables, request.ChatPromptPersona, request.ChatCustomPromptContent);
+        RenderSystemPrompt(request.Conversation, results.SystemPromptVariables, request.ChatPromptPersona, request.ChatCustomPromptContent, request.ProjectInstructions);
 
         return results.Settings;
     }

@@ -586,11 +586,15 @@ public abstract class BaseChatService : IChatService
     /// <param name="customPromptContent">
     /// Custom prompt content to use when persona is set to Custom. Ignored for other personas.
     /// </param>
+    /// <param name="projectInstructions">
+    /// Optional project-specific instructions to append to the system prompt.
+    /// </param>
     protected void RenderSystemPrompt(
         AesirConversation conversation,
         Dictionary<string, object> arguments,
         PromptPersona? persona = null,
-        string? customPromptContent = null)
+        string? customPromptContent = null,
+        string? projectInstructions = null)
     {
         // ALWAYS get fresh prompt content from persona (templates may have been updated)
         string promptContent;
@@ -602,6 +606,14 @@ public abstract class BaseChatService : IChatService
         {
             var selectedPrompt = DefaultPromptProvider.Instance.GetSystemPrompt(persona ?? PromptPersona.Business);
             promptContent = selectedPrompt.Content;
+        }
+
+        // Append project-specific instructions if provided
+        if (!string.IsNullOrWhiteSpace(projectInstructions))
+        {
+            promptContent += $"\n\n## Project-Specific Instructions\n\n{projectInstructions}";
+            _logger.LogDebug("[RenderSystemPrompt] Appending project instructions ({Length} chars)",
+                projectInstructions.Length);
         }
 
         // Create or update system message

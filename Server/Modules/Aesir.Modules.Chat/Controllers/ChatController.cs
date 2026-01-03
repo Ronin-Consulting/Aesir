@@ -4,6 +4,7 @@ using Aesir.Common.Models;
 using Aesir.Infrastructure.Models;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Inference.Services;
+using Aesir.Modules.Projects.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -22,6 +23,7 @@ namespace Aesir.Modules.Chat.Controllers
     public class ChatController(
         IServiceProvider serviceProvider,
         IConfigurationService configurationService,
+        IProjectService projectService,
         ILogger<ChatController> logger) : ControllerBase
     {
         /// <summary>
@@ -47,6 +49,16 @@ namespace Aesir.Modules.Chat.Controllers
                      (mcpServers.Any(mcp => mcp.Id == t.McpServerId && mcp.Name == tr.McpServerName)))
                 )).ToList();
 
+            // Fetch project instructions if a project is associated with this request
+            string? projectInstructions = null;
+            if (request.ProjectId.HasValue)
+            {
+                var project = await projectService.GetByIdAsync(request.ProjectId.Value);
+                projectInstructions = project?.Instructions;
+                logger.LogDebug("Project {ProjectId} instructions loaded: {HasInstructions}",
+                    request.ProjectId, !string.IsNullOrWhiteSpace(projectInstructions));
+            }
+
             var chatRequest = new AesirChatRequest()
             {
                 ChatSessionId = request.ChatSessionId,
@@ -63,7 +75,9 @@ namespace Aesir.Modules.Chat.Controllers
                 Tools = filteredTools,
                 ThinkValue = effectiveThinkValue,
                 ChatPromptPersona = agent.ChatPromptPersona,
-                ChatCustomPromptContent = agent.ChatCustomPromptContent
+                ChatCustomPromptContent = agent.ChatCustomPromptContent,
+                ProjectId = request.ProjectId,
+                ProjectInstructions = projectInstructions
             };
 
             // Resolve the correct ChatService based on the agent's inference engine
@@ -99,6 +113,16 @@ namespace Aesir.Modules.Chat.Controllers
                      (mcpServers.Any(mcp => mcp.Id == t.McpServerId && mcp.Name == tr.McpServerName)))
                 )).ToList();
 
+            // Fetch project instructions if a project is associated with this request
+            string? projectInstructions = null;
+            if (request.ProjectId.HasValue)
+            {
+                var project = await projectService.GetByIdAsync(request.ProjectId.Value);
+                projectInstructions = project?.Instructions;
+                logger.LogDebug("Project {ProjectId} instructions loaded: {HasInstructions}",
+                    request.ProjectId, !string.IsNullOrWhiteSpace(projectInstructions));
+            }
+
             var chatRequest = new AesirChatRequest()
             {
                 ChatSessionId = request.ChatSessionId,
@@ -115,7 +139,9 @@ namespace Aesir.Modules.Chat.Controllers
                 Tools = filteredTools,
                 ThinkValue = effectiveThinkValue,
                 ChatPromptPersona = agent.ChatPromptPersona,
-                ChatCustomPromptContent = agent.ChatCustomPromptContent
+                ChatCustomPromptContent = agent.ChatCustomPromptContent,
+                ProjectId = request.ProjectId,
+                ProjectInstructions = projectInstructions
             };
 
             // Resolve the correct ChatService based on the agent's inference engine

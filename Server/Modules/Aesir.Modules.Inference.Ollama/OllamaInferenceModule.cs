@@ -191,6 +191,8 @@ public class OllamaInferenceModule : ModuleBase
             var inferenceLogService = sp.GetService<IInferenceLogService>();
             var conversationDocumentCollectionService =
                 sp.GetService<IConversationDocumentCollectionService>();
+            var globalDocumentCollectionService =
+                sp.GetService<IGlobalDocumentCollectionService>();
 
             var ollamaApiClient = sp.GetRequiredKeyedService<OllamaApiClient>(inferenceEngineIdKey);
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
@@ -206,7 +208,8 @@ public class OllamaInferenceModule : ModuleBase
                 inferenceLogService,
                 inferenceEngineIdKey,
                 chatHistoryService,
-                conversationDocumentCollectionService
+                conversationDocumentCollectionService,
+                globalDocumentCollectionService
             );
         });
 

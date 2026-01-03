@@ -167,6 +167,8 @@ public class OpenAIInferenceModule : ModuleBase
             var inferenceLogService = sp.GetService<IInferenceLogService>();
             var conversationDocumentCollectionService =
                 sp.GetService<IConversationDocumentCollectionService>();
+            var globalDocumentCollectionService =
+                sp.GetService<IGlobalDocumentCollectionService>();
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
 
             return new ChatService(
@@ -179,7 +181,8 @@ public class OpenAIInferenceModule : ModuleBase
                 inferenceLogService,
                 inferenceEngineIdKey,
                 chatHistoryService,
-                conversationDocumentCollectionService
+                conversationDocumentCollectionService,
+                globalDocumentCollectionService
             );
         });
 

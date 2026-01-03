@@ -50,4 +50,11 @@ public class AesirChatRequestBase : ChatRequestBase
     /// </summary>
     [JsonPropertyName("project_id")]
     public Guid? ProjectId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the project-specific instructions to append to the system prompt.
+    /// This is populated by the server when ProjectId is set.
+    /// </summary>
+    [JsonPropertyName("project_instructions")]
+    public string? ProjectInstructions { get; set; }
 }

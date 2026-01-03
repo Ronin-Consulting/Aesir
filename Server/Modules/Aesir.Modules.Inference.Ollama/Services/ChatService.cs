@@ -42,6 +42,13 @@ public class ChatService : BaseChatService
     private readonly IConversationDocumentCollectionService? _conversationDocumentCollectionService;
 
     /// <summary>
+    /// Service used for managing global document collections (including project documents),
+    /// enabling RAG search functionality for project-scoped documents.
+    /// This service is optional and will be null if no embedding engine is configured.
+    /// </summary>
+    private readonly IGlobalDocumentCollectionService? _globalDocumentCollectionService;
+
+    /// <summary>
     /// An instance of the IKernelPluginService interface, providing access to kernel plugin-related
     /// functionalities used within the chat service for managing extensions or additional behaviors.
     /// </summary>
@@ -87,6 +94,7 @@ public class ChatService : BaseChatService
     /// <param name="inferenceEngineId">The inference engine identifier.</param>
     /// <param name="chatHistoryService">Service for persisting and managing chat history.</param>
     /// <param name="conversationDocumentCollectionService">Service for handling access and search functionalities for documents within conversations.</param>
+    /// <param name="globalDocumentCollectionService">Service for handling global document collections including project documents.</param>
     public ChatService(
         ILogger<ChatService> logger,
         ILoggerFactory loggerFactory,
@@ -98,12 +106,14 @@ public class ChatService : BaseChatService
         IInferenceLogService? inferenceLogService,
         string inferenceEngineId,
         IChatHistoryService chatHistoryService,
-        IConversationDocumentCollectionService? conversationDocumentCollectionService)
+        IConversationDocumentCollectionService? conversationDocumentCollectionService,
+        IGlobalDocumentCollectionService? globalDocumentCollectionService)
         : base(logger, chatHistoryService, kernel, serviceProvider, toolCallBroadcaster, inferenceLogService, inferenceEngineId)
     {
         _loggerFactory = loggerFactory;
         _api = api;
         _conversationDocumentCollectionService = conversationDocumentCollectionService;
+        _globalDocumentCollectionService = globalDocumentCollectionService;
         _kernelPluginService = kernelPluginService;
     }
 
@@ -252,12 +262,12 @@ public class ChatService : BaseChatService
     {
         var settingsBuilderLogger = _loggerFactory.CreateLogger<OllamaPromptExecutionSettingsBuilder>();
         var promptExecutionSettingsBuilder = new OllamaPromptExecutionSettingsBuilder(
-            _kernel, _conversationDocumentCollectionService, _kernelPluginService, settingsBuilderLogger);
+            _kernel, _conversationDocumentCollectionService, _globalDocumentCollectionService, _kernelPluginService, settingsBuilderLogger);
 
         var results =
             await promptExecutionSettingsBuilder.BuildAsync(request);
 
-        RenderSystemPrompt(request.Conversation, results.SystemPromptVariables, request.ChatPromptPersona, request.ChatCustomPromptContent);
+        RenderSystemPrompt(request.Conversation, results.SystemPromptVariables, request.ChatPromptPersona, request.ChatCustomPromptContent, request.ProjectInstructions);
 
         return results.Settings;
     }
