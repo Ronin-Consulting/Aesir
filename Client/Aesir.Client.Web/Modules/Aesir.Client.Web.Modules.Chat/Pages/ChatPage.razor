@@ -9,6 +9,7 @@
 @inject IAgentToolsService AgentToolsService
 @inject IConfigurationApiService ConfigurationService
 @inject IResearchStateService ResearchState
+@inject IResearchSessionApiService ResearchSessionApi
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
@@ -255,6 +256,11 @@
     // Files are added when uploaded and removed after 5 seconds
     private readonly HashSet<string> _recentlyUploadedFiles = new(StringComparer.OrdinalIgnoreCase);
 
+    // Research session cache - stores loaded sessions to avoid repeated API calls
+    // Key: ResearchSessionId, Value: The loaded session
+    private readonly Dictionary<Guid, ResearchSessionBase> _researchSessionCache = new();
+    private readonly HashSet<Guid> _researchSessionsLoading = new(); // Track in-flight loads
+
     // Property to create the streaming message object
     private AesirChatMessage _streamingMessage => new AesirChatMessage
     {
@@ -332,6 +338,7 @@
     /// </summary>
     private void ResetToNewChatState()
     {
+        ClearResearchSessionCache();
         _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
         _hasMessages = false;
         _streamingContent = string.Empty;
@@ -395,11 +402,49 @@
                 await LoadAgentToolsAsync(clearToggles: false);
                 StateHasChanged();
             }
+
+            // Restore any in-progress research session so progress is shown after page refresh
+            if (!ResearchState.IsResearchInProgress)
+            {
+                try
+                {
+                    var restored = await ResearchState.RestoreActiveSessionAsync();
+                    if (restored && ResearchState.ActiveSession != null)
+                    {
+                        Console.WriteLine($"Restored in-progress research session: {ResearchState.ActiveSession.Id}");
+
+                        // Add a placeholder TeamMessage to show progress
+                        // This message was in client memory before refresh but not persisted to server
+                        var existingTeamMessage = _conversation.Messages
+                            .FirstOrDefault(m => m.IsResearchTeamMessage &&
+                                                 m.ResearchSessionId == ResearchState.ActiveSession.Id);
+
+                        if (existingTeamMessage == null)
+                        {
+                            var teamMessage = AesirChatMessage.NewResearchTeamMessage(
+                                $"Research in progress: {ResearchState.ActiveSession.Query}",
+                                ResearchState.ActiveSession.Id,
+                                ResearchState.ActiveSession.ResearchTeamId ?? Guid.Empty,
+                                "Research Team");
+                            _conversation.Messages.Add(teamMessage);
+                            _hasMessages = true;
+                            Console.WriteLine("Added placeholder TeamMessage for restored research session");
+                        }
+
+                        StateHasChanged();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to restore research session: {ex.Message}");
+                }
+            }
         }
     }
 
     private async Task LoadSessionAsync(Guid sessionId)
     {
+        ClearResearchSessionCache();
         _isLoadingSession = true;
         _errorMessage = null;
         StateHasChanged();
@@ -579,6 +624,7 @@
         // This is necessary because this event handler is called from ChatStateService
         await InvokeAsync(async () =>
         {
+            ClearResearchSessionCache();
             _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
             _hasMessages = false;
             _streamingContent = string.Empty;
@@ -1406,19 +1452,67 @@
 
     /// <summary>
     /// Gets the research session associated with a research team message.
-    /// Returns the active session if the message's session ID matches, otherwise null.
+    /// Returns the active session if it matches, cached session if available,
+    /// or triggers a background load for historical messages.
     /// </summary>
     private ResearchSessionBase? GetResearchSessionForMessage(AesirChatMessage message)
     {
         if (!message.IsResearchTeamMessage || !message.ResearchSessionId.HasValue)
             return null;
 
+        var sessionId = message.ResearchSessionId.Value;
+
         // Return active session if it matches this message
-        if (ResearchState.ActiveSession?.Id == message.ResearchSessionId.Value)
+        if (ResearchState.ActiveSession?.Id == sessionId)
             return ResearchState.ActiveSession;
 
-        // For historical messages, we'd need to load from API
-        // For now, return null (UI will show basic message without session details)
+        // Check cache for previously loaded sessions
+        if (_researchSessionCache.TryGetValue(sessionId, out var cachedSession))
+            return cachedSession;
+
+        // Trigger background load if not already loading
+        if (!_researchSessionsLoading.Contains(sessionId))
+        {
+            _researchSessionsLoading.Add(sessionId);
+            _ = LoadResearchSessionAsync(sessionId);
+        }
+
+        // Return null while loading - UI will update when load completes
         return null;
+    }
+
+    /// <summary>
+    /// Loads a research session from the API and caches it.
+    /// Triggers a UI update when complete.
+    /// </summary>
+    private async Task LoadResearchSessionAsync(Guid sessionId)
+    {
+        try
+        {
+            var result = await ResearchSessionApi.GetSessionAsync(sessionId);
+
+            if (result.IsSuccess && result.Value != null)
+            {
+                _researchSessionCache[sessionId] = result.Value;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to load research session {sessionId}: {ex.Message}");
+        }
+        finally
+        {
+            _researchSessionsLoading.Remove(sessionId);
+        }
+    }
+
+    /// <summary>
+    /// Clears the research session cache. Called when switching conversations.
+    /// </summary>
+    private void ClearResearchSessionCache()
+    {
+        _researchSessionCache.Clear();
+        _researchSessionsLoading.Clear();
     }
 }

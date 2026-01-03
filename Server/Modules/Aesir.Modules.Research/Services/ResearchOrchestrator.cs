@@ -173,6 +173,16 @@ public class ResearchOrchestrator : IResearchOrchestrator
         await _sessionRepository.AddAsync(session);
         _logger.LogDebug("[RESEARCH] Session created with ID: {SessionId}", session.Id);
 
+        // Initialize ChatSession immediately so it appears in chat history
+        // This persists the user's query and creates a placeholder title
+        var chatSessionId = await InitializeChatSessionAsync(session, query, userId);
+        if (session.ConversationId != chatSessionId)
+        {
+            session.ConversationId = chatSessionId;
+            await _sessionRepository.UpdateAsync(session);
+            _logger.LogDebug("[RESEARCH] Session updated with ChatSessionId: {ChatSessionId}", chatSessionId);
+        }
+
         // Generate clarification questions (if Chairman exists)
         if (chairman != null)
         {
@@ -209,10 +219,23 @@ public class ResearchOrchestrator : IResearchOrchestrator
         session.UpdatedAt = DateTime.UtcNow;
         await _sessionRepository.UpdateAsync(session);
 
-        _logger.LogDebug("[RESEARCH] === ENTERING ExecuteResearchWorkflowAsync ===");
-        await ExecuteResearchWorkflowAsync(session, researchAgents, progressCallback, cancellationToken);
+        // Fire-and-forget the workflow - don't block the HTTP response
+        // The workflow can take minutes; client will receive updates via SignalR
+        _logger.LogDebug("[RESEARCH] === STARTING ExecuteResearchWorkflowAsync (fire-and-forget) ===");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ExecuteResearchWorkflowAsync(session, researchAgents, progressCallback, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RESEARCH] Background workflow failed for session {SessionId}", session.Id);
+                // Error is already handled and broadcast within ExecuteResearchWorkflowAsync
+            }
+        });
 
-        _logger.LogDebug("[RESEARCH] === StartResearchAsync COMPLETE ===");
+        _logger.LogDebug("[RESEARCH] === StartResearchAsync COMPLETE (workflow running in background) ===");
         return session;
     }
 
@@ -271,8 +294,21 @@ public class ResearchOrchestrator : IResearchOrchestrator
 
         await _sessionRepository.UpdateAsync(session);
 
-        // Continue with research workflow
-        await ExecuteResearchWorkflowAsync(session, researchAgents, progressCallback, cancellationToken);
+        // Fire-and-forget the workflow - don't block the HTTP response
+        // The workflow can take minutes; client will receive updates via SignalR
+        _logger.LogDebug("[RESEARCH] === STARTING ExecuteResearchWorkflowAsync (fire-and-forget) ===");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ExecuteResearchWorkflowAsync(session, researchAgents, progressCallback, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RESEARCH] Background workflow failed for session {SessionId}", session.Id);
+                // Error is already handled and broadcast within ExecuteResearchWorkflowAsync
+            }
+        });
     }
 
     /// <inheritdoc />
@@ -474,9 +510,13 @@ public class ResearchOrchestrator : IResearchOrchestrator
             _logger.LogDebug("[RESEARCH-WORKFLOW] Broadcasting completion");
             await _progressBroadcaster.BroadcastCompletionAsync(session.Id, report.Id);
 
-            // Add research report to ChatSession for persistence and conversation continuity
+            // Update ChatSession with synthesized title and add the research report
             if (session.ConversationId.HasValue)
             {
+                // Update the placeholder title with the final synthesized title
+                await UpdateChatSessionTitleAsync(session.ConversationId.Value, report.Title);
+
+                // Add the research report as a message
                 await AddReportToChatSessionAsync(session, report);
             }
 
@@ -553,6 +593,94 @@ public class ResearchOrchestrator : IResearchOrchestrator
     }
 
     /// <summary>
+    /// Generates a placeholder title from the research query.
+    /// </summary>
+    private static string GenerateInitialTitle(string query)
+    {
+        var cleanQuery = query.Trim();
+        if (cleanQuery.Length > 50)
+            cleanQuery = cleanQuery[..47] + "...";
+        return $"Research: {cleanQuery}";
+    }
+
+    /// <summary>
+    /// Initializes a ChatSession for a research session immediately.
+    /// This ensures the user's query is persisted and the session appears in chat history right away.
+    /// </summary>
+    /// <param name="session">The research session.</param>
+    /// <param name="query">The original research query.</param>
+    /// <param name="userId">The user ID.</param>
+    /// <returns>The ID of the created/updated ChatSession.</returns>
+    private async Task<Guid> InitializeChatSessionAsync(ResearchSession session, string query, string userId)
+    {
+        var chatSessionId = session.ConversationId ?? Guid.NewGuid();
+
+        _logger.LogDebug("[RESEARCH-CHAT] Initializing ChatSession {ChatSessionId} for research session {SessionId}",
+            chatSessionId, session.Id);
+
+        // Generate placeholder title from query
+        var title = GenerateInitialTitle(query);
+
+        // Create user message with original query
+        var userMessage = AesirChatMessage.NewUserMessage(query);
+
+        // Create ChatSession with user's query as first message
+        var chatSession = new ResearchChatSession
+        {
+            Id = chatSessionId,
+            UserId = userId,
+            Title = title,
+            Conversation = new AesirConversation
+            {
+                Id = Guid.NewGuid().ToString(),
+                Messages = [userMessage]
+            },
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        // Persist immediately so it appears in chat history
+        await _chatHistoryService.UpsertChatSessionAsync(chatSession);
+
+        _logger.LogInformation("[RESEARCH-CHAT] ChatSession {ChatSessionId} created with title '{Title}'",
+            chatSessionId, title);
+
+        return chatSessionId;
+    }
+
+    /// <summary>
+    /// Updates the ChatSession title with the final synthesized title from the report.
+    /// </summary>
+    /// <param name="chatSessionId">The ChatSession ID.</param>
+    /// <param name="newTitle">The new title from the research report.</param>
+    private async Task UpdateChatSessionTitleAsync(Guid chatSessionId, string newTitle)
+    {
+        try
+        {
+            var chatSession = await _chatHistoryService.GetChatSessionAsync(chatSessionId);
+            if (chatSession != null)
+            {
+                chatSession.Title = newTitle;
+                chatSession.UpdatedAt = DateTimeOffset.UtcNow;
+                await _chatHistoryService.UpsertChatSessionAsync(chatSession);
+
+                _logger.LogDebug("[RESEARCH-CHAT] Updated ChatSession {ChatSessionId} title to '{Title}'",
+                    chatSessionId, newTitle);
+            }
+            else
+            {
+                _logger.LogWarning("[RESEARCH-CHAT] ChatSession {ChatSessionId} not found when updating title",
+                    chatSessionId);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Don't fail the research if title update fails
+            _logger.LogError(ex, "[RESEARCH-CHAT] Failed to update ChatSession {ChatSessionId} title", chatSessionId);
+        }
+    }
+
+    /// <summary>
     /// Adds the research report as an assistant message to the linked ChatSession.
     /// This enables:
     /// - Persistence in chat history sidebar
@@ -571,12 +699,13 @@ public class ResearchOrchestrator : IResearchOrchestrator
         {
             _logger.LogDebug("[RESEARCH-CHAT] Adding report to ChatSession {ConversationId}", session.ConversationId);
 
-            // Get the existing ChatSession
+            // Get the existing ChatSession - it should already exist from InitializeChatSessionAsync
             var chatSession = await _chatHistoryService.GetChatSessionAsync(session.ConversationId.Value);
             if (chatSession == null)
             {
-                _logger.LogWarning("[RESEARCH-CHAT] ChatSession {ConversationId} not found, cannot add report",
-                    session.ConversationId);
+                // This shouldn't happen - ChatSession should have been created at research start
+                _logger.LogWarning("[RESEARCH-CHAT] ChatSession {ConversationId} not found when adding report - " +
+                    "this indicates the session wasn't properly initialized", session.ConversationId);
                 return;
             }
 

@@ -617,9 +617,9 @@ public abstract class BaseChatService : Aesir.Infrastructure.Services.IChatServi
         var systemPromptTemplate = new PromptTemplate(systemPromptMessage.Content);
         systemPromptMessage.Content = systemPromptTemplate.Render(arguments);
 
-        _logger.LogDebug("[RenderSystemPrompt] Persona: {Persona}, Final rendered system prompt:\n{SystemPrompt}",
-            persona?.ToString() ?? "Default (Business)",
-            systemPromptMessage.Content);
+        // _logger.LogDebug("[RenderSystemPrompt] Persona: {Persona}, Final rendered system prompt:\n{SystemPrompt}",
+        //     persona?.ToString() ?? "Default (Business)",
+        //     systemPromptMessage.Content);
     }
 
     /// <summary>

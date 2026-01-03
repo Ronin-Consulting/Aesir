@@ -138,7 +138,7 @@ public class ResearchPhaseProgress
 public class ResearchPhaseExecutor : IResearchPhaseExecutor
 {
     private readonly ILogger<ResearchPhaseExecutor> _logger;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IHubContext<ResearchHub> _hubContext;
     private readonly IConfigurationService _configurationService;
     private readonly IAnonymizationService _anonymizationService;
@@ -148,7 +148,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
 
     public ResearchPhaseExecutor(
         ILogger<ResearchPhaseExecutor> logger,
-        IServiceProvider serviceProvider,
+        IServiceScopeFactory scopeFactory,
         IHubContext<ResearchHub> hubContext,
         IConfigurationService configurationService,
         IAnonymizationService anonymizationService,
@@ -157,7 +157,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         IScoringCalculator scoringCalculator)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
+        _scopeFactory = scopeFactory;
         _hubContext = hubContext;
         _configurationService = configurationService;
         _anonymizationService = anonymizationService;
@@ -174,7 +174,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         Func<ResearchPhaseProgress, Task>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting planning phase for session {SessionId} with {Count} agents",
+        _logger.LogInformation("Starting planning phase for session {SessionId} with {Count} agents (sequential, non-streaming)",
             session.Id, agents.Count);
 
         var plans = new Dictionary<Guid, string>();
@@ -193,35 +193,30 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             });
         }
 
-        // Track completion with progress updates
-        var completionLock = new object();
-        var tasks = new List<Task<(Guid TeamMemberId, string Plan)>>();
-
+        // Execute agents sequentially to avoid overloading the inference engine
         foreach (var agent in researchAgents)
         {
-            tasks.Add(ExecuteAgentPlanningWithProgressAsync(
-                session, agent, refinedQuery, progressCallback,
-                () =>
-                {
-                    int completed;
-                    lock (completionLock)
-                    {
-                        completedCount++;
-                        completed = completedCount;
-                    }
-                    return (completed, totalCount);
-                },
-                cancellationToken));
-        }
+            cancellationToken.ThrowIfCancellationRequested();
 
-        // Wait for all planning to complete
-        var results = await Task.WhenAll(tasks);
+            var (teamMemberId, plan) = await ExecuteAgentPlanningAsync(
+                session, agent, refinedQuery, progressCallback, cancellationToken);
 
-        foreach (var (teamMemberId, plan) in results)
-        {
             if (!string.IsNullOrEmpty(plan))
             {
                 plans[teamMemberId] = plan;
+            }
+
+            // Update progress after each agent completes
+            completedCount++;
+            if (progressCallback != null)
+            {
+                var percentComplete = (completedCount * 100) / totalCount;
+                await progressCallback(new ResearchPhaseProgress
+                {
+                    Phase = ResearchPhase.Planning,
+                    Message = $"Planning: {completedCount} of {totalCount} agents completed",
+                    PercentComplete = percentComplete
+                });
             }
         }
 
@@ -242,37 +237,6 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         return plans;
     }
 
-    /// <summary>
-    /// Wrapper that executes agent planning and broadcasts overall progress on completion.
-    /// </summary>
-    private async Task<(Guid TeamMemberId, string Plan)> ExecuteAgentPlanningWithProgressAsync(
-        ResearchSession session,
-        ResearchAgent agent,
-        string refinedQuery,
-        Func<ResearchPhaseProgress, Task>? progressCallback,
-        Func<(int completed, int total)> getProgress,
-        CancellationToken cancellationToken)
-    {
-        var result = await ExecuteAgentPlanningStreamedAsync(
-            session, agent, refinedQuery, progressCallback, cancellationToken);
-
-        // Broadcast overall progress after this agent completes
-        if (progressCallback != null)
-        {
-            var (completed, total) = getProgress();
-            var percentComplete = (completed * 100) / total;
-
-            await progressCallback(new ResearchPhaseProgress
-            {
-                Phase = ResearchPhase.Planning,
-                Message = $"Planning: {completed} of {total} agents completed",
-                PercentComplete = percentComplete
-            });
-        }
-
-        return result;
-    }
-
     /// <inheritdoc />
     public async Task<List<ResearchSubmission>> ExecuteResearchPhaseAsync(
         ResearchSession session,
@@ -282,7 +246,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         Func<ResearchPhaseProgress, Task>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting research phase for session {SessionId} with {Count} agents",
+        _logger.LogInformation("Starting research phase for session {SessionId} with {Count} agents (sequential, non-streaming)",
             session.Id, agents.Count);
 
         var submissions = new List<ResearchSubmission>();
@@ -301,37 +265,32 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             });
         }
 
-        // Track completion with progress updates
-        var completionLock = new object();
-        var tasks = new List<Task<ResearchSubmission?>>();
-
+        // Execute agents sequentially to avoid overloading the inference engine
         foreach (var agent in researchAgents)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var plan = agentPlans.TryGetValue(agent.TeamMemberId, out var p) ? p : "";
 
-            tasks.Add(ExecuteAgentResearchWithProgressAsync(
-                session, agent, refinedQuery, plan, progressCallback,
-                () =>
-                {
-                    int completed;
-                    lock (completionLock)
-                    {
-                        completedCount++;
-                        completed = completedCount;
-                    }
-                    return (completed, totalCount);
-                },
-                cancellationToken));
-        }
+            var submission = await ExecuteAgentResearchAsync(
+                session, agent, refinedQuery, plan, progressCallback, cancellationToken);
 
-        // Wait for all research to complete
-        var results = await Task.WhenAll(tasks);
-
-        foreach (var submission in results)
-        {
             if (submission != null)
             {
                 submissions.Add(submission);
+            }
+
+            // Update progress after each agent completes
+            completedCount++;
+            if (progressCallback != null)
+            {
+                var percentComplete = (completedCount * 100) / totalCount;
+                await progressCallback(new ResearchPhaseProgress
+                {
+                    Phase = ResearchPhase.Research,
+                    Message = $"Research: {completedCount} of {totalCount} agents completed",
+                    PercentComplete = percentComplete
+                });
             }
         }
 
@@ -353,57 +312,23 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
     }
 
     /// <summary>
-    /// Wrapper that executes agent research and broadcasts overall progress on completion.
+    /// Executes planning for a single agent using non-streaming chat completion.
     /// </summary>
-    private async Task<ResearchSubmission?> ExecuteAgentResearchWithProgressAsync(
-        ResearchSession session,
-        ResearchAgent agent,
-        string refinedQuery,
-        string plan,
-        Func<ResearchPhaseProgress, Task>? progressCallback,
-        Func<(int completed, int total)> getProgress,
-        CancellationToken cancellationToken)
-    {
-        var result = await ExecuteAgentResearchStreamedAsync(
-            session, agent, refinedQuery, plan, progressCallback, cancellationToken);
-
-        // Broadcast overall progress after this agent completes
-        if (progressCallback != null)
-        {
-            var (completed, total) = getProgress();
-            var percentComplete = (completed * 100) / total;
-
-            await progressCallback(new ResearchPhaseProgress
-            {
-                Phase = ResearchPhase.Research,
-                Message = $"Research: {completed} of {total} agents completed",
-                PercentComplete = percentComplete
-            });
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Executes planning for a single agent using streaming, broadcasting updates via SignalR.
-    /// </summary>
-    private async Task<(Guid TeamMemberId, string Plan)> ExecuteAgentPlanningStreamedAsync(
+    private async Task<(Guid TeamMemberId, string Plan)> ExecuteAgentPlanningAsync(
         ResearchSession session,
         ResearchAgent agent,
         string refinedQuery,
         Func<ResearchPhaseProgress, Task>? progressCallback,
         CancellationToken cancellationToken)
     {
-        _logger.LogDebug("[PHASE-EXEC-PLANNING] === ExecuteAgentPlanningStreamedAsync START ===");
+        _logger.LogDebug("[PHASE-EXEC-PLANNING] === ExecuteAgentPlanningAsync START ===");
         _logger.LogDebug("[PHASE-EXEC-PLANNING] Agent: {Role} ({RoleName})", agent.Role, agent.RoleName);
         _logger.LogDebug("[PHASE-EXEC-PLANNING] SessionId: {SessionId}", session.Id);
-        _logger.LogDebug("[PHASE-EXEC-PLANNING] Query (first 100 chars): {Query}",
-            refinedQuery.Length > 100 ? refinedQuery[..100] + "..." : refinedQuery);
 
+        IServiceScope? serviceScope = null;
         try
         {
-            // Notify phase change
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] Sending AgentPhaseChanged via SignalR");
+            // Notify phase change via SignalR
             await _hubContext.SendAgentPhaseChangedAsync(
                 session.Id, agent.TeamMemberId, agent.Role, "planning",
                 $"{agent.RoleName} is creating research plan...");
@@ -411,7 +336,6 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             // Report start via callback
             if (progressCallback != null)
             {
-                _logger.LogDebug("[PHASE-EXEC-PLANNING] Invoking progress callback (start)");
                 await progressCallback(new ResearchPhaseProgress
                 {
                     Phase = ResearchPhase.Planning,
@@ -423,47 +347,36 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             }
 
             // Get the chat service for this agent's inference engine
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] Getting chat service for agent...");
-            var chatService = GetChatServiceForAgent(agent);
+            var (chatService, scope) = GetChatServiceForAgent(agent);
+            serviceScope = scope;
             if (chatService == null)
             {
-                _logger.LogWarning("[PHASE-EXEC-PLANNING] FAILED: No chat service found for agent {Role} with inference engine {EngineId}",
+                _logger.LogWarning("[PHASE-EXEC-PLANNING] No chat service found for agent {Role} with inference engine {EngineId}",
                     agent.Role, agent.InferenceEngineId);
-                _logger.LogWarning("[PHASE-EXEC-PLANNING] RETURNING EMPTY PLAN - Agent cannot make LLM calls!");
                 return (agent.TeamMemberId, "");
             }
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] Chat service obtained: {ServiceType}", chatService.GetType().Name);
 
             // Build the planning prompt
             var planningPrompt = agent.PlanningPrompt?
                 .Replace("{{QUERY}}", refinedQuery)
                 ?? $"Create a research plan for: {refinedQuery}";
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] Planning prompt length: {Length} chars", planningPrompt.Length);
 
-            // Create the chat request with tools and thinking enabled
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] Creating chat request...");
+            // Create the chat request
             var request = await CreateChatRequestAsync(agent, planningPrompt);
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] Chat request created:");
-            _logger.LogDebug("[PHASE-EXEC-PLANNING]   Model: {Model}", request.Model);
-            _logger.LogDebug("[PHASE-EXEC-PLANNING]   Temperature: {Temperature}", request.Temperature);
-            _logger.LogDebug("[PHASE-EXEC-PLANNING]   MaxTokens: {MaxTokens}", request.MaxTokens);
-            _logger.LogDebug("[PHASE-EXEC-PLANNING]   ToolCount: {ToolCount}", request.Tools?.Count ?? 0);
-            _logger.LogDebug("[PHASE-EXEC-PLANNING]   EnableThinking: {EnableThinking}", request.EnableThinking);
+            _logger.LogDebug("[PHASE-EXEC-PLANNING] Sending non-streaming planning request to LLM for agent {Role}", agent.Role);
 
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] Sending streaming planning request to LLM...");
+            // Execute non-streaming LLM call
+            var result = await chatService.ChatCompletionsAsync(request);
 
-            // Execute streaming LLM call and broadcast updates
-            var (content, toolCalls) = await StreamChatCompletionAsync(
-                session, agent, chatService, request, cancellationToken);
+            // Extract the assistant's response from the conversation
+            var content = ExtractAssistantResponse(result);
 
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] LLM response received:");
-            _logger.LogDebug("[PHASE-EXEC-PLANNING]   ContentLength: {Length} chars", content.Length);
-            _logger.LogDebug("[PHASE-EXEC-PLANNING]   ToolCallCount: {ToolCount}", toolCalls.Count);
+            _logger.LogDebug("[PHASE-EXEC-PLANNING] Agent {Role} created plan with {Length} characters",
+                agent.Role, content.Length);
 
             // Report completion via callback
             if (progressCallback != null)
             {
-                _logger.LogDebug("[PHASE-EXEC-PLANNING] Invoking progress callback (complete)");
                 await progressCallback(new ResearchPhaseProgress
                 {
                     Phase = ResearchPhase.Planning,
@@ -475,25 +388,24 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 });
             }
 
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] Agent {Role} created plan with {Length} characters, {ToolCount} tool calls",
-                agent.Role, content.Length, toolCalls.Count);
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] === ExecuteAgentPlanningStreamedAsync COMPLETE ===");
-
+            _logger.LogDebug("[PHASE-EXEC-PLANNING] === ExecuteAgentPlanningAsync COMPLETE ===");
             return (agent.TeamMemberId, content);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[PHASE-EXEC-PLANNING] ERROR during planning for agent {Role}", agent.Role);
-            _logger.LogError("[PHASE-EXEC-PLANNING] Exception type: {ExType}", ex.GetType().Name);
-            _logger.LogError("[PHASE-EXEC-PLANNING] Exception message: {ExMessage}", ex.Message);
+            _logger.LogError(ex, "[PHASE-EXEC-PLANNING] Error during planning for agent {Role}", agent.Role);
             return (agent.TeamMemberId, "");
+        }
+        finally
+        {
+            serviceScope?.Dispose();
         }
     }
 
     /// <summary>
-    /// Executes research for a single agent using streaming, broadcasting updates via SignalR.
+    /// Executes research for a single agent using non-streaming chat completion.
     /// </summary>
-    private async Task<ResearchSubmission?> ExecuteAgentResearchStreamedAsync(
+    private async Task<ResearchSubmission?> ExecuteAgentResearchAsync(
         ResearchSession session,
         ResearchAgent agent,
         string refinedQuery,
@@ -501,9 +413,14 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         Func<ResearchPhaseProgress, Task>? progressCallback,
         CancellationToken cancellationToken)
     {
+        _logger.LogDebug("[PHASE-EXEC-RESEARCH] === ExecuteAgentResearchAsync START ===");
+        _logger.LogDebug("[PHASE-EXEC-RESEARCH] Agent: {Role} ({RoleName})", agent.Role, agent.RoleName);
+        _logger.LogDebug("[PHASE-EXEC-RESEARCH] SessionId: {SessionId}", session.Id);
+
+        IServiceScope? serviceScope = null;
         try
         {
-            // Notify phase change
+            // Notify phase change via SignalR
             await _hubContext.SendAgentPhaseChangedAsync(
                 session.Id, agent.TeamMemberId, agent.Role, "researching",
                 $"{agent.RoleName} is researching...");
@@ -522,10 +439,11 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             }
 
             // Get the chat service for this agent's inference engine
-            var chatService = GetChatServiceForAgent(agent);
+            var (chatService, scope) = GetChatServiceForAgent(agent);
+            serviceScope = scope;
             if (chatService == null)
             {
-                _logger.LogWarning("No chat service found for agent {Role} with inference engine {EngineId}",
+                _logger.LogWarning("[PHASE-EXEC-RESEARCH] No chat service found for agent {Role} with inference engine {EngineId}",
                     agent.Role, agent.InferenceEngineId);
                 return CreateFailedSubmission(session, agent, plan);
             }
@@ -539,16 +457,17 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 .Replace("{{REFINED_CONTEXT}}", refinedContext)
                 ?? $"Research the following query: {refinedQuery}\n\nContext:\n{refinedContext}";
 
-            // Create the chat request with tools and thinking enabled
+            // Create the chat request
             var request = await CreateChatRequestAsync(agent, researchPrompt);
+            _logger.LogDebug("[PHASE-EXEC-RESEARCH] Sending non-streaming research request to LLM for agent {Role}", agent.Role);
 
-            _logger.LogDebug("Sending streaming research request to LLM for agent {Role}", agent.Role);
+            // Execute non-streaming LLM call
+            var result = await chatService.ChatCompletionsAsync(request);
 
-            // Execute streaming LLM call and broadcast updates
-            var (content, toolCalls) = await StreamChatCompletionAsync(
-                session, agent, chatService, request, cancellationToken);
+            // Extract the assistant's response from the conversation
+            var content = ExtractAssistantResponse(result);
 
-            // Create submission
+            // Create submission (tool calls are not tracked in non-streaming mode)
             var submission = new ResearchSubmission
             {
                 Id = Guid.NewGuid(),
@@ -559,10 +478,13 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 Content = content,
                 Status = string.IsNullOrEmpty(content) ? SubmissionStatus.Failed : SubmissionStatus.Completed,
                 Sources = [],
-                ToolCalls = toolCalls,
+                ToolCalls = [], // Tool calls handled internally by ChatCompletionsAsync
                 CreatedAt = DateTime.UtcNow,
                 CompletedAt = DateTime.UtcNow
             };
+
+            _logger.LogDebug("[PHASE-EXEC-RESEARCH] Agent {Role} created submission with {Length} characters",
+                agent.Role, content.Length);
 
             // Report completion via callback
             if (progressCallback != null)
@@ -578,124 +500,30 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 });
             }
 
-            _logger.LogDebug("Agent {Role} created submission with {Length} characters, {ToolCount} tool calls",
-                agent.Role, content.Length, toolCalls.Count);
-
+            _logger.LogDebug("[PHASE-EXEC-RESEARCH] === ExecuteAgentResearchAsync COMPLETE ===");
             return submission;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during research for agent {Role}", agent.Role);
+            _logger.LogError(ex, "[PHASE-EXEC-RESEARCH] Error during research for agent {Role}", agent.Role);
             return null;
+        }
+        finally
+        {
+            serviceScope?.Dispose();
         }
     }
 
     /// <summary>
-    /// Streams a chat completion, broadcasting thinking, content, and tool calls via SignalR.
-    /// Returns the accumulated content and tool calls.
+    /// Extracts the assistant's response content from a chat result.
     /// </summary>
-    private async Task<(string Content, List<ResearchToolCall> ToolCalls)> StreamChatCompletionAsync(
-        ResearchSession session,
-        ResearchAgent agent,
-        IChatService chatService,
-        AesirChatRequestBase request,
-        CancellationToken cancellationToken)
+    private static string ExtractAssistantResponse(AesirChatResult result)
     {
-        _logger.LogDebug("[PHASE-EXEC-STREAM] === StreamChatCompletionAsync START ===");
-        _logger.LogDebug("[PHASE-EXEC-STREAM] Agent: {Role}, Session: {SessionId}", agent.Role, session.Id);
-        _logger.LogDebug("[PHASE-EXEC-STREAM] ChatService type: {ServiceType}", chatService.GetType().FullName);
+        // Get the last assistant message from the conversation
+        var assistantMessage = result.AesirConversation?.Messages?
+            .LastOrDefault(m => m.Role == "assistant");
 
-        var contentBuilder = new StringBuilder();
-        var thinkingBuilder = new StringBuilder();
-        var toolCalls = new List<ResearchToolCall>();
-        var chunkCount = 0;
-        var thinkingChunks = 0;
-        var contentChunks = 0;
-        var toolCallChunks = 0;
-
-        try
-        {
-            _logger.LogDebug("[PHASE-EXEC-STREAM] Starting to enumerate ChatCompletionsStreamedAsync...");
-
-            await foreach (var chunk in chatService.ChatCompletionsStreamedAsync(request)
-                .WithCancellation(cancellationToken))
-            {
-                chunkCount++;
-
-                // Handle thinking/reasoning content
-                if (chunk.IsThinking && chunk.Delta?.Content != null)
-                {
-                    thinkingChunks++;
-                    thinkingBuilder.Append(chunk.Delta.Content);
-                    await _hubContext.SendAgentThinkingAsync(
-                        session.Id, agent.TeamMemberId, agent.Role, chunk.Delta.Content);
-                }
-                // Handle tool calls
-                else if (chunk.ToolCall != null)
-                {
-                    toolCallChunks++;
-                    if (chunk.EventType == StreamEventType.ToolCallStart)
-                    {
-                        _logger.LogDebug("[PHASE-EXEC-STREAM] Tool call starting: {ToolName}",
-                            chunk.ToolCall.FunctionName);
-                        await _hubContext.SendAgentToolCallStartAsync(
-                            session.Id, agent.TeamMemberId, agent.Role,
-                            chunk.ToolCall.ToolCallId ?? "",
-                            chunk.ToolCall.FunctionName ?? "",
-                            chunk.ToolCall.PluginName,
-                            chunk.ToolCall.Arguments);
-                    }
-                    else if (chunk.EventType == StreamEventType.ToolCallResult)
-                    {
-                        _logger.LogDebug("[PHASE-EXEC-STREAM] Tool call result: {ToolName}, Status: {Status}",
-                            chunk.ToolCall.FunctionName, chunk.ToolCall.Status);
-                        // Convert AesirToolCallInfo to ResearchToolCall
-                        toolCalls.Add(new ResearchToolCall
-                        {
-                            ToolName = chunk.ToolCall.FunctionName ?? "",
-                            Input = chunk.ToolCall.Arguments != null
-                                ? System.Text.Json.JsonSerializer.Serialize(chunk.ToolCall.Arguments)
-                                : null,
-                            Output = chunk.ToolCall.Result,
-                            DurationMs = chunk.ToolCall.DurationMs,
-                            Timestamp = chunk.ToolCall.StartedAt.UtcDateTime
-                        });
-                        await _hubContext.SendAgentToolCallResultAsync(
-                            session.Id, agent.TeamMemberId, agent.Role,
-                            chunk.ToolCall.ToolCallId ?? "",
-                            chunk.ToolCall.FunctionName ?? "",
-                            chunk.ToolCall.Result,
-                            chunk.ToolCall.Status == ToolCallStatus.Completed);
-                    }
-                }
-                // Handle regular content
-                else if (chunk.Delta?.Content != null)
-                {
-                    contentChunks++;
-                    contentBuilder.Append(chunk.Delta.Content);
-                    await _hubContext.SendAgentContentAsync(
-                        session.Id, agent.TeamMemberId, agent.Role, chunk.Delta.Content);
-                }
-            }
-
-            _logger.LogDebug("[PHASE-EXEC-STREAM] Stream enumeration complete:");
-            _logger.LogDebug("[PHASE-EXEC-STREAM]   Total chunks: {Total}", chunkCount);
-            _logger.LogDebug("[PHASE-EXEC-STREAM]   Thinking chunks: {Thinking}", thinkingChunks);
-            _logger.LogDebug("[PHASE-EXEC-STREAM]   Content chunks: {Content}", contentChunks);
-            _logger.LogDebug("[PHASE-EXEC-STREAM]   Tool call chunks: {ToolCalls}", toolCallChunks);
-            _logger.LogDebug("[PHASE-EXEC-STREAM]   Final content length: {Length} chars", contentBuilder.Length);
-            _logger.LogDebug("[PHASE-EXEC-STREAM]   Final thinking length: {Length} chars", thinkingBuilder.Length);
-            _logger.LogDebug("[PHASE-EXEC-STREAM] === StreamChatCompletionAsync COMPLETE ===");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[PHASE-EXEC-STREAM] ERROR during stream enumeration");
-            _logger.LogError("[PHASE-EXEC-STREAM]   Chunks received before error: {Count}", chunkCount);
-            _logger.LogError("[PHASE-EXEC-STREAM]   Content accumulated: {Length} chars", contentBuilder.Length);
-            throw;
-        }
-
-        return (contentBuilder.ToString(), toolCalls);
+        return assistantMessage?.Content ?? string.Empty;
     }
 
     /// <inheritdoc />
@@ -899,8 +727,12 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
 
     /// <summary>
     /// Resolves the IChatService for a research agent based on its inference engine ID.
+    /// Creates a new DI scope that must be disposed by the caller when done using the service.
+    /// This is necessary because research runs in a background task after the HTTP request scope is disposed.
     /// </summary>
-    private IChatService? GetChatServiceForAgent(ResearchAgent agent)
+    /// <returns>A tuple containing the chat service and its scope. Both will be null if service cannot be resolved.
+    /// The caller MUST dispose the scope when finished using the service.</returns>
+    private (IChatService? Service, IServiceScope? Scope) GetChatServiceForAgent(ResearchAgent agent)
     {
         _logger.LogDebug("[PHASE-EXEC] GetChatServiceForAgent called for {Role}", agent.Role);
         _logger.LogDebug("[PHASE-EXEC]   BaseAgentId: {BaseAgentId}", agent.BaseAgentId);
@@ -911,26 +743,28 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         {
             _logger.LogWarning("[PHASE-EXEC] FAILURE: Agent {Role} has no inference engine ID configured", agent.Role);
             _logger.LogWarning("[PHASE-EXEC]   This agent will NOT be able to perform LLM calls!");
-            return null;
+            return (null, null);
         }
 
+        // Create a new scope for this operation - this is critical for background tasks
+        // where the original HTTP request scope may be disposed
+        var scope = _scopeFactory.CreateScope();
         var engineIdKey = agent.InferenceEngineId.Value.ToString();
         _logger.LogDebug("[PHASE-EXEC] Attempting to get keyed service IChatService with key: '{EngineIdKey}'", engineIdKey);
 
-        var chatService = _serviceProvider.GetKeyedService<IChatService>(engineIdKey);
+        var chatService = scope.ServiceProvider.GetKeyedService<IChatService>(engineIdKey);
 
         if (chatService == null)
         {
             _logger.LogWarning("[PHASE-EXEC] FAILURE: No IChatService found for inference engine ID: {EngineId}", agent.InferenceEngineId);
             _logger.LogWarning("[PHASE-EXEC]   Available keyed services might not include this engine!");
             _logger.LogWarning("[PHASE-EXEC]   Check that the inference engine module registered correctly.");
-        }
-        else
-        {
-            _logger.LogDebug("[PHASE-EXEC] SUCCESS: IChatService resolved: {ServiceType}", chatService.GetType().Name);
+            scope.Dispose();
+            return (null, null);
         }
 
-        return chatService;
+        _logger.LogDebug("[PHASE-EXEC] SUCCESS: IChatService resolved: {ServiceType}", chatService.GetType().Name);
+        return (chatService, scope);
     }
 
     /// <summary>

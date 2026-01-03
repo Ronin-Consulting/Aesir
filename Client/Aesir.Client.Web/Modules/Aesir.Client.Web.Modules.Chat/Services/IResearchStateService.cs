@@ -7,7 +7,7 @@ namespace Aesir.Client.Web.Modules.Chat.Services;
 /// Service for managing research state during a chat session.
 /// Tracks active research sessions and provides progress updates.
 /// </summary>
-public interface IResearchStateService
+public interface IResearchStateService : IDisposable
 {
     /// <summary>
     /// The currently active research session, if any.
@@ -113,4 +113,11 @@ public interface IResearchStateService
     /// Clears the active session.
     /// </summary>
     void ClearSession();
+
+    /// <summary>
+    /// Restores an active research session if one exists for the current user.
+    /// Called on page load to resume viewing in-progress research.
+    /// </summary>
+    /// <returns>True if an active session was restored.</returns>
+    Task<bool> RestoreActiveSessionAsync();
 }

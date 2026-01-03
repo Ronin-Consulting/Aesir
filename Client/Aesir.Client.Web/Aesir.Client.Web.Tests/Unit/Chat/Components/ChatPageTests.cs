@@ -23,6 +23,7 @@ public class ChatPageTests : TestContext
     private readonly Mock<IDocumentApiService> _mockDocumentApiService;
     private readonly Mock<IResearchStateService> _mockResearchStateService;
     private readonly Mock<IResearchTeamApiService> _mockResearchTeamApiService;
+    private readonly Mock<IResearchSessionApiService> _mockResearchSessionApiService;
 
     public ChatPageTests()
     {
@@ -37,6 +38,7 @@ public class ChatPageTests : TestContext
         _mockDocumentApiService = new Mock<IDocumentApiService>();
         _mockResearchStateService = new Mock<IResearchStateService>();
         _mockResearchTeamApiService = new Mock<IResearchTeamApiService>();
+        _mockResearchSessionApiService = new Mock<IResearchSessionApiService>();
 
         // Setup default return for research teams
         _mockResearchTeamApiService.Setup(x => x.GetTeamsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -55,6 +57,7 @@ public class ChatPageTests : TestContext
         Services.AddSingleton(_mockDocumentApiService.Object);
         Services.AddSingleton(_mockResearchStateService.Object);
         Services.AddSingleton(_mockResearchTeamApiService.Object);
+        Services.AddSingleton(_mockResearchSessionApiService.Object);
         Services.AddSingleton<IMarkdownService, MarkdownService>();
         Services.AddMudServices();
 
