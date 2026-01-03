@@ -31,11 +31,11 @@ public sealed class ReasoningContentHandler_Stopgap : DelegatingHandler
         var collector = ReasoningContentCollector_Stopgap.Current.Value;
         if (collector == null)
         {
-            _logger?.LogDebug("[Stopgap] No collector in AsyncLocal context, passing through");
+            //_logger?.LogDebug("[Stopgap] No collector in AsyncLocal context, passing through");
             return response;
         }
 
-        _logger?.LogDebug("[Stopgap] Intercepting streaming response for reasoning_content");
+        //_logger?.LogDebug("[Stopgap] Intercepting streaming response for reasoning_content");
 
         // Read the original stream and wrap it
         var originalStream = await response.Content.ReadAsStreamAsync(cancellationToken);

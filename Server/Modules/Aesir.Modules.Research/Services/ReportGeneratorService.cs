@@ -75,17 +75,25 @@ public class ReportGeneratorService : IReportGeneratorService
         ResearchAgent chairmanAgent,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogDebug("[REPORT-GEN] === GenerateReportAsync START ===");
+        _logger.LogDebug("[REPORT-GEN] SessionId: {SessionId}", session.Id);
+        _logger.LogDebug("[REPORT-GEN] Chairman: {Role} ({RoleName})", chairmanAgent.Role, chairmanAgent.RoleName);
+        _logger.LogDebug("[REPORT-GEN] Chairman InferenceEngineId: {EngineId}", chairmanAgent.InferenceEngineId);
+        _logger.LogDebug("[REPORT-GEN] Chairman BaseAgentId: {BaseAgentId}", chairmanAgent.BaseAgentId);
         _logger.LogInformation("Generating report for session {SessionId}", session.Id);
 
         var submissions = session.Submissions ?? [];
         var peerReviews = session.PeerReviews ?? [];
+        _logger.LogDebug("[REPORT-GEN] Submissions: {Count}, PeerReviews: {Count}", submissions.Count, peerReviews.Count);
 
         // Notify phase change via SignalR
+        _logger.LogDebug("[REPORT-GEN] Sending phase change notification via SignalR...");
         await _hubContext.SendAgentPhaseChangedAsync(
             session.Id, chairmanAgent.TeamMemberId, chairmanAgent.Role, "synthesis",
             "Chairman is synthesizing the final report...");
 
         // Get chat service for the Chairman
+        _logger.LogDebug("[REPORT-GEN] Getting chat service for Chairman...");
         var chatService = GetChatServiceForAgent(chairmanAgent);
 
         string executiveSummary;
@@ -93,15 +101,21 @@ public class ReportGeneratorService : IReportGeneratorService
 
         if (chatService != null)
         {
+            _logger.LogDebug("[REPORT-GEN] Chat service available: {ServiceType}", chatService.GetType().Name);
+            _logger.LogDebug("[REPORT-GEN] Using LLM to synthesize the report...");
             // Use LLM to synthesize the report
             (executiveSummary, title) = await SynthesizeReportWithLlmAsync(
                 session, submissions, submissionScores, peerReviews,
                 chairmanAgent, chatService, cancellationToken);
+            _logger.LogDebug("[REPORT-GEN] LLM synthesis complete. Title: {Title}, SummaryLength: {Length}",
+                title, executiveSummary?.Length ?? 0);
         }
         else
         {
             // Fallback to stub implementation
-            _logger.LogWarning("No chat service available for Chairman, using stub synthesis");
+            _logger.LogWarning("[REPORT-GEN] No chat service available for Chairman!");
+            _logger.LogWarning("[REPORT-GEN] Chairman InferenceEngineId: {EngineId}", chairmanAgent.InferenceEngineId);
+            _logger.LogWarning("[REPORT-GEN] Using STUB synthesis - report will not contain real LLM content!");
             executiveSummary = GenerateStubExecutiveSummary(session, submissions, submissionScores);
             title = GenerateTitle(session.Query);
         }
@@ -371,17 +385,32 @@ public class ReportGeneratorService : IReportGeneratorService
     /// </summary>
     private IChatService? GetChatServiceForAgent(ResearchAgent agent)
     {
+        _logger.LogDebug("[REPORT-GEN] GetChatServiceForAgent called for {Role}", agent.Role);
+        _logger.LogDebug("[REPORT-GEN]   BaseAgentId: {BaseAgentId}", agent.BaseAgentId);
+        _logger.LogDebug("[REPORT-GEN]   InferenceEngineId: {InferenceEngineId}", agent.InferenceEngineId);
+        _logger.LogDebug("[REPORT-GEN]   Model: {Model}", agent.Model);
+
         if (!agent.InferenceEngineId.HasValue)
         {
-            _logger.LogWarning("Chairman has no inference engine ID configured");
+            _logger.LogWarning("[REPORT-GEN] FAILURE: Chairman has no inference engine ID configured!");
+            _logger.LogWarning("[REPORT-GEN]   The Chairman agent will not be able to perform LLM synthesis!");
             return null;
         }
 
-        var chatService = _serviceProvider.GetKeyedService<IChatService>(agent.InferenceEngineId.Value.ToString());
+        var engineIdKey = agent.InferenceEngineId.Value.ToString();
+        _logger.LogDebug("[REPORT-GEN] Attempting to get keyed service IChatService with key: '{EngineIdKey}'", engineIdKey);
+
+        var chatService = _serviceProvider.GetKeyedService<IChatService>(engineIdKey);
 
         if (chatService == null)
         {
-            _logger.LogWarning("No IChatService found for inference engine ID: {EngineId}", agent.InferenceEngineId);
+            _logger.LogWarning("[REPORT-GEN] FAILURE: No IChatService found for inference engine ID: {EngineId}", agent.InferenceEngineId);
+            _logger.LogWarning("[REPORT-GEN]   Available keyed services might not include this engine!");
+            _logger.LogWarning("[REPORT-GEN]   Check that the inference engine module registered correctly.");
+        }
+        else
+        {
+            _logger.LogDebug("[REPORT-GEN] SUCCESS: IChatService resolved: {ServiceType}", chatService.GetType().Name);
         }
 
         return chatService;

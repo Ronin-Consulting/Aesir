@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
 using Aesir.Modules.Research.Hubs;
@@ -373,8 +374,13 @@ public class ClarificationService : IClarificationService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to load Chairman agent configuration");
+            _logger.LogWarning(ex, "Failed to load Chairman agent thinking settings");
         }
+
+        // Use the chairman's merged persona (base agent domain expertise + research role methodology)
+        // This was built by ResearchAgentFactory.BuildMergedPersona()
+        _logger.LogDebug("[CLARIFICATION] Using chairman's merged persona, length: {Length}",
+            chairmanAgent.Persona?.Length ?? 0);
 
         return new AesirChatRequestBase
         {
@@ -385,7 +391,10 @@ public class ClarificationService : IClarificationService
             User = "research-clarification",
             Title = "Research Clarification",
             EnableThinking = enableThinking,
-            ThinkValue = thinkValue
+            ThinkValue = thinkValue,
+            // Use Custom persona with the merged persona string
+            ChatPromptPersona = PromptPersona.Custom,
+            ChatCustomPromptContent = chairmanAgent.Persona
         };
     }
 
@@ -432,8 +441,12 @@ public class ClarificationService : IClarificationService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to load Chairman agent configuration");
+            _logger.LogWarning(ex, "Failed to load Chairman agent thinking settings");
         }
+
+        // Use the chairman's merged persona (base agent domain expertise + research role methodology)
+        _logger.LogDebug("[CLARIFICATION] Refinement using chairman's merged persona, length: {Length}",
+            chairmanAgent.Persona?.Length ?? 0);
 
         return new AesirChatRequestBase
         {
@@ -444,7 +457,10 @@ public class ClarificationService : IClarificationService
             User = "research-refinement",
             Title = "Query Refinement",
             EnableThinking = enableThinking,
-            ThinkValue = thinkValue
+            ThinkValue = thinkValue,
+            // Use Custom persona with the merged persona string
+            ChatPromptPersona = PromptPersona.Custom,
+            ChatCustomPromptContent = chairmanAgent.Persona
         };
     }
 

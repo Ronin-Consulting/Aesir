@@ -40,10 +40,10 @@
                      OnSend="@SendMessageAsync"
                      OnSendWithFiles="@SendMessageWithFilesAsync"
                      GetConversationId="@GetOrCreateConversationId"
-                     AvailableTools="@_agentTools"
+                     AvailableTools="@(ResearchState.IsTeamSelected ? Array.Empty<AesirToolBase>() : _agentTools)"
                      DisabledToolIds="@ChatState.DisabledToolIds"
                      OnToolToggled="@HandleToolToggled"
-                     AllowThinking="@(ChatState.SelectedAgent?.IsThinkingAvailable ?? false)"
+                     AllowThinking="@(!ResearchState.IsTeamSelected && (ChatState.SelectedAgent?.IsThinkingAvailable ?? false))"
                      SelectedThinkLevel="@_selectedThinkLevel"
                      DefaultThinkLevel="@ChatState.SelectedAgent?.ThinkValue"
                      OnThinkLevelChanged="@HandleThinkLevelChanged" />
@@ -128,10 +128,10 @@
                       IsDisabled="@(_isStreaming || _isThinking || ChatState.SelectedAgent == null || _isLoadingSession || _isUploadingFiles)"
                       IsLoading="@(_isStreaming || _isThinking || _isUploadingFiles)"
                       GetConversationId="@GetOrCreateConversationId"
-                      AvailableTools="@_agentTools"
+                      AvailableTools="@(ResearchState.IsTeamSelected ? Array.Empty<AesirToolBase>() : _agentTools)"
                       DisabledToolIds="@ChatState.DisabledToolIds"
                       OnToolToggled="@HandleToolToggled"
-                      AllowThinking="@(ChatState.SelectedAgent?.IsThinkingAvailable ?? false)"
+                      AllowThinking="@(!ResearchState.IsTeamSelected && (ChatState.SelectedAgent?.IsThinkingAvailable ?? false))"
                       SelectedThinkLevel="@_selectedThinkLevel"
                       DefaultThinkLevel="@ChatState.SelectedAgent?.ThinkValue"
                       OnThinkLevelChanged="@HandleThinkLevelChanged" />
@@ -280,6 +280,7 @@
         ResearchState.OnSessionChanged += HandleResearchSessionChanged;
         ResearchState.OnResearchCompleted += HandleResearchCompleted;
         ResearchState.OnResearchError += HandleResearchError;
+        ResearchState.OnTeamChanged += HandleResearchTeamChanged;
 
         // Initialize with empty conversation (with ID for API validation)
         _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
@@ -963,6 +964,7 @@
 
     /// <summary>
     /// Sends a message to a Research Team, initiating a multi-agent research session.
+    /// Links the research to a ChatSession for persistence and title generation.
     /// </summary>
     private async Task SendResearchMessageAsync(string message)
     {
@@ -975,16 +977,24 @@
 
         try
         {
+            // Get or create conversation ID - same as normal chat flow
+            // This ensures research sessions are linked to a ChatSession for:
+            // - Persistence in sidebar history
+            // - Title generation
+            // - Ability to continue conversation after research completes
+            var conversationId = GetOrCreateConversationId();
+
             // Add user message to conversation
             var userMessage = AesirChatMessage.NewUserMessage(message);
             _conversation.Messages.Add(userMessage);
             StateHasChanged();
             await ScrollToBottomAsync();
 
-            // Start the research session
+            // Start the research session with the ChatSession ID
             var session = await ResearchState.StartResearchAsync(
                 message,
-                selectedTeam.Id!.Value);
+                selectedTeam.Id!.Value,
+                conversationId: conversationId);
 
             if (session != null)
             {
@@ -1344,6 +1354,7 @@
         ResearchState.OnSessionChanged -= HandleResearchSessionChanged;
         ResearchState.OnResearchCompleted -= HandleResearchCompleted;
         ResearchState.OnResearchError -= HandleResearchError;
+        ResearchState.OnTeamChanged -= HandleResearchTeamChanged;
         _streamingCts?.Cancel();
         _streamingCts?.Dispose();
     }
@@ -1352,6 +1363,13 @@
 
     private void HandleResearchSessionChanged()
     {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleResearchTeamChanged()
+    {
+        // Re-render when research team selection changes
+        // This updates the ToolToggleMenu and ThinkMenu visibility
         InvokeAsync(StateHasChanged);
     }
 

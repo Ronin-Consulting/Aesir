@@ -1,5 +1,6 @@
 using Aesir.Modules.Research.Models;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 namespace Aesir.Modules.Research.Hubs;
 
@@ -9,13 +10,40 @@ namespace Aesir.Modules.Research.Hubs;
 /// </summary>
 public class ResearchHub : Hub
 {
+    private readonly ILogger<ResearchHub> _logger;
+
+    public ResearchHub(ILogger<ResearchHub> logger)
+    {
+        _logger = logger;
+    }
+
+    public override async Task OnConnectedAsync()
+    {
+        _logger.LogDebug("[RESEARCH-HUB] Client connected: {ConnectionId}", Context.ConnectionId);
+        await base.OnConnectedAsync();
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        _logger.LogDebug("[RESEARCH-HUB] Client disconnected: {ConnectionId}, Exception: {Exception}",
+            Context.ConnectionId, exception?.Message ?? "None");
+        await base.OnDisconnectedAsync(exception);
+    }
+
     /// <summary>
     /// Subscribes the client to receive updates for a specific research session.
     /// </summary>
     /// <param name="sessionId">The research session ID to subscribe to.</param>
     public async Task SubscribeToSession(Guid sessionId)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, GetSessionGroupName(sessionId));
+        var groupName = GetSessionGroupName(sessionId);
+        _logger.LogDebug("[RESEARCH-HUB] SubscribeToSession called:");
+        _logger.LogDebug("[RESEARCH-HUB]   ConnectionId: {ConnectionId}", Context.ConnectionId);
+        _logger.LogDebug("[RESEARCH-HUB]   SessionId: {SessionId}", sessionId);
+        _logger.LogDebug("[RESEARCH-HUB]   GroupName: {GroupName}", groupName);
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+        _logger.LogDebug("[RESEARCH-HUB] Client {ConnectionId} added to group {GroupName}", Context.ConnectionId, groupName);
     }
 
     /// <summary>
@@ -24,7 +52,13 @@ public class ResearchHub : Hub
     /// <param name="sessionId">The research session ID to unsubscribe from.</param>
     public async Task UnsubscribeFromSession(Guid sessionId)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, GetSessionGroupName(sessionId));
+        var groupName = GetSessionGroupName(sessionId);
+        _logger.LogDebug("[RESEARCH-HUB] UnsubscribeFromSession called:");
+        _logger.LogDebug("[RESEARCH-HUB]   ConnectionId: {ConnectionId}", Context.ConnectionId);
+        _logger.LogDebug("[RESEARCH-HUB]   SessionId: {SessionId}", sessionId);
+
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+        _logger.LogDebug("[RESEARCH-HUB] Client {ConnectionId} removed from group {GroupName}", Context.ConnectionId, groupName);
     }
 
     /// <summary>

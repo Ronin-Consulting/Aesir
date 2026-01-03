@@ -31,6 +31,12 @@ public class CreateResearchSessionRequest
     /// The user ID creating the session.
     /// </summary>
     public string UserId { get; set; } = "default";
+
+    /// <summary>
+    /// The ChatSession ID to link this research session to.
+    /// If provided, research will be linked to an existing ChatSession.
+    /// </summary>
+    public Guid? ConversationId { get; set; }
 }
 
 /// <summary>

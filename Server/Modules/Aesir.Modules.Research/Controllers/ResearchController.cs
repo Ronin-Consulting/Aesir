@@ -140,48 +140,66 @@ public class ResearchController(
     [HttpPost]
     public async Task<IActionResult> StartResearch([FromBody] CreateResearchSessionRequest request)
     {
+        logger.LogDebug("[RESEARCH-API] POST /research/sessions called");
+        logger.LogDebug("[RESEARCH-API] Request: Query='{Query}', TeamId={TeamId}, Mode={Mode}, UserId={UserId}, ConversationId={ConversationId}",
+            request.Query, request.TeamId, request.Mode, request.UserId, request.ConversationId);
+        logger.LogDebug("[RESEARCH-API] DocumentCollectionIds: {Ids}",
+            request.DocumentCollectionIds != null ? string.Join(",", request.DocumentCollectionIds) : "null");
+
         try
         {
             if (string.IsNullOrWhiteSpace(request.Query))
             {
+                logger.LogWarning("[RESEARCH-API] Query is empty or null");
                 return BadRequest("Research query is required");
             }
 
             if (request.TeamId == Guid.Empty)
             {
+                logger.LogWarning("[RESEARCH-API] TeamId is empty");
                 return BadRequest("Research team ID is required");
             }
 
             // Create progress callback for SignalR broadcast
+            logger.LogDebug("[RESEARCH-API] Creating progress callback for SignalR broadcast");
             async Task ProgressCallback(ResearchPhaseProgress progress)
             {
+                logger.LogDebug("[RESEARCH-API-CALLBACK] Progress callback invoked: Phase={Phase}, Message={Message}, Percent={Percent}",
+                    progress.Phase, progress.Message, progress.PercentComplete);
                 await progressBroadcaster.BroadcastProgressAsync(progress);
             }
 
+            logger.LogDebug("[RESEARCH-API] Calling orchestrator.StartResearchAsync...");
             var session = await orchestrator.StartResearchAsync(
                 request.Query,
                 request.TeamId,
                 request.Mode,
                 request.DocumentCollectionIds,
                 request.UserId,
+                request.ConversationId,  // Link research to ChatSession
                 ProgressCallback);
 
+            logger.LogDebug("[RESEARCH-API] Research session created: Id={SessionId}, Status={Status}",
+                session.Id, session.Status);
+
             var response = ResearchSessionResponse.FromSession(session);
+            logger.LogDebug("[RESEARCH-API] Returning CreatedAtAction with session {SessionId}", session.Id);
             return CreatedAtAction(nameof(GetSession), new { id = session.Id }, response);
         }
         catch (KeyNotFoundException ex)
         {
-            logger.LogWarning(ex, "Research team not found");
+            logger.LogWarning(ex, "[RESEARCH-API] Research team not found");
             return NotFound(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "Invalid research configuration");
+            logger.LogWarning(ex, "[RESEARCH-API] Invalid research configuration");
             return BadRequest(ex.Message);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error starting research session");
+            logger.LogError(ex, "[RESEARCH-API] Error starting research session");
+            logger.LogError("[RESEARCH-API] Exception type: {ExType}, Message: {ExMessage}", ex.GetType().Name, ex.Message);
             return StatusCode(500, "An error occurred while starting the research session");
         }
     }

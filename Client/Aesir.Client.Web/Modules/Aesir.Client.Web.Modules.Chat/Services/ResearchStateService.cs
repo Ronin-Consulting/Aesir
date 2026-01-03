@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Client.Web.Modules.Research.Services;
 using Aesir.Common.Models;
@@ -72,7 +73,24 @@ public class ResearchStateService : IResearchStateService
             if (ActiveSession?.Id != e.SessionId) return;
 
             _logger?.LogDebug("SignalR progress event: {EventType}", e.EventType);
-            // Handle generic progress events if needed
+
+            // Parse progress data from the event
+            if (e.EventType == "PhaseProgress" && e.Data != null)
+            {
+                try
+                {
+                    // The Data is a JsonElement when received from SignalR
+                    var progressData = ParseProgressData(e.Data);
+                    if (progressData != null)
+                    {
+                        HandleProgressUpdate(progressData);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to parse progress event data");
+                }
+            }
         };
     }
 
@@ -128,11 +146,13 @@ public class ResearchStateService : IResearchStateService
         string query,
         Guid teamId,
         ResearchModeBase mode = ResearchModeBase.Standard,
-        List<Guid>? documentCollectionIds = null)
+        List<Guid>? documentCollectionIds = null,
+        Guid? conversationId = null)
     {
         try
         {
-            _logger?.LogInformation("Starting research for team {TeamId}: {Query}", teamId, query);
+            _logger?.LogInformation("Starting research for team {TeamId} with ConversationId {ConversationId}: {Query}",
+                teamId, conversationId, query);
 
             // Ensure SignalR is connected before starting research
             if (!_signalRService.IsConnected)
@@ -150,7 +170,8 @@ public class ResearchStateService : IResearchStateService
                 Query = query,
                 TeamId = teamId,
                 Mode = mode,
-                DocumentCollectionIds = documentCollectionIds
+                DocumentCollectionIds = documentCollectionIds,
+                ConversationId = conversationId
             };
 
             var result = await _sessionApi.StartResearchAsync(request);
@@ -343,5 +364,44 @@ public class ResearchStateService : IResearchStateService
             ResearchStatusBase.Cancelled => "Research cancelled",
             _ => "Processing..."
         };
+    }
+
+    /// <summary>
+    /// Parses the progress data from SignalR event.
+    /// The Data comes as a JsonElement when received from SignalR.
+    /// </summary>
+    private ResearchProgressBase? ParseProgressData(object data)
+    {
+        try
+        {
+            // SignalR deserializes the data as JsonElement
+            if (data is JsonElement jsonElement)
+            {
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+                return JsonSerializer.Deserialize<ResearchProgressBase>(jsonElement.GetRawText(), options);
+            }
+
+            // If it's already the right type (unlikely but handle it)
+            if (data is ResearchProgressBase progress)
+            {
+                return progress;
+            }
+
+            // Try to serialize and deserialize as a fallback
+            var json = JsonSerializer.Serialize(data);
+            return JsonSerializer.Deserialize<ResearchProgressBase>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to parse progress data: {DataType}", data?.GetType().Name ?? "null");
+            return null;
+        }
     }
 }

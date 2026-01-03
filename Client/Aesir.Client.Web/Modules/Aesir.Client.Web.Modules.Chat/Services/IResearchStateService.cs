@@ -77,12 +77,14 @@ public interface IResearchStateService
     /// <param name="teamId">The research team ID.</param>
     /// <param name="mode">The research mode.</param>
     /// <param name="documentCollectionIds">Optional document collection IDs.</param>
+    /// <param name="conversationId">Optional ChatSession ID to link research to.</param>
     /// <returns>The created session.</returns>
     Task<ResearchSessionBase?> StartResearchAsync(
         string query,
         Guid teamId,
         ResearchModeBase mode = ResearchModeBase.Standard,
-        List<Guid>? documentCollectionIds = null);
+        List<Guid>? documentCollectionIds = null,
+        Guid? conversationId = null);
 
     /// <summary>
     /// Submits clarification answers.
