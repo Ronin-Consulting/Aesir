@@ -1,6 +1,5 @@
 using Aesir.Infrastructure.Models;
-using Aesir.Modules.Projects.Models;
-using Aesir.Modules.Projects.Services;
+using Aesir.Infrastructure.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;

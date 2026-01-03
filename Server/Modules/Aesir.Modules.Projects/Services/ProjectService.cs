@@ -1,5 +1,5 @@
 using Aesir.Infrastructure.Models;
-using Aesir.Modules.Projects.Models;
+using Aesir.Infrastructure.Services;
 using Aesir.Modules.Projects.Repositories;
 using Microsoft.Extensions.Logging;
 

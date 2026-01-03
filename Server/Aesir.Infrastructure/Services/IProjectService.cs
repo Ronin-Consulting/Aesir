@@ -1,7 +1,6 @@
 using Aesir.Infrastructure.Models;
-using Aesir.Modules.Projects.Models;
 
-namespace Aesir.Modules.Projects.Services;
+namespace Aesir.Infrastructure.Services;
 
 /// <summary>
 /// Service interface for managing projects.

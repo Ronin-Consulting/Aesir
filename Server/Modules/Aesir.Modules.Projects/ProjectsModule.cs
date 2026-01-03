@@ -1,4 +1,5 @@
 using Aesir.Infrastructure.Modules;
+using Aesir.Infrastructure.Services;
 using Aesir.Modules.Projects.Repositories;
 using Aesir.Modules.Projects.Services;
 using Microsoft.Extensions.DependencyInjection;

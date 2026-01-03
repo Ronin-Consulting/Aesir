@@ -36,7 +36,6 @@
     <ItemGroup>
       <ProjectReference Include="..\..\Aesir.Infrastructure\Aesir.Infrastructure.csproj" />
       <ProjectReference Include="..\Aesir.Modules.Inference\Aesir.Modules.Inference.csproj" />
-      <ProjectReference Include="..\Aesir.Modules.Projects\Aesir.Modules.Projects.csproj" />
     </ItemGroup>
 
     <!-- Copy all module files including dependencies, native binaries, and runtime assets -->

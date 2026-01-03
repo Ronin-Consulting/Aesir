@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Aesir.Modules.Projects.Models;
+namespace Aesir.Infrastructure.Models;
 
 /// <summary>
 /// Request model for creating a new project.
