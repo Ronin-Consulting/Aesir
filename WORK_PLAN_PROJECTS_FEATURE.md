@@ -36,8 +36,8 @@ CREATE TABLE aesir.aesir_project (
     updated_by VARCHAR(255)
 );
 
+CREATE UNIQUE INDEX ix_aesir_project_name ON aesir.aesir_project(name);
 CREATE INDEX ix_aesir_project_user_id ON aesir.aesir_project(user_id);
-CREATE INDEX ix_aesir_project_name ON aesir.aesir_project(name);
 ```
 
 **Modify Table: `aesir_chat_session`**
@@ -416,23 +416,17 @@ public class ProjectModule : ClientModuleBase
 
 ---
 
-## Questions for Clarification
+## Design Decisions
 
-1. **Project Naming**: Should project names be unique per user, or globally unique?
-2. **Default Agent**: Should projects have a default agent, or always use the user's selected agent?
-3. **Project Deletion**: When deleting a project, what happens to associated conversations?
-   - Option A: Conversations become project-less (orphaned)
-   - Option B: Conversations are also deleted
-   - Option C: User chooses during deletion
-4. **Project Sharing** (Future): Any consideration for future multi-user project support?
+| Decision | Choice | Notes |
+|----------|--------|-------|
+| **Project Naming** | Globally unique | Enforced via unique constraint on `name` column |
+| **Default Agent** | User's selected agent | No project-level agent override; uses conversation's agent |
+| **Project Deletion** | User chooses | Prompt user: orphan conversations or delete them |
+| **Future Sharing** | Design for extensibility | Include `user_id` field; future: add `aesir_project_member` table |
 
 ---
 
-## Approval Checklist
+## Approval Status
 
-- [ ] Phase 1: Core Project Infrastructure approved
-- [ ] Phase 2: Project Knowledge Base approved
-- [ ] Phase 3: Project Instructions Integration approved
-- [ ] Phase 4: Client UI Module approved
-- [ ] Phase 5: Integration & Polish approved
-- [ ] Implementation order confirmed
+✅ **Plan Approved** - Ready for implementation
