@@ -12,9 +12,10 @@ namespace Aesir.Modules.Inference.Ollama.Services;
 public class OllamaPromptExecutionSettingsBuilder(
     Kernel kernel,
     IConversationDocumentCollectionService? conversationDocumentCollectionService,
+    IGlobalDocumentCollectionService? globalDocumentCollectionService,
     IKernelPluginService kernelPluginService,
     ILogger<OllamaPromptExecutionSettingsBuilder> logger) :
-    BasePromptExecutionSettingsBuilder<OllamaPromptExecutionSettings>(kernel, conversationDocumentCollectionService, kernelPluginService, logger)
+    BasePromptExecutionSettingsBuilder<OllamaPromptExecutionSettings>(kernel, conversationDocumentCollectionService, globalDocumentCollectionService, kernelPluginService, logger)
 {
     protected override OllamaPromptExecutionSettings CreatePromptExecutionSettings(AesirChatRequestBase request)
     {

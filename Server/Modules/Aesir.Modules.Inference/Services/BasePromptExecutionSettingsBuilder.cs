@@ -8,6 +8,7 @@ namespace Aesir.Modules.Inference.Services;
 public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSettings>(
     Kernel kernel,
     IConversationDocumentCollectionService? conversationDocumentCollectionService,
+    IGlobalDocumentCollectionService? globalDocumentCollectionService,
     IKernelPluginService kernelPluginService,
     ILogger logger)
     where TPromptExecutionSettings : PromptExecutionSettings
@@ -16,6 +17,8 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
     protected readonly Kernel Kernel = kernel;
     // ReSharper disable once MemberCanBePrivate.Global
     protected readonly IConversationDocumentCollectionService? ConversationDocumentCollectionService = conversationDocumentCollectionService;
+    // ReSharper disable once MemberCanBePrivate.Global
+    protected readonly IGlobalDocumentCollectionService? GlobalDocumentCollectionService = globalDocumentCollectionService;
 
     protected readonly IKernelPluginService KernelPluginService = kernelPluginService;
 
@@ -117,7 +120,14 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
             Logger.LogDebug("[PromptSettings]   - Function: {FunctionName}", func.Name);
         }
 
-        if (enableWebSearch || enableDocumentSearch || enableMcpTools)
+        // Configure project document search if a project is associated with this request
+        var enableProjectDocuments = false;
+        if (request.ProjectId.HasValue && GlobalDocumentCollectionService != null)
+        {
+            enableProjectDocuments = await ConfigureProjectDocumentsAsync(request.ProjectId.Value);
+        }
+
+        if (enableWebSearch || enableDocumentSearch || enableMcpTools || enableProjectDocuments)
         {
             settings.FunctionChoiceBehavior = FunctionChoiceBehavior.Auto();
             Logger.LogDebug("[PromptSettings] FunctionChoiceBehavior set to Auto");
@@ -125,6 +135,63 @@ public abstract class BasePromptExecutionSettingsBuilder<TPromptExecutionSetting
         else
         {
             Logger.LogDebug("[PromptSettings] No tools enabled - FunctionChoiceBehavior NOT set");
+        }
+    }
+
+    /// <summary>
+    /// Configures project document search as a kernel plugin when a project ID is provided.
+    /// Uses GlobalDocumentCollectionService with the ProjectId as the CategoryId.
+    /// </summary>
+    /// <param name="projectId">The project identifier to use as the category for document search.</param>
+    /// <returns>True if project documents were configured, false otherwise.</returns>
+    private async Task<bool> ConfigureProjectDocumentsAsync(Guid projectId)
+    {
+        try
+        {
+            Logger.LogDebug("[PromptSettings] Configuring project document search for ProjectId={ProjectId}", projectId);
+
+            // Create args for global document collection with ProjectId as CategoryId
+            var projectDocArgs = new Dictionary<string, object>
+            {
+                ["DocumentCollectionType"] = DocumentCollectionType.Global,
+                ["CategoryId"] = projectId.ToString(),
+                ["PluginName"] = "ProjectDocuments",
+                ["PluginDescription"] = "Search documents in the project knowledge base"
+            };
+
+            // Get project document functions from the global document collection service
+            var projectDocFunctions = await GlobalDocumentCollectionService!.GetKernelPluginFunctionsAsync(projectDocArgs);
+
+            if (projectDocFunctions.Count > 0)
+            {
+                // Create plugin from the functions
+                var projectDocPlugin = KernelPluginFactory.CreateFromFunctions(
+                    "ProjectDocuments",
+                    "Search documents in the project knowledge base",
+                    projectDocFunctions.ToArray());
+
+                // Remove existing project plugin if it exists
+                if (Kernel.Plugins.TryGetPlugin(projectDocPlugin.Name, out var existingProjectPlugin))
+                    Kernel.Plugins.Remove(existingProjectPlugin);
+
+                Kernel.Plugins.Add(projectDocPlugin);
+
+                Logger.LogDebug("[PromptSettings] Project document plugin added with {FunctionCount} functions", projectDocFunctions.Count);
+                foreach (var func in projectDocFunctions)
+                {
+                    Logger.LogDebug("[PromptSettings]   - Project Function: {FunctionName}", func.Name);
+                }
+
+                return true;
+            }
+
+            Logger.LogDebug("[PromptSettings] No project document functions available for ProjectId={ProjectId}", projectId);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "[PromptSettings] Failed to configure project documents for ProjectId={ProjectId}", projectId);
+            return false;
         }
     }
 

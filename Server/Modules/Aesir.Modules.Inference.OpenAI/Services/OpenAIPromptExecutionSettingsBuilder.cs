@@ -14,9 +14,10 @@ namespace Aesir.Modules.Inference.OpenAI.Services;
 public class OpenAiPromptExecutionSettingsBuilder(
     Kernel kernel,
     IConversationDocumentCollectionService? conversationDocumentCollectionService,
+    IGlobalDocumentCollectionService? globalDocumentCollectionService,
     IKernelPluginService kernelPluginService,
     ILogger<OpenAiPromptExecutionSettingsBuilder> logger) :
-    BasePromptExecutionSettingsBuilder<OpenAIPromptExecutionSettings>(kernel, conversationDocumentCollectionService, kernelPluginService, logger)
+    BasePromptExecutionSettingsBuilder<OpenAIPromptExecutionSettings>(kernel, conversationDocumentCollectionService, globalDocumentCollectionService, kernelPluginService, logger)
 {
     protected override OpenAIPromptExecutionSettings CreatePromptExecutionSettings(AesirChatRequestBase request)
     {

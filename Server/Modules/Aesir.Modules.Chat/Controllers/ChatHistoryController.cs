@@ -38,6 +38,7 @@ namespace Aesir.Modules.Chat.Controllers
                         Title = chatSession.Title,
                         UpdatedAt = chatSession.UpdatedAt,
                         IsStarred = chatSession.IsStarred,
+                        ProjectId = chatSession.ProjectId,
                     }
                 ).ToList();
 
@@ -63,6 +64,7 @@ namespace Aesir.Modules.Chat.Controllers
                         Title = chatSession.Title,
                         UpdatedAt = chatSession.UpdatedAt,
                         IsStarred = chatSession.IsStarred,
+                        ProjectId = chatSession.ProjectId,
                     }
                 ).ToList();
 
@@ -91,6 +93,7 @@ namespace Aesir.Modules.Chat.Controllers
                         Title = chatSession.Title,
                         UpdatedAt = chatSession.UpdatedAt,
                         IsStarred = chatSession.IsStarred,
+                        ProjectId = chatSession.ProjectId,
                     }
                 ).ToList();
 

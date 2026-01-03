@@ -43,4 +43,11 @@ public class AesirChatRequestBase : ChatRequestBase
     /// </summary>
     [JsonPropertyName("chat_custom_prompt_content")]
     public string? ChatCustomPromptContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets the identifier of the project this chat request is associated with.
+    /// When set, project-specific instructions and documents will be included in the chat context.
+    /// </summary>
+    [JsonPropertyName("project_id")]
+    public Guid? ProjectId { get; set; }
 }
