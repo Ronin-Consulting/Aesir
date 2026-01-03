@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <RuntimeIdentifiers>linux-arm64;linux-x64;win-x64;osx-arm64</RuntimeIdentifiers>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>default</LangVersion>
+        <!-- Force all NuGet dependencies to be copied to output directory -->
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Core dependencies -->
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" />
+        <PackageReference Include="System.Text.Json" Version="10.0.0" />
+
+        <!-- Database -->
+        <PackageReference Include="Dapper" Version="2.1.66" />
+        <PackageReference Include="FluentMigrator" Version="7.1.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Aesir.Infrastructure\Aesir.Infrastructure.csproj" />
+    </ItemGroup>
+
+    <!-- Copy all module files including dependencies to API Server -->
+    <Target Name="CopyModuleToApiServer" AfterTargets="Build">
+        <ItemGroup>
+            <ModuleOutputFiles Include="$(TargetDir)**/*.*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(ModuleOutputFiles)" DestinationFolder="$(ProjectDir)../../Aesir.Api.Server/bin/$(Configuration)/$(TargetFramework)/%(RecursiveDir)" SkipUnchangedFiles="true" />
+    </Target>
+
+</Project>

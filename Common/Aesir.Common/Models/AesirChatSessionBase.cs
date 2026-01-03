@@ -42,4 +42,11 @@ public abstract class AesirChatSessionBase
     /// </summary>
     [JsonPropertyName("is_starred")]
     public bool IsStarred { get; set; }
+
+    /// <summary>
+    /// Gets or sets the identifier of the project this chat session belongs to.
+    /// Null if the chat session is not associated with any project.
+    /// </summary>
+    [JsonPropertyName("project_id")]
+    public Guid? ProjectId { get; set; }
 }
