@@ -183,20 +183,24 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         var totalCount = researchAgents.Count;
 
         // Broadcast phase start with 0%
-        if (progressCallback != null)
+        var firstAgent = researchAgents.FirstOrDefault();
+        if (progressCallback != null && firstAgent != null)
         {
             await progressCallback(new ResearchPhaseProgress
             {
                 Phase = ResearchPhase.Planning,
+                AgentRole = firstAgent.Role,
                 Message = $"Starting planning phase with {totalCount} agents...",
                 PercentComplete = 0
             });
         }
 
         // Execute agents sequentially to avoid overloading the inference engine
+        ResearchAgent? lastAgent = null;
         foreach (var agent in researchAgents)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            lastAgent = agent;
 
             var (teamMemberId, plan) = await ExecuteAgentPlanningAsync(
                 session, agent, refinedQuery, progressCallback, cancellationToken);
@@ -214,6 +218,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 await progressCallback(new ResearchPhaseProgress
                 {
                     Phase = ResearchPhase.Planning,
+                    AgentRole = agent.Role,
                     Message = $"Planning: {completedCount} of {totalCount} agents completed",
                     PercentComplete = percentComplete
                 });
@@ -221,11 +226,12 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         }
 
         // Broadcast phase completion with 100%
-        if (progressCallback != null)
+        if (progressCallback != null && lastAgent != null)
         {
             await progressCallback(new ResearchPhaseProgress
             {
                 Phase = ResearchPhase.Planning,
+                AgentRole = lastAgent.Role,
                 Message = $"Planning complete. {plans.Count} of {totalCount} agents created plans.",
                 PercentComplete = 100,
                 IsComplete = true
@@ -255,20 +261,24 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         var totalCount = researchAgents.Count;
 
         // Broadcast phase start with 0%
-        if (progressCallback != null)
+        var firstAgent = researchAgents.FirstOrDefault();
+        if (progressCallback != null && firstAgent != null)
         {
             await progressCallback(new ResearchPhaseProgress
             {
                 Phase = ResearchPhase.Research,
+                AgentRole = firstAgent.Role,
                 Message = $"Starting research phase with {totalCount} agents...",
                 PercentComplete = 0
             });
         }
 
         // Execute agents sequentially to avoid overloading the inference engine
+        ResearchAgent? lastAgent = null;
         foreach (var agent in researchAgents)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            lastAgent = agent;
 
             var plan = agentPlans.TryGetValue(agent.TeamMemberId, out var p) ? p : "";
 
@@ -288,6 +298,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 await progressCallback(new ResearchPhaseProgress
                 {
                     Phase = ResearchPhase.Research,
+                    AgentRole = agent.Role,
                     Message = $"Research: {completedCount} of {totalCount} agents completed",
                     PercentComplete = percentComplete
                 });
@@ -295,11 +306,12 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         }
 
         // Broadcast phase completion with 100%
-        if (progressCallback != null)
+        if (progressCallback != null && lastAgent != null)
         {
             await progressCallback(new ResearchPhaseProgress
             {
                 Phase = ResearchPhase.Research,
+                AgentRole = lastAgent.Role,
                 Message = $"Research complete. {submissions.Count} of {totalCount} submissions created.",
                 PercentComplete = 100,
                 IsComplete = true
@@ -328,23 +340,13 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         IServiceScope? serviceScope = null;
         try
         {
-            // Notify phase change via SignalR
+            // Notify phase change via SignalR (agent activity indicator)
+            // NOTE: We don't send progress callback here because agent-level updates
+            // with PercentComplete=0 would reset the overall progress bar.
+            // Only phase-level progress (after each agent completes) should update PercentComplete.
             await _hubContext.SendAgentPhaseChangedAsync(
                 session.Id, agent.TeamMemberId, agent.Role, "planning",
                 $"{agent.RoleName} is creating research plan...");
-
-            // Report start via callback
-            if (progressCallback != null)
-            {
-                await progressCallback(new ResearchPhaseProgress
-                {
-                    Phase = ResearchPhase.Planning,
-                    AgentRole = agent.Role,
-                    TeamMemberId = agent.TeamMemberId,
-                    Message = $"{agent.RoleName} is creating research plan...",
-                    PercentComplete = 0
-                });
-            }
 
             // Get the chat service for this agent's inference engine
             var (chatService, scope) = GetChatServiceForAgent(agent);
@@ -374,19 +376,9 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             _logger.LogDebug("[PHASE-EXEC-PLANNING] Agent {Role} created plan with {Length} characters",
                 agent.Role, content.Length);
 
-            // Report completion via callback
-            if (progressCallback != null)
-            {
-                await progressCallback(new ResearchPhaseProgress
-                {
-                    Phase = ResearchPhase.Planning,
-                    AgentRole = agent.Role,
-                    TeamMemberId = agent.TeamMemberId,
-                    Message = $"{agent.RoleName} completed research plan",
-                    PercentComplete = 100,
-                    IsComplete = true
-                });
-            }
+            // NOTE: We don't send agent-level completion callback here because
+            // PercentComplete=100 for a single agent would incorrectly set overall progress to 100%.
+            // The phase-level progress callback (after this method returns) handles overall progress.
 
             _logger.LogDebug("[PHASE-EXEC-PLANNING] === ExecuteAgentPlanningAsync COMPLETE ===");
             return (agent.TeamMemberId, content);
@@ -420,23 +412,13 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         IServiceScope? serviceScope = null;
         try
         {
-            // Notify phase change via SignalR
+            // Notify phase change via SignalR (agent activity indicator)
+            // NOTE: We don't send progress callback here because agent-level updates
+            // with PercentComplete=0 would reset the overall progress bar.
+            // Only phase-level progress (after each agent completes) should update PercentComplete.
             await _hubContext.SendAgentPhaseChangedAsync(
                 session.Id, agent.TeamMemberId, agent.Role, "researching",
                 $"{agent.RoleName} is researching...");
-
-            // Report start via callback
-            if (progressCallback != null)
-            {
-                await progressCallback(new ResearchPhaseProgress
-                {
-                    Phase = ResearchPhase.Research,
-                    AgentRole = agent.Role,
-                    TeamMemberId = agent.TeamMemberId,
-                    Message = $"{agent.RoleName} is researching...",
-                    PercentComplete = 0
-                });
-            }
 
             // Get the chat service for this agent's inference engine
             var (chatService, scope) = GetChatServiceForAgent(agent);
@@ -486,19 +468,9 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             _logger.LogDebug("[PHASE-EXEC-RESEARCH] Agent {Role} created submission with {Length} characters",
                 agent.Role, content.Length);
 
-            // Report completion via callback
-            if (progressCallback != null)
-            {
-                await progressCallback(new ResearchPhaseProgress
-                {
-                    Phase = ResearchPhase.Research,
-                    AgentRole = agent.Role,
-                    TeamMemberId = agent.TeamMemberId,
-                    Message = $"{agent.RoleName} completed research",
-                    PercentComplete = 100,
-                    IsComplete = true
-                });
-            }
+            // NOTE: We don't send agent-level completion callback here because
+            // PercentComplete=100 for a single agent would incorrectly set overall progress to 100%.
+            // The phase-level progress callback (after this method returns) handles overall progress.
 
             _logger.LogDebug("[PHASE-EXEC-RESEARCH] === ExecuteAgentResearchAsync COMPLETE ===");
             return submission;
@@ -536,12 +508,16 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         _logger.LogInformation("Starting anonymization phase for session {SessionId} with {Count} submissions",
             session.Id, submissions.Count);
 
+        // Use the first submission's role as representative for this phase
+        var representativeRole = submissions.FirstOrDefault()?.Role ?? ResearchRole.DeepDiver;
+
         // Report start
         if (progressCallback != null)
         {
             await progressCallback(new ResearchPhaseProgress
             {
                 Phase = ResearchPhase.Anonymization,
+                AgentRole = representativeRole,
                 Message = "Anonymizing submissions for peer review...",
                 PercentComplete = 0
             });
@@ -566,6 +542,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             await progressCallback(new ResearchPhaseProgress
             {
                 Phase = ResearchPhase.Anonymization,
+                AgentRole = representativeRole,
                 Message = $"Anonymization complete. {anonymized.Count} submissions ready for review.",
                 PercentComplete = 100,
                 IsComplete = true
@@ -587,12 +564,17 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
     {
         _logger.LogInformation("Starting peer review phase for session {SessionId}", session.Id);
 
+        // Get the first non-chairman agent for representative role
+        var reviewingAgents = agents.Where(a => !a.IsChairman).ToList();
+        var firstAgent = reviewingAgents.FirstOrDefault();
+
         // Report start
-        if (progressCallback != null)
+        if (progressCallback != null && firstAgent != null)
         {
             await progressCallback(new ResearchPhaseProgress
             {
                 Phase = ResearchPhase.PeerReview,
+                AgentRole = firstAgent.Role,
                 Message = "Starting peer review process...",
                 PercentComplete = 0
             });
@@ -607,11 +589,13 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             cancellationToken);
 
         // Report completion
-        if (progressCallback != null)
+        var lastAgent = reviewingAgents.LastOrDefault();
+        if (progressCallback != null && lastAgent != null)
         {
             await progressCallback(new ResearchPhaseProgress
             {
                 Phase = ResearchPhase.PeerReview,
+                AgentRole = lastAgent.Role,
                 Message = $"Peer review complete. {reviews.Count} reviews generated.",
                 PercentComplete = 100,
                 IsComplete = true

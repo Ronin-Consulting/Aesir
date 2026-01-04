@@ -203,6 +203,15 @@ public class ResearchStateService : IResearchStateService
     public int CurrentProgressPercent { get; private set; }
 
     /// <inheritdoc />
+    public ResearchRoleBase? CurrentAgentRole { get; private set; }
+
+    /// <inheritdoc />
+    public string? CurrentAgentActivity { get; private set; }
+
+    /// <inheritdoc />
+    public bool IsAgentActive => CurrentAgentRole.HasValue && IsResearchInProgress;
+
+    /// <inheritdoc />
     public event Action? OnSessionChanged;
 
     /// <inheritdoc />
@@ -462,16 +471,86 @@ public class ResearchStateService : IResearchStateService
             return;
         }
 
+        // Track if phase changed (to clear agent activity on phase transitions)
+        var previousPhase = ActiveSession.CurrentPhase;
+        var phaseChanged = previousPhase != progress.Phase;
+
         CurrentProgressMessage = progress.Message;
-        CurrentProgressPercent = progress.ProgressPercent;
+
+        // Validate progress never decreases (safety net for network delays or out-of-order messages)
+        // The backend now sends overall progress, but we add this validation as a safety net
+        var receivedPercent = progress.ProgressPercent;
+        var validatedPercent = Math.Max(CurrentProgressPercent, receivedPercent);
+
+        if (validatedPercent != receivedPercent)
+        {
+            _logger?.LogWarning(
+                "[RESEARCH-UI] Progress validation: received {ReceivedPercent}%, validated to {ValidatedPercent}% (prevented decrease from backend)",
+                receivedPercent, validatedPercent);
+        }
+
+        CurrentProgressPercent = validatedPercent;
         ActiveSession.Status = progress.Status;
         ActiveSession.CurrentPhase = progress.Phase;
 
+        // Update agent activity tracking
+        if (progress.AgentRole.HasValue)
+        {
+            // Agent is working - update activity
+            CurrentAgentRole = progress.AgentRole.Value;
+            CurrentAgentActivity = FormatAgentActivity(progress.AgentRole.Value, progress.Phase);
+            _logger?.LogDebug("Agent activity: {Role} - {Activity}",
+                CurrentAgentRole, CurrentAgentActivity);
+        }
+        else if (phaseChanged)
+        {
+            // Phase changed without agent - clear agent activity (phase work complete)
+            CurrentAgentRole = null;
+            CurrentAgentActivity = null;
+            _logger?.LogDebug("Agent activity cleared on phase transition to {Phase}", progress.Phase);
+        }
+        // Otherwise, preserve current agent activity (phase-level progress update)
+
         _logger?.LogDebug("Research progress: {Phase} - {Message} ({Percent}%)",
-            progress.Phase, progress.Message, progress.ProgressPercent);
+            progress.Phase, progress.Message, CurrentProgressPercent);
 
         OnProgressUpdate?.Invoke(progress);
         OnSessionChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Formats the agent activity message based on role and phase.
+    /// </summary>
+    private static string FormatAgentActivity(ResearchRoleBase role, ResearchPhaseBase phase)
+    {
+        var roleName = GetRoleDisplayName(role);
+        var action = phase switch
+        {
+            ResearchPhaseBase.Clarification => "generating questions",
+            ResearchPhaseBase.Planning => "planning research",
+            ResearchPhaseBase.Research => "conducting research",
+            ResearchPhaseBase.Anonymization => "preparing submission",
+            ResearchPhaseBase.PeerReview => "reviewing submissions",
+            ResearchPhaseBase.Synthesis => "synthesizing report",
+            _ => "working"
+        };
+
+        return $"{roleName} is {action}...";
+    }
+
+    /// <summary>
+    /// Gets a human-readable display name for a research role.
+    /// </summary>
+    private static string GetRoleDisplayName(ResearchRoleBase role)
+    {
+        return role switch
+        {
+            ResearchRoleBase.DeepDiver => "Deep Diver",
+            ResearchRoleBase.Synthesizer => "Synthesizer",
+            ResearchRoleBase.DevilsAdvocate => "Devil's Advocate",
+            ResearchRoleBase.Chairman => "Chairman",
+            _ => role.ToString()
+        };
     }
 
     /// <inheritdoc />
@@ -480,6 +559,8 @@ public class ResearchStateService : IResearchStateService
         ActiveSession = null;
         CurrentProgressMessage = null;
         CurrentProgressPercent = 0;
+        CurrentAgentRole = null;
+        CurrentAgentActivity = null;
         OnSessionChanged?.Invoke();
     }
 
@@ -548,19 +629,11 @@ public class ResearchStateService : IResearchStateService
 
     /// <summary>
     /// Estimates progress percentage based on current phase.
+    /// Uses the shared helper from Aesir.Common for consistent progress estimation.
     /// </summary>
     private static int EstimateProgressFromPhase(ResearchPhaseBase phase)
     {
-        return phase switch
-        {
-            ResearchPhaseBase.Clarification => 5,
-            ResearchPhaseBase.Planning => 15,
-            ResearchPhaseBase.Research => 35,
-            ResearchPhaseBase.Anonymization => 55,
-            ResearchPhaseBase.PeerReview => 70,
-            ResearchPhaseBase.Synthesis => 90,
-            _ => 0
-        };
+        return ResearchPhaseProgressHelper.EstimateProgressFromPhase(phase);
     }
 
     private static string GetStatusMessage(ResearchStatusBase status)

@@ -40,6 +40,21 @@ public interface IResearchStateService : IDisposable
     int CurrentProgressPercent { get; }
 
     /// <summary>
+    /// The current agent role performing work, if any.
+    /// </summary>
+    ResearchRoleBase? CurrentAgentRole { get; }
+
+    /// <summary>
+    /// The current agent activity message (e.g., "DeepDiver is researching...").
+    /// </summary>
+    string? CurrentAgentActivity { get; }
+
+    /// <summary>
+    /// Whether an agent is currently actively working.
+    /// </summary>
+    bool IsAgentActive { get; }
+
+    /// <summary>
     /// Event raised when the active session changes.
     /// </summary>
     event Action? OnSessionChanged;

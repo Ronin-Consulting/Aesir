@@ -226,20 +226,10 @@ public class PeerReviewService : IPeerReviewService
 
         try
         {
-            // Report start
-            if (progressCallback != null)
-            {
-                await progressCallback(new ResearchPhaseProgress
-                {
-                    Phase = ResearchPhase.PeerReview,
-                    AgentRole = reviewer.Role,
-                    TeamMemberId = reviewer.TeamMemberId,
-                    Message = $"{reviewer.RoleName} is reviewing submissions...",
-                    PercentComplete = 0
-                });
-            }
-
-            // Notify phase change via SignalR
+            // Notify phase change via SignalR (agent activity indicator)
+            // NOTE: We don't send progress callback here because agent-level updates
+            // with PercentComplete=0 would reset the overall progress bar.
+            // Only the per-review progress updates within the loop should update PercentComplete.
             await _hubContext.SendAgentPhaseChangedAsync(
                 session.Id, reviewer.TeamMemberId, reviewer.Role, "peer_review",
                 $"{reviewer.RoleName} is conducting peer reviews...");
@@ -315,19 +305,9 @@ public class PeerReviewService : IPeerReviewService
                 }
             }
 
-            // Report completion
-            if (progressCallback != null)
-            {
-                await progressCallback(new ResearchPhaseProgress
-                {
-                    Phase = ResearchPhase.PeerReview,
-                    AgentRole = reviewer.Role,
-                    TeamMemberId = reviewer.TeamMemberId,
-                    Message = $"{reviewer.RoleName} completed all reviews",
-                    PercentComplete = 100,
-                    IsComplete = true
-                });
-            }
+            // NOTE: We don't send agent-level completion callback here because
+            // PercentComplete=100 for a single reviewer would incorrectly set overall progress to 100%.
+            // The phase-level progress (in ExecutePeerReviewPhaseAsync) handles overall progress.
 
             _logger.LogDebug("[PEER-REVIEW] === ConductAgentReviewsAsync COMPLETE ===");
             _logger.LogDebug("[PEER-REVIEW] Reviews generated: {Count}", reviews.Count);

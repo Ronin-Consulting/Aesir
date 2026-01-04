@@ -1,34 +1,34 @@
 @using Aesir.Common.Models
 
 <div class="research-progress">
-    @* Progress Header with Phase *@
-    <div class="progress-header">
-        <div class="phase-indicator">
-            <MudIcon Icon="@GetPhaseIcon()" Size="Size.Small" Class="phase-icon" />
-            <span class="phase-name">@GetPhaseName()</span>
+    @* Overall Progress Section (Top) *@
+    <div class="overall-progress-section">
+        <div class="progress-header">
+            <div class="phase-indicator">
+                <MudIcon Icon="@GetPhaseIcon()" Size="Size.Small" Class="phase-icon" />
+                <span class="phase-name">@GetPhaseName()</span>
+            </div>
+            <span class="progress-percent">@ProgressPercent%</span>
         </div>
-        <span class="progress-percent">@ProgressPercent%</span>
+        <div class="progress-bar-container">
+            <MudProgressLinear Value="@ProgressPercent"
+                               Color="Color.Secondary"
+                               Striped="true"
+                               Size="Size.Medium"
+                               Class="progress-bar" />
+        </div>
     </div>
 
-    @* Progress Bar *@
-    <div class="progress-bar-container">
-        <MudProgressLinear Value="@ProgressPercent"
-                           Color="Color.Secondary"
-                           Striped="true"
-                           Size="Size.Medium"
-                           Class="progress-bar" />
-    </div>
-
-    @* Progress Message *@
-    @if (!string.IsNullOrEmpty(ProgressMessage))
+    @* Agent Activity Section (Below overall progress) *@
+    @if (IsAgentActive && !string.IsNullOrEmpty(AgentActivity))
     {
-        <div class="progress-message">
-            <MudIcon Icon="@Icons.Material.Filled.DoubleArrow" Size="Size.Small" Class="message-icon" />
-            <span>@ProgressMessage</span>
+        <div class="agent-activity-section">
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Secondary" Class="agent-spinner" />
+            <span class="agent-activity-text">@AgentActivity</span>
         </div>
     }
 
-    @* Phase Steps *@
+    @* Phase Steps (Bottom) *@
     <div class="phase-steps">
         @foreach (var phase in _phases)
         {
@@ -62,12 +62,17 @@
         margin: 8px 0;
     }
 
+    /* Overall Progress Section */
+    .research-progress .overall-progress-section {
+        margin-bottom: 12px;
+    }
+
     /* Progress Header */
     .research-progress .progress-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
     }
 
     .research-progress .phase-indicator {
@@ -94,37 +99,33 @@
 
     /* Progress Bar */
     .research-progress .progress-bar-container {
-        margin-bottom: 12px;
+        margin-bottom: 0;
     }
 
     .research-progress .progress-bar {
         border-radius: 4px;
     }
 
-    /* Progress Message */
-    .research-progress .progress-message {
+    /* Agent Activity Section */
+    .research-progress .agent-activity-section {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
+        gap: 10px;
+        padding: 10px 12px;
         background-color: rgba(156, 39, 176, 0.08);
         border-radius: 6px;
         margin-bottom: 12px;
+        margin-top: 12px;
     }
 
-    .research-progress .message-icon {
-        color: #9C27B0;
-        animation: pulse 1.5s ease-in-out infinite;
+    .research-progress .agent-spinner {
+        flex-shrink: 0;
     }
 
-    @@keyframes pulse {
-        0%, 100% { opacity: 0.6; }
-        50% { opacity: 1; }
-    }
-
-    .research-progress .progress-message span {
+    .research-progress .agent-activity-text {
         font-size: 0.85rem;
-        color: var(--mud-palette-text-secondary);
+        color: var(--mud-palette-text-primary);
+        font-weight: 500;
     }
 
     /* Phase Steps */
@@ -132,7 +133,7 @@
         display: flex;
         justify-content: space-between;
         gap: 4px;
-        padding-top: 8px;
+        padding-top: 12px;
         border-top: 1px solid rgba(156, 39, 176, 0.1);
     }
 
@@ -204,6 +205,12 @@
 
     [Parameter]
     public int ProgressPercent { get; set; }
+
+    [Parameter]
+    public string? AgentActivity { get; set; }
+
+    [Parameter]
+    public bool IsAgentActive { get; set; }
 
     private readonly List<(ResearchPhaseBase Phase, string Name)> _phases = new()
     {

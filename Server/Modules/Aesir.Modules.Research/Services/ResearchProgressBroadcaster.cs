@@ -1,3 +1,4 @@
+using Aesir.Common.Models;
 using Aesir.Modules.Research.Contracts;
 using Aesir.Modules.Research.Hubs;
 using Aesir.Modules.Research.Models;
@@ -53,6 +54,8 @@ public interface IResearchProgressBroadcaster
 
 /// <summary>
 /// Implementation of the research progress broadcaster using SignalR.
+/// Maps phase-local progress (0-100% within each phase) to overall progress (0-100%)
+/// to prevent progress bar resets when transitioning between phases.
 /// </summary>
 public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
 {
@@ -82,7 +85,7 @@ public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
         _logger.LogDebug("[BROADCASTER]   Phase: {Phase}", progress.Phase);
         _logger.LogDebug("[BROADCASTER]   AgentRole: {AgentRole}", progress.AgentRole);
         _logger.LogDebug("[BROADCASTER]   Message: {Message}", progress.Message);
-        _logger.LogDebug("[BROADCASTER]   PercentComplete: {Percent}%", progress.PercentComplete);
+        _logger.LogDebug("[BROADCASTER]   PhaseLocalPercent: {Percent}%", progress.PercentComplete);
         _logger.LogDebug("[BROADCASTER]   CurrentSessionId: {SessionId}", _currentSessionId);
 
         if (_currentSessionId == Guid.Empty)
@@ -93,13 +96,22 @@ public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
 
         try
         {
+            // Map phase-local progress to overall progress to prevent resets on phase transitions
+            // Uses shared helper from Aesir.Common (cast to int since server uses ResearchPhase enum)
+            var overallPercent = ResearchPhaseProgressHelper.MapPhaseProgressToOverall(
+                (int)progress.Phase, progress.PercentComplete);
+
+            _logger.LogDebug(
+                "[BROADCASTER] Progress mapping: {Phase} {LocalPercent}% (local) → {OverallPercent}% (overall)",
+                progress.Phase, progress.PercentComplete, overallPercent);
+
             var update = new ResearchProgressUpdate
             {
                 SessionId = _currentSessionId,
                 Status = PhaseToStatus(progress.Phase),
                 Phase = progress.Phase,
                 Message = progress.Message,
-                ProgressPercent = progress.PercentComplete,
+                ProgressPercent = overallPercent, // Use mapped overall progress
                 AgentRole = progress.AgentRole,
                 Timestamp = DateTime.UtcNow
             };
@@ -111,8 +123,8 @@ public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
                 update);
 
             _logger.LogDebug(
-                "[BROADCASTER] SUCCESS - Progress broadcast for session {SessionId}: {Phase} - {Message} ({Percent}%)",
-                _currentSessionId, progress.Phase, progress.Message, progress.PercentComplete);
+                "[BROADCASTER] SUCCESS - Progress broadcast for session {SessionId}: {Phase} - {Message} ({OverallPercent}% overall, {LocalPercent}% local)",
+                _currentSessionId, progress.Phase, progress.Message, overallPercent, progress.PercentComplete);
         }
         catch (Exception ex)
         {

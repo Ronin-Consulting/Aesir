@@ -44,7 +44,9 @@
         {
             <TeamMessageProgress Session="Session"
                                  ProgressMessage="@ResearchState.CurrentProgressMessage"
-                                 ProgressPercent="@ResearchState.CurrentProgressPercent" />
+                                 ProgressPercent="@ResearchState.CurrentProgressPercent"
+                                 AgentActivity="@ResearchState.CurrentAgentActivity"
+                                 IsAgentActive="@ResearchState.IsAgentActive" />
         }
 
         @* Clarification Section (when awaiting input) *@
