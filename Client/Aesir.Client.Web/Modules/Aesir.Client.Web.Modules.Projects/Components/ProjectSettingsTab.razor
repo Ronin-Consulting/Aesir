@@ -1,0 +1,107 @@
+@inject IProjectApiService ProjectApiService
+@inject IUserService UserService
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="4" Style="max-width: 600px;">
+    <MudText Typo="Typo.h6">Project Settings</MudText>
+
+    <MudTextField @bind-Value="_name"
+                  Label="Project Name"
+                  Required="true"
+                  Variant="Variant.Outlined" />
+
+    <MudTextField @bind-Value="_description"
+                  Label="Description"
+                  Lines="3"
+                  Variant="Variant.Outlined" />
+
+    <MudTextField @bind-Value="_instructions"
+                  Label="Project Instructions"
+                  HelperText="These instructions will be appended to the AI's system prompt for all chats in this project. Use this to provide project-specific context, guidelines, or constraints."
+                  Lines="6"
+                  Variant="Variant.Outlined" />
+
+    <MudSwitch @bind-Value="_isActive"
+               Label="Project is Active"
+               Color="Color.Primary" />
+
+    <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+        <MudButton Variant="Variant.Text" OnClick="ResetForm">Reset</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(string.IsNullOrWhiteSpace(_name) || _saving)"
+                   OnClick="SaveSettings">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Save Changes
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public AesirProjectBase? Project { get; set; }
+
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    private string _name = string.Empty;
+    private string? _description;
+    private string? _instructions;
+    private bool _isActive = true;
+    private bool _saving;
+
+    protected override void OnParametersSet()
+    {
+        if (Project != null)
+        {
+            _name = Project.Name;
+            _description = Project.Description;
+            _instructions = Project.Instructions;
+            _isActive = Project.IsActive;
+        }
+    }
+
+    private void ResetForm()
+    {
+        if (Project != null)
+        {
+            _name = Project.Name;
+            _description = Project.Description;
+            _instructions = Project.Instructions;
+            _isActive = Project.IsActive;
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        if (Project == null || string.IsNullOrWhiteSpace(_name))
+            return;
+
+        _saving = true;
+
+        var userId = UserService.GetCurrentUserId();
+        var request = new UpdateProjectRequest
+        {
+            Name = _name,
+            Description = _description,
+            Instructions = _instructions,
+            IsActive = _isActive
+        };
+
+        var result = await ProjectApiService.UpdateProjectAsync(Project.Id, userId, request);
+
+        if (result.IsSuccess)
+        {
+            await OnSave.InvokeAsync();
+        }
+        else
+        {
+            Snackbar.Add($"Failed to save: {result.Error}", Severity.Error);
+        }
+
+        _saving = false;
+    }
+}

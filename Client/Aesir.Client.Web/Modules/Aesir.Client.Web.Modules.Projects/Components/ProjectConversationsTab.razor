@@ -1,0 +1,96 @@
+@inject IChatHistoryService ChatHistoryService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="3">
+    @if (_loading)
+    {
+        <MudStack Row="true" Justify="Justify.Center" Class="py-4">
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+        </MudStack>
+    }
+    else if (_conversations == null || _conversations.Count == 0)
+    {
+        <MudPaper Class="pa-6 text-center" Elevation="0">
+            <MudIcon Icon="@Icons.Material.Filled.Forum"
+                     Style="font-size: 3rem; opacity: 0.5;"
+                     Color="Color.Secondary" />
+            <MudText Typo="Typo.body1" Class="mt-3">No conversations in this project yet</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                Start a new chat to begin working within this project context.
+            </MudText>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Href="@($"/chat?projectId={ProjectId}")">
+                Start New Chat
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudList T="AesirChatSessionItem" Clickable="true" Dense="true">
+            @foreach (var conversation in _conversations)
+            {
+                <MudListItem OnClick="() => NavigateToConversation(conversation.Id)">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.ChatBubbleOutline" Size="Size.Small" Color="Color.Secondary" />
+                            <MudText Typo="Typo.body1">@(conversation.Title ?? "Untitled conversation")</MudText>
+                        </MudStack>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @conversation.UpdatedAt.ToString("MMM d, yyyy h:mm tt")
+                        </MudText>
+                    </MudStack>
+                </MudListItem>
+            }
+        </MudList>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    private List<AesirChatSessionItem>? _conversations;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConversationsAsync();
+    }
+
+    private async Task LoadConversationsAsync()
+    {
+        _loading = true;
+
+        try
+        {
+            // Load all sessions and filter by project ID
+            var result = await ChatHistoryService.LoadSessionsAsync();
+            if (result.IsSuccess && result.Value != null)
+            {
+                _conversations = result.Value
+                    .Where(s => s.ProjectId == ProjectId)
+                    .OrderByDescending(s => s.UpdatedAt)
+                    .ToList();
+            }
+            else
+            {
+                _conversations = [];
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load conversations: {ex.Message}", Severity.Error);
+            _conversations = [];
+        }
+
+        _loading = false;
+    }
+
+    private void NavigateToConversation(Guid conversationId)
+    {
+        NavigationManager.NavigateTo($"/chat/{conversationId}");
+    }
+}

@@ -1,0 +1,327 @@
+@page "/projects"
+@layout ChatLayout
+@inject IProjectApiService ProjectApiService
+@inject IUserService UserService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Projects - AESIR</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+    <MudStack Spacing="4">
+        @* Header *@
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h4">Projects</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Organize your chats and knowledge bases into focused workspaces
+                </MudText>
+            </MudStack>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreateDialog">
+                New Project
+            </MudButton>
+        </MudStack>
+
+        @* Loading state *@
+        @if (_loading)
+        {
+            <MudStack Row="true" Justify="Justify.Center" Class="py-8">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            </MudStack>
+        }
+        else if (_projects == null || _projects.Count == 0)
+        {
+            @* Empty state *@
+            <MudPaper Class="pa-8 text-center" Elevation="0">
+                <MudIcon Icon="@Icons.Material.Filled.FolderSpecial"
+                         Style="font-size: 4rem; opacity: 0.5;"
+                         Color="Color.Secondary" />
+                <MudText Typo="Typo.h6" Class="mt-4">No projects yet</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    Create a project to organize your chats and upload documents for focused AI assistance.
+                </MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="OpenCreateDialog">
+                    Create Your First Project
+                </MudButton>
+            </MudPaper>
+        }
+        else
+        {
+            @* Project grid *@
+            <MudGrid>
+                @foreach (var project in _projects)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Elevation="2" Class="cursor-pointer hover-elevate" @onclick="() => NavigateToProject(project.Id)">
+                            <MudCardHeader>
+                                <CardHeaderAvatar>
+                                    <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
+                                        <MudIcon Icon="@Icons.Material.Filled.Folder" />
+                                    </MudAvatar>
+                                </CardHeaderAvatar>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">@project.Name</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        @(project.UpdatedAt?.ToString("MMM d, yyyy") ?? project.CreatedAt.ToString("MMM d, yyyy"))
+                                    </MudText>
+                                </CardHeaderContent>
+                                <CardHeaderActions>
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight">
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="() => OpenEditDialog(project)">Edit</MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="() => ConfirmDelete(project)">Delete</MudMenuItem>
+                                    </MudMenu>
+                                </CardHeaderActions>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                @if (!string.IsNullOrWhiteSpace(project.Description))
+                                {
+                                    <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="min-height: 40px;">
+                                        @(project.Description.Length > 100 ? project.Description[..100] + "..." : project.Description)
+                                    </MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Class="mud-text-disabled" Style="min-height: 40px;">
+                                        No description
+                                    </MudText>
+                                }
+                            </MudCardContent>
+                            <MudCardActions>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">
+                                    @(project.IsActive ? "Active" : "Inactive")
+                                </MudChip>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </MudStack>
+</MudContainer>
+
+@* Create/Edit Dialog *@
+<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingProject == null ? "Create Project" : "Edit Project")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3" Class="pt-2">
+            <MudTextField @bind-Value="_projectForm.Name"
+                          Label="Project Name"
+                          Required="true"
+                          RequiredError="Project name is required"
+                          Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_projectForm.Description"
+                          Label="Description"
+                          Lines="2"
+                          Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_projectForm.Instructions"
+                          Label="Project Instructions"
+                          HelperText="Custom instructions that will be appended to the AI's system prompt for all chats in this project"
+                          Lines="4"
+                          Variant="Variant.Outlined" />
+            @if (_editingProject != null)
+            {
+                <MudSwitch @bind-Value="_projectForm.IsActive" Label="Active" Color="Color.Primary" />
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(string.IsNullOrWhiteSpace(_projectForm.Name) || _saving)"
+                   OnClick="SaveProject">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(_editingProject == null ? "Create" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .hover-elevate {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .hover-elevate:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--mud-elevation-8);
+    }
+    .cursor-pointer {
+        cursor: pointer;
+    }
+</style>
+
+@code {
+    private List<AesirProjectBase>? _projects;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _dialogVisible;
+    private AesirProjectBase? _editingProject;
+    private ProjectFormModel _projectForm = new();
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        CloseOnEscapeKey = true
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProjectsAsync();
+    }
+
+    private async Task LoadProjectsAsync()
+    {
+        _loading = true;
+        var userId = UserService.GetCurrentUserId();
+        var result = await ProjectApiService.GetProjectsAsync(userId);
+
+        if (result.IsSuccess)
+        {
+            _projects = result.Value?.ToList();
+        }
+        else
+        {
+            Snackbar.Add($"Failed to load projects: {result.Error}", Severity.Error);
+        }
+
+        _loading = false;
+    }
+
+    private void NavigateToProject(Guid projectId)
+    {
+        NavigationManager.NavigateTo($"/projects/{projectId}");
+    }
+
+    private void OpenCreateDialog()
+    {
+        _editingProject = null;
+        _projectForm = new ProjectFormModel();
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(AesirProjectBase project)
+    {
+        _editingProject = project;
+        _projectForm = new ProjectFormModel
+        {
+            Name = project.Name,
+            Description = project.Description,
+            Instructions = project.Instructions,
+            IsActive = project.IsActive
+        };
+        _dialogVisible = true;
+    }
+
+    private void CloseDialog()
+    {
+        _dialogVisible = false;
+        _editingProject = null;
+        _projectForm = new ProjectFormModel();
+    }
+
+    private async Task SaveProject()
+    {
+        if (string.IsNullOrWhiteSpace(_projectForm.Name))
+            return;
+
+        _saving = true;
+        var userId = UserService.GetCurrentUserId();
+
+        if (_editingProject == null)
+        {
+            // Create new project
+            var request = new CreateProjectRequest
+            {
+                Name = _projectForm.Name,
+                Description = _projectForm.Description,
+                Instructions = _projectForm.Instructions
+            };
+
+            var result = await ProjectApiService.CreateProjectAsync(userId, request);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add("Project created successfully", Severity.Success);
+                CloseDialog();
+                await LoadProjectsAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to create project: {result.Error}", Severity.Error);
+            }
+        }
+        else
+        {
+            // Update existing project
+            var request = new UpdateProjectRequest
+            {
+                Name = _projectForm.Name,
+                Description = _projectForm.Description,
+                Instructions = _projectForm.Instructions,
+                IsActive = _projectForm.IsActive
+            };
+
+            var result = await ProjectApiService.UpdateProjectAsync(_editingProject.Id, userId, request);
+            if (result.IsSuccess)
+            {
+                Snackbar.Add("Project updated successfully", Severity.Success);
+                CloseDialog();
+                await LoadProjectsAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to update project: {result.Error}", Severity.Error);
+            }
+        }
+
+        _saving = false;
+    }
+
+    private async Task ConfirmDelete(AesirProjectBase project)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Are you sure you want to delete the project '{project.Name}'? Conversations in this project will be kept but unassociated." },
+            { x => x.ButtonText, "Delete" },
+            { x => x.Color, Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Project", parameters);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled)
+        {
+            var userId = UserService.GetCurrentUserId();
+            var deleteResult = await ProjectApiService.DeleteProjectAsync(project.Id, userId, false);
+
+            if (deleteResult.IsSuccess)
+            {
+                Snackbar.Add("Project deleted successfully", Severity.Success);
+                await LoadProjectsAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to delete project: {deleteResult.Error}", Severity.Error);
+            }
+        }
+    }
+
+    private class ProjectFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? Instructions { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}

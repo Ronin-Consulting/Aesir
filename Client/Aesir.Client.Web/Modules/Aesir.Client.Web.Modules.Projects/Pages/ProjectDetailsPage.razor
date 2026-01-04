@@ -1,0 +1,174 @@
+@page "/projects/{ProjectId:guid}"
+@layout ChatLayout
+@inject IProjectApiService ProjectApiService
+@inject IDocumentApiService DocumentApiService
+@inject IChatHistoryService ChatHistoryService
+@inject IUserService UserService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>@(_project?.Name ?? "Project") - AESIR</PageTitle>
+
+@if (_loading)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+        <MudStack Row="true" Justify="Justify.Center" Class="py-8">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        </MudStack>
+    </MudContainer>
+}
+else if (_project == null)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+        <MudPaper Class="pa-8 text-center" Elevation="0">
+            <MudIcon Icon="@Icons.Material.Filled.Error"
+                     Style="font-size: 4rem; opacity: 0.5;"
+                     Color="Color.Error" />
+            <MudText Typo="Typo.h6" Class="mt-4">Project not found</MudText>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Href="/projects"
+                       Class="mt-4">
+                Back to Projects
+            </MudButton>
+        </MudPaper>
+    </MudContainer>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+        <MudStack Spacing="4">
+            @* Breadcrumb *@
+            <MudBreadcrumbs Items="_breadcrumbs" />
+
+            @* Header *@
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                <MudStack Spacing="1">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.FolderSpecial" Color="Color.Primary" />
+                        <MudText Typo="Typo.h4">@_project.Name</MudText>
+                        @if (!_project.IsActive)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Inactive</MudChip>
+                        }
+                    </MudStack>
+                    @if (!string.IsNullOrWhiteSpace(_project.Description))
+                    {
+                        <MudText Typo="Typo.body1" Color="Color.Secondary">@_project.Description</MudText>
+                    }
+                </MudStack>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Chat"
+                               Href="@($"/chat?projectId={ProjectId}")">
+                        New Chat
+                    </MudButton>
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Variant="Variant.Outlined">
+                        <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="OpenEditDialog">Edit Project</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="ConfirmDelete">Delete Project</MudMenuItem>
+                    </MudMenu>
+                </MudStack>
+            </MudStack>
+
+            @* Tabs *@
+            <MudTabs Elevation="0" Rounded="true" PanelClass="pa-4" @bind-ActivePanelIndex="_activeTabIndex">
+                <MudTabPanel Text="Conversations" Icon="@Icons.Material.Filled.Forum">
+                    <ProjectConversationsTab ProjectId="ProjectId" />
+                </MudTabPanel>
+                <MudTabPanel Text="Knowledge Base" Icon="@Icons.Material.Filled.Description">
+                    <ProjectKnowledgeTab ProjectId="ProjectId" />
+                </MudTabPanel>
+                <MudTabPanel Text="Settings" Icon="@Icons.Material.Filled.Settings">
+                    <ProjectSettingsTab Project="_project" OnSave="HandleProjectSaved" />
+                </MudTabPanel>
+            </MudTabs>
+        </MudStack>
+    </MudContainer>
+}
+
+@code {
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    private AesirProjectBase? _project;
+    private bool _loading = true;
+    private int _activeTabIndex;
+
+    private List<BreadcrumbItem> _breadcrumbs = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProjectAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadProjectAsync();
+    }
+
+    private async Task LoadProjectAsync()
+    {
+        _loading = true;
+        var result = await ProjectApiService.GetProjectAsync(ProjectId);
+
+        if (result.IsSuccess)
+        {
+            _project = result.Value;
+            _breadcrumbs =
+            [
+                new BreadcrumbItem("Projects", "/projects", icon: Icons.Material.Filled.Folder),
+                new BreadcrumbItem(_project?.Name ?? "Project", null, disabled: true)
+            ];
+        }
+        else
+        {
+            _project = null;
+        }
+
+        _loading = false;
+    }
+
+    private void OpenEditDialog()
+    {
+        _activeTabIndex = 2; // Switch to Settings tab
+    }
+
+    private async Task HandleProjectSaved()
+    {
+        await LoadProjectAsync();
+        Snackbar.Add("Project updated successfully", Severity.Success);
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (_project == null) return;
+
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Are you sure you want to delete the project '{_project.Name}'? Conversations in this project will be kept but unassociated." },
+            { x => x.ButtonText, "Delete" },
+            { x => x.Color, Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Project", parameters);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled)
+        {
+            var userId = UserService.GetCurrentUserId();
+            var deleteResult = await ProjectApiService.DeleteProjectAsync(_project.Id, userId, false);
+
+            if (deleteResult.IsSuccess)
+            {
+                Snackbar.Add("Project deleted successfully", Severity.Success);
+                NavigationManager.NavigateTo("/projects");
+            }
+            else
+            {
+                Snackbar.Add($"Failed to delete project: {deleteResult.Error}", Severity.Error);
+            }
+        }
+    }
+}

@@ -1,0 +1,206 @@
+@inject IDocumentApiService DocumentApiService
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="3">
+    @* Upload section *@
+    <MudPaper Class="pa-4" Elevation="0" Style="border: 2px dashed var(--mud-palette-lines-default); border-radius: 8px;">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.body1">Upload documents to the project knowledge base</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Supported formats: PDF, DOCX, TXT, MD, CSV, JSON
+            </MudText>
+            <MudFileUpload T="IBrowserFile"
+                           Accept=".pdf,.docx,.txt,.md,.csv,.json"
+                           FilesChanged="HandleFileUpload"
+                           MaximumFileCount="1">
+                <ActivatorContent>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Upload"
+                               Disabled="_uploading">
+                        @if (_uploading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Uploading...</span>
+                        }
+                        else
+                        {
+                            <span>Select File</span>
+                        }
+                    </MudButton>
+                </ActivatorContent>
+            </MudFileUpload>
+        </MudStack>
+    </MudPaper>
+
+    @* Documents list *@
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h6">Documents</MudText>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="LoadDocumentsAsync"
+                   Disabled="_loading">
+            Refresh
+        </MudButton>
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudStack Row="true" Justify="Justify.Center" Class="py-4">
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+        </MudStack>
+    }
+    else if (_documents == null || _documents.Count == 0)
+    {
+        <MudPaper Class="pa-6 text-center" Elevation="0">
+            <MudIcon Icon="@Icons.Material.Filled.Description"
+                     Style="font-size: 3rem; opacity: 0.5;"
+                     Color="Color.Secondary" />
+            <MudText Typo="Typo.body1" Class="mt-3">No documents uploaded</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Upload documents to provide context for AI conversations in this project.
+            </MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <MudTable Items="_documents" Hover="true" Dense="true" Elevation="0">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh Style="width: 120px;">Size</MudTh>
+                <MudTh Style="width: 80px;">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@GetFileIcon(context.FileName)" Size="Size.Small" Color="Color.Secondary" />
+                        <MudText>@context.FileName</MudText>
+                    </MudStack>
+                </MudTd>
+                <MudTd DataLabel="Size">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@FormatFileSize(context.FileSize)</MudText>
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="() => DeleteDocument(context.FileName)" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public Guid ProjectId { get; set; }
+
+    private List<DocumentFileInfo>? _documents;
+    private bool _loading = true;
+    private bool _uploading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDocumentsAsync();
+    }
+
+    private async Task LoadDocumentsAsync()
+    {
+        _loading = true;
+
+        try
+        {
+            // Use ProjectId as the category ID for global document collection
+            _documents = await DocumentApiService.GetGlobalFilesAsync(ProjectId.ToString());
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load documents: {ex.Message}", Severity.Error);
+            _documents = [];
+        }
+
+        _loading = false;
+    }
+
+    private async Task HandleFileUpload(IBrowserFile file)
+    {
+        if (file == null) return;
+
+        _uploading = true;
+
+        try
+        {
+            // Use ProjectId as the category ID for global document collection
+            var success = await DocumentApiService.UploadGlobalFileAsync(ProjectId.ToString(), file);
+
+            if (success)
+            {
+                Snackbar.Add($"Document '{file.Name}' uploaded successfully", Severity.Success);
+                await LoadDocumentsAsync();
+            }
+            else
+            {
+                Snackbar.Add("Failed to upload document", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Upload failed: {ex.Message}", Severity.Error);
+        }
+
+        _uploading = false;
+    }
+
+    private async Task DeleteDocument(string fileName)
+    {
+        try
+        {
+            var success = await DocumentApiService.DeleteGlobalFileAsync(ProjectId.ToString(), fileName);
+
+            if (success)
+            {
+                Snackbar.Add($"Document '{fileName}' deleted", Severity.Success);
+                await LoadDocumentsAsync();
+            }
+            else
+            {
+                Snackbar.Add("Failed to delete document", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static string GetFileIcon(string fileName)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".pdf" => Icons.Material.Filled.PictureAsPdf,
+            ".docx" or ".doc" => Icons.Material.Filled.Article,
+            ".txt" or ".md" => Icons.Material.Filled.TextSnippet,
+            ".csv" => Icons.Material.Filled.TableChart,
+            ".json" => Icons.Material.Filled.Code,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        string[] sizes = ["B", "KB", "MB", "GB"];
+        int order = 0;
+        double size = bytes;
+
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+
+        return $"{size:0.##} {sizes[order]}";
+    }
+}
