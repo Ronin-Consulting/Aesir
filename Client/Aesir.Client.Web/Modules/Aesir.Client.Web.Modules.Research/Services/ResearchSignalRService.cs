@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using Aesir.Common.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Aesir.Client.Web.Modules.Research.Services;
 
@@ -10,9 +12,10 @@ namespace Aesir.Client.Web.Modules.Research.Services;
 public class ResearchSignalRService : IResearchSignalRService
 {
     private readonly IConfiguration _configuration;
+    private readonly ILogger<ResearchSignalRService>? _logger;
     private HubConnection? _hubConnection;
     private bool _disposed;
-    private readonly HashSet<Guid> _subscribedSessions = [];
+    private readonly ConcurrentDictionary<Guid, byte> _subscribedSessions = new();
 
     /// <inheritdoc />
     public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
@@ -41,40 +44,56 @@ public class ResearchSignalRService : IResearchSignalRService
     /// <summary>
     /// Creates a new ResearchSignalRService.
     /// </summary>
-    public ResearchSignalRService(IConfiguration configuration)
+    public ResearchSignalRService(IConfiguration configuration, ILogger<ResearchSignalRService>? logger = null)
     {
         _configuration = configuration;
+        _logger = logger;
+        _logger?.LogInformation("[RESEARCH-SIGNALR] Service created");
     }
 
     /// <inheritdoc />
     public async Task<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
+        _logger?.LogDebug("[RESEARCH-SIGNALR] ConnectAsync called, disposed={Disposed}, connected={Connected}",
+            _disposed, IsConnected);
+
         if (_disposed)
             throw new ObjectDisposedException(nameof(ResearchSignalRService));
 
         if (IsConnected)
+        {
+            _logger?.LogDebug("[RESEARCH-SIGNALR] Already connected, returning true");
             return true;
+        }
 
+        var startTime = DateTime.UtcNow;
         try
         {
             var baseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://aesir.localhost";
+            var hubUrl = $"{baseUrl}/researchhub";
+            _logger?.LogInformation("[RESEARCH-SIGNALR] Connecting to hub at: {HubUrl}", hubUrl);
 
             _hubConnection = new HubConnectionBuilder()
-                .WithUrl($"{baseUrl}/researchhub")
+                .WithUrl(hubUrl)
                 .WithAutomaticReconnect()
                 .Build();
 
             // Register event handlers
             RegisterEventHandlers();
 
+            _logger?.LogDebug("[RESEARCH-SIGNALR] Starting hub connection...");
             await _hubConnection.StartAsync(cancellationToken);
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
-            Console.WriteLine("Connected to Research hub");
+            _logger?.LogInformation("[RESEARCH-SIGNALR] Connected to Research hub in {Elapsed}ms, state={State}",
+                elapsed, _hubConnection.State);
             return true;
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Failed to connect to Research hub: {ex.Message}");
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            _logger?.LogError(ex, "[RESEARCH-SIGNALR] Failed to connect to Research hub after {Elapsed}ms: {Message}",
+                elapsed, ex.Message);
             return false;
         }
     }
@@ -82,9 +101,12 @@ public class ResearchSignalRService : IResearchSignalRService
     private void RegisterEventHandlers()
     {
         if (_hubConnection == null) return;
+        _logger?.LogDebug("[RESEARCH-SIGNALR] Registering event handlers");
 
         _hubConnection.On<StatusUpdateDto>("StatusUpdate", dto =>
         {
+            _logger?.LogDebug("[RESEARCH-SIGNALR] StatusUpdate received: SessionId={SessionId}, Status={Status}, Phase={Phase}",
+                dto.SessionId, dto.Status, dto.Phase);
             OnStatusUpdate?.Invoke(new ResearchStatusUpdate(
                 dto.SessionId,
                 dto.Status,
@@ -95,6 +117,8 @@ public class ResearchSignalRService : IResearchSignalRService
 
         _hubConnection.On<AgentStartedDto>("AgentStarted", dto =>
         {
+            _logger?.LogDebug("[RESEARCH-SIGNALR] AgentStarted received: SessionId={SessionId}, Role={Role}",
+                dto.SessionId, dto.Role);
             OnAgentStarted?.Invoke(new ResearchAgentEvent(
                 dto.SessionId,
                 dto.Role,
@@ -104,6 +128,8 @@ public class ResearchSignalRService : IResearchSignalRService
 
         _hubConnection.On<AgentCompletedDto>("AgentCompleted", dto =>
         {
+            _logger?.LogDebug("[RESEARCH-SIGNALR] AgentCompleted received: SessionId={SessionId}, Role={Role}",
+                dto.SessionId, dto.Role);
             OnAgentCompleted?.Invoke(new ResearchAgentCompletedEvent(
                 dto.SessionId,
                 dto.Role,
@@ -114,6 +140,8 @@ public class ResearchSignalRService : IResearchSignalRService
 
         _hubConnection.On<PeerReviewCompletedDto>("PeerReviewCompleted", dto =>
         {
+            _logger?.LogDebug("[RESEARCH-SIGNALR] PeerReviewCompleted received: SessionId={SessionId}",
+                dto.SessionId);
             OnPeerReviewCompleted?.Invoke(new ResearchPeerReviewEvent(
                 dto.SessionId,
                 dto.ReviewId,
@@ -124,6 +152,8 @@ public class ResearchSignalRService : IResearchSignalRService
 
         _hubConnection.On<ResearchCompletedDto>("ResearchCompleted", dto =>
         {
+            _logger?.LogInformation("[RESEARCH-SIGNALR] ResearchCompleted received: SessionId={SessionId}, ReportId={ReportId}",
+                dto.SessionId, dto.ReportId);
             OnResearchCompleted?.Invoke(new ResearchCompletedEvent(
                 dto.SessionId,
                 dto.ReportId,
@@ -132,6 +162,8 @@ public class ResearchSignalRService : IResearchSignalRService
 
         _hubConnection.On<ResearchErrorDto>("ResearchError", dto =>
         {
+            _logger?.LogWarning("[RESEARCH-SIGNALR] ResearchError received: SessionId={SessionId}, Error={Error}",
+                dto.SessionId, dto.ErrorMessage);
             OnResearchError?.Invoke(new ResearchErrorEvent(
                 dto.SessionId,
                 dto.ErrorMessage,
@@ -140,6 +172,8 @@ public class ResearchSignalRService : IResearchSignalRService
 
         _hubConnection.On<ProgressDto>("Progress", dto =>
         {
+            _logger?.LogDebug("[RESEARCH-SIGNALR] Progress received: SessionId={SessionId}, EventType={EventType}",
+                dto.SessionId, dto.EventType);
             OnProgress?.Invoke(new ResearchProgressEvent(
                 dto.SessionId,
                 dto.EventType,
@@ -150,21 +184,40 @@ public class ResearchSignalRService : IResearchSignalRService
         // Handle reconnection - resubscribe to all sessions
         _hubConnection.Reconnected += async _ =>
         {
-            Console.WriteLine("Reconnected to Research hub, resubscribing to sessions...");
-            foreach (var sessionId in _subscribedSessions)
+            // Take a thread-safe snapshot of session IDs to avoid collection modification during enumeration
+            var sessionIds = _subscribedSessions.Keys.ToArray();
+            _logger?.LogInformation("[RESEARCH-SIGNALR] Reconnected to hub, resubscribing to {Count} sessions",
+                sessionIds.Length);
+            foreach (var sessionId in sessionIds)
             {
+                _logger?.LogDebug("[RESEARCH-SIGNALR] Resubscribing to session: {SessionId}", sessionId);
                 await _hubConnection.InvokeAsync("SubscribeToSession", sessionId);
             }
         };
+
+        _hubConnection.Closed += error =>
+        {
+            _logger?.LogWarning("[RESEARCH-SIGNALR] Connection closed: {Error}", error?.Message);
+            return Task.CompletedTask;
+        };
+
+        _hubConnection.Reconnecting += error =>
+        {
+            _logger?.LogWarning("[RESEARCH-SIGNALR] Reconnecting: {Error}", error?.Message);
+            return Task.CompletedTask;
+        };
+
+        _logger?.LogDebug("[RESEARCH-SIGNALR] Event handlers registered");
     }
 
     /// <inheritdoc />
     public async Task DisconnectAsync()
     {
+        _logger?.LogDebug("[RESEARCH-SIGNALR] DisconnectAsync called");
         if (_hubConnection != null)
         {
             await _hubConnection.StopAsync();
-            Console.WriteLine("Disconnected from Research hub");
+            _logger?.LogInformation("[RESEARCH-SIGNALR] Disconnected from Research hub");
         }
         _subscribedSessions.Clear();
     }
@@ -172,31 +225,39 @@ public class ResearchSignalRService : IResearchSignalRService
     /// <inheritdoc />
     public async Task SubscribeToSessionAsync(Guid sessionId)
     {
+        _logger?.LogDebug("[RESEARCH-SIGNALR] SubscribeToSessionAsync called: {SessionId}", sessionId);
+
         if (_disposed)
             throw new ObjectDisposedException(nameof(ResearchSignalRService));
 
         if (_hubConnection?.State != HubConnectionState.Connected)
         {
+            _logger?.LogWarning("[RESEARCH-SIGNALR] Cannot subscribe - hub not connected (state={State})",
+                _hubConnection?.State);
             throw new InvalidOperationException("Research hub is not connected. Call ConnectAsync first.");
         }
 
+        var startTime = DateTime.UtcNow;
         await _hubConnection.InvokeAsync("SubscribeToSession", sessionId);
-        _subscribedSessions.Add(sessionId);
-        Console.WriteLine($"Subscribed to research session: {sessionId}");
+        var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+        _subscribedSessions.TryAdd(sessionId, 0);
+        _logger?.LogInformation("[RESEARCH-SIGNALR] Subscribed to session in {Elapsed}ms: {SessionId}", elapsed, sessionId);
     }
 
     /// <inheritdoc />
     public async Task UnsubscribeFromSessionAsync(Guid sessionId)
     {
+        _logger?.LogDebug("[RESEARCH-SIGNALR] UnsubscribeFromSessionAsync called: {SessionId}", sessionId);
+
         if (_disposed)
             throw new ObjectDisposedException(nameof(ResearchSignalRService));
 
         if (_hubConnection?.State == HubConnectionState.Connected)
         {
             await _hubConnection.InvokeAsync("UnsubscribeFromSession", sessionId);
+            _logger?.LogDebug("[RESEARCH-SIGNALR] Unsubscribed from session: {SessionId}", sessionId);
         }
-        _subscribedSessions.Remove(sessionId);
-        Console.WriteLine($"Unsubscribed from research session: {sessionId}");
+        _subscribedSessions.TryRemove(sessionId, out _);
     }
 
     /// <inheritdoc />

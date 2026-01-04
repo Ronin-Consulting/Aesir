@@ -9,18 +9,19 @@
 
     <ItemGroup>
         <!-- Database dependencies -->
-        <PackageReference Include="Dapper" Version="2.1.66"/>
-        <PackageReference Include="Dapper.Contrib" Version="2.0.78"/>
+        <PackageReference Include="Dapper" Version="2.1.66" />
+        <PackageReference Include="Dapper.Contrib" Version="2.0.78" />
+        <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
         <PackageReference Include="NLog" Version="6.0.6" />
         <PackageReference Include="NLog.Extensions.Logging" Version="6.1.0" />
-        <PackageReference Include="Npgsql" Version="9.0.4"/>
-        <PackageReference Include="Pgvector" Version="0.3.2"/>
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.4"/>
+        <PackageReference Include="Npgsql" Version="9.0.4" />
+        <PackageReference Include="Pgvector" Version="0.3.2" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
 
         <!-- Migration dependencies -->
-        <PackageReference Include="FluentMigrator" Version="7.1.0"/>
-        <PackageReference Include="FluentMigrator.Extensions.Postgres" Version="7.1.0"/>
-        <PackageReference Include="FluentMigrator.Runner.Postgres" Version="7.1.0"/>
+        <PackageReference Include="FluentMigrator" Version="7.1.0" />
+        <PackageReference Include="FluentMigrator.Extensions.Postgres" Version="7.1.0" />
+        <PackageReference Include="FluentMigrator.Runner.Postgres" Version="7.1.0" />
 
         <!-- Dependency injection -->
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
@@ -39,7 +40,8 @@
         <PackageReference Include="Microsoft.SemanticKernel.Plugins.Web" Version="1.68.0-alpha" />
         
         <!-- Stop words for keyword extraction -->
-        <PackageReference Include="dotnet-stop-words" Version="1.1.0"/>
+        <PackageReference Include="dotnet-stop-words" Version="1.1.0" />
+        <PackageReference Include="QuestPDF" Version="2025.12.1" />
     </ItemGroup>
 
     <ItemGroup>

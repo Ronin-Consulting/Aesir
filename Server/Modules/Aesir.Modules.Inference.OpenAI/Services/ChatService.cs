@@ -178,8 +178,9 @@ public class ChatService : BaseChatService
 
         var chatCompletionService = GetChatCompletionService(request.Model);
 
-        _kernel.Data.Add("ChatSessionId",request.ChatSessionId);
-        _kernel.Data.Add("ConversationId",request.Conversation.Id);
+        // Use indexer to set/overwrite - Add() throws if key exists (e.g., Research reusing kernel)
+        _kernel.Data["ChatSessionId"] = request.ChatSessionId;
+        _kernel.Data["ConversationId"] = request.Conversation.Id;
 
         var completionResults = await chatCompletionService.GetChatMessageContentsAsync(
             chatHistory,
@@ -222,8 +223,9 @@ public class ChatService : BaseChatService
 
         var chatCompletionService = GetChatCompletionService(request.Model);
 
-        _kernel.Data.Add("ChatSessionId", request.ChatSessionId);
-        _kernel.Data.Add("ConversationId", request.Conversation.Id);
+        // Use indexer to set/overwrite - Add() throws if key exists (e.g., Research reusing kernel)
+        _kernel.Data["ChatSessionId"] = request.ChatSessionId;
+        _kernel.Data["ConversationId"] = request.Conversation.Id;
 
         // STOPGAP: Create reasoning content collector to intercept reasoning_content
         // from llama.cpp/TTRA responses. Remove when OpenAI SDK or SK adds native support.
@@ -267,8 +269,6 @@ public class ChatService : BaseChatService
         // Drain any reasoning chunks that arrived before first content
         while (reasoningCollector.Reader.TryRead(out var chunk))
         {
-            _logger.LogDebug("[Stopgap] Yielding pre-content reasoning chunk: {Content}",
-                chunk.Content.Length > 50 ? chunk.Content[..50] + "..." : chunk.Content);
             yield return (chunk.Content, chunk.IsThinking, false);
         }
 
@@ -277,8 +277,6 @@ public class ChatService : BaseChatService
             // Check for reasoning chunks between content chunks
             while (reasoningCollector.Reader.TryRead(out var chunk))
             {
-                _logger.LogDebug("[Stopgap] Yielding reasoning chunk: {Content}",
-                    chunk.Content.Length > 50 ? chunk.Content[..50] + "..." : chunk.Content);
                 yield return (chunk.Content, chunk.IsThinking, false);
             }
 
@@ -300,8 +298,6 @@ public class ChatService : BaseChatService
         // Drain any remaining reasoning chunks
         while (reasoningCollector.Reader.TryRead(out var chunk))
         {
-            _logger.LogDebug("[Stopgap] Yielding post-content reasoning chunk: {Content}",
-                chunk.Content.Length > 50 ? chunk.Content[..50] + "..." : chunk.Content);
             yield return (chunk.Content, chunk.IsThinking, false);
         }
     }

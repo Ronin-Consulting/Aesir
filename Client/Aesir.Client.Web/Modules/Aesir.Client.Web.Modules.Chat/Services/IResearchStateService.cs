@@ -7,7 +7,7 @@ namespace Aesir.Client.Web.Modules.Chat.Services;
 /// Service for managing research state during a chat session.
 /// Tracks active research sessions and provides progress updates.
 /// </summary>
-public interface IResearchStateService
+public interface IResearchStateService : IDisposable
 {
     /// <summary>
     /// The currently active research session, if any.
@@ -38,6 +38,21 @@ public interface IResearchStateService
     /// The current progress percentage (0-100).
     /// </summary>
     int CurrentProgressPercent { get; }
+
+    /// <summary>
+    /// The current agent role performing work, if any.
+    /// </summary>
+    ResearchRoleBase? CurrentAgentRole { get; }
+
+    /// <summary>
+    /// The current agent activity message (e.g., "DeepDiver is researching...").
+    /// </summary>
+    string? CurrentAgentActivity { get; }
+
+    /// <summary>
+    /// Whether an agent is currently actively working.
+    /// </summary>
+    bool IsAgentActive { get; }
 
     /// <summary>
     /// Event raised when the active session changes.
@@ -77,12 +92,14 @@ public interface IResearchStateService
     /// <param name="teamId">The research team ID.</param>
     /// <param name="mode">The research mode.</param>
     /// <param name="documentCollectionIds">Optional document collection IDs.</param>
+    /// <param name="conversationId">Optional ChatSession ID to link research to.</param>
     /// <returns>The created session.</returns>
     Task<ResearchSessionBase?> StartResearchAsync(
         string query,
         Guid teamId,
         ResearchModeBase mode = ResearchModeBase.Standard,
-        List<Guid>? documentCollectionIds = null);
+        List<Guid>? documentCollectionIds = null,
+        Guid? conversationId = null);
 
     /// <summary>
     /// Submits clarification answers.
@@ -111,4 +128,11 @@ public interface IResearchStateService
     /// Clears the active session.
     /// </summary>
     void ClearSession();
+
+    /// <summary>
+    /// Restores an active research session if one exists for the current user.
+    /// Called on page load to resume viewing in-progress research.
+    /// </summary>
+    /// <returns>True if an active session was restored.</returns>
+    Task<bool> RestoreActiveSessionAsync();
 }

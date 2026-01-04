@@ -173,8 +173,9 @@ public class ChatService : BaseChatService
 
         var chatCompletionService = GetChatCompletionService(request.Model);
 
-        _kernel.Data.Add("ChatSessionId",request.ChatSessionId);
-        _kernel.Data.Add("ConversationId",request.Conversation.Id);
+        // Use indexer to set/overwrite - Add() throws if key exists (e.g., Research reusing kernel)
+        _kernel.Data["ChatSessionId"] = request.ChatSessionId;
+        _kernel.Data["ConversationId"] = request.Conversation.Id;
 
         var results = await chatCompletionService.GetChatMessageContentsAsync(
             chatHistory,
@@ -217,8 +218,9 @@ public class ChatService : BaseChatService
 
         var chatCompletionService = GetChatCompletionService(request.Model);
 
-        _kernel.Data.Add("ChatSessionId",request.ChatSessionId);
-        _kernel.Data.Add("ConversationId",request.Conversation.Id);
+        // Use indexer to set/overwrite - Add() throws if key exists (e.g., Research reusing kernel)
+        _kernel.Data["ChatSessionId"] = request.ChatSessionId;
+        _kernel.Data["ConversationId"] = request.Conversation.Id;
 
         var results = chatCompletionService.GetStreamingChatMessageContentsAsync(
             chatHistory,

@@ -49,8 +49,8 @@ public sealed class ReasoningContentCollector_Stopgap : IReasoningContentCollect
     {
         if (_isCompleted || string.IsNullOrEmpty(content)) return;
 
-        _logger?.LogDebug("[Stopgap] Reasoning chunk: {Content}",
-            content.Length > 50 ? content[..50] + "..." : content);
+        // _logger?.LogDebug("[Stopgap] Reasoning chunk: {Content}",
+        //     content.Length > 50 ? content[..50] + "..." : content);
 
         await _channel.Writer.WriteAsync(
             new ReasoningChunk_Stopgap(content, _isThinking),
@@ -60,7 +60,7 @@ public sealed class ReasoningContentCollector_Stopgap : IReasoningContentCollect
     public void EndReasoning()
     {
         _isThinking = false;
-        _logger?.LogDebug("[Stopgap] Reasoning ended, transitioning to content");
+        //_logger?.LogDebug("[Stopgap] Reasoning ended, transitioning to content");
     }
 
     public void Complete()
@@ -68,7 +68,7 @@ public sealed class ReasoningContentCollector_Stopgap : IReasoningContentCollect
         if (_isCompleted) return;
         _isCompleted = true;
         _channel.Writer.TryComplete();
-        _logger?.LogDebug("[Stopgap] Collector completed");
+        //_logger?.LogDebug("[Stopgap] Collector completed");
     }
 
     public ValueTask DisposeAsync()

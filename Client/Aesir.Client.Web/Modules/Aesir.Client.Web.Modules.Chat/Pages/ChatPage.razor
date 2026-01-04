@@ -9,6 +9,7 @@
 @inject IAgentToolsService AgentToolsService
 @inject IConfigurationApiService ConfigurationService
 @inject IResearchStateService ResearchState
+@inject IResearchSessionApiService ResearchSessionApi
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
@@ -40,10 +41,10 @@
                      OnSend="@SendMessageAsync"
                      OnSendWithFiles="@SendMessageWithFilesAsync"
                      GetConversationId="@GetOrCreateConversationId"
-                     AvailableTools="@_agentTools"
+                     AvailableTools="@(ResearchState.IsTeamSelected ? Array.Empty<AesirToolBase>() : _agentTools)"
                      DisabledToolIds="@ChatState.DisabledToolIds"
                      OnToolToggled="@HandleToolToggled"
-                     AllowThinking="@(ChatState.SelectedAgent?.IsThinkingAvailable ?? false)"
+                     AllowThinking="@(!ResearchState.IsTeamSelected && (ChatState.SelectedAgent?.IsThinkingAvailable ?? false))"
                      SelectedThinkLevel="@_selectedThinkLevel"
                      DefaultThinkLevel="@ChatState.SelectedAgent?.ThinkValue"
                      OnThinkLevelChanged="@HandleThinkLevelChanged" />
@@ -128,10 +129,10 @@
                       IsDisabled="@(_isStreaming || _isThinking || ChatState.SelectedAgent == null || _isLoadingSession || _isUploadingFiles)"
                       IsLoading="@(_isStreaming || _isThinking || _isUploadingFiles)"
                       GetConversationId="@GetOrCreateConversationId"
-                      AvailableTools="@_agentTools"
+                      AvailableTools="@(ResearchState.IsTeamSelected ? Array.Empty<AesirToolBase>() : _agentTools)"
                       DisabledToolIds="@ChatState.DisabledToolIds"
                       OnToolToggled="@HandleToolToggled"
-                      AllowThinking="@(ChatState.SelectedAgent?.IsThinkingAvailable ?? false)"
+                      AllowThinking="@(!ResearchState.IsTeamSelected && (ChatState.SelectedAgent?.IsThinkingAvailable ?? false))"
                       SelectedThinkLevel="@_selectedThinkLevel"
                       DefaultThinkLevel="@ChatState.SelectedAgent?.ThinkValue"
                       OnThinkLevelChanged="@HandleThinkLevelChanged" />
@@ -255,6 +256,11 @@
     // Files are added when uploaded and removed after 5 seconds
     private readonly HashSet<string> _recentlyUploadedFiles = new(StringComparer.OrdinalIgnoreCase);
 
+    // Research session cache - stores loaded sessions to avoid repeated API calls
+    // Key: ResearchSessionId, Value: The loaded session
+    private readonly Dictionary<Guid, ResearchSessionBase> _researchSessionCache = new();
+    private readonly HashSet<Guid> _researchSessionsLoading = new(); // Track in-flight loads
+
     // Property to create the streaming message object
     private AesirChatMessage _streamingMessage => new AesirChatMessage
     {
@@ -280,6 +286,7 @@
         ResearchState.OnSessionChanged += HandleResearchSessionChanged;
         ResearchState.OnResearchCompleted += HandleResearchCompleted;
         ResearchState.OnResearchError += HandleResearchError;
+        ResearchState.OnTeamChanged += HandleResearchTeamChanged;
 
         // Initialize with empty conversation (with ID for API validation)
         _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
@@ -331,6 +338,7 @@
     /// </summary>
     private void ResetToNewChatState()
     {
+        ClearResearchSessionCache();
         _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
         _hasMessages = false;
         _streamingContent = string.Empty;
@@ -394,11 +402,49 @@
                 await LoadAgentToolsAsync(clearToggles: false);
                 StateHasChanged();
             }
+
+            // Restore any in-progress research session so progress is shown after page refresh
+            if (!ResearchState.IsResearchInProgress)
+            {
+                try
+                {
+                    var restored = await ResearchState.RestoreActiveSessionAsync();
+                    if (restored && ResearchState.ActiveSession != null)
+                    {
+                        Console.WriteLine($"Restored in-progress research session: {ResearchState.ActiveSession.Id}");
+
+                        // Add a placeholder TeamMessage to show progress
+                        // This message was in client memory before refresh but not persisted to server
+                        var existingTeamMessage = _conversation.Messages
+                            .FirstOrDefault(m => m.IsResearchTeamMessage &&
+                                                 m.ResearchSessionId == ResearchState.ActiveSession.Id);
+
+                        if (existingTeamMessage == null)
+                        {
+                            var teamMessage = AesirChatMessage.NewResearchTeamMessage(
+                                $"Research in progress: {ResearchState.ActiveSession.Query}",
+                                ResearchState.ActiveSession.Id,
+                                ResearchState.ActiveSession.ResearchTeamId ?? Guid.Empty,
+                                "Research Team");
+                            _conversation.Messages.Add(teamMessage);
+                            _hasMessages = true;
+                            Console.WriteLine("Added placeholder TeamMessage for restored research session");
+                        }
+
+                        StateHasChanged();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to restore research session: {ex.Message}");
+                }
+            }
         }
     }
 
     private async Task LoadSessionAsync(Guid sessionId)
     {
+        ClearResearchSessionCache();
         _isLoadingSession = true;
         _errorMessage = null;
         StateHasChanged();
@@ -578,6 +624,7 @@
         // This is necessary because this event handler is called from ChatStateService
         await InvokeAsync(async () =>
         {
+            ClearResearchSessionCache();
             _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
             _hasMessages = false;
             _streamingContent = string.Empty;
@@ -758,7 +805,16 @@
 
     private async Task SendMessageAsync(string message)
     {
-        if (string.IsNullOrWhiteSpace(message) || ChatState.SelectedAgent == null) return;
+        if (string.IsNullOrWhiteSpace(message)) return;
+
+        // Handle Research Team messages differently
+        if (ResearchState.IsTeamSelected && ResearchState.SelectedTeam != null)
+        {
+            await SendResearchMessageAsync(message);
+            return;
+        }
+
+        if (ChatState.SelectedAgent == null) return;
 
         var userMessage = AesirChatMessage.NewUserMessage(message);
         await SendMessageWithFileAsync(userMessage);
@@ -952,11 +1008,88 @@
         }
     }
 
+    /// <summary>
+    /// Sends a message to a Research Team, initiating a multi-agent research session.
+    /// Links the research to a ChatSession for persistence and title generation.
+    /// </summary>
+    private async Task SendResearchMessageAsync(string message)
+    {
+        if (ResearchState.SelectedTeam?.Id == null) return;
+        var selectedTeam = ResearchState.SelectedTeam;
+
+        _errorMessage = null;
+        _isWaitingForResponse = true;
+        _hasMessages = true;
+
+        try
+        {
+            // Get or create conversation ID - same as normal chat flow
+            // This ensures research sessions are linked to a ChatSession for:
+            // - Persistence in sidebar history
+            // - Title generation
+            // - Ability to continue conversation after research completes
+            var conversationId = GetOrCreateConversationId();
+
+            // Add user message to conversation
+            var userMessage = AesirChatMessage.NewUserMessage(message);
+            _conversation.Messages.Add(userMessage);
+            StateHasChanged();
+            await ScrollToBottomAsync();
+
+            // Start the research session with the ChatSession ID
+            var session = await ResearchState.StartResearchAsync(
+                message,
+                selectedTeam.Id!.Value,
+                conversationId: conversationId);
+
+            if (session != null)
+            {
+                // Create a team message to show the research is in progress
+                var teamMessage = AesirChatMessage.NewResearchTeamMessage(
+                    $"Research started: {message}",
+                    session.Id,
+                    selectedTeam.Id!.Value,
+                    selectedTeam.Name ?? "Research Team");
+
+                _conversation.Messages.Add(teamMessage);
+                StateHasChanged();
+                await ScrollToBottomAsync();
+            }
+            else
+            {
+                Snackbar.Add("Failed to start research session", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Research error: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _isWaitingForResponse = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task SendMessageWithFilesAsync((string Message, List<PendingFileUpload> Files) data)
     {
         var (message, files) = data;
 
-        if (ChatState.SelectedAgent == null || string.IsNullOrWhiteSpace(message)) return;
+        if (string.IsNullOrWhiteSpace(message)) return;
+
+        // Handle Research Team messages - files not supported yet for research
+        if (ResearchState.IsTeamSelected && ResearchState.SelectedTeam != null)
+        {
+            if (files.Count > 0)
+            {
+                Snackbar.Add("File attachments are not yet supported for Research Teams", Severity.Warning);
+            }
+            await SendResearchMessageAsync(message);
+            return;
+        }
+
+        if (ChatState.SelectedAgent == null) return;
 
         // Get conversation ID (may already exist from immediate upload)
         var conversationId = GetOrCreateConversationId();
@@ -1267,6 +1400,7 @@
         ResearchState.OnSessionChanged -= HandleResearchSessionChanged;
         ResearchState.OnResearchCompleted -= HandleResearchCompleted;
         ResearchState.OnResearchError -= HandleResearchError;
+        ResearchState.OnTeamChanged -= HandleResearchTeamChanged;
         _streamingCts?.Cancel();
         _streamingCts?.Dispose();
     }
@@ -1275,6 +1409,13 @@
 
     private void HandleResearchSessionChanged()
     {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleResearchTeamChanged()
+    {
+        // Re-render when research team selection changes
+        // This updates the ToolToggleMenu and ThinkMenu visibility
         InvokeAsync(StateHasChanged);
     }
 
@@ -1311,19 +1452,67 @@
 
     /// <summary>
     /// Gets the research session associated with a research team message.
-    /// Returns the active session if the message's session ID matches, otherwise null.
+    /// Returns the active session if it matches, cached session if available,
+    /// or triggers a background load for historical messages.
     /// </summary>
     private ResearchSessionBase? GetResearchSessionForMessage(AesirChatMessage message)
     {
         if (!message.IsResearchTeamMessage || !message.ResearchSessionId.HasValue)
             return null;
 
+        var sessionId = message.ResearchSessionId.Value;
+
         // Return active session if it matches this message
-        if (ResearchState.ActiveSession?.Id == message.ResearchSessionId.Value)
+        if (ResearchState.ActiveSession?.Id == sessionId)
             return ResearchState.ActiveSession;
 
-        // For historical messages, we'd need to load from API
-        // For now, return null (UI will show basic message without session details)
+        // Check cache for previously loaded sessions
+        if (_researchSessionCache.TryGetValue(sessionId, out var cachedSession))
+            return cachedSession;
+
+        // Trigger background load if not already loading
+        if (!_researchSessionsLoading.Contains(sessionId))
+        {
+            _researchSessionsLoading.Add(sessionId);
+            _ = LoadResearchSessionAsync(sessionId);
+        }
+
+        // Return null while loading - UI will update when load completes
         return null;
+    }
+
+    /// <summary>
+    /// Loads a research session from the API and caches it.
+    /// Triggers a UI update when complete.
+    /// </summary>
+    private async Task LoadResearchSessionAsync(Guid sessionId)
+    {
+        try
+        {
+            var result = await ResearchSessionApi.GetSessionAsync(sessionId);
+
+            if (result.IsSuccess && result.Value != null)
+            {
+                _researchSessionCache[sessionId] = result.Value;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Failed to load research session {sessionId}: {ex.Message}");
+        }
+        finally
+        {
+            _researchSessionsLoading.Remove(sessionId);
+        }
+    }
+
+    /// <summary>
+    /// Clears the research session cache. Called when switching conversations.
+    /// </summary>
+    private void ClearResearchSessionCache()
+    {
+        _researchSessionCache.Clear();
+        _researchSessionsLoading.Clear();
     }
 }

@@ -1,3 +1,4 @@
+using Aesir.Common.Models;
 using Aesir.Modules.Research.Contracts;
 using Aesir.Modules.Research.Hubs;
 using Aesir.Modules.Research.Models;
@@ -53,6 +54,8 @@ public interface IResearchProgressBroadcaster
 
 /// <summary>
 /// Implementation of the research progress broadcaster using SignalR.
+/// Maps phase-local progress (0-100% within each phase) to overall progress (0-100%)
+/// to prevent progress bar resets when transitioning between phases.
 /// </summary>
 public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
 {
@@ -71,43 +74,61 @@ public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
     /// <inheritdoc />
     public void SetCurrentSession(Guid sessionId)
     {
+        _logger.LogDebug("[BROADCASTER] SetCurrentSession: {SessionId}", sessionId);
         _currentSessionId = sessionId;
     }
 
     /// <inheritdoc />
     public async Task BroadcastProgressAsync(ResearchPhaseProgress progress)
     {
+        _logger.LogDebug("[BROADCASTER] BroadcastProgressAsync called:");
+        _logger.LogDebug("[BROADCASTER]   Phase: {Phase}", progress.Phase);
+        _logger.LogDebug("[BROADCASTER]   AgentRole: {AgentRole}", progress.AgentRole);
+        _logger.LogDebug("[BROADCASTER]   Message: {Message}", progress.Message);
+        _logger.LogDebug("[BROADCASTER]   PhaseLocalPercent: {Percent}%", progress.PercentComplete);
+        _logger.LogDebug("[BROADCASTER]   CurrentSessionId: {SessionId}", _currentSessionId);
+
         if (_currentSessionId == Guid.Empty)
         {
-            _logger.LogWarning("Cannot broadcast progress: no session ID set");
+            _logger.LogWarning("[BROADCASTER] Cannot broadcast progress: no session ID set");
             return;
         }
 
         try
         {
+            // Map phase-local progress to overall progress to prevent resets on phase transitions
+            // Uses shared helper from Aesir.Common (cast to int since server uses ResearchPhase enum)
+            var overallPercent = ResearchPhaseProgressHelper.MapPhaseProgressToOverall(
+                (int)progress.Phase, progress.PercentComplete);
+
+            _logger.LogDebug(
+                "[BROADCASTER] Progress mapping: {Phase} {LocalPercent}% (local) → {OverallPercent}% (overall)",
+                progress.Phase, progress.PercentComplete, overallPercent);
+
             var update = new ResearchProgressUpdate
             {
                 SessionId = _currentSessionId,
                 Status = PhaseToStatus(progress.Phase),
                 Phase = progress.Phase,
                 Message = progress.Message,
-                ProgressPercent = progress.PercentComplete,
+                ProgressPercent = overallPercent, // Use mapped overall progress
                 AgentRole = progress.AgentRole,
                 Timestamp = DateTime.UtcNow
             };
 
+            _logger.LogDebug("[BROADCASTER] Sending 'PhaseProgress' event via SignalR...");
             await _hubContext.SendProgressAsync(
                 _currentSessionId,
                 "PhaseProgress",
                 update);
 
             _logger.LogDebug(
-                "Broadcast progress for session {SessionId}: {Phase} - {Message} ({Percent}%)",
-                _currentSessionId, progress.Phase, progress.Message, progress.PercentComplete);
+                "[BROADCASTER] SUCCESS - Progress broadcast for session {SessionId}: {Phase} - {Message} ({OverallPercent}% overall, {LocalPercent}% local)",
+                _currentSessionId, progress.Phase, progress.Message, overallPercent, progress.PercentComplete);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to broadcast progress for session {SessionId}", _currentSessionId);
+            _logger.LogError(ex, "[BROADCASTER] FAILED to broadcast progress for session {SessionId}", _currentSessionId);
         }
     }
 
@@ -118,51 +139,68 @@ public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
         ResearchPhase? phase = null,
         string? message = null)
     {
+        _logger.LogDebug("[BROADCASTER] BroadcastStatusChangeAsync called:");
+        _logger.LogDebug("[BROADCASTER]   SessionId: {SessionId}", sessionId);
+        _logger.LogDebug("[BROADCASTER]   Status: {Status}", status);
+        _logger.LogDebug("[BROADCASTER]   Phase: {Phase}", phase);
+        _logger.LogDebug("[BROADCASTER]   Message: {Message}", message);
+
         try
         {
+            _logger.LogDebug("[BROADCASTER] Sending 'StatusUpdate' event via SignalR...");
             await _hubContext.SendStatusUpdateAsync(sessionId, status, phase, message);
 
             _logger.LogDebug(
-                "Broadcast status change for session {SessionId}: {Status} ({Phase})",
+                "[BROADCASTER] SUCCESS - Status change broadcast for session {SessionId}: {Status} ({Phase})",
                 sessionId, status, phase);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to broadcast status change for session {SessionId}", sessionId);
+            _logger.LogError(ex, "[BROADCASTER] FAILED to broadcast status change for session {SessionId}", sessionId);
         }
     }
 
     /// <inheritdoc />
     public async Task BroadcastCompletionAsync(Guid sessionId, Guid reportId)
     {
+        _logger.LogDebug("[BROADCASTER] BroadcastCompletionAsync called:");
+        _logger.LogDebug("[BROADCASTER]   SessionId: {SessionId}", sessionId);
+        _logger.LogDebug("[BROADCASTER]   ReportId: {ReportId}", reportId);
+
         try
         {
+            _logger.LogDebug("[BROADCASTER] Sending 'ResearchCompleted' event via SignalR...");
             await _hubContext.SendResearchCompletedAsync(sessionId, reportId);
 
             _logger.LogInformation(
-                "Broadcast completion for session {SessionId} with report {ReportId}",
+                "[BROADCASTER] SUCCESS - Completion broadcast for session {SessionId} with report {ReportId}",
                 sessionId, reportId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to broadcast completion for session {SessionId}", sessionId);
+            _logger.LogError(ex, "[BROADCASTER] FAILED to broadcast completion for session {SessionId}", sessionId);
         }
     }
 
     /// <inheritdoc />
     public async Task BroadcastErrorAsync(Guid sessionId, string errorMessage)
     {
+        _logger.LogDebug("[BROADCASTER] BroadcastErrorAsync called:");
+        _logger.LogDebug("[BROADCASTER]   SessionId: {SessionId}", sessionId);
+        _logger.LogDebug("[BROADCASTER]   Error: {Error}", errorMessage);
+
         try
         {
+            _logger.LogDebug("[BROADCASTER] Sending 'ResearchError' event via SignalR...");
             await _hubContext.SendResearchErrorAsync(sessionId, errorMessage);
 
             _logger.LogWarning(
-                "Broadcast error for session {SessionId}: {Error}",
+                "[BROADCASTER] SUCCESS - Error broadcast for session {SessionId}: {Error}",
                 sessionId, errorMessage);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to broadcast error for session {SessionId}", sessionId);
+            _logger.LogError(ex, "[BROADCASTER] FAILED to broadcast error for session {SessionId}", sessionId);
         }
     }
 

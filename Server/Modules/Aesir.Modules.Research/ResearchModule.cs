@@ -1,3 +1,4 @@
+using Aesir.Infrastructure.Documents;
 using Aesir.Infrastructure.Modules;
 using Aesir.Modules.Research.Agents;
 using Aesir.Modules.Research.Services;
@@ -27,6 +28,9 @@ public class ResearchModule : ModuleBase
     {
         Log("Registering research services...");
 
+        // Register document export services (PDF, Word)
+        services.AddDocumentExportServices();
+
         // Register repositories
         services.AddScoped<IResearchTeamRepository, ResearchTeamRepository>();
         services.AddScoped<IResearchSessionRepository, ResearchSessionRepository>();
@@ -47,6 +51,9 @@ public class ResearchModule : ModuleBase
         services.AddScoped<IConfidenceCalculator, ConfidenceCalculator>();
         services.AddScoped<IResearchTrailService, ResearchTrailService>();
         services.AddScoped<IReportGeneratorService, ReportGeneratorService>();
+
+        // Register report exporter (depends on document export services)
+        services.AddScoped<IResearchReportExporter, ResearchReportExporter>();
 
         // Register phase executor (depends on all phase services)
         services.AddScoped<IResearchPhaseExecutor, ResearchPhaseExecutor>();

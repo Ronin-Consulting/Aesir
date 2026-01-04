@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Aesir.Client.Web.Infrastructure.Services;
+using Aesir.Client.Web.Modules.Research.Services;
 using Aesir.Common.Models;
 using Microsoft.Extensions.Logging;
 
@@ -9,15 +11,174 @@ namespace Aesir.Client.Web.Modules.Chat.Services;
 /// </summary>
 public class ResearchStateService : IResearchStateService
 {
+    // TODO: Replace with claims-based user ID from authentication context
+    // Must match the value in ChatHistoryService.UserIdValue
+    private const string UserIdValue = "blangford@gmail.com";
+
     private readonly IResearchSessionApiService _sessionApi;
+    private readonly IResearchSignalRService _signalRService;
+    private readonly IChatHistoryService _chatHistoryService;
     private readonly ILogger<ResearchStateService>? _logger;
+
+    // Event handler delegates for proper unsubscription
+    private Action<ResearchStatusUpdate>? _statusUpdateHandler;
+    private Action<ResearchCompletedEvent>? _researchCompletedHandler;
+    private Action<ResearchErrorEvent>? _researchErrorHandler;
+    private Action<ResearchProgressEvent>? _progressHandler;
+    private bool _disposed;
 
     public ResearchStateService(
         IResearchSessionApiService sessionApi,
+        IResearchSignalRService signalRService,
+        IChatHistoryService chatHistoryService,
         ILogger<ResearchStateService>? logger = null)
     {
         _sessionApi = sessionApi;
+        _signalRService = signalRService;
+        _chatHistoryService = chatHistoryService;
         _logger = logger;
+
+        // Wire up SignalR event handlers
+        WireUpSignalREvents();
+    }
+
+    /// <summary>
+    /// Wires up SignalR event handlers to update state.
+    /// Uses named handlers that can be properly unsubscribed in Dispose.
+    /// </summary>
+    private void WireUpSignalREvents()
+    {
+        _logger?.LogInformation("[RESEARCH-UI] Wiring up SignalR event handlers");
+
+        _statusUpdateHandler = HandleStatusUpdateEvent;
+        _researchCompletedHandler = HandleResearchCompletedEvent;
+        _researchErrorHandler = HandleResearchErrorEvent;
+        _progressHandler = HandleProgressEvent;
+
+        _signalRService.OnStatusUpdate += _statusUpdateHandler;
+        _signalRService.OnResearchCompleted += _researchCompletedHandler;
+        _signalRService.OnResearchError += _researchErrorHandler;
+        _signalRService.OnProgress += _progressHandler;
+    }
+
+    private void HandleStatusUpdateEvent(ResearchStatusUpdate update)
+    {
+        _logger?.LogDebug("[RESEARCH-UI] SignalR OnStatusUpdate received: SessionId={SessionId}, Status={Status}, Phase={Phase}",
+            update.SessionId, update.Status, update.Phase);
+
+        if (ActiveSession?.Id != update.SessionId)
+        {
+            _logger?.LogDebug("[RESEARCH-UI] Ignoring update - SessionId mismatch. Active={Active}, Received={Received}",
+                ActiveSession?.Id, update.SessionId);
+            return;
+        }
+
+        _logger?.LogInformation("[RESEARCH-UI] Processing status update: {Status} - {Phase} - {Message}",
+            update.Status, update.Phase, update.Message);
+
+        HandleProgressUpdate(new ResearchProgressBase
+        {
+            SessionId = update.SessionId,
+            Status = update.Status,
+            Phase = update.Phase ?? ResearchPhaseBase.Planning,
+            Message = update.Message ?? GetStatusMessage(update.Status),
+            ProgressPercent = CurrentProgressPercent
+        });
+    }
+
+    private void HandleResearchCompletedEvent(ResearchCompletedEvent e)
+    {
+        _logger?.LogDebug("[RESEARCH-UI] SignalR OnResearchCompleted received: SessionId={SessionId}", e.SessionId);
+
+        if (ActiveSession?.Id != e.SessionId)
+        {
+            _logger?.LogDebug("[RESEARCH-UI] Ignoring completion - SessionId mismatch");
+            return;
+        }
+
+        _logger?.LogInformation("[RESEARCH-UI] Research completed: {SessionId}, calling RefreshSessionAsync...", e.SessionId);
+
+        // Refresh to get the full report - with error handling
+        _ = RefreshSessionWithErrorHandlingAsync();
+    }
+
+    private void HandleResearchErrorEvent(ResearchErrorEvent e)
+    {
+        _logger?.LogDebug("[RESEARCH-UI] SignalR OnResearchError received: SessionId={SessionId}, Error={Error}",
+            e.SessionId, e.ErrorMessage);
+
+        if (ActiveSession?.Id != e.SessionId)
+        {
+            _logger?.LogDebug("[RESEARCH-UI] Ignoring error - SessionId mismatch");
+            return;
+        }
+
+        _logger?.LogWarning("[RESEARCH-UI] Research error: {SessionId} - {Error}", e.SessionId, e.ErrorMessage);
+        OnResearchError?.Invoke(e.ErrorMessage);
+    }
+
+    private void HandleProgressEvent(ResearchProgressEvent e)
+    {
+        _logger?.LogDebug("[RESEARCH-UI] SignalR OnProgress received: SessionId={SessionId}, EventType={EventType}",
+            e.SessionId, e.EventType);
+
+        if (ActiveSession?.Id != e.SessionId)
+        {
+            _logger?.LogDebug("[RESEARCH-UI] Ignoring progress - SessionId mismatch");
+            return;
+        }
+
+        _logger?.LogDebug("[RESEARCH-UI] Processing progress event: {EventType}", e.EventType);
+
+        // Parse progress data from the event
+        if (e.EventType == "PhaseProgress" && e.Data != null)
+        {
+            try
+            {
+                // The Data is a JsonElement when received from SignalR
+                var progressData = ParseProgressData(e.Data);
+                if (progressData != null)
+                {
+                    HandleProgressUpdate(progressData);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to parse progress event data");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Refreshes the session with proper error handling for fire-and-forget scenarios.
+    /// </summary>
+    private async Task RefreshSessionWithErrorHandlingAsync()
+    {
+        try
+        {
+            await RefreshSessionAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[RESEARCH-UI] Error refreshing session in completion handler");
+            OnResearchError?.Invoke($"Failed to refresh research session: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Loads chat sessions with proper error handling for fire-and-forget scenarios.
+    /// </summary>
+    private async Task LoadSessionsWithErrorHandlingAsync()
+    {
+        try
+        {
+            await _chatHistoryService.LoadSessionsAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[RESEARCH-UI] Error loading chat sessions after research started");
+            // Don't invoke OnResearchError here - this is a non-critical background refresh
+        }
     }
 
     /// <inheritdoc />
@@ -40,6 +201,15 @@ public class ResearchStateService : IResearchStateService
 
     /// <inheritdoc />
     public int CurrentProgressPercent { get; private set; }
+
+    /// <inheritdoc />
+    public ResearchRoleBase? CurrentAgentRole { get; private set; }
+
+    /// <inheritdoc />
+    public string? CurrentAgentActivity { get; private set; }
+
+    /// <inheritdoc />
+    public bool IsAgentActive => CurrentAgentRole.HasValue && IsResearchInProgress;
 
     /// <inheritdoc />
     public event Action? OnSessionChanged;
@@ -72,40 +242,98 @@ public class ResearchStateService : IResearchStateService
         string query,
         Guid teamId,
         ResearchModeBase mode = ResearchModeBase.Standard,
-        List<Guid>? documentCollectionIds = null)
+        List<Guid>? documentCollectionIds = null,
+        Guid? conversationId = null)
     {
+        var startTime = DateTime.UtcNow;
+        _logger?.LogInformation("[RESEARCH-UI] StartResearchAsync called at {Time}", startTime);
+        _logger?.LogInformation("[RESEARCH-UI] Query='{Query}', TeamId={TeamId}, UserId={UserId}, ConversationId={ConversationId}",
+            query, teamId, UserIdValue, conversationId);
+
         try
         {
-            _logger?.LogInformation("Starting research for team {TeamId}: {Query}", teamId, query);
+            // Ensure SignalR is connected before starting research
+            if (!_signalRService.IsConnected)
+            {
+                _logger?.LogInformation("[RESEARCH-UI] SignalR not connected, attempting to connect...");
+                var connectStart = DateTime.UtcNow;
+                var connected = await _signalRService.ConnectAsync();
+                var connectElapsed = (DateTime.UtcNow - connectStart).TotalMilliseconds;
+                _logger?.LogInformation("[RESEARCH-UI] SignalR connect completed in {Elapsed}ms, connected={Connected}",
+                    connectElapsed, connected);
+                if (!connected)
+                {
+                    _logger?.LogWarning("[RESEARCH-UI] Failed to connect to SignalR, research will not receive real-time updates");
+                }
+            }
+            else
+            {
+                _logger?.LogDebug("[RESEARCH-UI] SignalR already connected");
+            }
 
             var request = new CreateResearchSessionRequestBase
             {
                 Query = query,
                 TeamId = teamId,
                 Mode = mode,
-                DocumentCollectionIds = documentCollectionIds
+                DocumentCollectionIds = documentCollectionIds,
+                ConversationId = conversationId,
+                UserId = UserIdValue  // Must match ChatHistoryService.UserIdValue
             };
 
+            _logger?.LogInformation("[RESEARCH-UI] Calling API StartResearchAsync...");
+            var apiStart = DateTime.UtcNow;
             var result = await _sessionApi.StartResearchAsync(request);
+            var apiElapsed = (DateTime.UtcNow - apiStart).TotalMilliseconds;
+            _logger?.LogInformation("[RESEARCH-UI] API StartResearchAsync completed in {Elapsed}ms, success={Success}",
+                apiElapsed, result.IsSuccess);
 
             if (result.IsSuccess && result.Value != null)
             {
                 ActiveSession = result.Value;
                 CurrentProgressMessage = GetStatusMessage(result.Value.Status);
                 CurrentProgressPercent = 0;
+                _logger?.LogDebug("[RESEARCH-UI] Session created with status: {Status}", result.Value.Status);
                 OnSessionChanged?.Invoke();
 
-                _logger?.LogInformation("Research session started: {SessionId}", result.Value.Id);
+                // Subscribe to session updates via SignalR
+                if (_signalRService.IsConnected)
+                {
+                    try
+                    {
+                        _logger?.LogDebug("[RESEARCH-UI] Subscribing to SignalR session: {SessionId}", result.Value.Id);
+                        var subStart = DateTime.UtcNow;
+                        await _signalRService.SubscribeToSessionAsync(result.Value.Id);
+                        var subElapsed = (DateTime.UtcNow - subStart).TotalMilliseconds;
+                        _logger?.LogInformation("[RESEARCH-UI] Subscribed to SignalR session in {Elapsed}ms: {SessionId}",
+                            subElapsed, result.Value.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "[RESEARCH-UI] Failed to subscribe to SignalR session");
+                    }
+                }
+
+                // Refresh chat history so the new research session appears in sidebar immediately
+                _logger?.LogDebug("[RESEARCH-UI] Refreshing chat history to show new research session...");
+                _ = LoadSessionsWithErrorHandlingAsync();
+
+                var totalElapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                _logger?.LogInformation("[RESEARCH-UI] Research session started successfully in {Elapsed}ms: {SessionId}",
+                    totalElapsed, result.Value.Id);
                 return result.Value;
             }
 
-            _logger?.LogWarning("Failed to start research: {Error}", result.Error);
+            _logger?.LogWarning("[RESEARCH-UI] Failed to start research: {Error}, StatusCode={StatusCode}",
+                result.Error, result.StatusCode);
             OnResearchError?.Invoke(result.Error ?? "Failed to start research");
             return null;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error starting research");
+            var totalElapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            _logger?.LogError(ex, "[RESEARCH-UI] Error starting research after {Elapsed}ms: {Message}",
+                totalElapsed, ex.Message);
             OnResearchError?.Invoke($"Error starting research: {ex.Message}");
             return null;
         }
@@ -184,12 +412,19 @@ public class ResearchStateService : IResearchStateService
     {
         if (ActiveSession == null)
         {
+            _logger?.LogDebug("[RESEARCH-UI] RefreshSessionAsync called but no active session");
             return;
         }
+
+        _logger?.LogDebug("[RESEARCH-UI] RefreshSessionAsync called for session: {SessionId}", ActiveSession.Id);
+        var startTime = DateTime.UtcNow;
 
         try
         {
             var result = await _sessionApi.GetSessionAsync(ActiveSession.Id);
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            _logger?.LogDebug("[RESEARCH-UI] GetSessionAsync completed in {Elapsed}ms, success={Success}",
+                elapsed, result.IsSuccess);
 
             if (result.IsSuccess && result.Value != null)
             {
@@ -197,23 +432,34 @@ public class ResearchStateService : IResearchStateService
                 ActiveSession = result.Value;
                 CurrentProgressMessage = GetStatusMessage(result.Value.Status);
 
+                _logger?.LogDebug("[RESEARCH-UI] Session refreshed: {PrevStatus} -> {NewStatus}",
+                    previousStatus, result.Value.Status);
+
                 // Check for completion
                 if (result.Value.Status == ResearchStatusBase.Completed && previousStatus != ResearchStatusBase.Completed)
                 {
+                    _logger?.LogInformation("[RESEARCH-UI] Research completed! HasReport={HasReport}",
+                        result.Value.Report != null);
                     CurrentProgressPercent = 100;
                     OnResearchCompleted?.Invoke(result.Value);
                 }
                 else if (result.Value.Status == ResearchStatusBase.Failed)
                 {
+                    _logger?.LogWarning("[RESEARCH-UI] Research failed: {Error}", result.Value.ErrorMessage);
                     OnResearchError?.Invoke(result.Value.ErrorMessage ?? "Research failed");
                 }
 
                 OnSessionChanged?.Invoke();
             }
+            else
+            {
+                _logger?.LogWarning("[RESEARCH-UI] RefreshSessionAsync failed: {Error}", result.Error);
+            }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error refreshing session");
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            _logger?.LogError(ex, "[RESEARCH-UI] Error refreshing session after {Elapsed}ms", elapsed);
         }
     }
 
@@ -225,16 +471,86 @@ public class ResearchStateService : IResearchStateService
             return;
         }
 
+        // Track if phase changed (to clear agent activity on phase transitions)
+        var previousPhase = ActiveSession.CurrentPhase;
+        var phaseChanged = previousPhase != progress.Phase;
+
         CurrentProgressMessage = progress.Message;
-        CurrentProgressPercent = progress.ProgressPercent;
+
+        // Validate progress never decreases (safety net for network delays or out-of-order messages)
+        // The backend now sends overall progress, but we add this validation as a safety net
+        var receivedPercent = progress.ProgressPercent;
+        var validatedPercent = Math.Max(CurrentProgressPercent, receivedPercent);
+
+        if (validatedPercent != receivedPercent)
+        {
+            _logger?.LogWarning(
+                "[RESEARCH-UI] Progress validation: received {ReceivedPercent}%, validated to {ValidatedPercent}% (prevented decrease from backend)",
+                receivedPercent, validatedPercent);
+        }
+
+        CurrentProgressPercent = validatedPercent;
         ActiveSession.Status = progress.Status;
         ActiveSession.CurrentPhase = progress.Phase;
 
+        // Update agent activity tracking
+        if (progress.AgentRole.HasValue)
+        {
+            // Agent is working - update activity
+            CurrentAgentRole = progress.AgentRole.Value;
+            CurrentAgentActivity = FormatAgentActivity(progress.AgentRole.Value, progress.Phase);
+            _logger?.LogDebug("Agent activity: {Role} - {Activity}",
+                CurrentAgentRole, CurrentAgentActivity);
+        }
+        else if (phaseChanged)
+        {
+            // Phase changed without agent - clear agent activity (phase work complete)
+            CurrentAgentRole = null;
+            CurrentAgentActivity = null;
+            _logger?.LogDebug("Agent activity cleared on phase transition to {Phase}", progress.Phase);
+        }
+        // Otherwise, preserve current agent activity (phase-level progress update)
+
         _logger?.LogDebug("Research progress: {Phase} - {Message} ({Percent}%)",
-            progress.Phase, progress.Message, progress.ProgressPercent);
+            progress.Phase, progress.Message, CurrentProgressPercent);
 
         OnProgressUpdate?.Invoke(progress);
         OnSessionChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Formats the agent activity message based on role and phase.
+    /// </summary>
+    private static string FormatAgentActivity(ResearchRoleBase role, ResearchPhaseBase phase)
+    {
+        var roleName = GetRoleDisplayName(role);
+        var action = phase switch
+        {
+            ResearchPhaseBase.Clarification => "generating questions",
+            ResearchPhaseBase.Planning => "planning research",
+            ResearchPhaseBase.Research => "conducting research",
+            ResearchPhaseBase.Anonymization => "preparing submission",
+            ResearchPhaseBase.PeerReview => "reviewing submissions",
+            ResearchPhaseBase.Synthesis => "synthesizing report",
+            _ => "working"
+        };
+
+        return $"{roleName} is {action}...";
+    }
+
+    /// <summary>
+    /// Gets a human-readable display name for a research role.
+    /// </summary>
+    private static string GetRoleDisplayName(ResearchRoleBase role)
+    {
+        return role switch
+        {
+            ResearchRoleBase.DeepDiver => "Deep Diver",
+            ResearchRoleBase.Synthesizer => "Synthesizer",
+            ResearchRoleBase.DevilsAdvocate => "Devil's Advocate",
+            ResearchRoleBase.Chairman => "Chairman",
+            _ => role.ToString()
+        };
     }
 
     /// <inheritdoc />
@@ -243,7 +559,81 @@ public class ResearchStateService : IResearchStateService
         ActiveSession = null;
         CurrentProgressMessage = null;
         CurrentProgressPercent = 0;
+        CurrentAgentRole = null;
+        CurrentAgentActivity = null;
         OnSessionChanged?.Invoke();
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> RestoreActiveSessionAsync()
+    {
+        _logger?.LogDebug("[RESEARCH-UI] RestoreActiveSessionAsync called - checking for in-progress research");
+
+        try
+        {
+            // Query for in-progress research sessions for this user
+            var result = await _sessionApi.GetSessionsAsync(UserIdValue);
+
+            if (!result.IsSuccess || result.Value?.Sessions == null)
+            {
+                _logger?.LogDebug("[RESEARCH-UI] No sessions found or error fetching sessions");
+                return false;
+            }
+
+            // Find any session that is still in progress
+            var inProgressSession = result.Value.Sessions.FirstOrDefault(s =>
+                s.Status != ResearchStatusBase.Completed &&
+                s.Status != ResearchStatusBase.Failed &&
+                s.Status != ResearchStatusBase.Cancelled);
+
+            if (inProgressSession == null)
+            {
+                _logger?.LogDebug("[RESEARCH-UI] No in-progress research sessions found");
+                return false;
+            }
+
+            _logger?.LogInformation("[RESEARCH-UI] Found in-progress research session: {SessionId}, Status={Status}",
+                inProgressSession.Id, inProgressSession.Status);
+
+            // Restore the active session
+            ActiveSession = inProgressSession;
+            CurrentProgressMessage = GetStatusMessage(inProgressSession.Status);
+            CurrentProgressPercent = EstimateProgressFromPhase(inProgressSession.CurrentPhase ?? ResearchPhaseBase.Planning);
+
+            // Reconnect to SignalR for updates
+            if (!_signalRService.IsConnected)
+            {
+                _logger?.LogDebug("[RESEARCH-UI] Connecting to SignalR for session updates...");
+                await _signalRService.ConnectAsync();
+            }
+
+            if (_signalRService.IsConnected)
+            {
+                _logger?.LogDebug("[RESEARCH-UI] Subscribing to SignalR session: {SessionId}", inProgressSession.Id);
+                await _signalRService.SubscribeToSessionAsync(inProgressSession.Id);
+            }
+
+            OnSessionChanged?.Invoke();
+
+            _logger?.LogInformation("[RESEARCH-UI] Successfully restored in-progress research session: {SessionId}",
+                inProgressSession.Id);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[RESEARCH-UI] Error restoring active session");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Estimates progress percentage based on current phase.
+    /// Uses the shared helper from Aesir.Common for consistent progress estimation.
+    /// </summary>
+    private static int EstimateProgressFromPhase(ResearchPhaseBase phase)
+    {
+        return ResearchPhaseProgressHelper.EstimateProgressFromPhase(phase);
     }
 
     private static string GetStatusMessage(ResearchStatusBase status)
@@ -262,5 +652,79 @@ public class ResearchStateService : IResearchStateService
             ResearchStatusBase.Cancelled => "Research cancelled",
             _ => "Processing..."
         };
+    }
+
+    /// <summary>
+    /// Parses the progress data from SignalR event.
+    /// The Data comes as a JsonElement when received from SignalR.
+    /// </summary>
+    private ResearchProgressBase? ParseProgressData(object data)
+    {
+        try
+        {
+            // SignalR deserializes the data as JsonElement
+            if (data is JsonElement jsonElement)
+            {
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+
+                return JsonSerializer.Deserialize<ResearchProgressBase>(jsonElement.GetRawText(), options);
+            }
+
+            // If it's already the right type (unlikely but handle it)
+            if (data is ResearchProgressBase progress)
+            {
+                return progress;
+            }
+
+            // Try to serialize and deserialize as a fallback
+            var json = JsonSerializer.Serialize(data);
+            return JsonSerializer.Deserialize<ResearchProgressBase>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to parse progress data: {DataType}", data?.GetType().Name ?? "null");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Disposes resources and unsubscribes from SignalR events.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Disposes managed resources.
+    /// </summary>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        if (disposing)
+        {
+            // Unsubscribe from SignalR events to prevent memory leaks
+            if (_statusUpdateHandler != null)
+                _signalRService.OnStatusUpdate -= _statusUpdateHandler;
+            if (_researchCompletedHandler != null)
+                _signalRService.OnResearchCompleted -= _researchCompletedHandler;
+            if (_researchErrorHandler != null)
+                _signalRService.OnResearchError -= _researchErrorHandler;
+            if (_progressHandler != null)
+                _signalRService.OnProgress -= _progressHandler;
+
+            _logger?.LogDebug("[RESEARCH-UI] ResearchStateService disposed, event handlers unsubscribed");
+        }
+
+        _disposed = true;
     }
 }

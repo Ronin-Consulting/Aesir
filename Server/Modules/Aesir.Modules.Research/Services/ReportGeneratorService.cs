@@ -1,7 +1,12 @@
 using System.Text;
 using System.Text.Json;
+using Aesir.Common.Models;
+using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
+using Aesir.Modules.Research.Hubs;
 using Aesir.Modules.Research.Models;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Modules.Research.Services;
@@ -36,20 +41,29 @@ public interface IReportGeneratorService
 
 /// <summary>
 /// Implementation of report generator service.
-/// Note: Full chat integration will be added when wiring to the inference module.
+/// Uses non-streaming IChatService for LLM-based report synthesis.
 /// </summary>
 public class ReportGeneratorService : IReportGeneratorService
 {
     private readonly ILogger<ReportGeneratorService> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IHubContext<ResearchHub> _hubContext;
+    private readonly IConfigurationService _configurationService;
     private readonly IConfidenceCalculator _confidenceCalculator;
     private readonly IScoringCalculator _scoringCalculator;
 
     public ReportGeneratorService(
         ILogger<ReportGeneratorService> logger,
+        IServiceScopeFactory scopeFactory,
+        IHubContext<ResearchHub> hubContext,
+        IConfigurationService configurationService,
         IConfidenceCalculator confidenceCalculator,
         IScoringCalculator scoringCalculator)
     {
         _logger = logger;
+        _scopeFactory = scopeFactory;
+        _hubContext = hubContext;
+        _configurationService = configurationService;
         _confidenceCalculator = confidenceCalculator;
         _scoringCalculator = scoringCalculator;
     }
@@ -61,21 +75,65 @@ public class ReportGeneratorService : IReportGeneratorService
         ResearchAgent chairmanAgent,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Generating report for session {SessionId}", session.Id);
-
-        // TODO: Integrate with IChatService when available
-        // For now, create a stub report from the submission data
+        _logger.LogDebug("[REPORT-GEN] === GenerateReportAsync START ===");
+        _logger.LogDebug("[REPORT-GEN] SessionId: {SessionId}", session.Id);
+        _logger.LogDebug("[REPORT-GEN] Chairman: {Role} ({RoleName})", chairmanAgent.Role, chairmanAgent.RoleName);
+        _logger.LogDebug("[REPORT-GEN] Chairman InferenceEngineId: {EngineId}", chairmanAgent.InferenceEngineId);
+        _logger.LogDebug("[REPORT-GEN] Chairman BaseAgentId: {BaseAgentId}", chairmanAgent.BaseAgentId);
+        _logger.LogInformation("Generating report for session {SessionId} (non-streaming)", session.Id);
 
         var submissions = session.Submissions ?? [];
         var peerReviews = session.PeerReviews ?? [];
+        _logger.LogDebug("[REPORT-GEN] Submissions: {Count}, PeerReviews: {Count}", submissions.Count, peerReviews.Count);
+
+        // Notify phase change via SignalR
+        _logger.LogDebug("[REPORT-GEN] Sending phase change notification via SignalR...");
+        await _hubContext.SendAgentPhaseChangedAsync(
+            session.Id, chairmanAgent.TeamMemberId, chairmanAgent.Role, "synthesis",
+            "Chairman is synthesizing the final report...");
+
+        // Get chat service for the Chairman
+        _logger.LogDebug("[REPORT-GEN] Getting chat service for Chairman...");
+        var (chatService, serviceScope) = GetChatServiceForAgent(chairmanAgent);
+
+        string executiveSummary;
+        string? title;
+
+        try
+        {
+            if (chatService != null)
+            {
+                _logger.LogDebug("[REPORT-GEN] Chat service available: {ServiceType}", chatService.GetType().Name);
+                _logger.LogDebug("[REPORT-GEN] Using LLM to synthesize the report...");
+                // Use LLM to synthesize the report
+                (executiveSummary, title) = await SynthesizeReportWithLlmAsync(
+                    session, submissions, submissionScores, peerReviews,
+                    chairmanAgent, chatService, cancellationToken);
+                _logger.LogDebug("[REPORT-GEN] LLM synthesis complete. Title: {Title}, SummaryLength: {Length}",
+                    title, executiveSummary?.Length ?? 0);
+            }
+            else
+            {
+                // Fallback to stub implementation
+                _logger.LogWarning("[REPORT-GEN] No chat service available for Chairman!");
+                _logger.LogWarning("[REPORT-GEN] Chairman InferenceEngineId: {EngineId}", chairmanAgent.InferenceEngineId);
+                _logger.LogWarning("[REPORT-GEN] Using STUB synthesis - report will not contain real LLM content!");
+                executiveSummary = GenerateStubExecutiveSummary(session, submissions, submissionScores);
+                title = GenerateTitle(session.Query);
+            }
+        }
+        finally
+        {
+            serviceScope?.Dispose();
+        }
 
         // Build report from submissions
         var report = new ResearchReport
         {
             Id = Guid.NewGuid(),
             SessionId = session.Id,
-            Title = GenerateTitle(session.Query),
-            ExecutiveSummary = GenerateExecutiveSummary(session, submissions, submissionScores),
+            Title = title ?? GenerateTitle(session.Query),
+            ExecutiveSummary = executiveSummary,
             MethodologySection = GenerateMethodology(session, submissions),
             Findings = GenerateFindings(submissions, peerReviews, submissionScores),
             AlternativePerspectives = ExtractAlternativePerspectives(submissions),
@@ -88,12 +146,336 @@ public class ReportGeneratorService : IReportGeneratorService
         // Generate full markdown
         report.FullMarkdown = ReportTemplates.GenerateFullMarkdown(report, session);
 
-        // Simulate processing
-        await Task.Delay(100, cancellationToken);
+        // Notify research completed via SignalR
+        await _hubContext.SendResearchCompletedAsync(session.Id, report.Id);
 
         _logger.LogInformation("Report generated with {FindingCount} findings", report.Findings?.Count ?? 0);
 
         return report;
+    }
+
+    /// <summary>
+    /// Uses non-streaming LLM to synthesize the final research report.
+    /// </summary>
+    private async Task<(string ExecutiveSummary, string? Title)> SynthesizeReportWithLlmAsync(
+        ResearchSession session,
+        IReadOnlyList<ResearchSubmission> submissions,
+        IReadOnlyList<SubmissionScore> submissionScores,
+        IReadOnlyList<PeerReview> peerReviews,
+        ResearchAgent chairmanAgent,
+        IChatService chatService,
+        CancellationToken cancellationToken)
+    {
+        // Build the synthesis prompt
+        var synthesisPrompt = BuildSynthesisPrompt(session, submissions, submissionScores, peerReviews);
+
+        // Create chat request
+        var request = await CreateSynthesisRequestAsync(chairmanAgent, synthesisPrompt);
+
+        _logger.LogDebug("Sending synthesis request to LLM for Chairman (non-streaming)");
+
+        // Execute non-streaming chat completion
+        // Note: CancellationToken is checked before call; ChatCompletionsAsync doesn't accept one
+        cancellationToken.ThrowIfCancellationRequested();
+        var result = await chatService.ChatCompletionsAsync(request);
+
+        // Extract the assistant response from the result
+        var response = ExtractAssistantResponse(result);
+
+        _logger.LogDebug("Chairman synthesis complete, response length: {Length}", response.Length);
+
+        // Parse the response - extract title if present
+        var title = ExtractTitle(response);
+        var executiveSummary = ExtractExecutiveSummary(response);
+
+        return (executiveSummary ?? response, title);
+    }
+
+    /// <summary>
+    /// Extracts the assistant's response content from a chat completion result.
+    /// </summary>
+    private static string ExtractAssistantResponse(AesirChatResult result)
+    {
+        var assistantMessage = result.AesirConversation?.Messages?
+            .LastOrDefault(m => m.Role == "assistant");
+        return assistantMessage?.Content ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Builds the synthesis prompt for the Chairman.
+    /// </summary>
+    private static string BuildSynthesisPrompt(
+        ResearchSession session,
+        IReadOnlyList<ResearchSubmission> submissions,
+        IReadOnlyList<SubmissionScore> submissionScores,
+        IReadOnlyList<PeerReview> peerReviews)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine("# Research Synthesis Task");
+        sb.AppendLine();
+        sb.AppendLine("## Original Research Query");
+        sb.AppendLine(session.Query);
+        sb.AppendLine();
+
+        sb.AppendLine("## Research Submissions");
+        sb.AppendLine();
+        foreach (var submission in submissions.Where(s => s.Role != ResearchRole.Chairman))
+        {
+            var score = submissionScores.FirstOrDefault(s => s.SubmissionId == submission.Id);
+            sb.AppendLine($"### {submission.Role} (Peer Review Score: {score?.AverageScore:F1}/10)");
+            sb.AppendLine();
+            sb.AppendLine(submission.Content);
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("## Peer Review Summary");
+        sb.AppendLine();
+        foreach (var submission in submissions.Where(s => s.Role != ResearchRole.Chairman))
+        {
+            var reviews = peerReviews.Where(r => r.SubmissionId == submission.Id).ToList();
+            if (reviews.Any())
+            {
+                sb.AppendLine($"### Reviews for {submission.Role}");
+                foreach (var review in reviews)
+                {
+                    sb.AppendLine($"- {review.ReviewerRole}: Score {review.WeightedAverage:F1}/10");
+                    if (!string.IsNullOrEmpty(review.Strengths))
+                        sb.AppendLine($"  - Strengths: {review.Strengths}");
+                    if (!string.IsNullOrEmpty(review.Improvements))
+                        sb.AppendLine($"  - Improvements: {review.Improvements}");
+                }
+                sb.AppendLine();
+            }
+        }
+
+        sb.AppendLine("## Your Task");
+        sb.AppendLine();
+        sb.AppendLine("As the Chairman, synthesize all research findings into a cohesive executive summary.");
+        sb.AppendLine();
+        sb.AppendLine("Your response should include:");
+        sb.AppendLine("1. **Title**: A concise title for this research report");
+        sb.AppendLine("2. **Executive Summary**: A comprehensive synthesis that:");
+        sb.AppendLine("   - Addresses the original research question");
+        sb.AppendLine("   - Integrates key findings from all researchers");
+        sb.AppendLine("   - Weighs findings based on peer review scores");
+        sb.AppendLine("   - Highlights areas of consensus and disagreement");
+        sb.AppendLine("   - States confidence level and limitations");
+        sb.AppendLine("   - Provides actionable conclusions");
+        sb.AppendLine();
+        sb.AppendLine("Format your response as:");
+        sb.AppendLine("```");
+        sb.AppendLine("# [Title]");
+        sb.AppendLine();
+        sb.AppendLine("[Executive Summary content...]");
+        sb.AppendLine("```");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Creates a chat request for synthesis.
+    /// </summary>
+    private async Task<AesirChatRequestBase> CreateSynthesisRequestAsync(ResearchAgent chairmanAgent, string userPrompt)
+    {
+        var systemMessage = new AesirChatMessage
+        {
+            Role = "system",
+            Content = chairmanAgent.SynthesisPrompt ?? """
+                You are the Chairman of a research team, responsible for synthesizing all research findings
+                into a cohesive, professional report. You have access to all team members' work and their
+                peer review scores. Your role is to:
+                1. Weigh findings by quality (higher peer review scores = more weight)
+                2. Integrate diverse perspectives fairly
+                3. Highlight consensus and resolve contradictions
+                4. Provide clear, actionable conclusions
+                5. Maintain objectivity and acknowledge limitations
+                """,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        var userMessage = new AesirChatMessage
+        {
+            Role = "user",
+            Content = userPrompt,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        var conversation = new AesirConversation
+        {
+            Id = Guid.NewGuid().ToString(),
+            Messages = [systemMessage, userMessage]
+        };
+
+        // Get thinking settings and tools from base agent
+        bool? enableThinking = null;
+        ThinkValue? thinkValue = null;
+        var tools = new List<ToolRequest>();
+
+        try
+        {
+            var baseAgent = await _configurationService.GetAgentAsync(chairmanAgent.BaseAgentId);
+            enableThinking = baseAgent.AllowThinking;
+            thinkValue = baseAgent.ThinkValue;
+
+            // Chairman can use tools for validation
+            var agentTools = await _configurationService.GetToolsUsedByAgentAsync(chairmanAgent.BaseAgentId);
+            var mcpServers = await _configurationService.GetMcpServersAsync();
+
+            foreach (var tool in agentTools)
+            {
+                string? mcpServerName = null;
+                if (tool.McpServerId.HasValue)
+                {
+                    var mcpServer = mcpServers.FirstOrDefault(m => m.Id == tool.McpServerId);
+                    if (mcpServer != null)
+                    {
+                        mcpServerName = mcpServer.Name;
+                    }
+                }
+
+                tools.Add(new ToolRequest
+                {
+                    ToolName = tool.ToolName ?? "",
+                    McpServerName = mcpServerName
+                });
+            }
+
+            _logger.LogDebug("Loaded {ToolCount} tools for Chairman synthesis", tools.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load Chairman agent configuration");
+        }
+
+        return new AesirChatRequestBase
+        {
+            Model = chairmanAgent.Model ?? "gpt-4",
+            Temperature = chairmanAgent.Temperature,
+            MaxTokens = chairmanAgent.MaxTokens ?? 8192,
+            Conversation = conversation,
+            User = "research-synthesis",
+            Title = "Research Report Synthesis",
+            Tools = tools,
+            EnableThinking = enableThinking,
+            ThinkValue = thinkValue
+        };
+    }
+
+    /// <summary>
+    /// Resolves the IChatService for an agent.
+    /// Creates a new DI scope that must be disposed by the caller when done using the service.
+    /// </summary>
+    /// <returns>A tuple containing the chat service and its scope. Both will be null if service cannot be resolved.
+    /// The caller MUST dispose the scope when finished using the service.</returns>
+    private (IChatService? Service, IServiceScope? Scope) GetChatServiceForAgent(ResearchAgent agent)
+    {
+        _logger.LogDebug("[REPORT-GEN] GetChatServiceForAgent called for {Role}", agent.Role);
+        _logger.LogDebug("[REPORT-GEN]   BaseAgentId: {BaseAgentId}", agent.BaseAgentId);
+        _logger.LogDebug("[REPORT-GEN]   InferenceEngineId: {InferenceEngineId}", agent.InferenceEngineId);
+        _logger.LogDebug("[REPORT-GEN]   Model: {Model}", agent.Model);
+
+        if (!agent.InferenceEngineId.HasValue)
+        {
+            _logger.LogWarning("[REPORT-GEN] FAILURE: Chairman has no inference engine ID configured!");
+            _logger.LogWarning("[REPORT-GEN]   The Chairman agent will not be able to perform LLM synthesis!");
+            return (null, null);
+        }
+
+        // Create a new scope for this operation - critical for background tasks
+        var scope = _scopeFactory.CreateScope();
+        var engineIdKey = agent.InferenceEngineId.Value.ToString();
+        _logger.LogDebug("[REPORT-GEN] Attempting to get keyed service IChatService with key: '{EngineIdKey}'", engineIdKey);
+
+        var chatService = scope.ServiceProvider.GetKeyedService<IChatService>(engineIdKey);
+
+        if (chatService == null)
+        {
+            _logger.LogWarning("[REPORT-GEN] FAILURE: No IChatService found for inference engine ID: {EngineId}", agent.InferenceEngineId);
+            _logger.LogWarning("[REPORT-GEN]   Available keyed services might not include this engine!");
+            _logger.LogWarning("[REPORT-GEN]   Check that the inference engine module registered correctly.");
+            scope.Dispose();
+            return (null, null);
+        }
+
+        _logger.LogDebug("[REPORT-GEN] SUCCESS: IChatService resolved: {ServiceType}", chatService.GetType().Name);
+        return (chatService, scope);
+    }
+
+    /// <summary>
+    /// Extracts the title from the LLM response.
+    /// </summary>
+    private static string? ExtractTitle(string response)
+    {
+        // Look for # Title pattern
+        var lines = response.Split('\n');
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (trimmed.StartsWith("# ") && !trimmed.StartsWith("## "))
+            {
+                return trimmed[2..].Trim();
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Extracts the executive summary from the LLM response.
+    /// </summary>
+    private static string? ExtractExecutiveSummary(string response)
+    {
+        // Return everything after the title line
+        var lines = response.Split('\n').ToList();
+        var titleIndex = lines.FindIndex(l => l.Trim().StartsWith("# ") && !l.Trim().StartsWith("## "));
+
+        if (titleIndex >= 0 && titleIndex < lines.Count - 1)
+        {
+            var summaryLines = lines.Skip(titleIndex + 1);
+            return string.Join('\n', summaryLines).Trim();
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Generates a stub executive summary when LLM is not available.
+    /// </summary>
+    private string GenerateStubExecutiveSummary(
+        ResearchSession session,
+        IReadOnlyList<ResearchSubmission> submissions,
+        IReadOnlyList<SubmissionScore> scores)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine("*Note: This is a fallback executive summary. LLM synthesis was not available.*");
+        sb.AppendLine();
+
+        sb.AppendLine($"This research investigated: **{session.Query}**");
+        sb.AppendLine();
+
+        if (submissions.Count > 0)
+        {
+            sb.AppendLine($"The research team of {submissions.Count} agents conducted parallel investigations, " +
+                          $"each bringing their unique perspective:");
+            sb.AppendLine();
+
+            foreach (var submission in submissions)
+            {
+                var score = scores.FirstOrDefault(s => s.SubmissionId == submission.Id);
+                var scoreStr = score != null ? $" (score: {score.AverageScore:F1}/10)" : "";
+                sb.AppendLine($"- **{submission.Role}**: Contributed findings{scoreStr}");
+            }
+        }
+
+        var overallConfidence = scores.Count > 0
+            ? _confidenceCalculator.CalculateOverallConfidence(scores, session.PeerReviews ?? [])
+            : ConfidenceLevel.Low;
+
+        sb.AppendLine();
+        sb.AppendLine($"**Overall Confidence Level:** {overallConfidence}");
+
+        return sb.ToString();
     }
 
     /// <inheritdoc />
@@ -159,43 +541,6 @@ public class ReportGeneratorService : IReportGeneratorService
         }
 
         return cleanQuery;
-    }
-
-    private string GenerateExecutiveSummary(
-        ResearchSession session,
-        IReadOnlyList<ResearchSubmission> submissions,
-        IReadOnlyList<SubmissionScore> scores)
-    {
-        var sb = new StringBuilder();
-
-        sb.AppendLine("*Note: This is a stub executive summary. Full LLM synthesis pending integration.*");
-        sb.AppendLine();
-
-        sb.AppendLine($"This research investigated: **{session.Query}**");
-        sb.AppendLine();
-
-        if (submissions.Count > 0)
-        {
-            sb.AppendLine($"The research team of {submissions.Count} agents conducted parallel investigations, " +
-                          $"each bringing their unique perspective:");
-            sb.AppendLine();
-
-            foreach (var submission in submissions)
-            {
-                var score = scores.FirstOrDefault(s => s.SubmissionId == submission.Id);
-                var scoreStr = score != null ? $" (score: {score.AverageScore:F1}/10)" : "";
-                sb.AppendLine($"- **{submission.Role}**: Contributed findings{scoreStr}");
-            }
-        }
-
-        var overallConfidence = scores.Count > 0
-            ? _confidenceCalculator.CalculateOverallConfidence(scores, session.PeerReviews ?? [])
-            : ConfidenceLevel.Low;
-
-        sb.AppendLine();
-        sb.AppendLine($"**Overall Confidence Level:** {overallConfidence}");
-
-        return sb.ToString();
     }
 
     private static string GenerateMethodology(ResearchSession session, IReadOnlyList<ResearchSubmission> submissions)

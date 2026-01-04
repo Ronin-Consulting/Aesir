@@ -21,6 +21,9 @@ public class ChatPageTests : TestContext
     private readonly Mock<ICitationStateService> _mockCitationStateService;
     private readonly Mock<IAgentToolsService> _mockAgentToolsService;
     private readonly Mock<IDocumentApiService> _mockDocumentApiService;
+    private readonly Mock<IResearchStateService> _mockResearchStateService;
+    private readonly Mock<IResearchTeamApiService> _mockResearchTeamApiService;
+    private readonly Mock<IResearchSessionApiService> _mockResearchSessionApiService;
 
     public ChatPageTests()
     {
@@ -33,6 +36,15 @@ public class ChatPageTests : TestContext
         _mockCitationStateService = new Mock<ICitationStateService>();
         _mockAgentToolsService = new Mock<IAgentToolsService>();
         _mockDocumentApiService = new Mock<IDocumentApiService>();
+        _mockResearchStateService = new Mock<IResearchStateService>();
+        _mockResearchTeamApiService = new Mock<IResearchTeamApiService>();
+        _mockResearchSessionApiService = new Mock<IResearchSessionApiService>();
+
+        // Setup default return for research teams
+        _mockResearchTeamApiService.Setup(x => x.GetTeamsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<ResearchTeamBase>>.Success(new List<ResearchTeamBase>()));
+        _mockResearchTeamApiService.Setup(x => x.GetActiveTeamsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<ResearchTeamBase>>.Success(new List<ResearchTeamBase>()));
 
         Services.AddSingleton(_mockApiService.Object);
         Services.AddSingleton(_mockChatStateService.Object);
@@ -43,6 +55,9 @@ public class ChatPageTests : TestContext
         Services.AddSingleton(_mockCitationStateService.Object);
         Services.AddSingleton(_mockAgentToolsService.Object);
         Services.AddSingleton(_mockDocumentApiService.Object);
+        Services.AddSingleton(_mockResearchStateService.Object);
+        Services.AddSingleton(_mockResearchTeamApiService.Object);
+        Services.AddSingleton(_mockResearchSessionApiService.Object);
         Services.AddSingleton<IMarkdownService, MarkdownService>();
         Services.AddMudServices();
 
@@ -240,4 +255,169 @@ public class ChatPageTests : TestContext
         // Assert
         cut.Markup.Should().NotBeEmpty();
     }
+
+    #region Research Team UI State Tests
+
+    [Fact]
+    public void ToolToggleMenu_IsDisabled_WhenResearchTeamSelected()
+    {
+        // Arrange - Agent with tools AND Research Team selected
+        var agent = new AesirAgentBase
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Agent",
+            ChatModel = "gpt-4",
+            IsThinkingAvailable = true
+        };
+        _mockChatStateService.Setup(x => x.SelectedAgent).Returns(agent);
+        _mockApiService.Setup(x => x.GetAgentsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirAgentBase>>.Success(new List<AesirAgentBase> { agent }));
+        _mockApiService.Setup(x => x.GetInferenceEnginesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirInferenceEngineBase>>.Success(new List<AesirInferenceEngineBase>
+            {
+                new AesirInferenceEngineBase { Id = Guid.NewGuid(), Name = "Test Engine", Type = InferenceEngineType.OpenAICompatible }
+            }));
+
+        // Setup agent tools that would normally enable the tool toggle menu
+        _mockAgentToolsService.Setup(x => x.GetAgentToolsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AesirToolBase>
+            {
+                new AesirToolBase { Id = Guid.NewGuid(), ToolName = "WebTool", Name = "Web Search" }
+            });
+
+        // Simulate Research Team selected
+        var researchTeam = new ResearchTeamBase { Id = Guid.NewGuid(), Name = "Test Research Team" };
+        _mockResearchStateService.Setup(x => x.IsTeamSelected).Returns(true);
+        _mockResearchStateService.Setup(x => x.SelectedTeam).Returns(researchTeam);
+
+        // Act
+        var cut = RenderComponent<ChatPage>();
+
+        // Assert - Tool toggle button should be disabled (no toggleable tools passed)
+        // When ResearchState.IsTeamSelected is true, ChatPage passes empty tools to ToolToggleMenu
+        // which makes the button disabled
+        var toolToggleButtons = cut.FindAll(".tool-toggle-menu-container button");
+        if (toolToggleButtons.Any())
+        {
+            var toolButton = toolToggleButtons.First();
+            toolButton.HasAttribute("disabled").Should().BeTrue(
+                "Tool toggle button should be disabled when Research Team is selected");
+        }
+    }
+
+    [Fact]
+    public void ThinkMenu_IsNotRendered_WhenResearchTeamSelected()
+    {
+        // Arrange - Agent with thinking enabled AND Research Team selected
+        var agent = new AesirAgentBase
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Agent",
+            ChatModel = "gpt-4",
+            IsThinkingAvailable = true  // Thinking is available on the agent
+        };
+        _mockChatStateService.Setup(x => x.SelectedAgent).Returns(agent);
+        _mockApiService.Setup(x => x.GetAgentsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirAgentBase>>.Success(new List<AesirAgentBase> { agent }));
+        _mockApiService.Setup(x => x.GetInferenceEnginesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirInferenceEngineBase>>.Success(new List<AesirInferenceEngineBase>
+            {
+                new AesirInferenceEngineBase { Id = Guid.NewGuid(), Name = "Test Engine", Type = InferenceEngineType.OpenAICompatible }
+            }));
+
+        // Simulate Research Team selected
+        var researchTeam = new ResearchTeamBase { Id = Guid.NewGuid(), Name = "Test Research Team" };
+        _mockResearchStateService.Setup(x => x.IsTeamSelected).Returns(true);
+        _mockResearchStateService.Setup(x => x.SelectedTeam).Returns(researchTeam);
+
+        // Act
+        var cut = RenderComponent<ChatPage>();
+
+        // Assert - Think menu container should NOT be present when Research Team is selected
+        // When ResearchState.IsTeamSelected is true, ChatPage passes AllowThinking=false
+        // which prevents ThinkMenu from rendering
+        cut.Markup.Should().NotContain("think-menu-container",
+            "Think menu should not be rendered when Research Team is selected");
+    }
+
+    [Fact]
+    public void ToolToggleMenu_IsEnabled_WhenResearchTeamNotSelected()
+    {
+        // Arrange - Agent with tools, NO Research Team selected
+        var agent = new AesirAgentBase
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Agent",
+            ChatModel = "gpt-4"
+        };
+        _mockChatStateService.Setup(x => x.SelectedAgent).Returns(agent);
+        _mockApiService.Setup(x => x.GetAgentsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirAgentBase>>.Success(new List<AesirAgentBase> { agent }));
+        _mockApiService.Setup(x => x.GetInferenceEnginesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirInferenceEngineBase>>.Success(new List<AesirInferenceEngineBase>
+            {
+                new AesirInferenceEngineBase { Id = Guid.NewGuid(), Name = "Test Engine", Type = InferenceEngineType.OpenAICompatible }
+            }));
+
+        // Setup agent tools
+        _mockAgentToolsService.Setup(x => x.GetAgentToolsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<AesirToolBase>
+            {
+                new AesirToolBase { Id = Guid.NewGuid(), ToolName = "WebTool", Name = "Web Search" }
+            });
+
+        // NO Research Team selected
+        _mockResearchStateService.Setup(x => x.IsTeamSelected).Returns(false);
+        _mockResearchStateService.Setup(x => x.SelectedTeam).Returns((ResearchTeamBase?)null);
+
+        // Act
+        var cut = RenderComponent<ChatPage>();
+
+        // Assert - Tool toggle button should be enabled when no Research Team is selected
+        // and tools are available
+        var toolToggleButtons = cut.FindAll(".tool-toggle-menu-container button");
+        if (toolToggleButtons.Any())
+        {
+            var toolButton = toolToggleButtons.First();
+            // The button should NOT be disabled (enabled)
+            toolButton.HasAttribute("disabled").Should().BeFalse(
+                "Tool toggle button should be enabled when no Research Team is selected and tools are available");
+        }
+    }
+
+    [Fact]
+    public void ThinkMenu_IsRendered_WhenResearchTeamNotSelected_AndThinkingAvailable()
+    {
+        // Arrange - Agent with thinking enabled, NO Research Team selected
+        var agent = new AesirAgentBase
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Agent",
+            ChatModel = "gpt-4",
+            IsThinkingAvailable = true  // Thinking is available
+        };
+        _mockChatStateService.Setup(x => x.SelectedAgent).Returns(agent);
+        _mockApiService.Setup(x => x.GetAgentsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirAgentBase>>.Success(new List<AesirAgentBase> { agent }));
+        _mockApiService.Setup(x => x.GetInferenceEnginesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirInferenceEngineBase>>.Success(new List<AesirInferenceEngineBase>
+            {
+                new AesirInferenceEngineBase { Id = Guid.NewGuid(), Name = "Test Engine", Type = InferenceEngineType.OpenAICompatible }
+            }));
+
+        // NO Research Team selected
+        _mockResearchStateService.Setup(x => x.IsTeamSelected).Returns(false);
+        _mockResearchStateService.Setup(x => x.SelectedTeam).Returns((ResearchTeamBase?)null);
+
+        // Act
+        var cut = RenderComponent<ChatPage>();
+
+        // Assert - Think menu container should be present when:
+        // - No Research Team is selected
+        // - Agent's IsThinkingAvailable is true
+        cut.Markup.Should().Contain("think-menu-container",
+            "Think menu should be rendered when no Research Team is selected and agent supports thinking");
+    }
+
+    #endregion
 }

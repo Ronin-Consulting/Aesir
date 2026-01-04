@@ -32,6 +32,7 @@ public enum ResearchRole
 /// <summary>
 /// Research mode determining depth and duration.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ResearchMode
 {
     /// <summary>
@@ -53,6 +54,7 @@ public enum ResearchMode
 /// <summary>
 /// Overall status of a research session.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ResearchStatus
 {
     /// <summary>
@@ -109,6 +111,7 @@ public enum ResearchStatus
 /// <summary>
 /// Current phase of the research workflow.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ResearchPhase
 {
     /// <summary>
@@ -145,6 +148,7 @@ public enum ResearchPhase
 /// <summary>
 /// Status of an individual agent's submission.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum SubmissionStatus
 {
     /// <summary>
@@ -176,6 +180,7 @@ public enum SubmissionStatus
 /// <summary>
 /// Type of event in the research trail audit log.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ResearchTrailEventType
 {
     /// <summary>
@@ -237,6 +242,7 @@ public enum ResearchTrailEventType
 /// <summary>
 /// Confidence level for research findings.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ConfidenceLevel
 {
     /// <summary>

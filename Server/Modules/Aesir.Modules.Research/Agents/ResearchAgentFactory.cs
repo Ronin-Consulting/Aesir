@@ -1,4 +1,5 @@
 using Aesir.Common.Models;
+using Aesir.Common.Prompts;
 using Aesir.Modules.Research.Models;
 using Microsoft.Extensions.Logging;
 
@@ -46,6 +47,9 @@ public class ResearchAgentFactory : IResearchAgentFactory
         // Get default config for the role
         var roleConfig = ResearchRoleDefinitions.GetConfig(teamMember.Role);
 
+        // Build merged persona: domain expertise (base agent) + research methodology (role)
+        var mergedPersona = BuildMergedPersona(baseAgent, roleConfig);
+
         // Apply temperature override from team member, use role defaults for other settings
         var agent = new ResearchAgent
         {
@@ -62,8 +66,10 @@ public class ResearchAgentFactory : IResearchAgentFactory
             // Temperature: use override (Creativity setting), else role default
             Temperature = teamMember.OverrideTemperature ?? roleConfig.Temperature,
 
+            // Merged persona combines domain expertise with research role methodology
+            Persona = mergedPersona,
+
             // Role-specific prompts (no overrides - uses role defaults)
-            Persona = roleConfig.Persona,
             PlanningPrompt = roleConfig.PlanningPrompt,
             ResearchPrompt = roleConfig.ResearchPrompt,
             ClarificationPrompt = roleConfig.ClarificationPrompt,
@@ -71,11 +77,90 @@ public class ResearchAgentFactory : IResearchAgentFactory
         };
 
         _logger.LogDebug(
-            "Created research agent for role {Role} with temperature {Temperature}",
+            "Created research agent for role {Role} with temperature {Temperature}, merged persona length: {PersonaLength}",
             agent.Role,
-            agent.Temperature);
+            agent.Temperature,
+            mergedPersona.Length);
 
         return agent;
+    }
+
+    /// <summary>
+    /// Builds a merged persona combining base agent domain expertise with research role methodology.
+    /// </summary>
+    /// <remarks>
+    /// The merged persona follows a layered architecture:
+    /// 1. Domain Expertise (base agent) - establishes identity, terminology, and constraints
+    /// 2. Research Role (role config) - defines research methodology and approach
+    ///
+    /// This ensures that domain-specific constraints (e.g., legal confidentiality, military precision)
+    /// are established before task-specific research instructions.
+    /// </remarks>
+    private string BuildMergedPersona(AesirAgentBase baseAgent, ResearchAgentConfig roleConfig)
+    {
+        // Get the base agent's domain expertise prompt
+        var domainExpertisePrompt = GetDomainExpertisePrompt(baseAgent);
+
+        // If no domain expertise configured, use research role persona only
+        if (string.IsNullOrWhiteSpace(domainExpertisePrompt))
+        {
+            _logger.LogDebug(
+                "No domain expertise configured for agent {AgentId}, using research role only",
+                baseAgent.Id);
+            return roleConfig.Persona;
+        }
+
+        // Merge: Domain expertise first, then research role methodology
+        var mergedPersona = $"""
+            {domainExpertisePrompt}
+
+            ---
+
+            ## Research Role: {roleConfig.Name}
+
+            {roleConfig.Persona}
+            """;
+
+        _logger.LogDebug(
+            "Merged persona for agent {AgentId}: domain expertise ({DomainLength} chars) + {RoleName} ({RoleLength} chars)",
+            baseAgent.Id,
+            domainExpertisePrompt.Length,
+            roleConfig.Name,
+            roleConfig.Persona.Length);
+
+        return mergedPersona;
+    }
+
+    /// <summary>
+    /// Gets the domain expertise prompt from the base agent's configured persona.
+    /// </summary>
+    private string GetDomainExpertisePrompt(AesirAgentBase baseAgent)
+    {
+        // No persona configured - no domain expertise
+        if (baseAgent.ChatPromptPersona == null || baseAgent.ChatPromptPersona == PromptPersona.Default)
+        {
+            return string.Empty;
+        }
+
+        // Custom persona - use the custom prompt content directly
+        if (baseAgent.ChatPromptPersona == PromptPersona.Custom)
+        {
+            return baseAgent.ChatCustomPromptContent ?? string.Empty;
+        }
+
+        // Standard personas (Legal, Military, Business, Ocr) - resolve via DefaultPromptProvider
+        try
+        {
+            var promptTemplate = DefaultPromptProvider.Instance.GetSystemPrompt(baseAgent.ChatPromptPersona.Value);
+            return promptTemplate.Content;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to resolve domain expertise prompt for persona {Persona}, falling back to empty",
+                baseAgent.ChatPromptPersona);
+            return string.Empty;
+        }
     }
 
     /// <inheritdoc />

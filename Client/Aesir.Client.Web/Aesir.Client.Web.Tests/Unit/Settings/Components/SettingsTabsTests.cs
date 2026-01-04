@@ -196,7 +196,7 @@ public class SettingsTabsTests : TestContext
         var tabGroups = cut.FindAll(".tab-group");
         var configurationGroup = tabGroups[0];
         var tabs = configurationGroup.QuerySelectorAll(".settings-tab-item");
-        tabs.Length.Should().Be(5);
+        tabs.Length.Should().Be(6); // General, Agents, Research Teams, Inference Engines, MCP Servers, Speech
     }
 
     [Fact]

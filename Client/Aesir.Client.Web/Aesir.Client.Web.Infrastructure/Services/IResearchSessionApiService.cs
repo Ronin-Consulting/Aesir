@@ -65,6 +65,26 @@ public interface IResearchSessionApiService
     /// <param name="sessionId">The session ID.</param>
     /// <param name="ct">Cancellation token.</param>
     Task<ApiResult> DeleteSessionAsync(Guid sessionId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Exports the research report as a PDF file.
+    /// </summary>
+    /// <param name="sessionId">The session ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<FileDownloadResult> ExportReportPdfAsync(Guid sessionId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Exports the research report as a Word document.
+    /// </summary>
+    /// <param name="sessionId">The session ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<FileDownloadResult> ExportReportWordAsync(Guid sessionId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the available export formats.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    Task<ApiResult<List<ExportFormatInfo>>> GetExportFormatsAsync(CancellationToken ct = default);
 }
 
 /// <summary>
@@ -96,6 +116,12 @@ public class CreateResearchSessionRequestBase
     /// The user ID creating the session.
     /// </summary>
     public string UserId { get; set; } = "default";
+
+    /// <summary>
+    /// The ChatSession ID to link this research session to.
+    /// If provided, research will be linked to an existing ChatSession.
+    /// </summary>
+    public Guid? ConversationId { get; set; }
 }
 
 /// <summary>
@@ -153,4 +179,25 @@ public class ResearchSourceBase
     public string? Author { get; set; }
     public DateTime? PublishedDate { get; set; }
     public string? Snippet { get; set; }
+}
+
+/// <summary>
+/// Information about an available export format.
+/// </summary>
+public class ExportFormatInfo
+{
+    /// <summary>
+    /// The format name (e.g., "Pdf", "Word").
+    /// </summary>
+    public string Format { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The MIME content type for this format.
+    /// </summary>
+    public string ContentType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The file extension for this format (e.g., ".pdf", ".docx").
+    /// </summary>
+    public string Extension { get; set; } = string.Empty;
 }

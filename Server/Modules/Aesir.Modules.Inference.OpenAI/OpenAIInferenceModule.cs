@@ -61,21 +61,29 @@ public class OpenAIInferenceModule : ModuleBase
     /// <return>A <see cref="Task"/> representing the asynchronous operation.</return>
     public override async Task RegisterServicesAsync(IServiceCollection services)
     {
+        Logger.LogInformation("[OpenAI] Starting OpenAI Inference Module registration");
+
         var inferenceEngines = await ConfigurationService!.GetInferenceEnginesAsync();
         var generalSettings = await ConfigurationService!.GetGeneralSettingsAsync();
-        
+
+        Logger.LogInformation("[OpenAI] Found {Count} inference engines", inferenceEngines.Count());
+
         foreach (var inferenceEngine in inferenceEngines)
         {
+            Logger.LogInformation("[OpenAI] Processing inference engine: {Name} (Id={Id}, Type={Type})",
+                inferenceEngine.Name, inferenceEngine.Id, inferenceEngine.Type);
+
             if (!ConfigurationReadinessService!.IsInferenceEngineReadyAtBoot(inferenceEngine.Id!.Value))
             {
-                Logger.LogWarning("Configuration for Inference Engine {EngineName} is not ready and being skipped for initialization", inferenceEngine.Name);
+                Logger.LogWarning("[OpenAI] Configuration for Inference Engine {EngineName} is not ready and being skipped", inferenceEngine.Name);
                 continue;
             }
-            
+
             switch (inferenceEngine.Type)
             {
                 case InferenceEngineType.OpenAICompatible:
                 {
+                    Logger.LogInformation("[OpenAI] Registering services for OpenAI-compatible engine: {Name}", inferenceEngine.Name);
                     RegisterSemanticKernelInferenceServices(services, inferenceEngine, generalSettings, Logger);
                     RegisterInferenceEngine(services, inferenceEngine);
                     break;

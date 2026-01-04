@@ -1,3 +1,4 @@
+@implements IDisposable
 @inject IMarkdownService MarkdownService
 @inject IResearchStateService ResearchState
 @inject IJSRuntime JSRuntime
@@ -43,7 +44,9 @@
         {
             <TeamMessageProgress Session="Session"
                                  ProgressMessage="@ResearchState.CurrentProgressMessage"
-                                 ProgressPercent="@ResearchState.CurrentProgressPercent" />
+                                 ProgressPercent="@ResearchState.CurrentProgressPercent"
+                                 AgentActivity="@ResearchState.CurrentAgentActivity"
+                                 IsAgentActive="@ResearchState.IsAgentActive" />
         }
 
         @* Clarification Section (when awaiting input) *@
@@ -55,14 +58,20 @@
                     Please provide clarification:
                 </MudText>
                 <div class="clarification-questions">
-                    @foreach (var question in Session.ClarificationQuestions)
+                    @for (var i = 0; i < Session.ClarificationQuestions.Count; i++)
                     {
+                        var question = Session.ClarificationQuestions[i];
+                        var questionNumber = i + 1;
                         <div class="clarification-question">
+                            <MudText Typo="Typo.body2" Class="question-text">
+                                <strong>@questionNumber.</strong> @question
+                            </MudText>
                             <MudTextField @bind-Value="_clarificationAnswers[question]"
-                                          Label="@question"
+                                          Placeholder="Enter your answer..."
                                           Variant="Variant.Outlined"
                                           Lines="2"
-                                          FullWidth="true" />
+                                          FullWidth="true"
+                                          Class="question-input" />
                         </div>
                     }
                 </div>
@@ -249,11 +258,26 @@
     .team-message .clarification-questions {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 16px;
     }
 
     .team-message .clarification-question {
-        margin-bottom: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .team-message .clarification-question .question-text {
+        color: var(--mud-palette-text-primary);
+        line-height: 1.5;
+        padding: 8px 12px;
+        background-color: rgba(255, 193, 7, 0.1);
+        border-radius: 6px;
+        border-left: 3px solid #F59E0B;
+    }
+
+    .team-message .clarification-question .question-input {
+        margin-top: 4px;
     }
 
     .team-message .clarification-actions {
@@ -401,6 +425,32 @@
     private bool HasAllAnswers => Session?.ClarificationQuestions?.All(q =>
         _clarificationAnswers.TryGetValue(q, out var answer) &&
         !string.IsNullOrWhiteSpace(answer)) ?? false;
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to research state events for real-time updates
+        ResearchState.OnSessionChanged += HandleStateChanged;
+        ResearchState.OnProgressUpdate += HandleProgressUpdate;
+    }
+
+    private void HandleStateChanged()
+    {
+        // Re-render when session state changes
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleProgressUpdate(ResearchProgressBase progress)
+    {
+        // Re-render when progress updates are received
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from events to prevent memory leaks
+        ResearchState.OnSessionChanged -= HandleStateChanged;
+        ResearchState.OnProgressUpdate -= HandleProgressUpdate;
+    }
 
     protected override void OnParametersSet()
     {
