@@ -51,6 +51,7 @@ public class ReportGeneratorService : IReportGeneratorService
     private readonly IConfigurationService _configurationService;
     private readonly IConfidenceCalculator _confidenceCalculator;
     private readonly IScoringCalculator _scoringCalculator;
+    private readonly IResearchProgressBroadcaster _progressBroadcaster;
 
     public ReportGeneratorService(
         ILogger<ReportGeneratorService> logger,
@@ -58,7 +59,8 @@ public class ReportGeneratorService : IReportGeneratorService
         IHubContext<ResearchHub> hubContext,
         IConfigurationService configurationService,
         IConfidenceCalculator confidenceCalculator,
-        IScoringCalculator scoringCalculator)
+        IScoringCalculator scoringCalculator,
+        IResearchProgressBroadcaster progressBroadcaster)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
@@ -66,6 +68,7 @@ public class ReportGeneratorService : IReportGeneratorService
         _configurationService = configurationService;
         _confidenceCalculator = confidenceCalculator;
         _scoringCalculator = scoringCalculator;
+        _progressBroadcaster = progressBroadcaster;
     }
 
     /// <inheritdoc />
@@ -90,7 +93,17 @@ public class ReportGeneratorService : IReportGeneratorService
         _logger.LogDebug("[REPORT-GEN] Sending phase change notification via SignalR...");
         await _hubContext.SendAgentPhaseChangedAsync(
             session.Id, chairmanAgent.TeamMemberId, chairmanAgent.Role, "synthesis",
-            "Chairman is synthesizing the final report...");
+            "Chairman is synthesizing the final report...").ConfigureAwait(false);
+
+        // Report initial progress
+        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        {
+            Phase = ResearchPhase.Synthesis,
+            AgentRole = chairmanAgent.Role,
+            TeamMemberId = chairmanAgent.TeamMemberId,
+            Message = "Preparing synthesis prompt...",
+            PercentComplete = 10
+        }).ConfigureAwait(false);
 
         // Get chat service for the Chairman
         _logger.LogDebug("[REPORT-GEN] Getting chat service for Chairman...");
@@ -146,8 +159,18 @@ public class ReportGeneratorService : IReportGeneratorService
         // Generate full markdown
         report.FullMarkdown = ReportTemplates.GenerateFullMarkdown(report, session);
 
+        // Report final progress
+        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        {
+            Phase = ResearchPhase.Synthesis,
+            AgentRole = chairmanAgent.Role,
+            TeamMemberId = chairmanAgent.TeamMemberId,
+            Message = "Report generated successfully",
+            PercentComplete = 100
+        }).ConfigureAwait(false);
+
         // Notify research completed via SignalR
-        await _hubContext.SendResearchCompletedAsync(session.Id, report.Id);
+        await _hubContext.SendResearchCompletedAsync(session.Id, report.Id).ConfigureAwait(false);
 
         _logger.LogInformation("Report generated with {FindingCount} findings", report.Findings?.Count ?? 0);
 
@@ -169,15 +192,45 @@ public class ReportGeneratorService : IReportGeneratorService
         // Build the synthesis prompt
         var synthesisPrompt = BuildSynthesisPrompt(session, submissions, submissionScores, peerReviews);
 
+        // Report progress after prompt construction
+        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        {
+            Phase = ResearchPhase.Synthesis,
+            AgentRole = chairmanAgent.Role,
+            TeamMemberId = chairmanAgent.TeamMemberId,
+            Message = "Building synthesis request...",
+            PercentComplete = 40
+        }).ConfigureAwait(false);
+
         // Create chat request
-        var request = await CreateSynthesisRequestAsync(chairmanAgent, synthesisPrompt);
+        var request = await CreateSynthesisRequestAsync(chairmanAgent, synthesisPrompt).ConfigureAwait(false);
 
         _logger.LogDebug("Sending synthesis request to LLM for Chairman (non-streaming)");
+
+        // Report progress before LLM call
+        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        {
+            Phase = ResearchPhase.Synthesis,
+            AgentRole = chairmanAgent.Role,
+            TeamMemberId = chairmanAgent.TeamMemberId,
+            Message = "Chairman generating executive summary...",
+            PercentComplete = 50
+        }).ConfigureAwait(false);
 
         // Execute non-streaming chat completion
         // Note: CancellationToken is checked before call; ChatCompletionsAsync doesn't accept one
         cancellationToken.ThrowIfCancellationRequested();
-        var result = await chatService.ChatCompletionsAsync(request);
+        var result = await chatService.ChatCompletionsAsync(request).ConfigureAwait(false);
+
+        // Report progress after LLM response
+        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        {
+            Phase = ResearchPhase.Synthesis,
+            AgentRole = chairmanAgent.Role,
+            TeamMemberId = chairmanAgent.TeamMemberId,
+            Message = "Processing synthesis results...",
+            PercentComplete = 85
+        }).ConfigureAwait(false);
 
         // Extract the assistant response from the result
         var response = ExtractAssistantResponse(result);
@@ -314,13 +367,13 @@ public class ReportGeneratorService : IReportGeneratorService
 
         try
         {
-            var baseAgent = await _configurationService.GetAgentAsync(chairmanAgent.BaseAgentId);
+            var baseAgent = await _configurationService.GetAgentAsync(chairmanAgent.BaseAgentId).ConfigureAwait(false);
             enableThinking = baseAgent.AllowThinking;
             thinkValue = baseAgent.ThinkValue;
 
             // Chairman can use tools for validation
-            var agentTools = await _configurationService.GetToolsUsedByAgentAsync(chairmanAgent.BaseAgentId);
-            var mcpServers = await _configurationService.GetMcpServersAsync();
+            var agentTools = await _configurationService.GetToolsUsedByAgentAsync(chairmanAgent.BaseAgentId).ConfigureAwait(false);
+            var mcpServers = await _configurationService.GetMcpServersAsync().ConfigureAwait(false);
 
             foreach (var tool in agentTools)
             {
@@ -563,7 +616,7 @@ public class ReportGeneratorService : IReportGeneratorService
                 _ => "Contributed to research"
             };
 
-            sb.AppendLine($"- **{submission.Role}**: {roleDescription}");
+            sb.AppendLine($"- **{submission.Role}**  \n{roleDescription}");
         }
 
         sb.AppendLine();
@@ -596,7 +649,7 @@ public class ReportGeneratorService : IReportGeneratorService
             findings.Add(new ResearchFinding
             {
                 Title = $"Finding {findingNumber}: {submission.Role} Perspective",
-                Content = $"[Stub finding from {submission.Role}]\n\n{TruncateContent(submission.Content, 500)}",
+                Content = TruncateContent(submission.Content, 2000),
                 Confidence = confidence,
                 SupportingEvidence = submission.Sources?.Take(3).Select(s => s.Title).ToList() ?? [],
                 Sources = submission.Sources?.Take(3).ToList(),
@@ -615,22 +668,15 @@ public class ReportGeneratorService : IReportGeneratorService
         if (devilsAdvocate == null)
             return null;
 
-        return $"*Note: Full alternative perspective extraction pending LLM integration.*\n\n" +
-               $"The Devil's Advocate raised the following considerations:\n\n" +
-               TruncateContent(devilsAdvocate.Content, 500);
+        return $"The Devil's Advocate raised the following considerations:\n\n" +
+               TruncateContent(devilsAdvocate.Content, 1500);
     }
 
     private static string? ExtractResearchGaps(IReadOnlyList<ResearchSubmission> submissions)
     {
-        // Stub implementation - will be replaced with LLM extraction
-        return """
-            *Note: Research gap extraction pending LLM integration.*
-
-            Potential areas for further investigation:
-            - Deeper analysis of primary sources
-            - Cross-validation with additional experts
-            - Temporal analysis of trends
-            """;
+        // Return null until LLM-based gap extraction is implemented
+        // The UI will hide this section when null
+        return null;
     }
 
     private static List<ResearchSource> CollectBibliography(IReadOnlyList<ResearchSubmission> submissions)

@@ -20,7 +20,6 @@ public interface IResearchOrchestrator
     /// <param name="documentCollectionIds">Optional document collection IDs for RAG.</param>
     /// <param name="userId">The user ID.</param>
     /// <param name="conversationId">Optional ChatSession ID to link research to.</param>
-    /// <param name="progressCallback">Optional callback for progress updates.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created research session.</returns>
     Task<ResearchSession> StartResearchAsync(
@@ -30,7 +29,6 @@ public interface IResearchOrchestrator
         IReadOnlyList<Guid>? documentCollectionIds = null,
         string userId = "default",
         Guid? conversationId = null,
-        Func<ResearchPhaseProgress, Task>? progressCallback = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -38,12 +36,10 @@ public interface IResearchOrchestrator
     /// </summary>
     /// <param name="sessionId">The session ID.</param>
     /// <param name="answers">The answers to the clarification questions.</param>
-    /// <param name="progressCallback">Optional callback for progress updates.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task SubmitClarificationAnswersAsync(
         Guid sessionId,
         IReadOnlyDictionary<string, string> answers,
-        Func<ResearchPhaseProgress, Task>? progressCallback = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -105,7 +101,6 @@ public class ResearchOrchestrator : IResearchOrchestrator
         IReadOnlyList<Guid>? documentCollectionIds = null,
         string userId = "default",
         Guid? conversationId = null,
-        Func<ResearchPhaseProgress, Task>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("=== [RESEARCH] StartResearchAsync ENTRY ===");
@@ -115,12 +110,11 @@ public class ResearchOrchestrator : IResearchOrchestrator
         _logger.LogDebug("[RESEARCH] UserId: {UserId}", userId);
         _logger.LogDebug("[RESEARCH] ConversationId: {ConversationId}", conversationId);
         _logger.LogDebug("[RESEARCH] DocumentCollectionIds: {Ids}", documentCollectionIds != null ? string.Join(",", documentCollectionIds) : "null");
-        _logger.LogDebug("[RESEARCH] ProgressCallback is {CallbackStatus}", progressCallback != null ? "SET" : "NULL");
         _logger.LogInformation("Starting research session for team {TeamId}", teamId);
 
         // Get the team configuration
         _logger.LogDebug("[RESEARCH] Loading team from repository...");
-        var team = await _teamRepository.GetByIdAsync(teamId);
+        var team = await _teamRepository.GetByIdAsync(teamId).ConfigureAwait(false);
         if (team == null)
         {
             _logger.LogError("[RESEARCH] Team NOT FOUND: {TeamId}", teamId);
@@ -130,7 +124,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
 
         // Resolve base agents from configuration
         _logger.LogDebug("[RESEARCH] Resolving base agents from configuration...");
-        var agentDict = await ResolveBaseAgentsAsync(team);
+        var agentDict = await ResolveBaseAgentsAsync(team).ConfigureAwait(false);
         _logger.LogDebug("[RESEARCH] Resolved {AgentCount} base agents", agentDict.Count);
 
         // Create research agents
@@ -170,16 +164,16 @@ public class ResearchOrchestrator : IResearchOrchestrator
         };
         _logger.LogDebug("[RESEARCH] Session ConversationId set to: {ConversationId}", conversationId);
 
-        await _sessionRepository.AddAsync(session);
+        await _sessionRepository.AddAsync(session).ConfigureAwait(false);
         _logger.LogDebug("[RESEARCH] Session created with ID: {SessionId}", session.Id);
 
         // Initialize ChatSession immediately so it appears in chat history
         // This persists the user's query and creates a placeholder title
-        var chatSessionId = await InitializeChatSessionAsync(session, query, userId);
+        var chatSessionId = await InitializeChatSessionAsync(session, query, userId).ConfigureAwait(false);
         if (session.ConversationId != chatSessionId)
         {
             session.ConversationId = chatSessionId;
-            await _sessionRepository.UpdateAsync(session);
+            await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH] Session updated with ChatSessionId: {ChatSessionId}", chatSessionId);
         }
 
@@ -191,7 +185,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
                 session.Id,
                 query,
                 chairman,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH] Generated {QuestionCount} clarification questions", questions.Count);
 
             if (questions.Count > 0)
@@ -199,7 +193,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
                 session.ClarificationQuestions = questions.ToList();
                 session.Status = ResearchStatus.AwaitingClarification;
                 session.UpdatedAt = DateTime.UtcNow;
-                await _sessionRepository.UpdateAsync(session);
+                await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
 
                 _logger.LogInformation("Session {SessionId} awaiting {Count} clarification answers",
                     session.Id, questions.Count);
@@ -217,7 +211,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
         _logger.LogDebug("[RESEARCH] No clarification needed, proceeding to research workflow");
         session.RefinedQuery = query;
         session.UpdatedAt = DateTime.UtcNow;
-        await _sessionRepository.UpdateAsync(session);
+        await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
 
         // Fire-and-forget the workflow - don't block the HTTP response
         // The workflow can take minutes; client will receive updates via SignalR
@@ -226,7 +220,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
         {
             try
             {
-                await ExecuteResearchWorkflowAsync(session, researchAgents, progressCallback, CancellationToken.None);
+                await ExecuteResearchWorkflowAsync(session, researchAgents, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -243,10 +237,9 @@ public class ResearchOrchestrator : IResearchOrchestrator
     public async Task SubmitClarificationAnswersAsync(
         Guid sessionId,
         IReadOnlyDictionary<string, string> answers,
-        Func<ResearchPhaseProgress, Task>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        var session = await _sessionRepository.GetByIdAsync(sessionId).ConfigureAwait(false);
         if (session == null)
         {
             throw new KeyNotFoundException($"Research session {sessionId} not found");
@@ -264,14 +257,14 @@ public class ResearchOrchestrator : IResearchOrchestrator
         session.UpdatedAt = DateTime.UtcNow;
 
         // Get team and create research agents
-        var team = await _teamRepository.GetByIdAsync(session.ResearchTeamId ?? Guid.Empty);
+        var team = await _teamRepository.GetByIdAsync(session.ResearchTeamId ?? Guid.Empty).ConfigureAwait(false);
         if (team == null)
         {
             throw new KeyNotFoundException($"Research team {session.ResearchTeamId} not found");
         }
 
         // Resolve base agents from configuration
-        var agentDict = await ResolveBaseAgentsAsync(team);
+        var agentDict = await ResolveBaseAgentsAsync(team).ConfigureAwait(false);
 
         var researchAgents = _agentFactory.CreateAgentsForTeam(team, agentDict);
         var chairman = researchAgents.FirstOrDefault(a => a.IsChairman);
@@ -285,14 +278,14 @@ public class ResearchOrchestrator : IResearchOrchestrator
                 session.ClarificationQuestions,
                 answers,
                 chairman,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
         else
         {
             session.RefinedQuery = session.Query;
         }
 
-        await _sessionRepository.UpdateAsync(session);
+        await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
 
         // Fire-and-forget the workflow - don't block the HTTP response
         // The workflow can take minutes; client will receive updates via SignalR
@@ -301,7 +294,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
         {
             try
             {
-                await ExecuteResearchWorkflowAsync(session, researchAgents, progressCallback, CancellationToken.None);
+                await ExecuteResearchWorkflowAsync(session, researchAgents, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -314,13 +307,13 @@ public class ResearchOrchestrator : IResearchOrchestrator
     /// <inheritdoc />
     public async Task<ResearchSession?> GetSessionStatusAsync(Guid sessionId)
     {
-        return await _sessionRepository.GetByIdAsync(sessionId);
+        return await _sessionRepository.GetByIdAsync(sessionId).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async Task CancelResearchAsync(Guid sessionId)
     {
-        var session = await _sessionRepository.GetByIdAsync(sessionId);
+        var session = await _sessionRepository.GetByIdAsync(sessionId).ConfigureAwait(false);
         if (session == null)
         {
             throw new KeyNotFoundException($"Research session {sessionId} not found");
@@ -329,7 +322,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
         session.Status = ResearchStatus.Cancelled;
         session.CompletedAt = DateTime.UtcNow;
         session.UpdatedAt = DateTime.UtcNow;
-        await _sessionRepository.UpdateAsync(session);
+        await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
 
         _logger.LogInformation("Research session {SessionId} cancelled", sessionId);
     }
@@ -337,13 +330,11 @@ public class ResearchOrchestrator : IResearchOrchestrator
     private async Task ExecuteResearchWorkflowAsync(
         ResearchSession session,
         IReadOnlyList<ResearchAgent> researchAgents,
-        Func<ResearchPhaseProgress, Task>? progressCallback,
         CancellationToken cancellationToken)
     {
         _logger.LogDebug("[RESEARCH-WORKFLOW] === ExecuteResearchWorkflowAsync START ===");
         _logger.LogDebug("[RESEARCH-WORKFLOW] SessionId: {SessionId}", session.Id);
         _logger.LogDebug("[RESEARCH-WORKFLOW] Total agents: {AgentCount}", researchAgents.Count);
-        _logger.LogDebug("[RESEARCH-WORKFLOW] ProgressCallback: {CallbackStatus}", progressCallback != null ? "SET" : "NULL");
 
         try
         {
@@ -365,18 +356,17 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.CurrentPhase = ResearchPhase.Planning;
             session.StartedAt = DateTime.UtcNow;
             session.UpdatedAt = DateTime.UtcNow;
-            await _sessionRepository.UpdateAsync(session);
+            await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Broadcasting status change: Planning");
             await _progressBroadcaster.BroadcastStatusChangeAsync(
-                session.Id, session.Status, session.CurrentPhase, "Starting planning phase...");
+                session.Id, session.Status, session.CurrentPhase, "Starting planning phase...").ConfigureAwait(false);
 
             _logger.LogDebug("[RESEARCH-WORKFLOW] Calling ExecutePlanningPhaseAsync...");
             var plans = await _phaseExecutor.ExecutePlanningPhaseAsync(
                 session,
                 nonChairmanAgents,
                 session.RefinedQuery ?? session.Query,
-                progressCallback,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Planning phase completed: {PlanCount} plans", plans.Count);
 
             // Phase 2: Research
@@ -384,10 +374,10 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.Status = ResearchStatus.Researching;
             session.CurrentPhase = ResearchPhase.Research;
             session.UpdatedAt = DateTime.UtcNow;
-            await _sessionRepository.UpdateAsync(session);
+            await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Broadcasting status change: Researching");
             await _progressBroadcaster.BroadcastStatusChangeAsync(
-                session.Id, session.Status, session.CurrentPhase, "Agents are conducting research...");
+                session.Id, session.Status, session.CurrentPhase, "Agents are conducting research...").ConfigureAwait(false);
 
             _logger.LogDebug("[RESEARCH-WORKFLOW] Calling ExecuteResearchPhaseAsync...");
             var submissions = await _phaseExecutor.ExecuteResearchPhaseAsync(
@@ -395,8 +385,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
                 nonChairmanAgents,
                 session.RefinedQuery ?? session.Query,
                 plans,
-                progressCallback,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Research phase completed: {SubmissionCount} submissions", submissions.Count);
             foreach (var sub in submissions)
             {
@@ -407,24 +396,23 @@ public class ResearchOrchestrator : IResearchOrchestrator
             // Store submissions
             session.Submissions = submissions;
             session.UpdatedAt = DateTime.UtcNow;
-            await _sessionRepository.UpdateAsync(session);
+            await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
 
             // Phase 3: Anonymization
             _logger.LogDebug("[RESEARCH-WORKFLOW] === PHASE 3: ANONYMIZATION ===");
             session.Status = ResearchStatus.Anonymizing;
             session.CurrentPhase = ResearchPhase.Anonymization;
             session.UpdatedAt = DateTime.UtcNow;
-            await _sessionRepository.UpdateAsync(session);
+            await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Broadcasting status change: Anonymizing");
             await _progressBroadcaster.BroadcastStatusChangeAsync(
-                session.Id, session.Status, session.CurrentPhase, "Anonymizing submissions for peer review...");
+                session.Id, session.Status, session.CurrentPhase, "Anonymizing submissions for peer review...").ConfigureAwait(false);
 
             _logger.LogDebug("[RESEARCH-WORKFLOW] Calling ExecuteAnonymizationPhaseAsync...");
             var anonymizedSubmissions = await _phaseExecutor.ExecuteAnonymizationPhaseAsync(
                 session,
                 submissions,
-                progressCallback,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Anonymization phase completed: {AnonymizedCount} anonymized", anonymizedSubmissions.Count);
 
             // Phase 4: Peer Review
@@ -432,34 +420,33 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.Status = ResearchStatus.PeerReviewing;
             session.CurrentPhase = ResearchPhase.PeerReview;
             session.UpdatedAt = DateTime.UtcNow;
-            await _sessionRepository.UpdateAsync(session);
+            await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Broadcasting status change: PeerReviewing");
             await _progressBroadcaster.BroadcastStatusChangeAsync(
-                session.Id, session.Status, session.CurrentPhase, "Agents are reviewing each other's work...");
+                session.Id, session.Status, session.CurrentPhase, "Agents are reviewing each other's work...").ConfigureAwait(false);
 
             _logger.LogDebug("[RESEARCH-WORKFLOW] Calling ExecutePeerReviewPhaseAsync...");
             var peerReviews = await _phaseExecutor.ExecutePeerReviewPhaseAsync(
                 session,
                 nonChairmanAgents,
                 anonymizedSubmissions,
-                progressCallback,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Peer review phase completed: {ReviewCount} reviews", peerReviews.Count);
 
             // Store peer reviews
             session.PeerReviews = peerReviews;
             session.UpdatedAt = DateTime.UtcNow;
-            await _sessionRepository.UpdateAsync(session);
+            await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
 
             // Phase 5: Synthesis
             _logger.LogDebug("[RESEARCH-WORKFLOW] === PHASE 5: SYNTHESIS ===");
             session.Status = ResearchStatus.Synthesizing;
             session.CurrentPhase = ResearchPhase.Synthesis;
             session.UpdatedAt = DateTime.UtcNow;
-            await _sessionRepository.UpdateAsync(session);
+            await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Broadcasting status change: Synthesizing");
             await _progressBroadcaster.BroadcastStatusChangeAsync(
-                session.Id, session.Status, session.CurrentPhase, "Chairman is synthesizing the final report...");
+                session.Id, session.Status, session.CurrentPhase, "Chairman is synthesizing the final report...").ConfigureAwait(false);
 
             // Get Chairman agent for synthesis
             var chairman = researchAgents.FirstOrDefault(a => a.IsChairman);
@@ -487,12 +474,16 @@ public class ResearchOrchestrator : IResearchOrchestrator
             var report = await _phaseExecutor.ExecuteSynthesisPhaseAsync(
                 session,
                 chairman,
-                progressCallback,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Synthesis phase completed: Title={Title}, SummaryLength={Length}",
                 report.Title, report.ExecutiveSummary?.Length ?? 0);
 
-            // Store report
+            // Save report to database
+            report.SessionId = session.Id;
+            await _sessionRepository.UpsertReportAsync(report).ConfigureAwait(false);
+            _logger.LogDebug("[RESEARCH-WORKFLOW] Report saved to database: {ReportId}", report.Id);
+
+            // Store report reference in session
             session.Report = report;
 
             // Mark as complete
@@ -500,7 +491,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.Status = ResearchStatus.Completed;
             session.CompletedAt = DateTime.UtcNow;
             session.UpdatedAt = DateTime.UtcNow;
-            await _sessionRepository.UpdateAsync(session);
+            await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Research session {SessionId} completed with {SubmissionCount} submissions, {ReviewCount} reviews, and report '{Title}'",
@@ -508,16 +499,16 @@ public class ResearchOrchestrator : IResearchOrchestrator
 
             // Broadcast completion event
             _logger.LogDebug("[RESEARCH-WORKFLOW] Broadcasting completion");
-            await _progressBroadcaster.BroadcastCompletionAsync(session.Id, report.Id);
+            await _progressBroadcaster.BroadcastCompletionAsync(session.Id, report.Id).ConfigureAwait(false);
 
             // Update ChatSession with synthesized title and add the research report
             if (session.ConversationId.HasValue)
             {
                 // Update the placeholder title with the final synthesized title
-                await UpdateChatSessionTitleAsync(session.ConversationId.Value, report.Title);
+                await UpdateChatSessionTitleAsync(session.ConversationId.Value, report.Title).ConfigureAwait(false);
 
                 // Add the research report as a message
-                await AddReportToChatSessionAsync(session, report);
+                await AddReportToChatSessionAsync(session, report).ConfigureAwait(false);
             }
 
             _logger.LogDebug("[RESEARCH-WORKFLOW] === ExecuteResearchWorkflowAsync COMPLETE ===");
@@ -530,10 +521,10 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.ErrorMessage = ex.Message;
             session.CompletedAt = DateTime.UtcNow;
             session.UpdatedAt = DateTime.UtcNow;
-            await _sessionRepository.UpdateAsync(session);
+            await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
 
             // Broadcast error event
-            await _progressBroadcaster.BroadcastErrorAsync(session.Id, ex.Message);
+            await _progressBroadcaster.BroadcastErrorAsync(session.Id, ex.Message).ConfigureAwait(false);
 
             throw;
         }
@@ -559,7 +550,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
 
             try
             {
-                var baseAgent = await _configurationService.GetAgentAsync(member.AgentId);
+                var baseAgent = await _configurationService.GetAgentAsync(member.AgentId).ConfigureAwait(false);
                 agentDict[member.AgentId] = baseAgent;
                 _logger.LogDebug("[RESEARCH-RESOLVE] SUCCESS - Agent {AgentId} resolved:", member.AgentId);
                 _logger.LogDebug("[RESEARCH-RESOLVE]   Name: {Name}", baseAgent.Name);
@@ -640,7 +631,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
         };
 
         // Persist immediately so it appears in chat history
-        await _chatHistoryService.UpsertChatSessionAsync(chatSession);
+        await _chatHistoryService.UpsertChatSessionAsync(chatSession).ConfigureAwait(false);
 
         _logger.LogInformation("[RESEARCH-CHAT] ChatSession {ChatSessionId} created with title '{Title}'",
             chatSessionId, title);
@@ -657,12 +648,12 @@ public class ResearchOrchestrator : IResearchOrchestrator
     {
         try
         {
-            var chatSession = await _chatHistoryService.GetChatSessionAsync(chatSessionId);
+            var chatSession = await _chatHistoryService.GetChatSessionAsync(chatSessionId).ConfigureAwait(false);
             if (chatSession != null)
             {
                 chatSession.Title = newTitle;
                 chatSession.UpdatedAt = DateTimeOffset.UtcNow;
-                await _chatHistoryService.UpsertChatSessionAsync(chatSession);
+                await _chatHistoryService.UpsertChatSessionAsync(chatSession).ConfigureAwait(false);
 
                 _logger.LogDebug("[RESEARCH-CHAT] Updated ChatSession {ChatSessionId} title to '{Title}'",
                     chatSessionId, newTitle);
@@ -700,7 +691,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
             _logger.LogDebug("[RESEARCH-CHAT] Adding report to ChatSession {ConversationId}", session.ConversationId);
 
             // Get the existing ChatSession - it should already exist from InitializeChatSessionAsync
-            var chatSession = await _chatHistoryService.GetChatSessionAsync(session.ConversationId.Value);
+            var chatSession = await _chatHistoryService.GetChatSessionAsync(session.ConversationId.Value).ConfigureAwait(false);
             if (chatSession == null)
             {
                 // This shouldn't happen - ChatSession should have been created at research start
@@ -723,7 +714,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
             chatSession.UpdatedAt = DateTimeOffset.UtcNow;
 
             // Persist the updated ChatSession
-            await _chatHistoryService.UpsertChatSessionAsync(chatSession);
+            await _chatHistoryService.UpsertChatSessionAsync(chatSession).ConfigureAwait(false);
 
             _logger.LogInformation("[RESEARCH-CHAT] Successfully added report to ChatSession {ConversationId}",
                 session.ConversationId);

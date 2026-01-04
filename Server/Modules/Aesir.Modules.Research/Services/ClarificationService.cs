@@ -96,7 +96,7 @@ public class ClarificationService : IClarificationService
         // Notify phase change via SignalR
         await _hubContext.SendAgentPhaseChangedAsync(
             sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, "clarification",
-            "Chairman is analyzing the query for clarification needs...");
+            "Chairman is analyzing the query for clarification needs...").ConfigureAwait(false);
 
         // Get chat service for the Chairman
         var chatService = GetChatServiceForAgent(chairmanAgent);
@@ -110,7 +110,7 @@ public class ClarificationService : IClarificationService
         try
         {
             var response = await GenerateClarificationWithLlmAsync(
-                sessionId, query, chairmanAgent, chatService, cancellationToken);
+                sessionId, query, chairmanAgent, chatService, cancellationToken).ConfigureAwait(false);
 
             // Parse questions from the response
             var questions = ParseQuestionsFromResponse(response);
@@ -149,7 +149,7 @@ public class ClarificationService : IClarificationService
         // Notify phase change
         await _hubContext.SendAgentPhaseChangedAsync(
             sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, "refining",
-            "Chairman is refining the query with clarification answers...");
+            "Chairman is refining the query with clarification answers...").ConfigureAwait(false);
 
         // Get chat service for the Chairman
         var chatService = GetChatServiceForAgent(chairmanAgent);
@@ -163,7 +163,7 @@ public class ClarificationService : IClarificationService
         try
         {
             return await RefineQueryWithLlmAsync(
-                sessionId, originalQuery, questions, answers, chairmanAgent, chatService, cancellationToken);
+                sessionId, originalQuery, questions, answers, chairmanAgent, chatService, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -184,27 +184,27 @@ public class ClarificationService : IClarificationService
     {
         // Build the clarification prompt
         var userPrompt = BuildClarificationUserPrompt(query);
-        var request = await CreateClarificationRequestAsync(chairmanAgent, userPrompt);
+        var request = await CreateClarificationRequestAsync(chairmanAgent, userPrompt).ConfigureAwait(false);
 
         _logger.LogDebug("Sending clarification request to LLM");
 
         var contentBuilder = new StringBuilder();
 
         await foreach (var chunk in chatService.ChatCompletionsStreamedAsync(request)
-            .WithCancellation(cancellationToken))
+            .WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             // Handle thinking content
             if (chunk.IsThinking && chunk.Delta?.Content != null)
             {
                 await _hubContext.SendAgentThinkingAsync(
-                    sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, chunk.Delta.Content);
+                    sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, chunk.Delta.Content).ConfigureAwait(false);
             }
             // Handle regular content
             else if (chunk.Delta?.Content != null)
             {
                 contentBuilder.Append(chunk.Delta.Content);
                 await _hubContext.SendAgentContentAsync(
-                    sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, chunk.Delta.Content);
+                    sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, chunk.Delta.Content).ConfigureAwait(false);
             }
         }
 
@@ -225,27 +225,27 @@ public class ClarificationService : IClarificationService
     {
         // Build the refinement prompt
         var userPrompt = BuildRefinementUserPrompt(originalQuery, questions, answers);
-        var request = await CreateRefinementRequestAsync(chairmanAgent, userPrompt);
+        var request = await CreateRefinementRequestAsync(chairmanAgent, userPrompt).ConfigureAwait(false);
 
         _logger.LogDebug("Sending query refinement request to LLM");
 
         var contentBuilder = new StringBuilder();
 
         await foreach (var chunk in chatService.ChatCompletionsStreamedAsync(request)
-            .WithCancellation(cancellationToken))
+            .WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             // Handle thinking content
             if (chunk.IsThinking && chunk.Delta?.Content != null)
             {
                 await _hubContext.SendAgentThinkingAsync(
-                    sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, chunk.Delta.Content);
+                    sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, chunk.Delta.Content).ConfigureAwait(false);
             }
             // Handle regular content
             else if (chunk.Delta?.Content != null)
             {
                 contentBuilder.Append(chunk.Delta.Content);
                 await _hubContext.SendAgentContentAsync(
-                    sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, chunk.Delta.Content);
+                    sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, chunk.Delta.Content).ConfigureAwait(false);
             }
         }
 
@@ -368,7 +368,7 @@ public class ClarificationService : IClarificationService
 
         try
         {
-            var baseAgent = await _configurationService.GetAgentAsync(chairmanAgent.BaseAgentId);
+            var baseAgent = await _configurationService.GetAgentAsync(chairmanAgent.BaseAgentId).ConfigureAwait(false);
             enableThinking = baseAgent.AllowThinking;
             thinkValue = baseAgent.ThinkValue;
         }
@@ -435,7 +435,7 @@ public class ClarificationService : IClarificationService
 
         try
         {
-            var baseAgent = await _configurationService.GetAgentAsync(chairmanAgent.BaseAgentId);
+            var baseAgent = await _configurationService.GetAgentAsync(chairmanAgent.BaseAgentId).ConfigureAwait(false);
             enableThinking = baseAgent.AllowThinking;
             thinkValue = baseAgent.ThinkValue;
         }

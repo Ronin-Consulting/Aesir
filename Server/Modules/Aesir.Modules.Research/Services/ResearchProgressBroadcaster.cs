@@ -120,7 +120,7 @@ public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
             await _hubContext.SendProgressAsync(
                 _currentSessionId,
                 "PhaseProgress",
-                update);
+                update).ConfigureAwait(false);
 
             _logger.LogDebug(
                 "[BROADCASTER] SUCCESS - Progress broadcast for session {SessionId}: {Phase} - {Message} ({OverallPercent}% overall, {LocalPercent}% local)",
@@ -148,7 +148,7 @@ public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
         try
         {
             _logger.LogDebug("[BROADCASTER] Sending 'StatusUpdate' event via SignalR...");
-            await _hubContext.SendStatusUpdateAsync(sessionId, status, phase, message);
+            await _hubContext.SendStatusUpdateAsync(sessionId, status, phase, message).ConfigureAwait(false);
 
             _logger.LogDebug(
                 "[BROADCASTER] SUCCESS - Status change broadcast for session {SessionId}: {Status} ({Phase})",
@@ -170,7 +170,7 @@ public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
         try
         {
             _logger.LogDebug("[BROADCASTER] Sending 'ResearchCompleted' event via SignalR...");
-            await _hubContext.SendResearchCompletedAsync(sessionId, reportId);
+            await _hubContext.SendResearchCompletedAsync(sessionId, reportId).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "[BROADCASTER] SUCCESS - Completion broadcast for session {SessionId} with report {ReportId}",
@@ -192,7 +192,7 @@ public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
         try
         {
             _logger.LogDebug("[BROADCASTER] Sending 'ResearchError' event via SignalR...");
-            await _hubContext.SendResearchErrorAsync(sessionId, errorMessage);
+            await _hubContext.SendResearchErrorAsync(sessionId, errorMessage).ConfigureAwait(false);
 
             _logger.LogWarning(
                 "[BROADCASTER] SUCCESS - Error broadcast for session {SessionId}: {Error}",

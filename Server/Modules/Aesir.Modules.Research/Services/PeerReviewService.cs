@@ -24,14 +24,12 @@ public interface IPeerReviewService
     /// <param name="session">The research session.</param>
     /// <param name="agents">The research agents (excluding Chairman).</param>
     /// <param name="anonymizedSubmissions">The anonymized submissions to review.</param>
-    /// <param name="progressCallback">Optional callback for progress updates.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>List of peer reviews.</returns>
     Task<List<PeerReview>> ConductPeerReviewsAsync(
         ResearchSession session,
         IReadOnlyList<ResearchAgent> agents,
         Dictionary<string, AnonymizedSubmission> anonymizedSubmissions,
-        Func<ResearchPhaseProgress, Task>? progressCallback = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -70,19 +68,22 @@ public class PeerReviewService : IPeerReviewService
     private readonly IHubContext<ResearchHub> _hubContext;
     private readonly IConfigurationService _configurationService;
     private readonly IScoringCalculator _scoringCalculator;
+    private readonly IResearchProgressBroadcaster _progressBroadcaster;
 
     public PeerReviewService(
         ILogger<PeerReviewService> logger,
         IServiceScopeFactory scopeFactory,
         IHubContext<ResearchHub> hubContext,
         IConfigurationService configurationService,
-        IScoringCalculator scoringCalculator)
+        IScoringCalculator scoringCalculator,
+        IResearchProgressBroadcaster progressBroadcaster)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
         _hubContext = hubContext;
         _configurationService = configurationService;
         _scoringCalculator = scoringCalculator;
+        _progressBroadcaster = progressBroadcaster;
     }
 
     /// <inheritdoc />
@@ -90,7 +91,6 @@ public class PeerReviewService : IPeerReviewService
         ResearchSession session,
         IReadOnlyList<ResearchAgent> agents,
         Dictionary<string, AnonymizedSubmission> anonymizedSubmissions,
-        Func<ResearchPhaseProgress, Task>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
@@ -132,8 +132,7 @@ public class PeerReviewService : IPeerReviewService
                 session,
                 agent,
                 submissionsToReview,
-                progressCallback,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             reviews.AddRange(agentReviews);
         }
@@ -213,7 +212,6 @@ public class PeerReviewService : IPeerReviewService
         ResearchSession session,
         ResearchAgent reviewer,
         Dictionary<string, AnonymizedSubmission> submissions,
-        Func<ResearchPhaseProgress, Task>? progressCallback,
         CancellationToken cancellationToken)
     {
         _logger.LogDebug("[PEER-REVIEW] === ConductAgentReviewsAsync START ===");
@@ -227,12 +225,12 @@ public class PeerReviewService : IPeerReviewService
         try
         {
             // Notify phase change via SignalR (agent activity indicator)
-            // NOTE: We don't send progress callback here because agent-level updates
+            // NOTE: We don't send progress here because agent-level updates
             // with PercentComplete=0 would reset the overall progress bar.
             // Only the per-review progress updates within the loop should update PercentComplete.
             await _hubContext.SendAgentPhaseChangedAsync(
                 session.Id, reviewer.TeamMemberId, reviewer.Role, "peer_review",
-                $"{reviewer.RoleName} is conducting peer reviews...");
+                $"{reviewer.RoleName} is conducting peer reviews...").ConfigureAwait(false);
 
             // Get chat service for this reviewer
             _logger.LogDebug("[PEER-REVIEW] Getting chat service for reviewer...");
@@ -250,7 +248,7 @@ public class PeerReviewService : IPeerReviewService
                 {
                     // Use LLM to conduct peer review
                     scores = await ConductLlmPeerReviewAsync(
-                        session, reviewer, anonymizedId, submission, chatService, cancellationToken);
+                        session, reviewer, anonymizedId, submission, chatService, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -288,24 +286,21 @@ public class PeerReviewService : IPeerReviewService
 
                 // Notify peer review completion via SignalR
                 await _hubContext.SendPeerReviewCompletedAsync(
-                    session.Id, review.Id, reviewer.Role, review.WeightedAverage);
+                    session.Id, review.Id, reviewer.Role, review.WeightedAverage).ConfigureAwait(false);
 
                 // Report progress
-                if (progressCallback != null)
+                var percent = Math.Min(100, (int)((double)completedCount / submissions.Count * 100));
+                await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
                 {
-                    var percent = (int)((double)completedCount / submissions.Count * 100);
-                    await progressCallback(new ResearchPhaseProgress
-                    {
-                        Phase = ResearchPhase.PeerReview,
-                        AgentRole = reviewer.Role,
-                        TeamMemberId = reviewer.TeamMemberId,
-                        Message = $"{reviewer.RoleName} reviewed {completedCount}/{submissions.Count} submissions",
-                        PercentComplete = percent
-                    });
-                }
+                    Phase = ResearchPhase.PeerReview,
+                    AgentRole = reviewer.Role,
+                    TeamMemberId = reviewer.TeamMemberId,
+                    Message = $"{reviewer.RoleName} reviewed {completedCount}/{submissions.Count} submissions",
+                    PercentComplete = percent
+                }).ConfigureAwait(false);
             }
 
-            // NOTE: We don't send agent-level completion callback here because
+            // NOTE: We don't send agent-level completion here because
             // PercentComplete=100 for a single reviewer would incorrectly set overall progress to 100%.
             // The phase-level progress (in ExecutePeerReviewPhaseAsync) handles overall progress.
 

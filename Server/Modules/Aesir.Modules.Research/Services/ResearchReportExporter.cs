@@ -64,7 +64,7 @@ public class ResearchReportExporter : IResearchReportExporter
             var exporter = _exporterFactory.GetExporter(format);
 
             // Export the document
-            var result = await exporter.ExportAsync(document, cancellationToken);
+            var result = await exporter.ExportAsync(document, cancellationToken).ConfigureAwait(false);
 
             if (result.Success)
             {

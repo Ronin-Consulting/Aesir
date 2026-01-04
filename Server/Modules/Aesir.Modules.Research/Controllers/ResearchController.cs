@@ -18,7 +18,6 @@ public class ResearchController(
     ILogger<ResearchController> logger,
     IResearchOrchestrator orchestrator,
     IResearchSessionRepository sessionRepository,
-    IResearchProgressBroadcaster progressBroadcaster,
     IResearchReportExporter reportExporter) : ControllerBase
 {
     /// <summary>
@@ -160,15 +159,6 @@ public class ResearchController(
                 return BadRequest("Research team ID is required");
             }
 
-            // Create progress callback for SignalR broadcast
-            logger.LogDebug("[RESEARCH-API] Creating progress callback for SignalR broadcast");
-            async Task ProgressCallback(ResearchPhaseProgress progress)
-            {
-                logger.LogDebug("[RESEARCH-API-CALLBACK] Progress callback invoked: Phase={Phase}, Message={Message}, Percent={Percent}",
-                    progress.Phase, progress.Message, progress.PercentComplete);
-                await progressBroadcaster.BroadcastProgressAsync(progress);
-            }
-
             logger.LogDebug("[RESEARCH-API] Calling orchestrator.StartResearchAsync...");
             var session = await orchestrator.StartResearchAsync(
                 request.Query,
@@ -176,8 +166,7 @@ public class ResearchController(
                 request.Mode,
                 request.DocumentCollectionIds,
                 request.UserId,
-                request.ConversationId,  // Link research to ChatSession
-                ProgressCallback);
+                request.ConversationId);  // Link research to ChatSession
 
             logger.LogDebug("[RESEARCH-API] Research session created: Id={SessionId}, Status={Status}",
                 session.Id, session.Status);
@@ -220,16 +209,9 @@ public class ResearchController(
                 return BadRequest("Clarification answers are required");
             }
 
-            // Create progress callback for SignalR broadcast
-            async Task ProgressCallback(ResearchPhaseProgress progress)
-            {
-                await progressBroadcaster.BroadcastProgressAsync(progress);
-            }
-
             await orchestrator.SubmitClarificationAnswersAsync(
                 id,
-                request.Answers,
-                ProgressCallback);
+                request.Answers);
 
             var session = await orchestrator.GetSessionStatusAsync(id);
             if (session == null)

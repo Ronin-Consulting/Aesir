@@ -26,7 +26,7 @@ public class ResearchSessionRepository(
     /// <inheritdoc />
     public async Task<ResearchSession?> GetByIdAsync(Guid id)
     {
-        const string sql = @"
+        const string sessionSql = @"
             SELECT
                 id as Id,
                 user_id as UserId,
@@ -48,8 +48,16 @@ public class ResearchSessionRepository(
             FROM aesir.aesir_research_session
             WHERE id = @Id";
 
-        return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryFirstOrDefaultAsync<ResearchSession>(sql, new { Id = id }));
+        var session = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QueryFirstOrDefaultAsync<ResearchSession>(sessionSql, new { Id = id }).ConfigureAwait(false)).ConfigureAwait(false);
+
+        // Also load the report if session exists and is completed
+        if (session != null && session.Status == ResearchStatus.Completed)
+        {
+            session.Report = await GetReportBySessionIdAsync(id).ConfigureAwait(false);
+        }
+
+        return session;
     }
 
     /// <inheritdoc />
@@ -79,7 +87,7 @@ public class ResearchSessionRepository(
             ORDER BY created_at DESC";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<ResearchSession>(sql, new { UserId = userId }));
+            await connection.QueryAsync<ResearchSession>(sql, new { UserId = userId }).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -109,7 +117,7 @@ public class ResearchSessionRepository(
             ORDER BY created_at DESC";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<ResearchSession>(sql, new { ConversationId = conversationId }));
+            await connection.QueryAsync<ResearchSession>(sql, new { ConversationId = conversationId }).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -135,7 +143,7 @@ public class ResearchSessionRepository(
                  @CreatedAt, @UpdatedAt, @StartedAt, @CompletedAt)";
 
         await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, session), withTransaction: true);
+            await connection.ExecuteAsync(sql, session).ConfigureAwait(false), withTransaction: true).ConfigureAwait(false);
 
         logger.LogInformation("Created research session {SessionId} for query: {Query}",
             session.Id, session.Query.Length > 50 ? session.Query[..50] + "..." : session.Query);
@@ -168,7 +176,7 @@ public class ResearchSessionRepository(
             WHERE id = @Id";
 
         var rowsAffected = await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, session), withTransaction: true);
+            await connection.ExecuteAsync(sql, session).ConfigureAwait(false), withTransaction: true).ConfigureAwait(false);
 
         return rowsAffected > 0;
     }
@@ -192,7 +200,7 @@ public class ResearchSessionRepository(
                 Status = status,
                 Phase = phase,
                 UpdatedAt = DateTime.UtcNow
-            }), withTransaction: true);
+            }).ConfigureAwait(false), withTransaction: true).ConfigureAwait(false);
 
         return rowsAffected > 0;
     }
@@ -206,7 +214,7 @@ public class ResearchSessionRepository(
             WHERE id = @Id";
 
         var rowsAffected = await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, new { Id = id }), withTransaction: true);
+            await connection.ExecuteAsync(sql, new { Id = id }).ConfigureAwait(false), withTransaction: true).ConfigureAwait(false);
 
         logger.LogInformation("Deleted research session {SessionId}", id);
 
@@ -232,7 +240,7 @@ public class ResearchSessionRepository(
                  @TokensUsed, @DurationMs, @Status, @ErrorMessage, @CreatedAt, @CompletedAt)";
 
         await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, submission), withTransaction: true);
+            await connection.ExecuteAsync(sql, submission).ConfigureAwait(false), withTransaction: true).ConfigureAwait(false);
 
         logger.LogDebug("Created submission {SubmissionId} for session {SessionId}",
             submission.Id, submission.SessionId);
@@ -262,7 +270,7 @@ public class ResearchSessionRepository(
             WHERE id = @Id";
 
         var rowsAffected = await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, submission), withTransaction: true);
+            await connection.ExecuteAsync(sql, submission).ConfigureAwait(false), withTransaction: true).ConfigureAwait(false);
 
         return rowsAffected > 0;
     }
@@ -294,7 +302,7 @@ public class ResearchSessionRepository(
             ORDER BY round_number, role";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<ResearchSubmission>(sql, new { SessionId = sessionId }));
+            await connection.QueryAsync<ResearchSubmission>(sql, new { SessionId = sessionId }).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -316,7 +324,7 @@ public class ResearchSessionRepository(
                  @WeightedAverage, @Strengths, @Improvements, @Critique, @Endorses, @TokensUsed, @CreatedAt)";
 
         await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, review), withTransaction: true);
+            await connection.ExecuteAsync(sql, review).ConfigureAwait(false), withTransaction: true).ConfigureAwait(false);
 
         logger.LogDebug("Created peer review {ReviewId} for submission {SubmissionId}",
             review.Id, review.SubmissionId);
@@ -351,7 +359,7 @@ public class ResearchSessionRepository(
             ORDER BY created_at";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<PeerReview>(sql, new { SessionId = sessionId }));
+            await connection.QueryAsync<PeerReview>(sql, new { SessionId = sessionId }).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -385,7 +393,7 @@ public class ResearchSessionRepository(
                 created_at = @CreatedAt";
 
         await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, report), withTransaction: true);
+            await connection.ExecuteAsync(sql, report).ConfigureAwait(false), withTransaction: true).ConfigureAwait(false);
 
         logger.LogInformation("Upserted research report {ReportId} for session {SessionId}",
             report.Id, report.SessionId);
@@ -415,7 +423,7 @@ public class ResearchSessionRepository(
             WHERE session_id = @SessionId";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryFirstOrDefaultAsync<ResearchReport>(sql, new { SessionId = sessionId }));
+            await connection.QueryFirstOrDefaultAsync<ResearchReport>(sql, new { SessionId = sessionId }).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -435,7 +443,7 @@ public class ResearchSessionRepository(
                  @Description, @InputJson::jsonb, @OutputJson::jsonb, @DurationMs, @Timestamp)";
 
         await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, entry), withTransaction: true);
+            await connection.ExecuteAsync(sql, entry).ConfigureAwait(false), withTransaction: true).ConfigureAwait(false);
 
         return entry;
     }
@@ -460,6 +468,6 @@ public class ResearchSessionRepository(
             ORDER BY timestamp";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<ResearchTrailEntry>(sql, new { SessionId = sessionId }));
+            await connection.QueryAsync<ResearchTrailEntry>(sql, new { SessionId = sessionId }).ConfigureAwait(false)).ConfigureAwait(false);
     }
 }
