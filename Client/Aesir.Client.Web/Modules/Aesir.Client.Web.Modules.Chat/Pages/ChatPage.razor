@@ -47,7 +47,9 @@
                      AllowThinking="@(!ResearchState.IsTeamSelected && (ChatState.SelectedAgent?.IsThinkingAvailable ?? false))"
                      SelectedThinkLevel="@_selectedThinkLevel"
                      DefaultThinkLevel="@ChatState.SelectedAgent?.ThinkValue"
-                     OnThinkLevelChanged="@HandleThinkLevelChanged" />
+                     OnThinkLevelChanged="@HandleThinkLevelChanged"
+                     SelectedProjectId="@_selectedProjectId"
+                     OnProjectSelected="@HandleProjectSelected" />
     }
     else
     {
@@ -244,6 +246,9 @@
 
     // Think level state - user can override agent's default at runtime
     private ThinkValue? _selectedThinkLevel;
+
+    // Project state - user can select a project for new chats
+    private Guid? _selectedProjectId;
 
     // Flag to track if tool toggles have been restored for the current session
     // Prevents clearing restored toggles when HandleAgentChanged fires during page load
@@ -646,6 +651,9 @@
             _selectedThinkLevel = null;
             _ = ChatState.ClearThinkLevelAsync(); // Fire-and-forget since we're resetting
 
+            // Reset project selection for new chat
+            _selectedProjectId = null;
+
             UpdateSystemPrompt();
 
             // Load agent tools if an agent is already selected
@@ -696,6 +704,12 @@
     {
         _selectedThinkLevel = level;
         await ChatState.SetThinkLevelAsync(level);
+        StateHasChanged();
+    }
+
+    private void HandleProjectSelected(Guid? projectId)
+    {
+        _selectedProjectId = projectId;
         StateHasChanged();
     }
 
@@ -862,7 +876,8 @@
                 Conversation = _conversation,
                 EnableThinking = GetEffectiveThinkingEnabled(),
                 ThinkValue = GetEffectiveThinkLevel(),
-                Title = _sessionTitle ?? string.Empty
+                Title = _sessionTitle ?? string.Empty,
+                ProjectId = _selectedProjectId
             };
 
             // Add enabled agent tools to the request (enables RAG, web search, MCP tools)

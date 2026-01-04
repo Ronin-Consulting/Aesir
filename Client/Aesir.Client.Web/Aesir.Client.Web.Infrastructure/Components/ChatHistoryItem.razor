@@ -22,9 +22,19 @@
             }
             else
             {
-                <MudText Typo="Typo.body2" Class="item-title">
-                    @DisplayTitle
-                </MudText>
+                <div class="title-row">
+                    <MudText Typo="Typo.body2" Class="item-title">
+                        @DisplayTitle
+                    </MudText>
+                    @if (Session.ProjectId.HasValue)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.FolderSpecial"
+                                 Size="Size.Small"
+                                 Color="Color.Primary"
+                                 Class="project-indicator"
+                                 Title="In project" />
+                    }
+                </div>
                 @if (ShowTimestamp)
                 {
                     <MudText Typo="Typo.caption" Class="item-timestamp mud-text-secondary">
@@ -119,12 +129,25 @@
         min-width: 0;
     }
 
+    .title-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        min-width: 0;
+    }
+
     .item-title {
         overflow: hidden;
         white-space: nowrap;
         position: relative;
         -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
         mask-image: linear-gradient(to right, black 80%, transparent 100%);
+    }
+
+    .project-indicator {
+        flex-shrink: 0;
+        font-size: 14px !important;
+        opacity: 0.7;
     }
 
     .item-timestamp {

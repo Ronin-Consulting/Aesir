@@ -1,6 +1,7 @@
 @using Aesir.Client.Web.Modules.Chat.Models
 @inject IChatStateService ChatState
 @inject IConfigurationApiService ConfigurationApi
+@inject IApiClient ApiClient
 @inject NavigationManager Navigation
 
 <div class="chat-welcome-container">
@@ -75,6 +76,29 @@
                 </MudText>
             </div>
 
+            @* Project Selector - Shows when projects are available *@
+            @if (_projects.Count > 0)
+            {
+                <div class="project-selector">
+                    <MudSelect T="Guid?"
+                               Value="@SelectedProjectId"
+                               ValueChanged="@HandleProjectSelected"
+                               Label="Project"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Dense="true"
+                               Clearable="true"
+                               AdornmentIcon="@Icons.Material.Filled.FolderSpecial"
+                               AdornmentColor="Color.Primary"
+                               Class="project-select">
+                        @foreach (var project in _projects)
+                        {
+                            <MudSelectItem T="Guid?" Value="@project.Id">@project.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+            }
+
             @* Centered Input Area - Using shared MessageInput component *@
             <div class="input-section">
                 <MessageInput @ref="_messageInput"
@@ -135,6 +159,15 @@
     }
 
     .input-section {
+        width: 100%;
+    }
+
+    .project-selector {
+        width: 100%;
+        max-width: 300px;
+    }
+
+    .project-select {
         width: 100%;
     }
 </style>
@@ -198,6 +231,18 @@
     [Parameter]
     public EventCallback<ThinkValue?> OnThinkLevelChanged { get; set; }
 
+    /// <summary>
+    /// The currently selected project ID.
+    /// </summary>
+    [Parameter]
+    public Guid? SelectedProjectId { get; set; }
+
+    /// <summary>
+    /// Event callback when the project selection changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<Guid?> OnProjectSelected { get; set; }
+
     private MessageInput? _messageInput;
 
     /// <summary>
@@ -254,11 +299,14 @@
 
     private static readonly Random _random = new();
 
+    private const string UserId = "blangford@gmail.com"; // Hardcoded user ID per spec
+
     private bool _isLoading = true;
     private bool _hasAgents;
     private bool _hasInferenceEngines;
     private bool _apiError;
     private List<AesirAgentBase> _agents = new();
+    private List<AesirProjectBase> _projects = new();
     private string _currentGreeting = string.Empty;
 
     protected override async Task OnInitializedAsync()
@@ -301,6 +349,9 @@
             enginesResult
                 .OnSuccess(engines => _hasInferenceEngines = engines.Any())
                 .OnFailure(_ => _apiError = true);
+
+            // Load active projects
+            await LoadProjectsAsync();
         }
         catch
         {
@@ -333,5 +384,27 @@
     private async Task SendMessageWithFiles((string Message, List<PendingFileUpload> Files) data)
     {
         await OnSendWithFiles.InvokeAsync(data);
+    }
+
+    private async Task LoadProjectsAsync()
+    {
+        try
+        {
+            var result = await ApiClient.GetAsync<IReadOnlyList<AesirProjectBase>>($"/projects/user/{UserId}/active");
+            if (result.IsSuccess && result.Value != null)
+            {
+                _projects = result.Value.ToList();
+            }
+        }
+        catch
+        {
+            // Projects are optional - don't block on failure
+            _projects = new();
+        }
+    }
+
+    private async Task HandleProjectSelected(Guid? projectId)
+    {
+        await OnProjectSelected.InvokeAsync(projectId);
     }
 }
