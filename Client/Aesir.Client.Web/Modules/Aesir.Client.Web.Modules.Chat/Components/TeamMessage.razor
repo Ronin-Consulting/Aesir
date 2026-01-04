@@ -97,12 +97,11 @@
         @* Report Section (when completed) *@
         @if (Session?.Status == ResearchStatusBase.Completed && Session.Report != null)
         {
-            <TeamMessageReport Report="Session.Report" />
+            <TeamMessageReport Report="Session.Report" SessionId="Session.Id" />
         }
-
-        @* Main Message Content *@
-        @if (!string.IsNullOrEmpty(Message.Content))
+        else if (!string.IsNullOrEmpty(Message.Content))
         {
+            @* Only show raw message content when there's no professional report to display *@
             <div class="message-content markdown-body">
                 @((MarkupString)MarkdownService.ToHtml(Message.Content))
             </div>

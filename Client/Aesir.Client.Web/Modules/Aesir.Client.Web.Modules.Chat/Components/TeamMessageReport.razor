@@ -1,220 +1,277 @@
 @using Aesir.Client.Web.Infrastructure.Services
+@using Aesir.Client.Web.Modules.Research.Components
 
-<div class="research-report">
-    @* Report Header *@
-    <div class="report-header">
-        <div class="report-title-section">
-            <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Medium" Class="report-icon" />
-            <div class="report-title-info">
-                <span class="report-title">@Report.Title</span>
-                <span class="report-meta">
-                    @Report.FindingCount findings &bull; @Report.SourceCount sources
-                </span>
-            </div>
-        </div>
-        <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle">
-            Complete
-        </MudChip>
-    </div>
-
-    @* Executive Summary *@
-    @if (!string.IsNullOrEmpty(Report.ExecutiveSummary))
+<div class="professional-report">
+    @if (_isLoading)
     {
-        <div class="executive-summary">
-            <div class="summary-label">
-                <MudIcon Icon="@Icons.Material.Filled.Summarize" Size="Size.Small" />
-                <span>Executive Summary</span>
-            </div>
-            <div class="summary-content">
-                @Report.ExecutiveSummary
-            </div>
+        <div class="report-loading">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            <span>Loading report...</span>
         </div>
     }
-
-    @* Quick Stats *@
-    <div class="report-stats">
-        <div class="stat-item">
-            <div class="stat-value">@Report.FindingCount</div>
-            <div class="stat-label">Key Findings</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value">@Report.SourceCount</div>
-            <div class="stat-label">Sources Cited</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-value">@GetDuration()</div>
-            <div class="stat-label">Duration</div>
-        </div>
-    </div>
-
-    @* View Full Report Button *@
-    <div class="report-actions">
-        <MudButton Variant="Variant.Outlined"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.OpenInNew"
-                   OnClick="@(() => _fullReportExpanded = !_fullReportExpanded)">
-            @(_fullReportExpanded ? "Hide Full Report" : "View Full Report")
-        </MudButton>
-        <MudButton Variant="Variant.Text"
-                   Color="Color.Default"
-                   StartIcon="@Icons.Material.Filled.Download"
-                   OnClick="HandleDownload">
-            Download
-        </MudButton>
-    </div>
-
-    @* Expanded Full Report Preview *@
-    @if (_fullReportExpanded)
+    else if (_loadError != null)
     {
-        <div class="full-report-preview">
-            <MudDivider Class="my-3" />
-            <div class="full-report-content">
-                @if (!string.IsNullOrEmpty(_fullMarkdown))
-                {
-                    <MudPaper Elevation="0" Class="report-paper">
-                        @((MarkupString)_fullMarkdown)
-                    </MudPaper>
-                }
-                else
-                {
-                    <div class="report-loading">
-                        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                        <span>Loading full report...</span>
-                    </div>
-                }
-            </div>
+        <MudAlert Severity="Severity.Warning" Dense="true">@_loadError</MudAlert>
+        @* Fallback to summary display *@
+        <div class="report-fallback">
+            <div class="fallback-title">@Report.Title</div>
+            @if (!string.IsNullOrEmpty(Report.ExecutiveSummary))
+            {
+                <div class="fallback-summary">@Report.ExecutiveSummary</div>
+            }
         </div>
+    }
+    else if (_fullReport != null)
+    {
+        @* Professional Document Layout *@
+        <article class="report-document">
+            @* Document Header *@
+            <header class="document-header">
+                <h1 class="document-title">@_fullReport.Title</h1>
+                <div class="document-meta">
+                    <span class="meta-item">
+                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" />
+                        @_fullReport.CreatedAt.ToLocalTime().ToString("MMMM d, yyyy")
+                    </span>
+                    @if (_fullReport.Findings?.Any() == true)
+                    {
+                        <span class="meta-item">
+                            <MudIcon Icon="@Icons.Material.Filled.Lightbulb" Size="Size.Small" />
+                            @_fullReport.Findings.Count findings
+                        </span>
+                    }
+                    @if (_fullReport.Bibliography?.Any() == true)
+                    {
+                        <span class="meta-item">
+                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" />
+                            @_fullReport.Bibliography.Count sources
+                        </span>
+                    }
+                </div>
+            </header>
+
+            @* Executive Summary *@
+            @if (!string.IsNullOrEmpty(_fullReport.ExecutiveSummary))
+            {
+                <section class="executive-summary-section">
+                    <div class="summary-header">
+                        <div class="summary-accent"></div>
+                        <h2 class="summary-title">Executive Summary</h2>
+                    </div>
+                    <div class="summary-body">
+                        <div class="summary-content">
+                            @((MarkupString)MarkdownService!.ToHtml(_fullReport.ExecutiveSummary))
+                        </div>
+                    </div>
+                </section>
+            }
+
+            @* Key Findings *@
+            @if (_fullReport.Findings?.Any() == true)
+            {
+                <section class="document-section">
+                    <h2 class="section-title">
+                        <MudIcon Icon="@Icons.Material.Filled.Lightbulb" Size="Size.Small" />
+                        Key Findings
+                    </h2>
+                    <div class="findings-list">
+                        @foreach (var (finding, index) in _fullReport.Findings.Select((f, i) => (f, i)))
+                        {
+                            <div class="finding-item">
+                                <div class="finding-header">
+                                    <span class="finding-number">@(index + 1)</span>
+                                    <h3 class="finding-title">@finding.Title</h3>
+                                    <ConfidenceBadge Level="@finding.Confidence" />
+                                </div>
+                                <div class="finding-content">
+                                    @((MarkupString)MarkdownService!.ToHtml(finding.Content))
+                                </div>
+                                @if (finding.SupportingEvidence?.Any() == true)
+                                {
+                                    <div class="finding-evidence">
+                                        <button class="evidence-toggle" @onclick="() => ToggleEvidence(index)">
+                                            <MudIcon Icon="@(_expandedEvidence.Contains(index) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" />
+                                            <span>@finding.SupportingEvidence.Count Supporting Evidence</span>
+                                        </button>
+                                        @if (_expandedEvidence.Contains(index))
+                                        {
+                                            <ul class="evidence-list">
+                                                @foreach (var evidence in finding.SupportingEvidence)
+                                                {
+                                                    <li class="evidence-item">
+                                                        <MudIcon Icon="@Icons.Material.Filled.FormatQuote" Size="Size.Small" />
+                                                        <span>@evidence</span>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            @* Methodology *@
+            @if (!string.IsNullOrEmpty(_fullReport.MethodologySection))
+            {
+                <section class="methodology-section">
+                    <div class="methodology-header">
+                        <div class="methodology-icon">
+                            <MudIcon Icon="@Icons.Material.Filled.Science" Size="Size.Small" />
+                        </div>
+                        <h2 class="methodology-title">Methodology</h2>
+                    </div>
+                    <div class="methodology-content">
+                        @((MarkupString)MarkdownService!.ToHtml(_fullReport.MethodologySection))
+                    </div>
+                </section>
+            }
+
+            @* Sources & Bibliography *@
+            @if (_fullReport.Bibliography?.Any() == true)
+            {
+                <section class="document-section">
+                    <h2 class="section-title">
+                        <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" />
+                        Sources
+                    </h2>
+                    <div class="sources-list">
+                        @foreach (var (source, index) in _fullReport.Bibliography.Select((s, i) => (s, i)))
+                        {
+                            <div class="source-item">
+                                <span class="source-number">@(index + 1).</span>
+                                <div class="source-details">
+                                    <span class="source-title">@source.Title</span>
+                                    @if (!string.IsNullOrEmpty(source.Author) || source.PublishedDate.HasValue)
+                                    {
+                                        <span class="source-meta">
+                                            @if (!string.IsNullOrEmpty(source.Author))
+                                            {
+                                                <span>@source.Author</span>
+                                            }
+                                            @if (source.PublishedDate.HasValue)
+                                            {
+                                                <span>(@source.PublishedDate.Value.Year)</span>
+                                            }
+                                        </span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(source.Url))
+                                    {
+                                        <a href="@source.Url" target="_blank" rel="noopener" class="source-link">
+                                            <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" />
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            @* Action Buttons *@
+            <div class="document-actions">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="HandleDownload"
+                           Size="Size.Small">
+                    Download
+                </MudButton>
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.ContentCopy"
+                           OnClick="HandleCopy"
+                           Size="Size.Small">
+                    Copy
+                </MudButton>
+            </div>
+
+            @* Technical Details Accordion *@
+            <div class="technical-details-section">
+                <MudExpansionPanels Elevation="0">
+                    <MudExpansionPanel Class="technical-panel">
+                        <TitleContent>
+                            <div class="panel-title">
+                                <MudIcon Icon="@Icons.Material.Filled.Analytics" Size="Size.Small" />
+                                <span>Technical Details</span>
+                            </div>
+                        </TitleContent>
+                        <ChildContent>
+                            <div class="technical-content">
+                                @* Session Info *@
+                                <div class="tech-section">
+                                    <h4 class="tech-section-title">Session Information</h4>
+                                    <div class="tech-grid">
+                                        <div class="tech-item">
+                                            <span class="tech-label">Report ID</span>
+                                            <span class="tech-value mono">@_fullReport.Id.ToString("N")[..8]...</span>
+                                        </div>
+                                        <div class="tech-item">
+                                            <span class="tech-label">Generated</span>
+                                            <span class="tech-value">@_fullReport.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</span>
+                                        </div>
+                                        <div class="tech-item">
+                                            <span class="tech-label">Findings</span>
+                                            <span class="tech-value">@(_fullReport.Findings?.Count ?? 0)</span>
+                                        </div>
+                                        <div class="tech-item">
+                                            <span class="tech-label">Sources</span>
+                                            <span class="tech-value">@(_fullReport.Bibliography?.Count ?? 0)</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @* Alternative Perspectives *@
+                                @if (!string.IsNullOrEmpty(_fullReport.AlternativePerspectives))
+                                {
+                                    <div class="tech-section">
+                                        <h4 class="tech-section-title">Alternative Perspectives</h4>
+                                        <div class="tech-content-box">
+                                            @((MarkupString)MarkdownService!.ToHtml(_fullReport.AlternativePerspectives))
+                                        </div>
+                                    </div>
+                                }
+
+                                @* Research Gaps *@
+                                @if (!string.IsNullOrEmpty(_fullReport.ResearchGaps))
+                                {
+                                    <div class="tech-section">
+                                        <h4 class="tech-section-title">Research Gaps</h4>
+                                        <div class="tech-content-box">
+                                            @((MarkupString)MarkdownService!.ToHtml(_fullReport.ResearchGaps))
+                                        </div>
+                                    </div>
+                                }
+
+                                @* Full Markdown Report *@
+                                @if (!string.IsNullOrEmpty(_fullReport.FullMarkdown))
+                                {
+                                    <div class="tech-section">
+                                        <h4 class="tech-section-title">Complete Report (Raw)</h4>
+                                        <div class="full-report-box">
+                                            @((MarkupString)MarkdownService!.ToHtml(_fullReport.FullMarkdown))
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </ChildContent>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+            </div>
+        </article>
     }
 </div>
 
 <style>
-    .research-report {
-        background: linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(156, 39, 176, 0.05) 100%);
-        border: 1px solid rgba(33, 150, 243, 0.2);
-        border-radius: 12px;
-        padding: 16px;
+    /* Professional Report Container */
+    .professional-report {
         margin: 12px 0;
     }
 
-    /* Report Header */
-    .research-report .report-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 16px;
-    }
-
-    .research-report .report-title-section {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .research-report .report-icon {
-        color: #2196F3;
-        margin-top: 2px;
-    }
-
-    .research-report .report-title-info {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .research-report .report-title {
-        font-weight: 600;
-        font-size: 1.1rem;
-        color: var(--mud-palette-text-primary);
-        line-height: 1.3;
-    }
-
-    .research-report .report-meta {
-        font-size: 0.75rem;
-        color: var(--mud-palette-text-secondary);
-    }
-
-    /* Executive Summary */
-    .research-report .executive-summary {
-        background-color: rgba(255, 255, 255, 0.05);
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 16px;
-    }
-
-    .research-report .summary-label {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        color: var(--mud-palette-text-secondary);
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-    }
-
-    .research-report .summary-content {
-        font-size: 0.9rem;
-        line-height: 1.6;
-        color: var(--mud-palette-text-primary);
-    }
-
-    /* Stats */
-    .research-report .report-stats {
-        display: flex;
-        gap: 24px;
-        margin-bottom: 16px;
-        padding: 12px 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .research-report .stat-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        flex: 1;
-    }
-
-    .research-report .stat-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #2196F3;
-    }
-
-    .research-report .stat-label {
-        font-size: 0.7rem;
-        color: var(--mud-palette-text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    /* Actions */
-    .research-report .report-actions {
-        display: flex;
-        gap: 12px;
-        justify-content: flex-start;
-    }
-
-    /* Full Report Preview */
-    .research-report .full-report-preview {
-        margin-top: 16px;
-    }
-
-    .research-report .full-report-content {
-        max-height: 500px;
-        overflow-y: auto;
-        padding: 16px;
-        background-color: rgba(0, 0, 0, 0.02);
-        border-radius: 8px;
-    }
-
-    .research-report .report-paper {
-        background: transparent;
-        padding: 0;
-    }
-
-    .research-report .report-loading {
+    /* Loading State */
+    .report-loading {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -223,78 +280,868 @@
         color: var(--mud-palette-text-secondary);
     }
 
-    /* Markdown content in full report */
-    .research-report .full-report-content h1 {
-        font-size: 1.4rem;
-        font-weight: 700;
-        margin: 16px 0 12px 0;
-        color: var(--mud-palette-text-primary);
+    /* Fallback Display */
+    .report-fallback {
+        padding: 16px;
     }
 
-    .research-report .full-report-content h2 {
-        font-size: 1.2rem;
+    .report-fallback .fallback-title {
         font-weight: 600;
-        margin: 14px 0 10px 0;
-        color: var(--mud-palette-text-primary);
+        font-size: 1.1rem;
+        margin-bottom: 8px;
     }
 
-    .research-report .full-report-content h3 {
-        font-size: 1rem;
-        font-weight: 600;
-        margin: 12px 0 8px 0;
-        color: var(--mud-palette-text-primary);
-    }
-
-    .research-report .full-report-content p {
-        margin: 8px 0;
+    .report-fallback .fallback-summary {
+        color: var(--mud-palette-text-secondary);
         line-height: 1.6;
     }
 
-    .research-report .full-report-content ul,
-    .research-report .full-report-content ol {
+    /* Document Layout - Professional Word Document Style */
+    .report-document {
+        max-width: 900px;
+        background: var(--mud-palette-surface);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 8px;
+        padding: 32px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    /* Document Header */
+    .document-header {
+        margin-bottom: 32px;
+        padding-bottom: 24px;
+        border-bottom: 2px solid var(--mud-palette-primary);
+    }
+
+    .document-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--mud-palette-text-primary);
+        margin: 0 0 12px 0;
+        line-height: 1.3;
+        letter-spacing: -0.02em;
+    }
+
+    .document-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .document-meta .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .document-meta .meta-item .mud-icon-root {
+        font-size: 1rem;
+        opacity: 0.7;
+    }
+
+    /* Document Sections */
+    .document-section {
+        margin-bottom: 32px;
+    }
+
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-primary);
+        margin: 0 0 16px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .section-title .mud-icon-root {
+        color: var(--mud-palette-primary);
+        font-size: 1.25rem;
+    }
+
+    .section-content {
+        font-size: 0.95rem;
+        line-height: 1.8;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .section-content p {
+        margin: 0 0 12px 0;
+    }
+
+    .section-content p:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Executive Summary Section - Premium Editorial Style */
+    .executive-summary-section {
+        margin: 40px 0 48px 0;
+        position: relative;
+    }
+
+    .summary-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+
+    .summary-accent {
+        width: 4px;
+        height: 32px;
+        background: linear-gradient(180deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-lighten) 100%);
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+
+    .summary-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2.5px;
+        color: var(--mud-palette-primary);
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+
+    .summary-body {
+        position: relative;
+        padding: 32px 40px 36px 40px;
+        background: linear-gradient(
+            135deg,
+            rgba(var(--mud-palette-primary-rgb), 0.03) 0%,
+            rgba(var(--mud-palette-primary-rgb), 0.01) 50%,
+            transparent 100%
+        );
+        border-radius: 12px;
+        border: 1px solid rgba(var(--mud-palette-primary-rgb), 0.08);
+    }
+
+    .summary-body::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 24px;
+        bottom: 24px;
+        width: 3px;
+        background: linear-gradient(
+            180deg,
+            var(--mud-palette-primary) 0%,
+            rgba(var(--mud-palette-primary-rgb), 0.3) 100%
+        );
+        border-radius: 0 2px 2px 0;
+    }
+
+    .summary-content {
+        font-size: 1.05rem;
+        line-height: 1.9;
+        color: var(--mud-palette-text-primary);
+        letter-spacing: 0.01em;
+    }
+
+    .summary-content p {
+        margin: 0 0 20px 0;
+    }
+
+    .summary-content p:last-child {
+        margin-bottom: 0;
+    }
+
+    .summary-content p:first-child {
+        font-size: 1.1rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .summary-content strong {
+        font-weight: 600;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .summary-content ul, .summary-content ol {
+        margin: 20px 0;
+        padding-left: 28px;
+    }
+
+    .summary-content li {
+        margin-bottom: 12px;
+        line-height: 1.8;
+    }
+
+    .summary-content li:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Executive Summary Tables - Professional Business Report Style */
+    .summary-content table {
+        width: 100%;
+        margin: 24px 0;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.92rem;
+        border: 1px solid rgba(var(--mud-palette-primary-rgb), 0.15);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .summary-content thead {
+        background: linear-gradient(
+            180deg,
+            rgba(var(--mud-palette-primary-rgb), 0.08) 0%,
+            rgba(var(--mud-palette-primary-rgb), 0.05) 100%
+        );
+    }
+
+    .summary-content th {
+        padding: 14px 18px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--mud-palette-primary);
+        border-bottom: 2px solid rgba(var(--mud-palette-primary-rgb), 0.2);
+    }
+
+    .summary-content th:not(:last-child) {
+        border-right: 1px solid rgba(var(--mud-palette-primary-rgb), 0.1);
+    }
+
+    .summary-content td {
+        padding: 14px 18px;
+        color: var(--mud-palette-text-primary);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        line-height: 1.6;
+        vertical-align: top;
+    }
+
+    .summary-content td:not(:last-child) {
+        border-right: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    .summary-content tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .summary-content tbody tr:nth-child(even) {
+        background-color: rgba(0, 0, 0, 0.015);
+    }
+
+    .summary-content tbody tr:hover {
+        background-color: rgba(var(--mud-palette-primary-rgb), 0.03);
+    }
+
+    /* Table dark mode */
+    .theme-dark .summary-content table {
+        border-color: rgba(var(--mud-palette-primary-rgb), 0.2);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .theme-dark .summary-content thead {
+        background: linear-gradient(
+            180deg,
+            rgba(var(--mud-palette-primary-rgb), 0.12) 0%,
+            rgba(var(--mud-palette-primary-rgb), 0.08) 100%
+        );
+    }
+
+    .theme-dark .summary-content th {
+        border-bottom-color: rgba(var(--mud-palette-primary-rgb), 0.25);
+    }
+
+    .theme-dark .summary-content td {
+        border-bottom-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .theme-dark .summary-content td:not(:last-child) {
+        border-right-color: rgba(255, 255, 255, 0.04);
+    }
+
+    .theme-dark .summary-content tbody tr:nth-child(even) {
+        background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .theme-dark .summary-content tbody tr:hover {
+        background-color: rgba(var(--mud-palette-primary-rgb), 0.06);
+    }
+
+    /* Dark mode refinements for summary */
+    .theme-dark .summary-body {
+        background: linear-gradient(
+            135deg,
+            rgba(var(--mud-palette-primary-rgb), 0.06) 0%,
+            rgba(var(--mud-palette-primary-rgb), 0.02) 50%,
+            transparent 100%
+        );
+        border-color: rgba(var(--mud-palette-primary-rgb), 0.12);
+    }
+
+    /* Findings */
+    .findings-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .finding-item {
+        background: rgba(0, 0, 0, 0.02);
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .finding-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .finding-number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        background: var(--mud-palette-primary);
+        color: white;
+        border-radius: 50%;
+        font-size: 0.85rem;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+
+    .finding-title {
+        flex: 1;
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-primary);
+        line-height: 1.4;
+    }
+
+    .finding-content {
+        font-size: 0.9rem;
+        line-height: 1.7;
+        color: var(--mud-palette-text-secondary);
+        padding-left: 40px;
+    }
+
+    .finding-content p {
+        margin: 0 0 8px 0;
+    }
+
+    .finding-content p:last-child {
+        margin-bottom: 0;
+    }
+
+    .finding-evidence {
+        margin-top: 12px;
+        padding-left: 40px;
+    }
+
+    .evidence-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: none;
+        border: none;
+        color: var(--mud-palette-primary);
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.15s ease;
+    }
+
+    .evidence-toggle:hover {
+        background-color: rgba(var(--mud-palette-primary-rgb), 0.08);
+    }
+
+    .evidence-list {
+        list-style: none;
+        padding: 0;
+        margin: 12px 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .evidence-item {
+        display: flex;
+        gap: 8px;
+        padding: 10px 12px;
+        background-color: rgba(0, 0, 0, 0.02);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .evidence-item .mud-icon-root {
+        color: var(--mud-palette-primary);
+        opacity: 0.6;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    /* Methodology Section - Structured Professional Layout */
+    .methodology-section {
+        margin: 40px 0;
+        padding: 28px 32px 32px;
+        background: linear-gradient(
+            135deg,
+            rgba(0, 0, 0, 0.02) 0%,
+            rgba(0, 0, 0, 0.01) 100%
+        );
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        border-radius: 12px;
+    }
+
+    .methodology-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .methodology-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-darken) 100%);
+        border-radius: 8px;
+        color: white;
+    }
+
+    .methodology-icon .mud-icon-root {
+        font-size: 1.1rem;
+    }
+
+    .methodology-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-primary);
+        margin: 0;
+        letter-spacing: -0.01em;
+    }
+
+    .methodology-content {
+        font-size: 0.95rem;
+        line-height: 1.7;
+        color: var(--mud-palette-text-primary);
+    }
+
+    /* Intro paragraph styling */
+    .methodology-content > p:first-child {
+        font-size: 1rem;
+        margin-bottom: 28px;
+        padding-bottom: 20px;
+        border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+    }
+
+    /* Subsection headers (h3) - Research Team, Process */
+    .methodology-content h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--mud-palette-primary);
+        margin: 28px 0 16px 0;
+        padding: 0;
+    }
+
+    .methodology-content h3::before {
+        content: '';
+        width: 3px;
+        height: 16px;
+        background: var(--mud-palette-primary);
+        border-radius: 2px;
+    }
+
+    /* Research Team bullet list - card-style items */
+    .methodology-content > ul {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 24px 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+    }
+
+    .methodology-content > ul > li {
+        display: block;
+        padding: 20px 22px;
+        background: white;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        border-radius: 10px;
+        margin: 0;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+        position: relative;
+        min-height: 100px;
+    }
+
+    .methodology-content > ul > li:hover {
+        border-color: rgba(var(--mud-palette-primary-rgb), 0.25);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        transform: translateY(-2px);
+    }
+
+    .methodology-content > ul > li::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-lighten) 100%);
+        border-radius: 10px 10px 0 0;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+    }
+
+    .methodology-content > ul > li:hover::before {
+        opacity: 1;
+    }
+
+    /* Agent name - display as block heading */
+    .methodology-content > ul > li strong {
+        display: block;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--mud-palette-text-primary);
+        margin-bottom: 8px;
+        letter-spacing: -0.01em;
+    }
+
+    /* Hide the colon after agent name */
+    .methodology-content > ul > li {
+        font-size: 0.88rem;
+        line-height: 1.6;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    /* Process numbered list - timeline style */
+    .methodology-content > ol {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        counter-reset: process-step;
+        position: relative;
+    }
+
+    .methodology-content > ol::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 28px;
+        bottom: 28px;
+        width: 2px;
+        background: linear-gradient(
+            180deg,
+            var(--mud-palette-primary) 0%,
+            rgba(var(--mud-palette-primary-rgb), 0.2) 100%
+        );
+        border-radius: 1px;
+    }
+
+    .methodology-content > ol > li {
+        counter-increment: process-step;
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 16px 20px 16px 0;
+        margin: 0;
+        position: relative;
+    }
+
+    .methodology-content > ol > li::before {
+        content: counter(process-step);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 32px;
+        height: 32px;
+        background: var(--mud-palette-primary);
+        color: white;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border-radius: 50%;
+        flex-shrink: 0;
+        box-shadow: 0 2px 6px rgba(var(--mud-palette-primary-rgb), 0.3);
+        position: relative;
+        z-index: 1;
+    }
+
+    .methodology-content > ol > li:last-child {
+        padding-bottom: 0;
+    }
+
+    /* Dark mode for methodology */
+    .theme-dark .methodology-section {
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.02) 0%,
+            rgba(255, 255, 255, 0.01) 100%
+        );
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .theme-dark .methodology-header {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .theme-dark .methodology-content > p:first-child {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .theme-dark .methodology-content > ul > li {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .theme-dark .methodology-content > ul > li:hover {
+        border-color: rgba(var(--mud-palette-primary-rgb), 0.35);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+
+    .theme-dark .methodology-content > ul > li strong {
+        color: var(--mud-palette-text-primary);
+    }
+
+    .theme-dark .methodology-content > ol::before {
+        background: linear-gradient(
+            180deg,
+            var(--mud-palette-primary) 0%,
+            rgba(var(--mud-palette-primary-rgb), 0.3) 100%
+        );
+    }
+
+    /* Sources */
+    .sources-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .source-item {
+        display: flex;
+        gap: 12px;
+        padding: 12px 16px;
+        background: rgba(0, 0, 0, 0.02);
+        border-radius: 6px;
+    }
+
+    .source-number {
+        color: var(--mud-palette-primary);
+        font-weight: 600;
+        font-size: 0.9rem;
+        min-width: 24px;
+    }
+
+    .source-details {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+    }
+
+    .source-title {
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .source-meta {
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-secondary);
+        display: flex;
+        gap: 4px;
+    }
+
+    .source-link {
+        color: var(--mud-palette-primary);
+        display: flex;
+        align-items: center;
+    }
+
+    .source-link:hover {
+        color: var(--mud-palette-primary-darken);
+    }
+
+    /* Document Actions */
+    .document-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Technical Details Accordion */
+    .technical-details-section {
+        margin-top: 24px;
+    }
+
+    .technical-panel {
+        background: rgba(0, 0, 0, 0.02) !important;
+        border: 1px solid rgba(0, 0, 0, 0.06) !important;
+        border-radius: 8px !important;
+    }
+
+    .technical-panel::before {
+        display: none !important;
+    }
+
+    .panel-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .technical-content {
+        padding: 8px 0;
+    }
+
+    .tech-section {
+        margin-bottom: 24px;
+    }
+
+    .tech-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .tech-section-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0 0 12px 0;
+    }
+
+    .tech-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+    }
+
+    .tech-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .tech-label {
+        font-size: 0.7rem;
+        color: var(--mud-palette-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .tech-value {
+        font-size: 0.9rem;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .tech-value.mono {
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    .tech-content-box {
+        background: rgba(0, 0, 0, 0.02);
+        border-radius: 6px;
+        padding: 12px 16px;
+        font-size: 0.85rem;
+        line-height: 1.6;
+    }
+
+    .tech-content-box p {
+        margin: 0 0 8px 0;
+    }
+
+    .tech-content-box p:last-child {
+        margin-bottom: 0;
+    }
+
+    .full-report-box {
+        max-height: 400px;
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.02);
+        border-radius: 6px;
+        padding: 16px;
+        font-size: 0.85rem;
+        line-height: 1.6;
+    }
+
+    .full-report-box h1, .full-report-box h2, .full-report-box h3 {
+        margin-top: 16px;
+        margin-bottom: 8px;
+    }
+
+    .full-report-box h1:first-child, .full-report-box h2:first-child {
+        margin-top: 0;
+    }
+
+    .full-report-box p {
+        margin: 0 0 8px 0;
+    }
+
+    .full-report-box ul, .full-report-box ol {
         margin: 8px 0;
         padding-left: 24px;
     }
 
-    .research-report .full-report-content li {
-        margin-bottom: 4px;
-    }
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .report-document {
+            padding: 20px;
+        }
 
-    .research-report .full-report-content blockquote {
-        border-left: 3px solid #2196F3;
-        padding-left: 12px;
-        margin: 12px 0;
-        color: var(--mud-palette-text-secondary);
-    }
+        .document-title {
+            font-size: 1.4rem;
+        }
 
-    .research-report .full-report-content code {
-        background-color: rgba(0, 0, 0, 0.1);
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.9em;
-    }
+        .finding-content,
+        .finding-evidence {
+            padding-left: 0;
+        }
 
-    .research-report .full-report-content pre {
-        background-color: #1e1e2e;
-        border-radius: 8px;
-        padding: 12px;
-        overflow-x: auto;
-        margin: 12px 0;
-    }
-
-    .research-report .full-report-content pre code {
-        background-color: transparent;
-        padding: 0;
-        color: #e0e0e0;
+        .document-meta {
+            flex-direction: column;
+            gap: 8px;
+        }
     }
 </style>
 
 @code {
-    private bool _fullReportExpanded = false;
-    private string? _fullMarkdown;
+    private ResearchReportBase? _fullReport;
+    private bool _isLoading = true;
+    private string? _loadError;
+    private HashSet<int> _expandedEvidence = new();
 
     [Parameter]
     public required ResearchReportSummaryBase Report { get; set; }
+
+    [Parameter]
+    public Guid? SessionId { get; set; }
 
     [Inject]
     private IResearchSessionApiService? ResearchApi { get; set; }
@@ -305,42 +1152,73 @@
     [Inject]
     private IJSRuntime? JSRuntime { get; set; }
 
+    [Inject]
+    private ISnackbar? Snackbar { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFullReport();
+    }
+
     protected override async Task OnParametersSetAsync()
     {
-        if (_fullReportExpanded && string.IsNullOrEmpty(_fullMarkdown) && ResearchApi != null)
+        // Reload if Report ID changes
+        if (_fullReport != null && _fullReport.Id != Report.Id)
         {
+            _fullReport = null;
+            _expandedEvidence.Clear();
             await LoadFullReport();
         }
     }
 
     private async Task LoadFullReport()
     {
-        if (ResearchApi == null || MarkdownService == null) return;
+        if (ResearchApi == null)
+        {
+            _loadError = "API service not available";
+            _isLoading = false;
+            return;
+        }
+
+        _isLoading = true;
+        _loadError = null;
 
         try
         {
-            // Note: This would require the session ID to be passed in or accessed differently
-            // For now, we'll use the report ID
-            var result = await ResearchApi.GetReportMarkdownAsync(Report.Id);
+            // Use SessionId if provided, otherwise use Report.Id
+            var idToFetch = SessionId ?? Report.Id;
+            var result = await ResearchApi.GetReportAsync(idToFetch);
+
             if (result.IsSuccess && result.Value != null)
             {
-                _fullMarkdown = MarkdownService.ToHtml(result.Value);
+                _fullReport = result.Value;
+            }
+            else
+            {
+                _loadError = "Unable to load full report details";
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to load full report: {ex.Message}");
+            _loadError = "Failed to load report";
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
-    private string GetDuration()
+    private void ToggleEvidence(int findingIndex)
     {
-        if (Report.CreatedAt == default)
-            return "--";
-
-        // Approximate duration based on creation time
-        // In a real implementation, you'd calculate from session start to completion
-        return "~" + Math.Max(1, (int)(DateTime.UtcNow - Report.CreatedAt).TotalMinutes) + "m";
+        if (_expandedEvidence.Contains(findingIndex))
+        {
+            _expandedEvidence.Remove(findingIndex);
+        }
+        else
+        {
+            _expandedEvidence.Add(findingIndex);
+        }
     }
 
     private async Task HandleDownload()
@@ -349,19 +1227,36 @@
 
         try
         {
-            var result = await ResearchApi.GetReportMarkdownAsync(Report.Id);
+            var idToFetch = SessionId ?? Report.Id;
+            var result = await ResearchApi.GetReportMarkdownAsync(idToFetch);
             if (result.IsSuccess && result.Value != null)
             {
-                var fileName = $"research-report-{Report.Id:N}.md";
-                var content = result.Value;
-
-                // Create a download using JavaScript
-                await JSRuntime.InvokeVoidAsync("downloadText", content, fileName, "text/markdown");
+                var fileName = $"research-report-{idToFetch:N}.md";
+                await JSRuntime.InvokeVoidAsync("downloadText", result.Value, fileName, "text/markdown");
+                Snackbar?.Add("Report downloaded", Severity.Success);
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to download report: {ex.Message}");
+            Snackbar?.Add("Failed to download report", Severity.Error);
+        }
+    }
+
+    private async Task HandleCopy()
+    {
+        if (JSRuntime == null || _fullReport == null) return;
+
+        try
+        {
+            var textToCopy = _fullReport.FullMarkdown ?? _fullReport.ExecutiveSummary ?? Report.Title;
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", textToCopy);
+            Snackbar?.Add("Report copied to clipboard", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to copy report: {ex.Message}");
+            Snackbar?.Add("Failed to copy report", Severity.Error);
         }
     }
 }

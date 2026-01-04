@@ -68,6 +68,25 @@ window.triggerFileInput = function (inputElement) {
     }
 };
 
+// Download text content as a file
+window.downloadText = function (content, filename, mimeType) {
+    const bytes = new TextEncoder().encode(content);
+    const blob = new Blob([bytes], { type: mimeType || 'text/plain' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+
+    setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }, 100);
+};
+
 // Download file with proper filename
 window.downloadFile = async function (url, filename) {
     try {
