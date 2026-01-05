@@ -66,8 +66,40 @@ public class ApiClient : IApiClient
     public async Task<bool> DeleteAsync(string endpoint, CancellationToken ct = default)
     {
         var response = await _httpClient.DeleteAsync(endpoint, ct).ConfigureAwait(false);
-        return response.IsSuccessStatusCode;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            // Try to read error details from response body
+            try
+            {
+                var errorResponse = await response.Content.ReadFromJsonAsync<ErrorResponse>(_jsonOptions, ct).ConfigureAwait(false);
+                if (errorResponse?.Message != null)
+                {
+                    throw new HttpRequestException(errorResponse.Message, null, response.StatusCode);
+                }
+            }
+            catch (JsonException)
+            {
+                // If we can't parse the error response, fall through to generic handling
+            }
+
+            // Fallback to generic error
+            response.EnsureSuccessStatusCode();
+        }
+
+        return true;
     }
+
+    /// <summary>
+    /// Error response structure from the API.
+    /// </summary>
+    private record ErrorResponse(
+        string? Error,
+        string? Message,
+        string? Suggested_Action,
+        string? Constraint_Name,
+        string? Entity_Name);
+
 
     /// <inheritdoc />
     public async IAsyncEnumerable<T> StreamAsync<T>(
