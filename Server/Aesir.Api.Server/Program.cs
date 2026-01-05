@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Aesir.Orchestration.Extensions;
 using Aesir.Infrastructure.Extensions;
 using Aesir.Infrastructure.Middleware;
@@ -74,7 +76,13 @@ public class Program
             builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
             builder.Services.AddHostedService<BackgroundTaskProcessorService>();
 
-            builder.Services.AddSignalR();
+            builder.Services.AddSignalR()
+                .AddJsonProtocol(options =>
+                {
+                    // Match REST API configuration - rely on explicit [JsonPropertyName] attributes
+                    options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
+                    options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                });
 
             var app = builder.Build();
 
