@@ -18,6 +18,9 @@
         <PackageReference Include="Pgvector" Version="0.3.2" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
 
+        <!-- Resilience and Concurrency -->
+        <PackageReference Include="Polly" Version="8.5.0" />
+
         <!-- Migration dependencies -->
         <PackageReference Include="FluentMigrator" Version="7.1.0" />
         <PackageReference Include="FluentMigrator.Extensions.Postgres" Version="7.1.0" />
