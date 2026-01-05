@@ -45,8 +45,17 @@ public class ModelsService(
             var client = serviceProvider.GetKeyedService<OpenAIClient>(serviceId) ??
                          throw new InvalidOperationException($"Not OpenAIClient registered for {serviceId}");
 
+            _logger.LogDebug("[ModelsService] Fetching models for service: {ServiceId}, category: {Category}", serviceId, category);
+
             // Get available models from API
-            var openAiModels = (await client.GetOpenAIModelClient().GetModelsAsync()).Value;
+            var response = await client.GetOpenAIModelClient().GetModelsAsync().ConfigureAwait(false);
+            var openAiModels = response.Value;
+
+            _logger.LogDebug("[ModelsService] Received {Count} models from API", openAiModels.Count);
+            foreach (var model in openAiModels)
+            {
+                _logger.LogDebug("[ModelsService] Model ID: {ModelId}, OwnedBy: {OwnedBy}", model.Id, model.OwnedBy);
+            }
 
             // populate embedding models
             if (category is null or ModelCategory.Embedding)
@@ -54,13 +63,21 @@ public class ModelsService(
                 var allowedModelNames =
                     configuration.GetSection("Configuration:RestrictEmbeddingModelsTo").Get<string[]>() ?? [];
 
+                _logger.LogDebug("[ModelsService] Embedding filter list: [{FilterList}]", string.Join(", ", allowedModelNames));
+
                 // restrict the models if the configuration requested it
+                // Use prefix matching to handle quantization suffixes (e.g., model:Q4_0, model:F16)
                 var allowedModels = openAiModels.ToList();
                 if (allowedModelNames.Length > 0)
-                    allowedModels = openAiModels.Where(m => allowedModelNames.Contains(m.Id)).ToList();
+                    allowedModels = openAiModels.Where(m =>
+                        allowedModelNames.Any(filter => m.Id.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
+                    ).ToList();
+
+                _logger.LogDebug("[ModelsService] Embedding models after filter: {Count}", allowedModels.Count);
 
                 allowedModels.ForEach(m =>
                 {
+                    _logger.LogDebug("[ModelsService] Adding embedding model: {ModelId}", m.Id);
                     models.Add(new AesirModelInfo
                     {
                         Id = m.Id,
@@ -78,13 +95,21 @@ public class ModelsService(
                 var allowedModelNames =
                     configuration.GetSection("Configuration:RestrictChatModelsTo").Get<string[]>() ?? [];
 
+                _logger.LogDebug("[ModelsService] Chat filter list: [{FilterList}]", string.Join(", ", allowedModelNames));
+
                 // restrict the models if the configuration requested it
+                // Use prefix matching to handle quantization suffixes (e.g., model:Q4_0, model:F16)
                 var allowedModels = openAiModels.ToList();
                 if (allowedModelNames.Length > 0)
-                    allowedModels = openAiModels.Where(m => allowedModelNames.Contains(m.Id)).ToList();
+                    allowedModels = openAiModels.Where(m =>
+                        allowedModelNames.Any(filter => m.Id.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
+                    ).ToList();
+
+                _logger.LogDebug("[ModelsService] Chat models after filter: {Count}", allowedModels.Count);
 
                 allowedModels.ForEach(m =>
                 {
+                    _logger.LogDebug("[ModelsService] Adding chat model: {ModelId}", m.Id);
                     models.Add(new AesirModelInfo
                     {
                         Id = m.Id,
@@ -102,13 +127,21 @@ public class ModelsService(
                 var allowedModelNames =
                     configuration.GetSection("Configuration:RestrictVisionModelsTo").Get<string[]>() ?? [];
 
+                _logger.LogDebug("[ModelsService] Vision filter list: [{FilterList}]", string.Join(", ", allowedModelNames));
+
                 // restrict the models if the configuration requested it
+                // Use prefix matching to handle quantization suffixes (e.g., model:Q4_0, model:F16)
                 var allowedModels = openAiModels.ToList();
                 if (allowedModelNames.Length > 0)
-                    allowedModels = openAiModels.Where(m => allowedModelNames.Contains(m.Id)).ToList();
+                    allowedModels = openAiModels.Where(m =>
+                        allowedModelNames.Any(filter => m.Id.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
+                    ).ToList();
+
+                _logger.LogDebug("[ModelsService] Vision models after filter: {Count}", allowedModels.Count);
 
                 allowedModels.ForEach(m =>
                 {
+                    _logger.LogDebug("[ModelsService] Adding vision model: {ModelId}", m.Id);
                     models.Add(new AesirModelInfo
                     {
                         Id = m.Id,
@@ -127,6 +160,7 @@ public class ModelsService(
             throw;
         }
 
+        _logger.LogDebug("[ModelsService] Returning {Count} total models for category: {Category}", models.Count, category);
         return models;
     }
 

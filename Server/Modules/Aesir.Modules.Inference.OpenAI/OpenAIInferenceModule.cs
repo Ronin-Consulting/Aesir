@@ -198,11 +198,11 @@ public class OpenAIInferenceModule : ModuleBase
                 sp));
 
         // Register OpenAI Client
-        var apiKey = inferenceEngine.Configuration!["ApiKey"] ??
+        var apiKey = inferenceEngine.Configuration!["api_key"] ??
                      throw new InvalidOperationException("OpenAI API key not configured");
 
         var apiCreds = new ApiKeyCredential(apiKey);
-        var endPoint = inferenceEngine.Configuration["Endpoint"] ??
+        var endPoint = inferenceEngine.Configuration["endpoint"] ??
                        throw new InvalidOperationException("OpenAI Endpoint not configured");
 
         if (string.IsNullOrEmpty(endPoint))

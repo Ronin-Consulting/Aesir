@@ -220,7 +220,7 @@ public class OllamaInferenceModule : ModuleBase
         var ollamaClientName = $"OllamaApiClient-{inferenceEngineIdKey}";
         services.AddHttpClient(ollamaClientName, client =>
             {
-                var endpoint = inferenceEngine.Configuration["Endpoint"] ??
+                var endpoint = inferenceEngine.Configuration["endpoint"] ??
                                throw new InvalidOperationException("Ollama Endpoint not configured");
                 client.BaseAddress = new Uri($"{endpoint}/api");
                 client.Timeout = TimeSpan.FromMinutes(10); // Long timeout for model operations
