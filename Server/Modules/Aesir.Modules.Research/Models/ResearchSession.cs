@@ -17,19 +17,19 @@ public class ResearchSession : IEntity
     /// <summary>
     /// User who initiated the research.
     /// </summary>
-    [JsonPropertyName("userId")]
+    [JsonPropertyName("user_id")]
     public string UserId { get; set; } = string.Empty;
 
     /// <summary>
     /// Reference to the research team configuration used.
     /// </summary>
-    [JsonPropertyName("researchTeamId")]
+    [JsonPropertyName("research_team_id")]
     public Guid? ResearchTeamId { get; set; }
 
     /// <summary>
     /// Reference to the chat conversation this research is part of.
     /// </summary>
-    [JsonPropertyName("conversationId")]
+    [JsonPropertyName("conversation_id")]
     public Guid? ConversationId { get; set; }
 
     /// <summary>
@@ -41,7 +41,7 @@ public class ResearchSession : IEntity
     /// <summary>
     /// Refined query after clarification (if applicable).
     /// </summary>
-    [JsonPropertyName("refinedQuery")]
+    [JsonPropertyName("refined_query")]
     public string? RefinedQuery { get; set; }
 
     /// <summary>
@@ -59,55 +59,55 @@ public class ResearchSession : IEntity
     /// <summary>
     /// Current phase of the research workflow.
     /// </summary>
-    [JsonPropertyName("currentPhase")]
+    [JsonPropertyName("current_phase")]
     public ResearchPhase? CurrentPhase { get; set; }
 
     /// <summary>
     /// Document collection IDs for RAG corpus (from conversation attachments).
     /// </summary>
-    [JsonPropertyName("documentCollectionIds")]
+    [JsonPropertyName("document_collection_ids")]
     public List<Guid>? DocumentCollectionIds { get; set; }
 
     /// <summary>
     /// Clarification questions generated for the user.
     /// </summary>
-    [JsonPropertyName("clarificationQuestions")]
+    [JsonPropertyName("clarification_questions")]
     public List<string>? ClarificationQuestions { get; set; }
 
     /// <summary>
     /// User's answers to clarification questions.
     /// </summary>
-    [JsonPropertyName("clarificationAnswers")]
+    [JsonPropertyName("clarification_answers")]
     public Dictionary<string, string>? ClarificationAnswers { get; set; }
 
     /// <summary>
     /// Error message if research failed.
     /// </summary>
-    [JsonPropertyName("errorMessage")]
+    [JsonPropertyName("error_message")]
     public string? ErrorMessage { get; set; }
 
     /// <summary>
     /// When the session was created.
     /// </summary>
-    [JsonPropertyName("createdAt")]
+    [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
     /// When the session was last updated.
     /// </summary>
-    [JsonPropertyName("updatedAt")]
+    [JsonPropertyName("updated_at")]
     public DateTime UpdatedAt { get; set; }
 
     /// <summary>
     /// When research execution started.
     /// </summary>
-    [JsonPropertyName("startedAt")]
+    [JsonPropertyName("started_at")]
     public DateTime? StartedAt { get; set; }
 
     /// <summary>
     /// When research completed.
     /// </summary>
-    [JsonPropertyName("completedAt")]
+    [JsonPropertyName("completed_at")]
     public DateTime? CompletedAt { get; set; }
 
     /// <summary>
@@ -125,7 +125,7 @@ public class ResearchSession : IEntity
     /// <summary>
     /// Navigation property: peer reviews.
     /// </summary>
-    [JsonPropertyName("peerReviews")]
+    [JsonPropertyName("peer_reviews")]
     public List<PeerReview>? PeerReviews { get; set; }
 
     /// <summary>

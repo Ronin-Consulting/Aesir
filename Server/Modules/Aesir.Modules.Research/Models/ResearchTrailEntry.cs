@@ -18,25 +18,25 @@ public class ResearchTrailEntry : IEntity
     /// <summary>
     /// The research session this entry belongs to.
     /// </summary>
-    [JsonPropertyName("sessionId")]
+    [JsonPropertyName("session_id")]
     public Guid SessionId { get; set; }
 
     /// <summary>
     /// The submission this entry relates to (if applicable).
     /// </summary>
-    [JsonPropertyName("submissionId")]
+    [JsonPropertyName("submission_id")]
     public Guid? SubmissionId { get; set; }
 
     /// <summary>
     /// Type of event.
     /// </summary>
-    [JsonPropertyName("eventType")]
+    [JsonPropertyName("event_type")]
     public ResearchTrailEventType EventType { get; set; }
 
     /// <summary>
     /// Role of the agent involved (if applicable).
     /// </summary>
-    [JsonPropertyName("agentRole")]
+    [JsonPropertyName("agent_role")]
     public ResearchRole? AgentRole { get; set; }
 
     /// <summary>
@@ -48,19 +48,19 @@ public class ResearchTrailEntry : IEntity
     /// <summary>
     /// Input data for the event (JSON).
     /// </summary>
-    [JsonPropertyName("inputJson")]
+    [JsonPropertyName("input_json")]
     public string? InputJson { get; set; }
 
     /// <summary>
     /// Output data from the event (JSON).
     /// </summary>
-    [JsonPropertyName("outputJson")]
+    [JsonPropertyName("output_json")]
     public string? OutputJson { get; set; }
 
     /// <summary>
     /// Duration of the event in milliseconds.
     /// </summary>
-    [JsonPropertyName("durationMs")]
+    [JsonPropertyName("duration_ms")]
     public long? DurationMs { get; set; }
 
     /// <summary>

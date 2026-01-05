@@ -17,7 +17,7 @@ public class ResearchReport : IEntity
     /// <summary>
     /// The research session this report belongs to.
     /// </summary>
-    [JsonPropertyName("sessionId")]
+    [JsonPropertyName("session_id")]
     public Guid SessionId { get; set; }
 
     /// <summary>
@@ -29,13 +29,13 @@ public class ResearchReport : IEntity
     /// <summary>
     /// Executive summary section.
     /// </summary>
-    [JsonPropertyName("executiveSummary")]
+    [JsonPropertyName("executive_summary")]
     public string ExecutiveSummary { get; set; } = string.Empty;
 
     /// <summary>
     /// Methodology description section.
     /// </summary>
-    [JsonPropertyName("methodologySection")]
+    [JsonPropertyName("methodology_section")]
     public string MethodologySection { get; set; } = string.Empty;
 
     /// <summary>
@@ -47,13 +47,13 @@ public class ResearchReport : IEntity
     /// <summary>
     /// Alternative perspectives and dissenting views.
     /// </summary>
-    [JsonPropertyName("alternativePerspectives")]
+    [JsonPropertyName("alternative_perspectives")]
     public string? AlternativePerspectives { get; set; }
 
     /// <summary>
     /// Identified research gaps for future investigation.
     /// </summary>
-    [JsonPropertyName("researchGaps")]
+    [JsonPropertyName("research_gaps")]
     public string? ResearchGaps { get; set; }
 
     /// <summary>
@@ -65,7 +65,7 @@ public class ResearchReport : IEntity
     /// <summary>
     /// Complete markdown report for display/export.
     /// </summary>
-    [JsonPropertyName("fullMarkdown")]
+    [JsonPropertyName("full_markdown")]
     public string FullMarkdown { get; set; } = string.Empty;
 
     /// <summary>
@@ -77,13 +77,13 @@ public class ResearchReport : IEntity
     /// <summary>
     /// Total token usage for report generation.
     /// </summary>
-    [JsonPropertyName("tokensUsed")]
+    [JsonPropertyName("tokens_used")]
     public int? TokensUsed { get; set; }
 
     /// <summary>
     /// When the report was generated.
     /// </summary>
-    [JsonPropertyName("createdAt")]
+    [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; }
 }
 
@@ -113,7 +113,7 @@ public class ResearchFinding
     /// <summary>
     /// Supporting evidence for this finding.
     /// </summary>
-    [JsonPropertyName("supportingEvidence")]
+    [JsonPropertyName("supporting_evidence")]
     public List<string>? SupportingEvidence { get; set; }
 
     /// <summary>
@@ -125,7 +125,7 @@ public class ResearchFinding
     /// <summary>
     /// Which agent roles contributed to this finding.
     /// </summary>
-    [JsonPropertyName("contributingRoles")]
+    [JsonPropertyName("contributing_roles")]
     public List<ResearchRole>? ContributingRoles { get; set; }
 }
 
@@ -137,37 +137,37 @@ public class ReportMetadata
     /// <summary>
     /// Total research duration in milliseconds.
     /// </summary>
-    [JsonPropertyName("totalDurationMs")]
+    [JsonPropertyName("total_duration_ms")]
     public long TotalDurationMs { get; set; }
 
     /// <summary>
     /// Total tokens used across all phases.
     /// </summary>
-    [JsonPropertyName("totalTokensUsed")]
+    [JsonPropertyName("total_tokens_used")]
     public int TotalTokensUsed { get; set; }
 
     /// <summary>
     /// Number of sources cited.
     /// </summary>
-    [JsonPropertyName("sourceCount")]
+    [JsonPropertyName("source_count")]
     public int SourceCount { get; set; }
 
     /// <summary>
     /// Number of findings generated.
     /// </summary>
-    [JsonPropertyName("findingCount")]
+    [JsonPropertyName("finding_count")]
     public int FindingCount { get; set; }
 
     /// <summary>
     /// Average peer review score.
     /// </summary>
-    [JsonPropertyName("averagePeerReviewScore")]
+    [JsonPropertyName("average_peer_review_score")]
     public double AveragePeerReviewScore { get; set; }
 
     /// <summary>
     /// Per-agent statistics.
     /// </summary>
-    [JsonPropertyName("agentStatistics")]
+    [JsonPropertyName("agent_statistics")]
     public Dictionary<string, AgentStats>? AgentStatistics { get; set; }
 }
 
@@ -185,30 +185,30 @@ public class AgentStats
     /// <summary>
     /// Tokens used by this agent.
     /// </summary>
-    [JsonPropertyName("tokensUsed")]
+    [JsonPropertyName("tokens_used")]
     public int TokensUsed { get; set; }
 
     /// <summary>
     /// Duration in milliseconds.
     /// </summary>
-    [JsonPropertyName("durationMs")]
+    [JsonPropertyName("duration_ms")]
     public long DurationMs { get; set; }
 
     /// <summary>
     /// Number of sources cited.
     /// </summary>
-    [JsonPropertyName("sourcesCited")]
+    [JsonPropertyName("sources_cited")]
     public int SourcesCited { get; set; }
 
     /// <summary>
     /// Number of tool calls made.
     /// </summary>
-    [JsonPropertyName("toolCallsMade")]
+    [JsonPropertyName("tool_calls_made")]
     public int ToolCallsMade { get; set; }
 
     /// <summary>
     /// Average peer review score received.
     /// </summary>
-    [JsonPropertyName("averageReviewScore")]
+    [JsonPropertyName("average_review_score")]
     public double AverageReviewScore { get; set; }
 }

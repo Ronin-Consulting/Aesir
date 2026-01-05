@@ -17,13 +17,13 @@ public class ResearchSubmission : IEntity
     /// <summary>
     /// The research session this submission belongs to.
     /// </summary>
-    [JsonPropertyName("sessionId")]
+    [JsonPropertyName("session_id")]
     public Guid SessionId { get; set; }
 
     /// <summary>
     /// The agent that produced this submission.
     /// </summary>
-    [JsonPropertyName("agentId")]
+    [JsonPropertyName("agent_id")]
     public Guid AgentId { get; set; }
 
     /// <summary>
@@ -35,13 +35,13 @@ public class ResearchSubmission : IEntity
     /// <summary>
     /// Round number (for multi-round Deep mode).
     /// </summary>
-    [JsonPropertyName("roundNumber")]
+    [JsonPropertyName("round_number")]
     public int RoundNumber { get; set; } = 1;
 
     /// <summary>
     /// Anonymized identifier for peer review (A, B, C).
     /// </summary>
-    [JsonPropertyName("anonymizedId")]
+    [JsonPropertyName("anonymized_id")]
     public string? AnonymizedId { get; set; }
 
     /// <summary>
@@ -59,7 +59,7 @@ public class ResearchSubmission : IEntity
     /// <summary>
     /// Extended thinking trace (if enabled).
     /// </summary>
-    [JsonPropertyName("thinkingTrace")]
+    [JsonPropertyName("thinking_trace")]
     public string? ThinkingTrace { get; set; }
 
     /// <summary>
@@ -71,19 +71,19 @@ public class ResearchSubmission : IEntity
     /// <summary>
     /// Tool calls made during research.
     /// </summary>
-    [JsonPropertyName("toolCalls")]
+    [JsonPropertyName("tool_calls")]
     public List<ResearchToolCall>? ToolCalls { get; set; }
 
     /// <summary>
     /// Token usage for this submission.
     /// </summary>
-    [JsonPropertyName("tokensUsed")]
+    [JsonPropertyName("tokens_used")]
     public int? TokensUsed { get; set; }
 
     /// <summary>
     /// Duration in milliseconds.
     /// </summary>
-    [JsonPropertyName("durationMs")]
+    [JsonPropertyName("duration_ms")]
     public long? DurationMs { get; set; }
 
     /// <summary>
@@ -95,19 +95,19 @@ public class ResearchSubmission : IEntity
     /// <summary>
     /// Error message if submission failed.
     /// </summary>
-    [JsonPropertyName("errorMessage")]
+    [JsonPropertyName("error_message")]
     public string? ErrorMessage { get; set; }
 
     /// <summary>
     /// When the submission was created.
     /// </summary>
-    [JsonPropertyName("createdAt")]
+    [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
     /// When the submission was completed.
     /// </summary>
-    [JsonPropertyName("completedAt")]
+    [JsonPropertyName("completed_at")]
     public DateTime? CompletedAt { get; set; }
 }
 
@@ -131,7 +131,7 @@ public class ResearchSource
     /// <summary>
     /// Type of source (document, web, etc.).
     /// </summary>
-    [JsonPropertyName("sourceType")]
+    [JsonPropertyName("source_type")]
     public string? SourceType { get; set; }
 
     /// <summary>
@@ -143,7 +143,7 @@ public class ResearchSource
     /// <summary>
     /// Relevance score (0-1).
     /// </summary>
-    [JsonPropertyName("relevanceScore")]
+    [JsonPropertyName("relevance_score")]
     public double? RelevanceScore { get; set; }
 }
 
@@ -155,7 +155,7 @@ public class ResearchToolCall
     /// <summary>
     /// Name of the tool called.
     /// </summary>
-    [JsonPropertyName("toolName")]
+    [JsonPropertyName("tool_name")]
     public string ToolName { get; set; } = string.Empty;
 
     /// <summary>
@@ -173,7 +173,7 @@ public class ResearchToolCall
     /// <summary>
     /// Duration in milliseconds.
     /// </summary>
-    [JsonPropertyName("durationMs")]
+    [JsonPropertyName("duration_ms")]
     public long? DurationMs { get; set; }
 
     /// <summary>

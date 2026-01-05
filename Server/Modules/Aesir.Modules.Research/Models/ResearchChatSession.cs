@@ -12,6 +12,6 @@ public class ResearchChatSession : AesirChatSessionBase
     /// <summary>
     /// When the session was created.
     /// </summary>
-    [JsonPropertyName("createdAt")]
+    [JsonPropertyName("created_at")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

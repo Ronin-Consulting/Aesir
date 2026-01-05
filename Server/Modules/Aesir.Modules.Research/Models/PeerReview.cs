@@ -18,61 +18,61 @@ public class PeerReview : IEntity
     /// <summary>
     /// The research session this review belongs to.
     /// </summary>
-    [JsonPropertyName("sessionId")]
+    [JsonPropertyName("session_id")]
     public Guid SessionId { get; set; }
 
     /// <summary>
     /// The submission being reviewed.
     /// </summary>
-    [JsonPropertyName("submissionId")]
+    [JsonPropertyName("submission_id")]
     public Guid SubmissionId { get; set; }
 
     /// <summary>
     /// The agent performing the review.
     /// </summary>
-    [JsonPropertyName("reviewerAgentId")]
+    [JsonPropertyName("reviewer_agent_id")]
     public Guid ReviewerAgentId { get; set; }
 
     /// <summary>
     /// The role of the reviewing agent.
     /// </summary>
-    [JsonPropertyName("reviewerRole")]
+    [JsonPropertyName("reviewer_role")]
     public ResearchRole ReviewerRole { get; set; }
 
     /// <summary>
     /// Score for research depth (1-10).
     /// </summary>
-    [JsonPropertyName("scoreDepth")]
+    [JsonPropertyName("score_depth")]
     public double ScoreDepth { get; set; }
 
     /// <summary>
     /// Score for accuracy/correctness (1-10).
     /// </summary>
-    [JsonPropertyName("scoreAccuracy")]
+    [JsonPropertyName("score_accuracy")]
     public double ScoreAccuracy { get; set; }
 
     /// <summary>
     /// Score for source quality (1-10).
     /// </summary>
-    [JsonPropertyName("scoreSourceQuality")]
+    [JsonPropertyName("score_source_quality")]
     public double ScoreSourceQuality { get; set; }
 
     /// <summary>
     /// Score for novelty/insight (1-10).
     /// </summary>
-    [JsonPropertyName("scoreNovelty")]
+    [JsonPropertyName("score_novelty")]
     public double ScoreNovelty { get; set; }
 
     /// <summary>
     /// Score for coherence/clarity (1-10).
     /// </summary>
-    [JsonPropertyName("scoreCoherence")]
+    [JsonPropertyName("score_coherence")]
     public double ScoreCoherence { get; set; }
 
     /// <summary>
     /// Calculated weighted average of all scores.
     /// </summary>
-    [JsonPropertyName("weightedAverage")]
+    [JsonPropertyName("weighted_average")]
     public double WeightedAverage { get; set; }
 
     /// <summary>
@@ -102,12 +102,12 @@ public class PeerReview : IEntity
     /// <summary>
     /// Token usage for this review.
     /// </summary>
-    [JsonPropertyName("tokensUsed")]
+    [JsonPropertyName("tokens_used")]
     public int? TokensUsed { get; set; }
 
     /// <summary>
     /// When the review was created.
     /// </summary>
-    [JsonPropertyName("createdAt")]
+    [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; }
 }
