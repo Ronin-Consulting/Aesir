@@ -23,9 +23,9 @@ Guidelines and instructions for Claude Code when working in this project.
 ## About AESIR
 
 AESIR is an AI-powered chat orchestration platform with:
-- **Server**: .NET 10 modular API with PostgreSQL
+- **Server**: .NET 10 modular API with PostgreSQL and Qdrant vector database
 - **Client**: Blazor WebAssembly with Tauri desktop support
-- **Features**: Multi-model inference (OpenAI, Ollama), document handling, speech-to-text, MCP tools
+- **Features**: Multi-model inference (OpenAI, Ollama), Research mode, document handling, speech-to-text, MCP tools, vector search
 
 ### Architecture Overview
 
@@ -34,6 +34,12 @@ AESIR is an AI-powered chat orchestration platform with:
 │                    Client Applications                       │
 ├───────────────────┬───────────────────┬─────────────────────┤
 │   Blazor WASM     │   Tauri Desktop   │   (Future: Mobile)  │
+│  - Chat           │                   │                     │
+│  - Research       │                   │                     │
+│  - Settings       │                   │                     │
+│  - HandsFree      │                   │                     │
+│  - Observability  │                   │                     │
+│  - Wizard         │                   │                     │
 └─────────┬─────────┴─────────┬─────────┴──────────┬──────────┘
           │                   │                    │
           └───────────────────┼────────────────────┘
@@ -43,16 +49,40 @@ AESIR is an AI-powered chat orchestration platform with:
           │        https://aesir.localhost        │
           └───────────────────┬───────────────────┘
                               │
-   ┌──────────────────────────┼──────────────────────────┐
-   │           │              │              │           │
-┌──▼──┐   ┌────▼────┐   ┌─────▼─────┐   ┌────▼────┐   ┌──▼──┐
-│Chat │   │ Config  │   │ Inference │   │ Storage │   │ ... │
-└─────┘   └─────────┘   └───────────┘   └─────────┘   └─────┘
-                              │
-          ┌───────────────────▼───────────────────┐
-          │              PostgreSQL               │
-          └───────────────────────────────────────┘
+   ┌──────────┬───────┬───────┼───────┬─────────┬──────────┐
+   │          │       │       │       │         │          │
+┌──▼──┐  ┌───▼───┐ ┌─▼──┐ ┌──▼───┐ ┌─▼───┐ ┌───▼────┐ ┌──▼──┐
+│Chat │  │Research│ │Mcp │ │Config│ │Infer│ │Storage │ │ ... │
+└─────┘  └────────┘ └────┘ └──────┘ └──┬──┘ └────────┘ └─────┘
+                                       │
+          ┌────────────────────────────┼────────────────────┐
+          │                            │                    │
+    ┌─────▼─────┐              ┌───────▼───────┐   ┌───────▼───────┐
+    │PostgreSQL │              │ Qdrant Vector │   │ External LLMs │
+    │ (pgvector)│              │   Database    │   │(OpenAI/Ollama)│
+    └───────────┘              └───────────────┘   └───────────────┘
 ```
+
+### Module Overview
+
+**Client Modules** (Blazor WebAssembly):
+- **Chat** - Conversational AI interface with multi-model support
+- **Research** - AI research mode with team collaboration UI
+- **Settings** - Configuration management (agents, engines, MCP servers)
+- **HandsFree** - Voice-activated chat and speech interaction
+- **Observability** - Real-time logging and monitoring dashboard
+- **Wizard** - Initial setup and onboarding flow
+
+**Server Modules** (ASP.NET Core):
+- **Chat** - Chat session management and message handling
+- **Research** - Multi-agent research orchestration with peer review
+- **Configuration** - Agent, engine, and MCP server configuration
+- **Inference** - Multi-model inference orchestration (OpenAI, Ollama)
+- **Mcp** - Model Context Protocol tool integration
+- **Storage** - File and document storage management
+- **Logging** - Centralized logging and kernel event tracking
+- **Documents** - Document processing and ingestion
+- **Speech** - Speech-to-text and audio processing
 
 ### Quick Start
 
@@ -147,7 +177,8 @@ Do not generate library-specific code without first consulting Context7 document
 ### ORM and Database
 
 - **ORM**: Dapper 2.1.66 and Dapper.Contrib 2.0.78 (not Entity Framework)
-- **Database**: PostgreSQL 15+
+- **Database**: PostgreSQL 16 with pgvector extension
+- **Vector Database**: Qdrant for semantic search and embeddings
 - **Column Mapping**: Initialize `DapperColumnMapper.Initialize()` in `Program.cs`
 
 ### Migrations
@@ -248,15 +279,21 @@ var sql = "SELECT * FROM product WHERE name = @Name";
 
 **IMPORTANT**: API routes do NOT use an `/api/` prefix. Use the module route directly:
 
-| Module | Route |
-|--------|-------|
-| Configuration | `/configuration/...` |
-| Research | `/research/...` |
-| Chat | `/chat/...` |
+| Module | Route | Examples |
+|--------|-------|----------|
+| Chat | `/chat/...` | `/chat/sessions`, `/chat/messages` |
+| Research | `/research/...` | `/research/sessions`, `/research/hub` (SignalR) |
+| Configuration | `/configuration/...` | `/configuration/agents`, `/configuration/engines` |
+| Inference | `/inference/...` | `/inference/chat`, `/inference/models` |
+| Mcp | `/mcp/...` | `/mcp/servers`, `/mcp/tools` |
+| Storage | `/storage/...` | `/storage/upload`, `/storage/files` |
+| Logging | `/logging/...` | `/logging/kernel-logs`, `/logging/filters` |
 
 ```bash
 # CORRECT
 curl https://aesir.localhost/configuration/agents
+curl https://aesir.localhost/research/sessions
+curl https://aesir.localhost/chat/sessions
 
 # WRONG - will return 404
 curl https://aesir.localhost/api/configuration/agents
@@ -386,7 +423,7 @@ public async Task<User> CreateUserAsync(CreateUserRequest request)
 ```csharp
 try
 {
-    await ApiClient.PostAsync<Response>("/api/users", request);
+    await ApiClient.PostAsync<Response>("/users", request);
     Snackbar.Add("User created successfully", Severity.Success);
 }
 catch (Exception ex)
@@ -468,7 +505,11 @@ public class UserService : IUserService
 ### Docker Compose
 
 - **Development**: `docker-compose-api-dev.yml`
-- **Services**: PostgreSQL, Traefik (https://aesir.localhost), Qdrant
+- **Services**:
+  - **aesir-api**: API server
+  - **pgdb**: PostgreSQL 16 with pgvector extension
+  - **reverse-proxy**: Traefik for HTTPS routing
+  - **qdrant**: Qdrant vector database for semantic search
 - **Environment**: Configure via `.env` file (never commit!)
 
 ```bash
@@ -477,6 +518,42 @@ public class UserService : IUserService
 
 # Or manually
 docker compose -f docker-compose-api-dev.yml up -d
+```
+
+### Docker Resource Limits (Development)
+
+| Service | CPU Limit | Memory Limit | CPU Request | Memory Request |
+|---------|-----------|--------------|-------------|----------------|
+| API | 4 CPUs | 4 GB | 1 CPU | 2 GB |
+| PostgreSQL | 2 CPUs | 2 GB | 1 CPU | 1 GB |
+| Qdrant | 2 CPUs | 2 GB | 1 CPU | 1 GB |
+| Traefik | 1 CPU | 512 MB | 0.5 CPU | 256 MB |
+
+### Qdrant Vector Database
+
+**Purpose**: Semantic search, embeddings storage, and vector similarity search
+
+**Configuration**:
+- **API Key**: `aesir_3a087fa5640958985025b0a03d2f6b0c80253884c5bd7c05f65f2fdf2404d7ab`
+- **Port**: 6333 (HTTP API), 6334 (gRPC)
+- **URLs**:
+  - Direct: http://localhost:6333
+  - Traefik: https://qdrant.localhost
+- **Storage**: Persistent volume (`qdrant_storage`)
+- **Log Level**: INFO
+
+**Usage**:
+- Embedding storage for document search
+- Semantic similarity queries
+- Vector-based retrieval for RAG systems
+
+**REST API**:
+```bash
+# Health check
+curl http://localhost:6333/
+
+# List collections
+curl http://localhost:6333/collections
 ```
 
 ### Health Check
@@ -493,8 +570,8 @@ docker compose -f docker-compose-api-dev.yml up -d
 - **PostgreSQL**: StatefulSet with PersistentVolume (10Gi)
 - **API**: Deployment with 2 replicas
 
-**Resource Limits**:
-- API: 1 CPU / 1Gi memory (limit), 0.25 CPU / 256Mi (request)
+**Resource Limits (Production)**:
+- API: 2 CPU / 2Gi memory (limit), 0.5 CPU / 512Mi (request)
 - PostgreSQL: 2 CPU / 2Gi memory (limit), 0.5 CPU / 512Mi (request)
 
 ### Security
@@ -515,9 +592,12 @@ Client/Aesir.Client.Web/
 ├── Aesir.Client.Web.App/           # Main WASM application
 ├── Aesir.Client.Web.Infrastructure/ # Shared services, API client
 ├── Modules/                         # Feature modules
-│   ├── Aesir.Client.Web.Modules.Chat/
-│   ├── Aesir.Client.Web.Modules.Settings/
-│   └── ...
+│   ├── Aesir.Client.Web.Modules.Chat/         # Chat interface
+│   ├── Aesir.Client.Web.Modules.Research/     # Research mode UI
+│   ├── Aesir.Client.Web.Modules.Settings/     # Configuration UI
+│   ├── Aesir.Client.Web.Modules.HandsFree/    # Voice interaction
+│   ├── Aesir.Client.Web.Modules.Observability/# Logging dashboard
+│   └── Aesir.Client.Web.Modules.Wizard/       # Setup wizard
 └── src-tauri/                       # Tauri desktop config
 ```
 
@@ -533,7 +613,48 @@ Client/Aesir.Client.Web/
 - `Aesir.Common`
 - External packages (MudBlazor)
 
-**Cross-module communication**: Use event notifier pattern (see `IConfigurationChangedNotifier`)
+**Cross-module communication**: Use event notifier pattern (see `IConfigurationChangedNotifier`, `IChatSessionNotifier`)
+
+### Module Descriptions
+
+**Chat Module**:
+- Primary conversational interface
+- Multi-model chat support (OpenAI, Ollama)
+- Message history and session management
+- Tool call visualization
+- Citation and reference display
+- Agent selection and configuration
+
+**Research Module**:
+- Multi-agent research orchestration
+- Real-time progress updates via SignalR
+- Peer review workflow
+- Research report generation
+- Team collaboration visualization
+
+**Settings Module**:
+- Agent configuration (create, edit, delete)
+- Inference engine management (OpenAI, Ollama)
+- MCP server setup and configuration
+- Dynamic settings tab registration
+
+**HandsFree Module**:
+- Voice-activated chat
+- Speech-to-text integration
+- Audio playback controls
+- Hands-free mode toggle
+
+**Observability Module**:
+- Real-time kernel log viewing
+- Log filtering and search
+- Performance monitoring
+- Debug information dashboard
+
+**Wizard Module**:
+- First-time setup flow
+- Inference engine configuration wizard
+- Agent creation walkthrough
+- Welcome and onboarding screens
 
 ### Creating a New Module
 
@@ -554,8 +675,27 @@ Client/Aesir.Client.Web/
 
     protected override async Task OnInitializedAsync()
     {
-        _agents = await ApiClient.GetAsync<List<Agent>>("/api/configuration/agents");
+        _agents = await ApiClient.GetAsync<List<Agent>>("/configuration/agents");
     }
+}
+```
+
+### SignalR Real-Time Communication
+
+**Research Hub** (`/research/hub`):
+- Real-time research progress updates
+- Team member status broadcasts
+- Peer review notifications
+- Report generation updates
+
+**Usage**:
+```csharp
+@inject HubConnection HubConnection
+
+protected override async Task OnInitializedAsync()
+{
+    HubConnection.On<ResearchProgressDto>("ReceiveResearchProgress", HandleProgress);
+    await HubConnection.StartAsync();
 }
 ```
 
@@ -619,6 +759,8 @@ Connection strings use Docker service names (`pgdb`) which only resolve within D
 | Swagger | https://aesir.localhost/swagger |
 | Traefik Dashboard | http://localhost:8080 |
 | PostgreSQL | localhost:5432 |
+| Qdrant API | http://localhost:6333 |
+| Qdrant (Traefik) | https://qdrant.localhost |
 
 ### Database Access
 
@@ -673,3 +815,59 @@ PGPASSWORD="RaGn4r0k!!" docker exec aesir-pgdb-1 psql -U postgres -d postgres -c
 ### Branding
 
 - Application name: "Aesir" or "AESIR" (stylized)
+
+### JSON Serialization Quick Reference
+
+**Standard**: All client-server JSON uses `snake_case` property names.
+
+**Required Attributes**:
+```csharp
+// Properties - always use explicit snake_case
+[JsonPropertyName("user_id")]
+public Guid UserId { get; set; }
+
+[JsonPropertyName("created_at")]
+public DateTime CreatedAt { get; set; }
+
+// Enums - always add converter
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum MyStatus { Pending, Active }
+
+// Navigation properties - always ignore
+[JsonIgnore]
+public ParentEntity? Parent { get; set; }
+```
+
+**SignalR Hub Broadcasting** - use snake_case in anonymous objects:
+```csharp
+await hubContext.Clients.Group(groupName).SendAsync("EventName", new
+{
+    session_id = sessionId,
+    user_id = userId,
+    created_at = DateTime.UtcNow
+});
+```
+
+**Client SignalR DTOs** - use record syntax with attributes:
+```csharp
+private record MyDto(
+    [property: JsonPropertyName("session_id")] Guid SessionId,
+    [property: JsonPropertyName("user_id")] Guid UserId);
+```
+
+**Configuration** (Program.cs):
+```csharp
+// REST API
+.AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+
+// SignalR (must match REST)
+.AddJsonProtocol(options =>
+{
+    options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
+    options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+```
