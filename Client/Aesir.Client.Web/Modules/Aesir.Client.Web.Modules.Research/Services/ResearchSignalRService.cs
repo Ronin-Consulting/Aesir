@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json.Serialization;
 using Aesir.Common.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
@@ -8,6 +9,7 @@ namespace Aesir.Client.Web.Modules.Research.Services;
 
 /// <summary>
 /// SignalR-based service for receiving real-time research session updates.
+/// Simplified to handle 3 core events: ResearchProgress, ResearchCompleted, ResearchError.
 /// </summary>
 public class ResearchSignalRService : IResearchSignalRService
 {
@@ -21,25 +23,13 @@ public class ResearchSignalRService : IResearchSignalRService
     public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
 
     /// <inheritdoc />
-    public event Action<ResearchStatusUpdate>? OnStatusUpdate;
-
-    /// <inheritdoc />
-    public event Action<ResearchAgentEvent>? OnAgentStarted;
-
-    /// <inheritdoc />
-    public event Action<ResearchAgentCompletedEvent>? OnAgentCompleted;
-
-    /// <inheritdoc />
-    public event Action<ResearchPeerReviewEvent>? OnPeerReviewCompleted;
+    public event Action<ResearchProgressUpdate>? OnResearchProgress;
 
     /// <inheritdoc />
     public event Action<ResearchCompletedEvent>? OnResearchCompleted;
 
     /// <inheritdoc />
     public event Action<ResearchErrorEvent>? OnResearchError;
-
-    /// <inheritdoc />
-    public event Action<ResearchProgressEvent>? OnProgress;
 
     /// <summary>
     /// Creates a new ResearchSignalRService.
@@ -78,7 +68,7 @@ public class ResearchSignalRService : IResearchSignalRService
                 .WithAutomaticReconnect()
                 .Build();
 
-            // Register event handlers
+            // Register event handlers for the 3 core events
             RegisterEventHandlers();
 
             _logger?.LogDebug("[RESEARCH-SIGNALR] Starting hub connection...");
@@ -101,55 +91,26 @@ public class ResearchSignalRService : IResearchSignalRService
     private void RegisterEventHandlers()
     {
         if (_hubConnection == null) return;
-        _logger?.LogDebug("[RESEARCH-SIGNALR] Registering event handlers");
+        _logger?.LogDebug("[RESEARCH-SIGNALR] Registering 3 core event handlers");
 
-        _hubConnection.On<StatusUpdateDto>("StatusUpdate", dto =>
+        // Unified progress event with multi-agent tracking
+        _hubConnection.On<ResearchProgressDto>("ResearchProgress", dto =>
         {
-            _logger?.LogDebug("[RESEARCH-SIGNALR] StatusUpdate received: SessionId={SessionId}, Status={Status}, Phase={Phase}",
-                dto.SessionId, dto.Status, dto.Phase);
-            OnStatusUpdate?.Invoke(new ResearchStatusUpdate(
+            _logger?.LogDebug("[RESEARCH-SIGNALR] ResearchProgress received: SessionId={SessionId}, Phase={Phase}, Progress={Progress}%, ActiveAgents={AgentCount}",
+                dto.SessionId, dto.Phase, dto.ProgressPercent, dto.ActiveAgents?.Count ?? 0);
+
+            OnResearchProgress?.Invoke(new ResearchProgressUpdate(
                 dto.SessionId,
                 dto.Status,
                 dto.Phase,
-                dto.Message,
+                dto.Message ?? string.Empty,
+                dto.ProgressPercent,
+                dto.ActiveAgents ?? new List<ActiveAgentInfo>(),
+                dto.AgentRole,
                 dto.Timestamp));
         });
 
-        _hubConnection.On<AgentStartedDto>("AgentStarted", dto =>
-        {
-            _logger?.LogDebug("[RESEARCH-SIGNALR] AgentStarted received: SessionId={SessionId}, Role={Role}",
-                dto.SessionId, dto.Role);
-            OnAgentStarted?.Invoke(new ResearchAgentEvent(
-                dto.SessionId,
-                dto.Role,
-                dto.AgentId,
-                dto.Timestamp));
-        });
-
-        _hubConnection.On<AgentCompletedDto>("AgentCompleted", dto =>
-        {
-            _logger?.LogDebug("[RESEARCH-SIGNALR] AgentCompleted received: SessionId={SessionId}, Role={Role}",
-                dto.SessionId, dto.Role);
-            OnAgentCompleted?.Invoke(new ResearchAgentCompletedEvent(
-                dto.SessionId,
-                dto.Role,
-                dto.SubmissionId,
-                dto.TokensUsed,
-                dto.Timestamp));
-        });
-
-        _hubConnection.On<PeerReviewCompletedDto>("PeerReviewCompleted", dto =>
-        {
-            _logger?.LogDebug("[RESEARCH-SIGNALR] PeerReviewCompleted received: SessionId={SessionId}",
-                dto.SessionId);
-            OnPeerReviewCompleted?.Invoke(new ResearchPeerReviewEvent(
-                dto.SessionId,
-                dto.ReviewId,
-                dto.ReviewerRole,
-                dto.WeightedScore,
-                dto.Timestamp));
-        });
-
+        // Research completed event
         _hubConnection.On<ResearchCompletedDto>("ResearchCompleted", dto =>
         {
             _logger?.LogInformation("[RESEARCH-SIGNALR] ResearchCompleted received: SessionId={SessionId}, ReportId={ReportId}",
@@ -160,6 +121,7 @@ public class ResearchSignalRService : IResearchSignalRService
                 dto.Timestamp));
         });
 
+        // Research error event
         _hubConnection.On<ResearchErrorDto>("ResearchError", dto =>
         {
             _logger?.LogWarning("[RESEARCH-SIGNALR] ResearchError received: SessionId={SessionId}, Error={Error}",
@@ -170,21 +132,9 @@ public class ResearchSignalRService : IResearchSignalRService
                 dto.Timestamp));
         });
 
-        _hubConnection.On<ProgressDto>("Progress", dto =>
-        {
-            _logger?.LogDebug("[RESEARCH-SIGNALR] Progress received: SessionId={SessionId}, EventType={EventType}",
-                dto.SessionId, dto.EventType);
-            OnProgress?.Invoke(new ResearchProgressEvent(
-                dto.SessionId,
-                dto.EventType,
-                dto.Data,
-                dto.Timestamp));
-        });
-
         // Handle reconnection - resubscribe to all sessions
         _hubConnection.Reconnected += async _ =>
         {
-            // Take a thread-safe snapshot of session IDs to avoid collection modification during enumeration
             var sessionIds = _subscribedSessions.Keys.ToArray();
             _logger?.LogInformation("[RESEARCH-SIGNALR] Reconnected to hub, resubscribing to {Count} sessions",
                 sessionIds.Length);
@@ -279,47 +229,25 @@ public class ResearchSignalRService : IResearchSignalRService
         GC.SuppressFinalize(this);
     }
 
-    // DTOs for deserialization
-    private record StatusUpdateDto(
-        Guid SessionId,
-        ResearchStatusBase Status,
-        ResearchPhaseBase? Phase,
-        string? Message,
-        DateTime Timestamp);
+    // DTOs for deserialization - use snake_case to match server JSON
 
-    private record AgentStartedDto(
-        Guid SessionId,
-        ResearchRoleBase Role,
-        Guid AgentId,
-        DateTime Timestamp);
-
-    private record AgentCompletedDto(
-        Guid SessionId,
-        ResearchRoleBase Role,
-        Guid SubmissionId,
-        int? TokensUsed,
-        DateTime Timestamp);
-
-    private record PeerReviewCompletedDto(
-        Guid SessionId,
-        Guid ReviewId,
-        ResearchRoleBase ReviewerRole,
-        double WeightedScore,
-        DateTime Timestamp);
+    private record ResearchProgressDto(
+        [property: JsonPropertyName("session_id")] Guid SessionId,
+        [property: JsonPropertyName("status")] ResearchStatusBase Status,
+        [property: JsonPropertyName("phase")] ResearchPhaseBase Phase,
+        [property: JsonPropertyName("message")] string? Message,
+        [property: JsonPropertyName("progress_percent")] int ProgressPercent,
+        [property: JsonPropertyName("active_agents")] List<ActiveAgentInfo>? ActiveAgents,
+        [property: JsonPropertyName("agent_role")] ResearchRoleBase? AgentRole,
+        [property: JsonPropertyName("timestamp")] DateTime Timestamp);
 
     private record ResearchCompletedDto(
-        Guid SessionId,
-        Guid ReportId,
-        DateTime Timestamp);
+        [property: JsonPropertyName("session_id")] Guid SessionId,
+        [property: JsonPropertyName("report_id")] Guid ReportId,
+        [property: JsonPropertyName("timestamp")] DateTime Timestamp);
 
     private record ResearchErrorDto(
-        Guid SessionId,
-        string ErrorMessage,
-        DateTime Timestamp);
-
-    private record ProgressDto(
-        Guid SessionId,
-        string EventType,
-        object? Data,
-        DateTime Timestamp);
+        [property: JsonPropertyName("session_id")] Guid SessionId,
+        [property: JsonPropertyName("error_message")] string ErrorMessage,
+        [property: JsonPropertyName("timestamp")] DateTime Timestamp);
 }

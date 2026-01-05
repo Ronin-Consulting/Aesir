@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Aesir.Client.Web.Infrastructure.Http;
 using Aesir.Common.Models;
 
@@ -95,32 +96,38 @@ public class CreateResearchSessionRequestBase
     /// <summary>
     /// The research query to investigate.
     /// </summary>
+    [JsonPropertyName("query")]
     public string Query { get; set; } = string.Empty;
 
     /// <summary>
     /// The ID of the research team to use.
     /// </summary>
+    [JsonPropertyName("research_team_id")]
     public Guid TeamId { get; set; }
 
     /// <summary>
     /// The research mode.
     /// </summary>
+    [JsonPropertyName("mode")]
     public ResearchModeBase Mode { get; set; } = ResearchModeBase.Standard;
 
     /// <summary>
     /// Optional document collection IDs for RAG.
     /// </summary>
+    [JsonPropertyName("document_collection_ids")]
     public List<Guid>? DocumentCollectionIds { get; set; }
 
     /// <summary>
     /// The user ID creating the session.
     /// </summary>
+    [JsonPropertyName("user_id")]
     public string UserId { get; set; } = "default";
 
     /// <summary>
     /// The ChatSession ID to link this research session to.
     /// If provided, research will be linked to an existing ChatSession.
     /// </summary>
+    [JsonPropertyName("conversation_id")]
     public Guid? ConversationId { get; set; }
 }
 
@@ -132,11 +139,13 @@ public class ResearchSessionListBase
     /// <summary>
     /// The research sessions.
     /// </summary>
+    [JsonPropertyName("sessions")]
     public List<ResearchSessionBase> Sessions { get; set; } = new();
 
     /// <summary>
     /// Total count of sessions.
     /// </summary>
+    [JsonPropertyName("total_count")]
     public int TotalCount { get; set; }
 }
 
@@ -145,16 +154,37 @@ public class ResearchSessionListBase
 /// </summary>
 public class ResearchReportBase
 {
+    [JsonPropertyName("id")]
     public Guid Id { get; set; }
+
+    [JsonPropertyName("session_id")]
     public Guid SessionId { get; set; }
+
+    [JsonPropertyName("title")]
     public string Title { get; set; } = string.Empty;
+
+    [JsonPropertyName("executive_summary")]
     public string? ExecutiveSummary { get; set; }
+
+    [JsonPropertyName("methodology_section")]
     public string? MethodologySection { get; set; }
+
+    [JsonPropertyName("alternative_perspectives")]
     public string? AlternativePerspectives { get; set; }
+
+    [JsonPropertyName("research_gaps")]
     public string? ResearchGaps { get; set; }
+
+    [JsonPropertyName("full_markdown")]
     public string? FullMarkdown { get; set; }
+
+    [JsonPropertyName("findings")]
     public List<ResearchFindingBase>? Findings { get; set; }
+
+    [JsonPropertyName("bibliography")]
     public List<ResearchSourceBase>? Bibliography { get; set; }
+
+    [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; }
 }
 
@@ -163,9 +193,16 @@ public class ResearchReportBase
 /// </summary>
 public class ResearchFindingBase
 {
+    [JsonPropertyName("title")]
     public string Title { get; set; } = string.Empty;
+
+    [JsonPropertyName("content")]
     public string Content { get; set; } = string.Empty;
+
+    [JsonPropertyName("confidence")]
     public string Confidence { get; set; } = "Medium";
+
+    [JsonPropertyName("supporting_evidence")]
     public List<string>? SupportingEvidence { get; set; }
 }
 
@@ -174,10 +211,19 @@ public class ResearchFindingBase
 /// </summary>
 public class ResearchSourceBase
 {
+    [JsonPropertyName("title")]
     public string Title { get; set; } = string.Empty;
+
+    [JsonPropertyName("url")]
     public string? Url { get; set; }
+
+    [JsonPropertyName("author")]
     public string? Author { get; set; }
+
+    [JsonPropertyName("published_date")]
     public DateTime? PublishedDate { get; set; }
+
+    [JsonPropertyName("snippet")]
     public string? Snippet { get; set; }
 }
 
@@ -189,15 +235,18 @@ public class ExportFormatInfo
     /// <summary>
     /// The format name (e.g., "Pdf", "Word").
     /// </summary>
+    [JsonPropertyName("format")]
     public string Format { get; set; } = string.Empty;
 
     /// <summary>
     /// The MIME content type for this format.
     /// </summary>
+    [JsonPropertyName("content_type")]
     public string ContentType { get; set; } = string.Empty;
 
     /// <summary>
     /// The file extension for this format (e.g., ".pdf", ".docx").
     /// </summary>
+    [JsonPropertyName("extension")]
     public string Extension { get; set; } = string.Empty;
 }

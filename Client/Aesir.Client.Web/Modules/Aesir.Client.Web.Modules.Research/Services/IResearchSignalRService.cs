@@ -1,9 +1,11 @@
+using System.Text.Json.Serialization;
 using Aesir.Common.Models;
 
 namespace Aesir.Client.Web.Modules.Research.Services;
 
 /// <summary>
 /// SignalR service for receiving real-time research session updates.
+/// Simplified to 3 core events: Progress, Completed, Error.
 /// </summary>
 public interface IResearchSignalRService : IAsyncDisposable
 {
@@ -33,24 +35,9 @@ public interface IResearchSignalRService : IAsyncDisposable
     Task UnsubscribeFromSessionAsync(Guid sessionId);
 
     /// <summary>
-    /// Event raised when a status update is received.
+    /// Event raised for unified progress updates with multi-agent tracking.
     /// </summary>
-    event Action<ResearchStatusUpdate>? OnStatusUpdate;
-
-    /// <summary>
-    /// Event raised when an agent starts research.
-    /// </summary>
-    event Action<ResearchAgentEvent>? OnAgentStarted;
-
-    /// <summary>
-    /// Event raised when an agent completes research.
-    /// </summary>
-    event Action<ResearchAgentCompletedEvent>? OnAgentCompleted;
-
-    /// <summary>
-    /// Event raised when a peer review is completed.
-    /// </summary>
-    event Action<ResearchPeerReviewEvent>? OnPeerReviewCompleted;
+    event Action<ResearchProgressUpdate>? OnResearchProgress;
 
     /// <summary>
     /// Event raised when research is completed.
@@ -61,51 +48,57 @@ public interface IResearchSignalRService : IAsyncDisposable
     /// Event raised when a research error occurs.
     /// </summary>
     event Action<ResearchErrorEvent>? OnResearchError;
-
-    /// <summary>
-    /// Event raised for general progress updates.
-    /// </summary>
-    event Action<ResearchProgressEvent>? OnProgress;
 }
 
 /// <summary>
-/// Status update event data.
+/// Unified progress update with multi-agent tracking.
 /// </summary>
-public record ResearchStatusUpdate(
+public record ResearchProgressUpdate(
     Guid SessionId,
     ResearchStatusBase Status,
-    ResearchPhaseBase? Phase,
-    string? Message,
+    ResearchPhaseBase Phase,
+    string Message,
+    int ProgressPercent,
+    List<ActiveAgentInfo> ActiveAgents,
+    ResearchRoleBase? AgentRole,
     DateTime Timestamp);
 
 /// <summary>
-/// Agent event data.
+/// Information about an active agent during research.
 /// </summary>
-public record ResearchAgentEvent(
-    Guid SessionId,
-    ResearchRoleBase Role,
-    Guid AgentId,
-    DateTime Timestamp);
+public class ActiveAgentInfo
+{
+    /// <summary>
+    /// The team member ID (unique per session).
+    /// </summary>
+    [JsonPropertyName("team_member_id")]
+    public Guid TeamMemberId { get; set; }
 
-/// <summary>
-/// Agent completed event data.
-/// </summary>
-public record ResearchAgentCompletedEvent(
-    Guid SessionId,
-    ResearchRoleBase Role,
-    Guid SubmissionId,
-    int? TokensUsed,
-    DateTime Timestamp);
+    /// <summary>
+    /// The agent's research role.
+    /// </summary>
+    [JsonPropertyName("role")]
+    public ResearchRoleBase Role { get; set; }
 
-/// <summary>
-/// Peer review event data.
-/// </summary>
-public record ResearchPeerReviewEvent(
-    Guid SessionId,
-    Guid ReviewId,
-    ResearchRoleBase ReviewerRole,
-    double WeightedScore,
-    DateTime Timestamp);
+    /// <summary>
+    /// Display name for the role.
+    /// </summary>
+    [JsonPropertyName("role_name")]
+    public string RoleName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// What the agent is currently doing.
+    /// </summary>
+    [JsonPropertyName("activity")]
+    public string Activity { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Agent-specific progress within the current activity (0-100).
+    /// Null if progress not applicable (e.g., waiting for LLM response).
+    /// </summary>
+    [JsonPropertyName("agent_progress_percent")]
+    public int? AgentProgressPercent { get; set; }
+}
 
 /// <summary>
 /// Research completed event data.
@@ -121,13 +114,4 @@ public record ResearchCompletedEvent(
 public record ResearchErrorEvent(
     Guid SessionId,
     string ErrorMessage,
-    DateTime Timestamp);
-
-/// <summary>
-/// General progress event data.
-/// </summary>
-public record ResearchProgressEvent(
-    Guid SessionId,
-    string EventType,
-    object? Data,
     DateTime Timestamp);
