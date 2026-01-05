@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Aesir.Infrastructure.Data;
+using Aesir.Infrastructure.Exceptions;
 using Aesir.Infrastructure.Models;
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
@@ -65,7 +66,7 @@ public class ConfigurationService(
             return agent.AllowThinking ?? false;
 
         // Check the master switch
-        return engine.Configuration?.TryGetValue("EnableChatModelThinking", out var value) == true
+        return engine.Configuration?.TryGetValue("enable_chat_model_thinking", out var value) == true
             && bool.TryParse(value, out var enabled) && enabled;
     }
 
@@ -102,7 +103,7 @@ public class ConfigurationService(
 
             if (inferenceEngine.Type == InferenceEngineType.OpenAICompatible)
             {
-                if (config == null || !config.TryGetValue("ApiKey", out var apiKey) || string.IsNullOrEmpty(apiKey))
+                if (config == null || !config.TryGetValue("api_key", out var apiKey) || string.IsNullOrEmpty(apiKey))
                 {
                     configurationReadinessService.ReportMissingConfiguration(
                         $"API Key missing for Inference Engine {inferenceEngine.Name}");
@@ -111,7 +112,7 @@ public class ConfigurationService(
                 }
             }
 
-            if (config == null || !config.TryGetValue("Endpoint", out var endpoint) || string.IsNullOrEmpty(endpoint))
+            if (config == null || !config.TryGetValue("endpoint", out var endpoint) || string.IsNullOrEmpty(endpoint))
             {
                 configurationReadinessService.ReportMissingConfiguration(
                     $"Endpoint missing for Inference Engine {inferenceEngine.Name}");
@@ -455,13 +456,61 @@ public class ConfigurationService(
     {
         VerifyIsDatabaseMode();
 
-        const string sql = @"
+        // Step 1: Get engine name for friendly error messages
+        var engine = await GetInferenceEngineAsync(id);
+        if (engine == null)
+        {
+            throw new EntityNotFoundException("InferenceEngine", id);
+        }
+
+        // Step 2: Check for agent references
+        const string checkAgentsSql = @"
+            SELECT COUNT(*)
+            FROM aesir.aesir_agent
+            WHERE chat_inference_engine_id = @Id
+        ";
+
+        var agentCount = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QueryFirstAsync<int>(checkAgentsSql, new { Id = id }));
+
+        if (agentCount > 0)
+        {
+            throw new ForeignKeyViolationException(
+                constraintName: "FK_aesir_agent_chat_inference_engine_id_aesir_inference_engine_id",
+                entityName: engine.Name,
+                message: $"Cannot delete inference engine '{engine.Name}' because it is used by {agentCount} agent(s).",
+                suggestedAction: "Reassign the agents to a different inference engine before deleting.");
+        }
+
+        // Step 3: Check for general settings references
+        var generalSettings = await GetGeneralSettingsAsync();
+
+        if (generalSettings.RagEmbeddingInferenceEngineId == id)
+        {
+            throw new ForeignKeyViolationException(
+                constraintName: "FK_AppSettings_RagEmbedding",
+                entityName: engine.Name,
+                message: $"Cannot delete inference engine '{engine.Name}' because it is configured as the RAG embedding engine.",
+                suggestedAction: "Choose a different RAG embedding engine in General Settings before deleting.");
+        }
+
+        if (generalSettings.RagVisionInferenceEngineId == id)
+        {
+            throw new ForeignKeyViolationException(
+                constraintName: "FK_AppSettings_RagVision",
+                entityName: engine.Name,
+                message: $"Cannot delete inference engine '{engine.Name}' because it is configured as the RAG vision engine.",
+                suggestedAction: "Choose a different RAG vision engine in General Settings before deleting.");
+        }
+
+        // Step 4: Safe to delete
+        const string deleteSql = @"
             DELETE FROM aesir.aesir_inference_engine
             WHERE id = @Id::uuid
         ";
 
         await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, new { Id = id }));
+            await connection.ExecuteAsync(deleteSql, new { Id = id }));
     }
 
     /// <summary>
@@ -608,12 +657,60 @@ public class ConfigurationService(
     /// </summary>
     /// <param name="id">The unique identifier of the AesirAgent to be deleted.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    /// <exception cref="Exception">Thrown when no rows are deleted or multiple rows are affected by the operation.</exception>
+    /// <exception cref="EntityNotFoundException">Thrown when the agent with the specified ID is not found.</exception>
+    /// <exception cref="ForeignKeyViolationException">Thrown when the agent is referenced by research teams, submissions, or peer reviews.</exception>
     public async Task DeleteAgentAsync(Guid id)
     {
         VerifyIsDatabaseMode();
 
-        const string sql = @"
+        // Step 1: Get agent name for friendly error messages
+        var agent = await GetAgentAsync(id);
+        if (agent == null)
+        {
+            throw new EntityNotFoundException("Agent", id);
+        }
+
+        // Step 2: Check for Research module references
+        const string checkSql = @"
+            SELECT
+                (SELECT COUNT(*) FROM aesir.aesir_research_team_member WHERE agent_id = @Id) as TeamMemberCount,
+                (SELECT COUNT(*) FROM aesir.aesir_research_submission WHERE agent_id = @Id) as SubmissionCount,
+                (SELECT COUNT(*) FROM aesir.aesir_research_peer_review WHERE reviewer_agent_id = @Id) as ReviewCount
+        ";
+
+        var references = await dbContext.UnitOfWorkAsync(async connection =>
+            await connection.QueryFirstAsync<AgentReferenceCount>(checkSql, new { Id = id }));
+
+        // Step 3: Throw friendly exceptions if references exist
+        if (references.TeamMemberCount > 0)
+        {
+            throw new ForeignKeyViolationException(
+                constraintName: "FK_aesir_research_team_member_agent_id_aesir_agent_id",
+                entityName: agent.Name,
+                message: $"Cannot delete agent '{agent.Name}' because it is assigned to {references.TeamMemberCount} research team(s).",
+                suggestedAction: "Remove the agent from all research teams before deleting.");
+        }
+
+        if (references.SubmissionCount > 0)
+        {
+            throw new ForeignKeyViolationException(
+                constraintName: "FK_aesir_research_submission_agent_id_aesir_agent_id",
+                entityName: agent.Name,
+                message: $"Cannot delete agent '{agent.Name}' because it has submitted {references.SubmissionCount} research contribution(s).",
+                suggestedAction: "Research submissions contain historical data that must be preserved. Consider deactivating the agent instead.");
+        }
+
+        if (references.ReviewCount > 0)
+        {
+            throw new ForeignKeyViolationException(
+                constraintName: "FK_aesir_research_peer_review_reviewer_agent_id_aesir_agent_id",
+                entityName: agent.Name,
+                message: $"Cannot delete agent '{agent.Name}' because it has reviewed {references.ReviewCount} research submission(s).",
+                suggestedAction: "Research peer reviews contain historical data that must be preserved. Consider deactivating the agent instead.");
+        }
+
+        // Step 4: Proceed with deletion (cascade for agent_tool is safe)
+        const string deleteSql = @"
             DELETE FROM aesir.aesir_agent_tool
             WHERE agent_id = @Id::uuid;
 
@@ -622,7 +719,7 @@ public class ConfigurationService(
         ";
 
         await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, new { Id = id }));
+            await connection.ExecuteAsync(deleteSql, new { Id = id }));
     }
 
     /// <summary>

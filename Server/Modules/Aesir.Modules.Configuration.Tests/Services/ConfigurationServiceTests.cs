@@ -1,5 +1,7 @@
+using System.Data;
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Data;
+using Aesir.Infrastructure.Exceptions;
 using Aesir.Infrastructure.Models;
 using Aesir.Modules.Configuration.Services;
 using Microsoft.Extensions.Configuration;
@@ -115,14 +117,342 @@ public class ConfigurationServiceTests
 
     #endregion
 
+    #region DeleteAgentAsync Foreign Key Violation Tests
+
+    [Fact]
+    public async Task DeleteAgentAsync_WhenAgentNotFound_ThrowsEntityNotFoundException()
+    {
+        // Arrange
+        var service = CreateService(new Dictionary<string, string?>
+        {
+            ["Configuration:LoadFromDatabase"] = "true"
+        });
+
+        var agentId = Guid.NewGuid();
+
+        // Mock GetAgentAsync to return null
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirAgent?>>>()))
+            .ReturnsAsync((AesirAgent?)null);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException>(
+            () => service.DeleteAgentAsync(agentId));
+
+        exception.EntityType.Should().Be("Agent");
+        exception.EntityId.Should().Be(agentId);
+        exception.Message.Should().Contain(agentId.ToString());
+    }
+
+    [Fact]
+    public async Task DeleteAgentAsync_WhenReferencedByResearchTeamMember_ThrowsForeignKeyViolationException()
+    {
+        // Arrange
+        var service = CreateService(new Dictionary<string, string?>
+        {
+            ["Configuration:LoadFromDatabase"] = "true"
+        });
+
+        var agentId = Guid.NewGuid();
+        var agentName = "Research Assistant";
+
+        // Setup sequence: First call returns agent, second call returns reference count
+        var callCount = 0;
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<object>>>()))
+            .ReturnsAsync((Func<IDbConnection, Task<object>> _) =>
+            {
+                callCount++;
+                if (callCount == 1)
+                {
+                    // First call: GetAgentAsync
+                    return CreateAgent(Guid.NewGuid(), allowThinking: true, name: agentName);
+                }
+                else
+                {
+                    // Second call: Reference count check
+                    return new AgentReferenceCount
+                    {
+                        TeamMemberCount = 3,
+                        SubmissionCount = 0,
+                        ReviewCount = 0
+                    };
+                }
+            });
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ForeignKeyViolationException>(
+            () => service.DeleteAgentAsync(agentId));
+
+        exception.ConstraintName.Should().Be("FK_aesir_research_team_member_agent_id_aesir_agent_id");
+        exception.EntityName.Should().Be(agentName);
+        exception.Message.Should().Contain(agentName);
+        exception.Message.Should().Contain("3 research team(s)");
+        exception.SuggestedAction.Should().Contain("Remove the agent from all research teams");
+    }
+
+    [Fact]
+    public async Task DeleteAgentAsync_WhenReferencedByResearchSubmission_ThrowsForeignKeyViolationException()
+    {
+        // Arrange
+        var service = CreateService(new Dictionary<string, string?>
+        {
+            ["Configuration:LoadFromDatabase"] = "true"
+        });
+
+        var agentId = Guid.NewGuid();
+        var agentName = "Data Analyst";
+
+        var callCount = 0;
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<object>>>()))
+            .ReturnsAsync((Func<IDbConnection, Task<object>> _) =>
+            {
+                callCount++;
+                if (callCount == 1)
+                {
+                    return CreateAgent(Guid.NewGuid(), allowThinking: true, name: agentName);
+                }
+                else
+                {
+                    return new AgentReferenceCount
+                    {
+                        TeamMemberCount = 0,
+                        SubmissionCount = 5,
+                        ReviewCount = 0
+                    };
+                }
+            });
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ForeignKeyViolationException>(
+            () => service.DeleteAgentAsync(agentId));
+
+        exception.ConstraintName.Should().Be("FK_aesir_research_submission_agent_id_aesir_agent_id");
+        exception.EntityName.Should().Be(agentName);
+        exception.Message.Should().Contain(agentName);
+        exception.Message.Should().Contain("5 research contribution(s)");
+        exception.SuggestedAction.Should().Contain("historical data");
+        exception.SuggestedAction.Should().Contain("deactivating");
+    }
+
+    [Fact]
+    public async Task DeleteAgentAsync_WhenReferencedByPeerReview_ThrowsForeignKeyViolationException()
+    {
+        // Arrange
+        var service = CreateService(new Dictionary<string, string?>
+        {
+            ["Configuration:LoadFromDatabase"] = "true"
+        });
+
+        var agentId = Guid.NewGuid();
+        var agentName = "Reviewer Bot";
+
+        var callCount = 0;
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<object>>>()))
+            .ReturnsAsync((Func<IDbConnection, Task<object>> _) =>
+            {
+                callCount++;
+                if (callCount == 1)
+                {
+                    return CreateAgent(Guid.NewGuid(), allowThinking: true, name: agentName);
+                }
+                else
+                {
+                    return new AgentReferenceCount
+                    {
+                        TeamMemberCount = 0,
+                        SubmissionCount = 0,
+                        ReviewCount = 10
+                    };
+                }
+            });
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ForeignKeyViolationException>(
+            () => service.DeleteAgentAsync(agentId));
+
+        exception.ConstraintName.Should().Be("FK_aesir_research_peer_review_reviewer_agent_id_aesir_agent_id");
+        exception.EntityName.Should().Be(agentName);
+        exception.Message.Should().Contain(agentName);
+        exception.Message.Should().Contain("10 research submission(s)");
+        exception.SuggestedAction.Should().Contain("historical data");
+        exception.SuggestedAction.Should().Contain("deactivating");
+    }
+
+    #endregion
+
+    #region DeleteInferenceEngineAsync Foreign Key Violation Tests
+
+    [Fact]
+    public async Task DeleteInferenceEngineAsync_WhenEngineNotFound_ThrowsEntityNotFoundException()
+    {
+        // Arrange
+        var service = CreateService(new Dictionary<string, string?>
+        {
+            ["Configuration:LoadFromDatabase"] = "true"
+        });
+
+        var engineId = Guid.NewGuid();
+
+        // Mock GetInferenceEngineAsync to return null
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirInferenceEngine?>>>()))
+            .ReturnsAsync((AesirInferenceEngine?)null);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<EntityNotFoundException>(
+            () => service.DeleteInferenceEngineAsync(engineId));
+
+        exception.EntityType.Should().Be("InferenceEngine");
+        exception.EntityId.Should().Be(engineId);
+        exception.Message.Should().Contain(engineId.ToString());
+    }
+
+    [Fact]
+    public async Task DeleteInferenceEngineAsync_WhenReferencedByAgents_ThrowsForeignKeyViolationException()
+    {
+        // Arrange
+        var service = CreateService(new Dictionary<string, string?>
+        {
+            ["Configuration:LoadFromDatabase"] = "true"
+        });
+
+        var engineId = Guid.NewGuid();
+        var engineName = "GPT-4 Engine";
+
+        var callCount = 0;
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<object>>>()))
+            .ReturnsAsync((Func<IDbConnection, Task<object>> _) =>
+            {
+                callCount++;
+                if (callCount == 1)
+                {
+                    // First call: GetInferenceEngineAsync
+                    return CreateInferenceEngine(engineId, InferenceEngineType.OpenAICompatible, name: engineName);
+                }
+                else
+                {
+                    // Second call: Agent count check
+                    return 7; // 7 agents using this engine
+                }
+            });
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ForeignKeyViolationException>(
+            () => service.DeleteInferenceEngineAsync(engineId));
+
+        exception.ConstraintName.Should().Be("FK_aesir_agent_chat_inference_engine_id_aesir_inference_engine_id");
+        exception.EntityName.Should().Be(engineName);
+        exception.Message.Should().Contain(engineName);
+        exception.Message.Should().Contain("7 agent(s)");
+        exception.SuggestedAction.Should().Contain("Reassign the agents");
+    }
+
+    [Fact]
+    public async Task DeleteInferenceEngineAsync_WhenConfiguredAsRagEmbedding_ThrowsForeignKeyViolationException()
+    {
+        // Arrange
+        var service = CreateService(new Dictionary<string, string?>
+        {
+            ["Configuration:LoadFromDatabase"] = "true"
+        });
+
+        var engineId = Guid.NewGuid();
+        var engineName = "Embedding Engine";
+
+        var callCount = 0;
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<object>>>()))
+            .ReturnsAsync((Func<IDbConnection, Task<object>> _) =>
+            {
+                callCount++;
+                if (callCount == 1)
+                {
+                    // First call: GetInferenceEngineAsync
+                    return CreateInferenceEngine(engineId, InferenceEngineType.OpenAICompatible, name: engineName);
+                }
+                else if (callCount == 2)
+                {
+                    // Second call: Agent count check (0 agents)
+                    return 0;
+                }
+                else
+                {
+                    // Third call: GetGeneralSettingsAsync
+                    return new AesirGeneralSettings
+                    {
+                        RagEmbeddingInferenceEngineId = engineId, // This engine is configured as RAG embedding
+                        RagVisionInferenceEngineId = null
+                    };
+                }
+            });
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ForeignKeyViolationException>(
+            () => service.DeleteInferenceEngineAsync(engineId));
+
+        exception.ConstraintName.Should().Be("FK_AppSettings_RagEmbedding");
+        exception.EntityName.Should().Be(engineName);
+        exception.Message.Should().Contain(engineName);
+        exception.Message.Should().Contain("RAG embedding engine");
+        exception.SuggestedAction.Should().Contain("General Settings");
+    }
+
+    [Fact]
+    public async Task DeleteInferenceEngineAsync_WhenConfiguredAsRagVision_ThrowsForeignKeyViolationException()
+    {
+        // Arrange
+        var service = CreateService(new Dictionary<string, string?>
+        {
+            ["Configuration:LoadFromDatabase"] = "true"
+        });
+
+        var engineId = Guid.NewGuid();
+        var engineName = "Vision Engine";
+
+        var callCount = 0;
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<object>>>()))
+            .ReturnsAsync((Func<IDbConnection, Task<object>> _) =>
+            {
+                callCount++;
+                if (callCount == 1)
+                {
+                    // First call: GetInferenceEngineAsync
+                    return CreateInferenceEngine(engineId, InferenceEngineType.OpenAICompatible, name: engineName);
+                }
+                else if (callCount == 2)
+                {
+                    // Second call: Agent count check (0 agents)
+                    return 0;
+                }
+                else
+                {
+                    // Third call: GetGeneralSettingsAsync
+                    return new AesirGeneralSettings
+                    {
+                        RagEmbeddingInferenceEngineId = null,
+                        RagVisionInferenceEngineId = engineId // This engine is configured as RAG vision
+                    };
+                }
+            });
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ForeignKeyViolationException>(
+            () => service.DeleteInferenceEngineAsync(engineId));
+
+        exception.ConstraintName.Should().Be("FK_AppSettings_RagVision");
+        exception.EntityName.Should().Be(engineName);
+        exception.Message.Should().Contain(engineName);
+        exception.Message.Should().Contain("RAG vision engine");
+        exception.SuggestedAction.Should().Contain("General Settings");
+    }
+
+    #endregion
+
     #region Helper Methods
 
-    private static AesirAgent CreateAgent(Guid inferenceEngineId, bool? allowThinking = true)
+    private static AesirAgent CreateAgent(Guid inferenceEngineId, bool? allowThinking = true, string name = "Test Agent")
     {
         return new AesirAgent
         {
             Id = Guid.NewGuid(),
-            Name = "Test Agent",
+            Name = name,
             ChatInferenceEngineId = inferenceEngineId,
             ChatModel = "test-model",
             AllowThinking = allowThinking
@@ -132,19 +462,20 @@ public class ConfigurationServiceTests
     private static AesirInferenceEngine CreateInferenceEngine(
         Guid id,
         InferenceEngineType type,
-        bool? enableThinking = null)
+        bool? enableThinking = null,
+        string name = "Test Engine")
     {
         var config = new Dictionary<string, string?>();
 
         if (enableThinking.HasValue)
         {
-            config["EnableChatModelThinking"] = enableThinking.Value.ToString().ToLower();
+            config["enable_chat_model_thinking"] = enableThinking.Value.ToString().ToLower();
         }
 
         return new AesirInferenceEngine
         {
             Id = id,
-            Name = "Test Engine",
+            Name = name,
             Type = type,
             Configuration = config
         };

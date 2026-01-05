@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Aesir.Common.Models;
+using Aesir.Infrastructure.Exceptions;
 using Aesir.Infrastructure.Models;
 using Aesir.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -212,10 +213,29 @@ public class ConfigurationController(
 
             return NoContent();
         }
+        catch (ForeignKeyViolationException ex)
+        {
+            logger.LogWarning(ex, "Cannot delete inference engine {Id} due to foreign key constraint: {Constraint}",
+                id, ex.ConstraintName);
+
+            return Conflict(new
+            {
+                error = "ConstraintViolation",
+                message = ex.Message,
+                suggested_action = ex.SuggestedAction,
+                constraint_name = ex.ConstraintName,
+                entity_name = ex.EntityName
+            });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            logger.LogWarning("Inference engine not found: {Id}", id);
+            return NotFound(new { error = "NotFound", message = ex.Message });
+        }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error deleting inference engine with ID = {Id}", id);
-            return StatusCode(500, "An error occurred while deleting the inference engine");
+            logger.LogError(ex, "Unexpected error deleting inference engine with ID = {Id}", id);
+            return StatusCode(500, "An unexpected error occurred while deleting the inference engine");
         }
     }
 
@@ -359,10 +379,29 @@ public class ConfigurationController(
 
             return NoContent();
         }
+        catch (ForeignKeyViolationException ex)
+        {
+            logger.LogWarning(ex, "Cannot delete agent {Id} due to foreign key constraint: {Constraint}",
+                id, ex.ConstraintName);
+
+            return Conflict(new
+            {
+                error = "ConstraintViolation",
+                message = ex.Message,
+                suggested_action = ex.SuggestedAction,
+                constraint_name = ex.ConstraintName,
+                entity_name = ex.EntityName
+            });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            logger.LogWarning("Agent not found: {Id}", id);
+            return NotFound(new { error = "NotFound", message = ex.Message });
+        }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error deleting agent with ID = {Id}", id);
-            return StatusCode(500, "An error occurred while deleting the agent");
+            logger.LogError(ex, "Unexpected error deleting agent with ID = {Id}", id);
+            return StatusCode(500, "An unexpected error occurred while deleting the agent");
         }
     }
 
