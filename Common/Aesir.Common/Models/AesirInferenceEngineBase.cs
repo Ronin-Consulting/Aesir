@@ -43,6 +43,7 @@ public class AesirInferenceEngineBase
     }
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum InferenceEngineType
 {
     [Description("Ollama")]

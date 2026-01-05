@@ -60,6 +60,7 @@ public class AesirMcpServerBase
     public IDictionary<string, string?> HttpHeaders { get; set; } = new Dictionary<string, string?>();
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ServerLocation
 {
     [Description("Local")]

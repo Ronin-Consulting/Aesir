@@ -16,13 +16,13 @@ public class ResearchSessionBase
     /// <summary>
     /// The research team ID.
     /// </summary>
-    [JsonPropertyName("researchTeamId")]
+    [JsonPropertyName("research_team_id")]
     public Guid? ResearchTeamId { get; set; }
 
     /// <summary>
     /// The user who created the session.
     /// </summary>
-    [JsonPropertyName("userId")]
+    [JsonPropertyName("user_id")]
     public string UserId { get; set; } = string.Empty;
 
     /// <summary>
@@ -34,7 +34,7 @@ public class ResearchSessionBase
     /// <summary>
     /// The refined query after clarification.
     /// </summary>
-    [JsonPropertyName("refinedQuery")]
+    [JsonPropertyName("refined_query")]
     public string? RefinedQuery { get; set; }
 
     /// <summary>
@@ -52,37 +52,37 @@ public class ResearchSessionBase
     /// <summary>
     /// The current phase.
     /// </summary>
-    [JsonPropertyName("currentPhase")]
+    [JsonPropertyName("current_phase")]
     public ResearchPhaseBase? CurrentPhase { get; set; }
 
     /// <summary>
     /// Clarification questions (if awaiting clarification).
     /// </summary>
-    [JsonPropertyName("clarificationQuestions")]
+    [JsonPropertyName("clarification_questions")]
     public List<string>? ClarificationQuestions { get; set; }
 
     /// <summary>
     /// Error message if failed.
     /// </summary>
-    [JsonPropertyName("errorMessage")]
+    [JsonPropertyName("error_message")]
     public string? ErrorMessage { get; set; }
 
     /// <summary>
     /// When the session was created.
     /// </summary>
-    [JsonPropertyName("createdAt")]
+    [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
     /// When the session started processing.
     /// </summary>
-    [JsonPropertyName("startedAt")]
+    [JsonPropertyName("started_at")]
     public DateTime? StartedAt { get; set; }
 
     /// <summary>
     /// When the session completed.
     /// </summary>
-    [JsonPropertyName("completedAt")]
+    [JsonPropertyName("completed_at")]
     public DateTime? CompletedAt { get; set; }
 
     /// <summary>
@@ -112,25 +112,25 @@ public class ResearchReportSummaryBase
     /// <summary>
     /// The executive summary.
     /// </summary>
-    [JsonPropertyName("executiveSummary")]
+    [JsonPropertyName("executive_summary")]
     public string? ExecutiveSummary { get; set; }
 
     /// <summary>
     /// Number of findings in the report.
     /// </summary>
-    [JsonPropertyName("findingCount")]
+    [JsonPropertyName("finding_count")]
     public int FindingCount { get; set; }
 
     /// <summary>
     /// Number of sources cited.
     /// </summary>
-    [JsonPropertyName("sourceCount")]
+    [JsonPropertyName("source_count")]
     public int SourceCount { get; set; }
 
     /// <summary>
     /// When the report was created.
     /// </summary>
-    [JsonPropertyName("createdAt")]
+    [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; }
 }
 
@@ -142,7 +142,7 @@ public class ResearchProgressBase
     /// <summary>
     /// The session ID.
     /// </summary>
-    [JsonPropertyName("sessionId")]
+    [JsonPropertyName("session_id")]
     public Guid SessionId { get; set; }
 
     /// <summary>
@@ -166,13 +166,13 @@ public class ResearchProgressBase
     /// <summary>
     /// Progress percentage (0-100).
     /// </summary>
-    [JsonPropertyName("progressPercent")]
+    [JsonPropertyName("progress_percent")]
     public int ProgressPercent { get; set; }
 
     /// <summary>
     /// The agent role performing the work (if applicable).
     /// </summary>
-    [JsonPropertyName("agentRole")]
+    [JsonPropertyName("agent_role")]
     public ResearchRoleBase? AgentRole { get; set; }
 
     /// <summary>
