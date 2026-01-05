@@ -45,6 +45,7 @@
             <TeamMessageProgress Session="Session"
                                  ProgressMessage="@ResearchState.CurrentProgressMessage"
                                  ProgressPercent="@ResearchState.CurrentProgressPercent"
+                                 ActiveAgents="@ResearchState.ActiveAgents"
                                  AgentActivity="@ResearchState.CurrentAgentActivity"
                                  IsAgentActive="@ResearchState.IsAgentActive" />
         }
@@ -398,6 +399,19 @@
     .team-message .markdown-body h1 { font-size: 1.5em; }
     .team-message .markdown-body h2 { font-size: 1.3em; }
     .team-message .markdown-body h3 { font-size: 1.1em; }
+
+    /* Responsive padding adjustments */
+    @@media (max-width: 1200px) {
+        .team-message {
+            padding: 0 32px;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .team-message {
+            padding: 0 16px;
+        }
+    }
 </style>
 
 @code {
@@ -427,9 +441,11 @@
 
     protected override void OnInitialized()
     {
-        // Subscribe to research state events for real-time updates
+        // Subscribe to session changed event for real-time updates
+        // Note: We only subscribe to OnSessionChanged (not OnProgressUpdate) because
+        // ResearchStateService fires both events on progress updates, which would cause
+        // double renders. OnSessionChanged covers all state changes including progress.
         ResearchState.OnSessionChanged += HandleStateChanged;
-        ResearchState.OnProgressUpdate += HandleProgressUpdate;
     }
 
     private void HandleStateChanged()
@@ -438,23 +454,22 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private void HandleProgressUpdate(ResearchProgressBase progress)
-    {
-        // Re-render when progress updates are received
-        InvokeAsync(StateHasChanged);
-    }
-
     public void Dispose()
     {
         // Unsubscribe from events to prevent memory leaks
         ResearchState.OnSessionChanged -= HandleStateChanged;
-        ResearchState.OnProgressUpdate -= HandleProgressUpdate;
     }
 
     protected override void OnParametersSet()
     {
+        // Clear old answers if status is no longer AwaitingClarification
+        if (Session?.Status != ResearchStatusBase.AwaitingClarification)
+        {
+            _clarificationAnswers.Clear();
+        }
+
         // Initialize clarification answers dictionary when questions change
-        if (Session?.ClarificationQuestions != null)
+        if (Session?.ClarificationQuestions != null && Session.Status == ResearchStatusBase.AwaitingClarification)
         {
             foreach (var question in Session.ClarificationQuestions)
             {
@@ -516,7 +531,7 @@
         if (!HasAllAnswers) return;
 
         await ResearchState.SubmitClarificationAsync(_clarificationAnswers);
-        _clarificationAnswers.Clear();
+        // Don't clear answers here - let OnParametersSet clear them when status changes
     }
 
     private void ToggleDetails()

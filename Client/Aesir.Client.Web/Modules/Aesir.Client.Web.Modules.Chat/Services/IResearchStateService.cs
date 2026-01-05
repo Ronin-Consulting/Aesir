@@ -1,11 +1,12 @@
 using Aesir.Client.Web.Infrastructure.Services;
+using Aesir.Client.Web.Modules.Research.Services;
 using Aesir.Common.Models;
 
 namespace Aesir.Client.Web.Modules.Chat.Services;
 
 /// <summary>
 /// Service for managing research state during a chat session.
-/// Tracks active research sessions and provides progress updates.
+/// Tracks active research sessions and provides progress updates with multi-agent support.
 /// </summary>
 public interface IResearchStateService : IDisposable
 {
@@ -40,17 +41,33 @@ public interface IResearchStateService : IDisposable
     int CurrentProgressPercent { get; }
 
     /// <summary>
+    /// List of currently active agents with their activities.
+    /// Empty when no agents are actively working (e.g., phase transitions).
+    /// </summary>
+    IReadOnlyList<ActiveAgentInfo> ActiveAgents { get; }
+
+    /// <summary>
+    /// Whether any agents are currently actively working.
+    /// </summary>
+    bool HasActiveAgents { get; }
+
+    /// <summary>
     /// The current agent role performing work, if any.
+    /// For backward compatibility - returns first active agent's role.
+    /// Use ActiveAgents for multi-agent display.
     /// </summary>
     ResearchRoleBase? CurrentAgentRole { get; }
 
     /// <summary>
     /// The current agent activity message (e.g., "DeepDiver is researching...").
+    /// For backward compatibility - returns first active agent's activity.
+    /// Use ActiveAgents for multi-agent display.
     /// </summary>
     string? CurrentAgentActivity { get; }
 
     /// <summary>
     /// Whether an agent is currently actively working.
+    /// Equivalent to HasActiveAgents.
     /// </summary>
     bool IsAgentActive { get; }
 

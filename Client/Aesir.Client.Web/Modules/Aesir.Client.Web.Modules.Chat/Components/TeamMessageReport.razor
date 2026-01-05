@@ -298,7 +298,7 @@
 
     /* Document Layout - Professional Word Document Style */
     .report-document {
-        max-width: 900px;
+        max-width: 1000px;
         background: var(--mud-palette-surface);
         border: 1px solid rgba(0, 0, 0, 0.08);
         border-radius: 8px;
@@ -477,6 +477,11 @@
     }
 
     /* Executive Summary Tables - Professional Business Report Style */
+    .summary-content .table-wrapper {
+        overflow-x: auto;
+        margin: 12px 0;
+    }
+
     .summary-content table {
         width: 100%;
         margin: 24px 0;
@@ -1110,6 +1115,13 @@
     }
 
     /* Responsive */
+    @@media (max-width: 1200px) {
+        .report-document {
+            max-width: 900px;
+            padding: 28px;
+        }
+    }
+
     @@media (max-width: 768px) {
         .report-document {
             padding: 20px;

@@ -8,6 +8,7 @@ namespace Aesir.Client.Web.Modules.Chat.Services;
 
 /// <summary>
 /// Implementation of research state management for chat integration.
+/// Supports multi-agent tracking with the simplified SignalR event model.
 /// </summary>
 public class ResearchStateService : IResearchStateService
 {
@@ -21,11 +22,13 @@ public class ResearchStateService : IResearchStateService
     private readonly ILogger<ResearchStateService>? _logger;
 
     // Event handler delegates for proper unsubscription
-    private Action<ResearchStatusUpdate>? _statusUpdateHandler;
+    private Action<ResearchProgressUpdate>? _researchProgressHandler;
     private Action<ResearchCompletedEvent>? _researchCompletedHandler;
     private Action<ResearchErrorEvent>? _researchErrorHandler;
-    private Action<ResearchProgressEvent>? _progressHandler;
     private bool _disposed;
+
+    // Multi-agent tracking
+    private List<ActiveAgentInfo> _activeAgents = new();
 
     public ResearchStateService(
         IResearchSessionApiService sessionApi,
@@ -43,47 +46,59 @@ public class ResearchStateService : IResearchStateService
     }
 
     /// <summary>
-    /// Wires up SignalR event handlers to update state.
+    /// Wires up SignalR event handlers for the 3 core events.
     /// Uses named handlers that can be properly unsubscribed in Dispose.
     /// </summary>
     private void WireUpSignalREvents()
     {
-        _logger?.LogInformation("[RESEARCH-UI] Wiring up SignalR event handlers");
+        _logger?.LogInformation("[RESEARCH-UI] Wiring up SignalR event handlers (3 core events)");
 
-        _statusUpdateHandler = HandleStatusUpdateEvent;
+        _researchProgressHandler = HandleResearchProgressEvent;
         _researchCompletedHandler = HandleResearchCompletedEvent;
         _researchErrorHandler = HandleResearchErrorEvent;
-        _progressHandler = HandleProgressEvent;
 
-        _signalRService.OnStatusUpdate += _statusUpdateHandler;
+        _signalRService.OnResearchProgress += _researchProgressHandler;
         _signalRService.OnResearchCompleted += _researchCompletedHandler;
         _signalRService.OnResearchError += _researchErrorHandler;
-        _signalRService.OnProgress += _progressHandler;
     }
 
-    private void HandleStatusUpdateEvent(ResearchStatusUpdate update)
+    private void HandleResearchProgressEvent(ResearchProgressUpdate update)
     {
-        _logger?.LogDebug("[RESEARCH-UI] SignalR OnStatusUpdate received: SessionId={SessionId}, Status={Status}, Phase={Phase}",
-            update.SessionId, update.Status, update.Phase);
+        _logger?.LogDebug("[RESEARCH-UI] SignalR OnResearchProgress received: SessionId={SessionId}, Phase={Phase}, Progress={Progress}%, ActiveAgents={AgentCount}",
+            update.SessionId, update.Phase, update.ProgressPercent, update.ActiveAgents.Count);
 
         if (ActiveSession?.Id != update.SessionId)
         {
-            _logger?.LogDebug("[RESEARCH-UI] Ignoring update - SessionId mismatch. Active={Active}, Received={Received}",
+            _logger?.LogDebug("[RESEARCH-UI] Ignoring progress update - SessionId mismatch. Active={Active}, Received={Received}",
                 ActiveSession?.Id, update.SessionId);
             return;
         }
 
-        _logger?.LogInformation("[RESEARCH-UI] Processing status update: {Status} - {Phase} - {Message}",
-            update.Status, update.Phase, update.Message);
+        _logger?.LogInformation("[RESEARCH-UI] Processing progress update: {Phase} - {Message} ({Percent}%), {AgentCount} active agents",
+            update.Phase, update.Message, update.ProgressPercent, update.ActiveAgents.Count);
 
-        HandleProgressUpdate(new ResearchProgressBase
+        // Update multi-agent tracking
+        _activeAgents = update.ActiveAgents.ToList();
+
+        // Log active agents for debugging
+        foreach (var agent in _activeAgents)
+        {
+            _logger?.LogDebug("[RESEARCH-UI] Active agent: {RoleName} - {Activity}",
+                agent.RoleName, agent.Activity);
+        }
+
+        // Create a progress base for backward compatibility
+        var progress = new ResearchProgressBase
         {
             SessionId = update.SessionId,
             Status = update.Status,
-            Phase = update.Phase ?? ResearchPhaseBase.Planning,
-            Message = update.Message ?? GetStatusMessage(update.Status),
-            ProgressPercent = CurrentProgressPercent
-        });
+            Phase = update.Phase,
+            Message = update.Message,
+            ProgressPercent = update.ProgressPercent,
+            AgentRole = update.AgentRole
+        };
+
+        HandleProgressUpdate(progress);
     }
 
     private void HandleResearchCompletedEvent(ResearchCompletedEvent e)
@@ -97,6 +112,9 @@ public class ResearchStateService : IResearchStateService
         }
 
         _logger?.LogInformation("[RESEARCH-UI] Research completed: {SessionId}, calling RefreshSessionAsync...", e.SessionId);
+
+        // Clear active agents on completion
+        _activeAgents.Clear();
 
         // Refresh to get the full report - with error handling
         _ = RefreshSessionWithErrorHandlingAsync();
@@ -114,39 +132,11 @@ public class ResearchStateService : IResearchStateService
         }
 
         _logger?.LogWarning("[RESEARCH-UI] Research error: {SessionId} - {Error}", e.SessionId, e.ErrorMessage);
+
+        // Clear active agents on error
+        _activeAgents.Clear();
+
         OnResearchError?.Invoke(e.ErrorMessage);
-    }
-
-    private void HandleProgressEvent(ResearchProgressEvent e)
-    {
-        _logger?.LogDebug("[RESEARCH-UI] SignalR OnProgress received: SessionId={SessionId}, EventType={EventType}",
-            e.SessionId, e.EventType);
-
-        if (ActiveSession?.Id != e.SessionId)
-        {
-            _logger?.LogDebug("[RESEARCH-UI] Ignoring progress - SessionId mismatch");
-            return;
-        }
-
-        _logger?.LogDebug("[RESEARCH-UI] Processing progress event: {EventType}", e.EventType);
-
-        // Parse progress data from the event
-        if (e.EventType == "PhaseProgress" && e.Data != null)
-        {
-            try
-            {
-                // The Data is a JsonElement when received from SignalR
-                var progressData = ParseProgressData(e.Data);
-                if (progressData != null)
-                {
-                    HandleProgressUpdate(progressData);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to parse progress event data");
-            }
-        }
     }
 
     /// <summary>
@@ -203,13 +193,21 @@ public class ResearchStateService : IResearchStateService
     public int CurrentProgressPercent { get; private set; }
 
     /// <inheritdoc />
-    public ResearchRoleBase? CurrentAgentRole { get; private set; }
+    public IReadOnlyList<ActiveAgentInfo> ActiveAgents => _activeAgents;
 
     /// <inheritdoc />
-    public string? CurrentAgentActivity { get; private set; }
+    public bool HasActiveAgents => _activeAgents.Count > 0;
 
     /// <inheritdoc />
-    public bool IsAgentActive => CurrentAgentRole.HasValue && IsResearchInProgress;
+    public ResearchRoleBase? CurrentAgentRole =>
+        _activeAgents.FirstOrDefault()?.Role;
+
+    /// <inheritdoc />
+    public string? CurrentAgentActivity =>
+        _activeAgents.Count > 0 ? FormatMultiAgentActivity() : null;
+
+    /// <inheritdoc />
+    public bool IsAgentActive => HasActiveAgents && IsResearchInProgress;
 
     /// <inheritdoc />
     public event Action? OnSessionChanged;
@@ -225,6 +223,53 @@ public class ResearchStateService : IResearchStateService
 
     /// <inheritdoc />
     public event Action? OnTeamChanged;
+
+    /// <summary>
+    /// Formats the multi-agent activity message.
+    /// For single agent: "Deep Diver is researching..."
+    /// For multiple agents: "Deep Diver and Synthesizer are researching..."
+    /// </summary>
+    private string FormatMultiAgentActivity()
+    {
+        if (_activeAgents.Count == 0)
+            return string.Empty;
+
+        if (_activeAgents.Count == 1)
+        {
+            var agent = _activeAgents[0];
+            return $"{agent.RoleName} is {GetActivityVerb(agent.Activity)}...";
+        }
+
+        // Multiple agents
+        var names = _activeAgents.Select(a => a.RoleName).ToList();
+        if (names.Count == 2)
+        {
+            return $"{names[0]} and {names[1]} are working in parallel...";
+        }
+
+        // 3 or more agents
+        var lastAgent = names.Last();
+        var otherAgents = string.Join(", ", names.Take(names.Count - 1));
+        return $"{otherAgents}, and {lastAgent} are working in parallel...";
+    }
+
+    /// <summary>
+    /// Extracts the activity verb from the activity message.
+    /// </summary>
+    private static string GetActivityVerb(string activity)
+    {
+        // Activity is typically something like "Conducting research..." or "Planning research..."
+        // Try to extract the key action, or use the whole thing if it's short
+        if (string.IsNullOrWhiteSpace(activity))
+            return "working";
+
+        // Remove trailing ellipsis if present
+        var cleaned = activity.TrimEnd('.').Trim();
+        if (cleaned.Length > 40)
+            return "working";
+
+        return cleaned.ToLowerInvariant();
+    }
 
     /// <inheritdoc />
     public void SelectTeam(ResearchTeamBase? team)
@@ -293,6 +338,7 @@ public class ResearchStateService : IResearchStateService
                 ActiveSession = result.Value;
                 CurrentProgressMessage = GetStatusMessage(result.Value.Status);
                 CurrentProgressPercent = 0;
+                _activeAgents.Clear(); // Reset active agents for new session
                 _logger?.LogDebug("[RESEARCH-UI] Session created with status: {Status}", result.Value.Status);
                 OnSessionChanged?.Invoke();
 
@@ -393,6 +439,7 @@ public class ResearchStateService : IResearchStateService
             if (result.IsSuccess)
             {
                 ActiveSession.Status = ResearchStatusBase.Cancelled;
+                _activeAgents.Clear();
                 OnSessionChanged?.Invoke();
                 _logger?.LogInformation("Research session cancelled");
             }
@@ -441,11 +488,13 @@ public class ResearchStateService : IResearchStateService
                     _logger?.LogInformation("[RESEARCH-UI] Research completed! HasReport={HasReport}",
                         result.Value.Report != null);
                     CurrentProgressPercent = 100;
+                    _activeAgents.Clear();
                     OnResearchCompleted?.Invoke(result.Value);
                 }
                 else if (result.Value.Status == ResearchStatusBase.Failed)
                 {
                     _logger?.LogWarning("[RESEARCH-UI] Research failed: {Error}", result.Value.ErrorMessage);
+                    _activeAgents.Clear();
                     OnResearchError?.Invoke(result.Value.ErrorMessage ?? "Research failed");
                 }
 
@@ -493,64 +542,14 @@ public class ResearchStateService : IResearchStateService
         ActiveSession.Status = progress.Status;
         ActiveSession.CurrentPhase = progress.Phase;
 
-        // Update agent activity tracking
-        if (progress.AgentRole.HasValue)
-        {
-            // Agent is working - update activity
-            CurrentAgentRole = progress.AgentRole.Value;
-            CurrentAgentActivity = FormatAgentActivity(progress.AgentRole.Value, progress.Phase);
-            _logger?.LogDebug("Agent activity: {Role} - {Activity}",
-                CurrentAgentRole, CurrentAgentActivity);
-        }
-        else if (phaseChanged)
-        {
-            // Phase changed without agent - clear agent activity (phase work complete)
-            CurrentAgentRole = null;
-            CurrentAgentActivity = null;
-            _logger?.LogDebug("Agent activity cleared on phase transition to {Phase}", progress.Phase);
-        }
-        // Otherwise, preserve current agent activity (phase-level progress update)
+        // Note: Agent activity is now managed via _activeAgents list from SignalR events
+        // The legacy AgentRole in progress is still supported for backward compatibility
 
-        _logger?.LogDebug("Research progress: {Phase} - {Message} ({Percent}%)",
-            progress.Phase, progress.Message, CurrentProgressPercent);
+        _logger?.LogDebug("Research progress: {Phase} - {Message} ({Percent}%), {AgentCount} active agents",
+            progress.Phase, progress.Message, CurrentProgressPercent, _activeAgents.Count);
 
         OnProgressUpdate?.Invoke(progress);
         OnSessionChanged?.Invoke();
-    }
-
-    /// <summary>
-    /// Formats the agent activity message based on role and phase.
-    /// </summary>
-    private static string FormatAgentActivity(ResearchRoleBase role, ResearchPhaseBase phase)
-    {
-        var roleName = GetRoleDisplayName(role);
-        var action = phase switch
-        {
-            ResearchPhaseBase.Clarification => "generating questions",
-            ResearchPhaseBase.Planning => "planning research",
-            ResearchPhaseBase.Research => "conducting research",
-            ResearchPhaseBase.Anonymization => "preparing submission",
-            ResearchPhaseBase.PeerReview => "reviewing submissions",
-            ResearchPhaseBase.Synthesis => "synthesizing report",
-            _ => "working"
-        };
-
-        return $"{roleName} is {action}...";
-    }
-
-    /// <summary>
-    /// Gets a human-readable display name for a research role.
-    /// </summary>
-    private static string GetRoleDisplayName(ResearchRoleBase role)
-    {
-        return role switch
-        {
-            ResearchRoleBase.DeepDiver => "Deep Diver",
-            ResearchRoleBase.Synthesizer => "Synthesizer",
-            ResearchRoleBase.DevilsAdvocate => "Devil's Advocate",
-            ResearchRoleBase.Chairman => "Chairman",
-            _ => role.ToString()
-        };
     }
 
     /// <inheritdoc />
@@ -559,8 +558,7 @@ public class ResearchStateService : IResearchStateService
         ActiveSession = null;
         CurrentProgressMessage = null;
         CurrentProgressPercent = 0;
-        CurrentAgentRole = null;
-        CurrentAgentActivity = null;
+        _activeAgents.Clear();
         OnSessionChanged?.Invoke();
     }
 
@@ -599,6 +597,7 @@ public class ResearchStateService : IResearchStateService
             ActiveSession = inProgressSession;
             CurrentProgressMessage = GetStatusMessage(inProgressSession.Status);
             CurrentProgressPercent = EstimateProgressFromPhase(inProgressSession.CurrentPhase ?? ResearchPhaseBase.Planning);
+            _activeAgents.Clear(); // Will be populated by SignalR events
 
             // Reconnect to SignalR for updates
             if (!_signalRService.IsConnected)
@@ -655,45 +654,6 @@ public class ResearchStateService : IResearchStateService
     }
 
     /// <summary>
-    /// Parses the progress data from SignalR event.
-    /// The Data comes as a JsonElement when received from SignalR.
-    /// </summary>
-    private ResearchProgressBase? ParseProgressData(object data)
-    {
-        try
-        {
-            // SignalR deserializes the data as JsonElement
-            if (data is JsonElement jsonElement)
-            {
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                };
-
-                return JsonSerializer.Deserialize<ResearchProgressBase>(jsonElement.GetRawText(), options);
-            }
-
-            // If it's already the right type (unlikely but handle it)
-            if (data is ResearchProgressBase progress)
-            {
-                return progress;
-            }
-
-            // Try to serialize and deserialize as a fallback
-            var json = JsonSerializer.Serialize(data);
-            return JsonSerializer.Deserialize<ResearchProgressBase>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Failed to parse progress data: {DataType}", data?.GetType().Name ?? "null");
-            return null;
-        }
-    }
-
-    /// <summary>
     /// Disposes resources and unsubscribes from SignalR events.
     /// </summary>
     public void Dispose()
@@ -713,14 +673,12 @@ public class ResearchStateService : IResearchStateService
         if (disposing)
         {
             // Unsubscribe from SignalR events to prevent memory leaks
-            if (_statusUpdateHandler != null)
-                _signalRService.OnStatusUpdate -= _statusUpdateHandler;
+            if (_researchProgressHandler != null)
+                _signalRService.OnResearchProgress -= _researchProgressHandler;
             if (_researchCompletedHandler != null)
                 _signalRService.OnResearchCompleted -= _researchCompletedHandler;
             if (_researchErrorHandler != null)
                 _signalRService.OnResearchError -= _researchErrorHandler;
-            if (_progressHandler != null)
-                _signalRService.OnProgress -= _progressHandler;
 
             _logger?.LogDebug("[RESEARCH-UI] ResearchStateService disposed, event handlers unsubscribed");
         }

@@ -444,6 +444,19 @@
         gap: 8px;
         margin-top: 8px;
     }
+
+    /* Responsive padding adjustments */
+    @@media (max-width: 1200px) {
+        .user-message {
+            padding: 0 32px;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .user-message {
+            padding: 0 16px;
+        }
+    }
 </style>
 
 @code {

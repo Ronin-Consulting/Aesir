@@ -1,4 +1,5 @@
 @using Aesir.Common.Models
+@using Aesir.Client.Web.Modules.Research.Services
 
 <div class="research-progress">
     @* Overall Progress Section (Top) *@
@@ -19,9 +20,25 @@
         </div>
     </div>
 
-    @* Agent Activity Section (Below overall progress) *@
-    @if (IsAgentActive && !string.IsNullOrEmpty(AgentActivity))
+    @* Agent Activity Section - Multi-Agent Display *@
+    @if (HasActiveAgents)
     {
+        <div class="agent-activity-section multi-agent">
+            @foreach (var agent in ActiveAgents)
+            {
+                <div class="agent-row">
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Secondary" Class="agent-spinner" />
+                    <div class="agent-info">
+                        <span class="agent-name">@agent.RoleName</span>
+                        <span class="agent-activity-text">@FormatAgentActivity(agent)</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else if (IsAgentActive && !string.IsNullOrEmpty(AgentActivity))
+    {
+        @* Fallback for legacy single-agent mode *@
         <div class="agent-activity-section">
             <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Secondary" Class="agent-spinner" />
             <span class="agent-activity-text">@AgentActivity</span>
@@ -106,7 +123,7 @@
         border-radius: 4px;
     }
 
-    /* Agent Activity Section */
+    /* Agent Activity Section - Base */
     .research-progress .agent-activity-section {
         display: flex;
         align-items: center;
@@ -118,11 +135,48 @@
         margin-top: 12px;
     }
 
+    /* Multi-Agent Activity Section */
+    .research-progress .agent-activity-section.multi-agent {
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+    }
+
+    .research-progress .agent-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .research-progress .agent-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .research-progress .agent-name {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #9C27B0;
+    }
+
     .research-progress .agent-spinner {
         flex-shrink: 0;
     }
 
     .research-progress .agent-activity-text {
+        font-size: 0.8rem;
+        color: var(--mud-palette-text-secondary);
+        font-weight: 400;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Single agent mode - larger text */
+    .research-progress .agent-activity-section:not(.multi-agent) .agent-activity-text {
         font-size: 0.85rem;
         color: var(--mud-palette-text-primary);
         font-weight: 500;
@@ -206,11 +260,31 @@
     [Parameter]
     public int ProgressPercent { get; set; }
 
+    /// <summary>
+    /// List of currently active agents with their activities.
+    /// When non-empty, displays multi-agent progress UI.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<ActiveAgentInfo>? ActiveAgents { get; set; }
+
+    /// <summary>
+    /// Legacy single agent activity text.
+    /// Used as fallback when ActiveAgents is empty.
+    /// </summary>
     [Parameter]
     public string? AgentActivity { get; set; }
 
+    /// <summary>
+    /// Legacy flag for single agent active state.
+    /// Used as fallback when ActiveAgents is empty.
+    /// </summary>
     [Parameter]
     public bool IsAgentActive { get; set; }
+
+    /// <summary>
+    /// Whether any agents are currently active (multi-agent aware).
+    /// </summary>
+    private bool HasActiveAgents => ActiveAgents != null && ActiveAgents.Count > 0;
 
     private readonly List<(ResearchPhaseBase Phase, string Name)> _phases = new()
     {
@@ -220,6 +294,27 @@
         (ResearchPhaseBase.PeerReview, "Review"),
         (ResearchPhaseBase.Synthesis, "Synthesis")
     };
+
+    /// <summary>
+    /// Formats the agent activity for display.
+    /// Uses the Activity from the agent info, or generates a default based on role.
+    /// </summary>
+    private string FormatAgentActivity(ActiveAgentInfo agent)
+    {
+        if (!string.IsNullOrWhiteSpace(agent.Activity))
+            return agent.Activity;
+
+        // Default activity based on current phase
+        return Session.CurrentPhase switch
+        {
+            ResearchPhaseBase.Planning => "Planning research approach...",
+            ResearchPhaseBase.Research => "Conducting research...",
+            ResearchPhaseBase.Anonymization => "Preparing submission...",
+            ResearchPhaseBase.PeerReview => "Reviewing submissions...",
+            ResearchPhaseBase.Synthesis => "Synthesizing findings...",
+            _ => "Working..."
+        };
+    }
 
     private string GetPhaseIcon()
     {

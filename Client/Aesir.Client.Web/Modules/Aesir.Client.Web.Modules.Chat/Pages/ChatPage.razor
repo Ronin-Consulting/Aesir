@@ -168,7 +168,7 @@
         flex-direction: column;
         gap: 8px;
         scroll-behavior: smooth;
-        max-width: 900px;
+        max-width: 1035px;
         margin: 0 auto;
         width: 100%;
         overscroll-behavior: contain;
@@ -187,6 +187,27 @@
         animation: blink 1s infinite;
         vertical-align: text-bottom;
         margin-left: 2px;
+    }
+
+    /* Responsive width adjustments */
+    @@media (max-width: 1400px) {
+        .chat-messages {
+            max-width: 945px;
+        }
+    }
+
+    @@media (max-width: 1200px) {
+        .chat-messages {
+            max-width: 855px;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .chat-messages {
+            max-width: 100%;
+            padding-left: 16px;
+            padding-right: 16px;
+        }
     }
 </style>
 

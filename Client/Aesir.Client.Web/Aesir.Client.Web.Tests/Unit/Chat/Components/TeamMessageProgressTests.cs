@@ -60,7 +60,7 @@ public class TeamMessageProgressTests : TestContext
     }
 
     [Fact]
-    public void Renders_ProgressMessage_WhenProvided()
+    public void Renders_AgentActivity_WhenProvided()
     {
         // Arrange
         var session = CreateSession(ResearchPhaseBase.Research);
@@ -69,15 +69,16 @@ public class TeamMessageProgressTests : TestContext
         var cut = RenderComponent<TeamMessageProgress>(parameters => parameters
             .Add(p => p.Session, session)
             .Add(p => p.ProgressPercent, 50)
-            .Add(p => p.ProgressMessage, "Analyzing sources..."));
+            .Add(p => p.IsAgentActive, true)
+            .Add(p => p.AgentActivity, "Analyzing sources..."));
 
         // Assert
-        cut.Markup.Should().Contain("progress-message");
+        cut.Markup.Should().Contain("agent-activity-section");
         cut.Markup.Should().Contain("Analyzing sources...");
     }
 
     [Fact]
-    public void DoesNotRender_ProgressMessage_WhenEmpty()
+    public void DoesNotRender_AgentActivity_WhenNotActive()
     {
         // Arrange
         var session = CreateSession(ResearchPhaseBase.Research);
@@ -86,11 +87,12 @@ public class TeamMessageProgressTests : TestContext
         var cut = RenderComponent<TeamMessageProgress>(parameters => parameters
             .Add(p => p.Session, session)
             .Add(p => p.ProgressPercent, 50)
-            .Add(p => p.ProgressMessage, null));
+            .Add(p => p.IsAgentActive, false)
+            .Add(p => p.AgentActivity, null));
 
         // Assert
-        var messageElements = cut.FindAll(".progress-message");
-        messageElements.Should().BeEmpty();
+        var activityElements = cut.FindAll(".agent-activity-section");
+        activityElements.Should().BeEmpty();
     }
 
     #endregion

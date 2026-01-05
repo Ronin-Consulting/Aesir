@@ -636,6 +636,19 @@
     .assistant-message .markdown-body img:only-child {
         display: block;
     }
+
+    /* Responsive padding adjustments */
+    @@media (max-width: 1200px) {
+        .assistant-message {
+            padding: 0 32px;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .assistant-message {
+            padding: 0 16px;
+        }
+    }
 </style>
 
 @code {
