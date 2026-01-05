@@ -112,8 +112,9 @@
 
                 // Cascade Model Loading Pattern:
                 // 1. If current selection exists in new list, preserve it and notify parent with model info
-                // 2. If current selection doesn't exist, auto-select first model
-                // 3. If no models available, clear selection
+                // 2. If current selection doesn't exist but there are models, auto-select first model
+                // 3. If no models available, preserve the existing selection (don't clear it)
+                //    - This prevents "unsaved changes" detection when the backend can't return models
 
                 var currentSelectionExists = !string.IsNullOrEmpty(SelectedModel) &&
                     _models.Any(m => m.Id == SelectedModel);
@@ -128,11 +129,7 @@
                     // Auto-select first model
                     await NotifyModelChanged(_models[0].Id);
                 }
-                else
-                {
-                    // No models available, clear selection
-                    await NotifyModelChanged(null);
-                }
+                // else: No models available - preserve existing selection, don't clear it
             }
             else
             {

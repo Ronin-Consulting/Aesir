@@ -131,10 +131,10 @@
         // Extract configuration values
         if (_model.Configuration != null)
         {
-            _model.Configuration.TryGetValue("Endpoint", out _endpoint);
-            _model.Configuration.TryGetValue("ApiKey", out _apiKey);
+            _model.Configuration.TryGetValue("endpoint", out _endpoint);
+            _model.Configuration.TryGetValue("api_key", out _apiKey);
 
-            if (_model.Configuration.TryGetValue("EnableChatModelThinking", out var thinkingValue))
+            if (_model.Configuration.TryGetValue("enable_chat_model_thinking", out var thinkingValue))
             {
                 _enableChatModelThinking = bool.TryParse(thinkingValue, out var thinking) && thinking;
             }
@@ -164,18 +164,18 @@
 
         if (!string.IsNullOrWhiteSpace(_endpoint))
         {
-            _model.Configuration["Endpoint"] = _endpoint;
+            _model.Configuration["endpoint"] = _endpoint;
         }
 
         if (_model.Type == InferenceEngineType.OpenAICompatible && !string.IsNullOrWhiteSpace(_apiKey))
         {
-            _model.Configuration["ApiKey"] = _apiKey;
+            _model.Configuration["api_key"] = _apiKey;
         }
 
         // Save thinking setting for Ollama engines
         if (_model.Type == InferenceEngineType.Ollama)
         {
-            _model.Configuration["EnableChatModelThinking"] = _enableChatModelThinking.ToString().ToLower();
+            _model.Configuration["enable_chat_model_thinking"] = _enableChatModelThinking.ToString().ToLower();
         }
 
         try

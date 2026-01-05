@@ -294,12 +294,12 @@
 
             if (!string.IsNullOrWhiteSpace(_endpoint))
             {
-                engine.Configuration["Endpoint"] = _endpoint;
+                engine.Configuration["endpoint"] = _endpoint;
             }
 
             if (_engineType == InferenceEngineType.OpenAICompatible && !string.IsNullOrWhiteSpace(_apiKey))
             {
-                engine.Configuration["ApiKey"] = _apiKey;
+                engine.Configuration["api_key"] = _apiKey;
             }
 
             var result = await EngineService.CreateAsync(engine);
