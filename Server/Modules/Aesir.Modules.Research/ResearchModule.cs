@@ -1,6 +1,8 @@
+using Aesir.Infrastructure.Concurrency;
 using Aesir.Infrastructure.Documents;
 using Aesir.Infrastructure.Modules;
 using Aesir.Modules.Research.Agents;
+using Aesir.Modules.Research.Execution;
 using Aesir.Modules.Research.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -31,6 +33,9 @@ public class ResearchModule : ModuleBase
         // Register document export services (PDF, Word)
         services.AddDocumentExportServices();
 
+        // Register concurrent execution infrastructure (reusable across modules)
+        services.AddScoped(typeof(IConcurrentExecutor<,>), typeof(BatchedConcurrentExecutor<,>));
+
         // Register repositories
         services.AddScoped<IResearchTeamRepository, ResearchTeamRepository>();
         services.AddScoped<IResearchSessionRepository, ResearchSessionRepository>();
@@ -41,6 +46,10 @@ public class ResearchModule : ModuleBase
         // Register agent orchestration services
         services.AddScoped<IResearchAgentFactory, ResearchAgentFactory>();
         services.AddScoped<IClarificationService, ClarificationService>();
+        services.AddScoped<IChairmanPlanningService, ChairmanPlanningService>();
+
+        // Register parallel execution strategies with retry policies
+        services.AddScoped<IPhaseExecutionStrategyFactory, PhaseExecutionStrategyFactory>();
 
         // Register anonymization and peer review services
         services.AddScoped<IAnonymizationService, AnonymizationService>();
