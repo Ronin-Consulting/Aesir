@@ -46,7 +46,7 @@ public interface IReportGeneratorService
 public class ReportGeneratorService : IReportGeneratorService
 {
     private readonly ILogger<ReportGeneratorService> _logger;
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IHubContext<ResearchHub> _hubContext;
     private readonly IConfigurationService _configurationService;
     private readonly IConfidenceCalculator _confidenceCalculator;
@@ -55,7 +55,7 @@ public class ReportGeneratorService : IReportGeneratorService
 
     public ReportGeneratorService(
         ILogger<ReportGeneratorService> logger,
-        IServiceScopeFactory scopeFactory,
+        IServiceProvider serviceProvider,
         IHubContext<ResearchHub> hubContext,
         IConfigurationService configurationService,
         IConfidenceCalculator confidenceCalculator,
@@ -63,7 +63,7 @@ public class ReportGeneratorService : IReportGeneratorService
         IResearchProgressBroadcaster progressBroadcaster)
     {
         _logger = logger;
-        _scopeFactory = scopeFactory;
+        _serviceProvider = serviceProvider;
         _hubContext = hubContext;
         _configurationService = configurationService;
         _confidenceCalculator = confidenceCalculator;
@@ -89,14 +89,27 @@ public class ReportGeneratorService : IReportGeneratorService
         var peerReviews = session.PeerReviews ?? [];
         _logger.LogDebug("[REPORT-GEN] Submissions: {Count}, PeerReviews: {Count}", submissions.Count, peerReviews.Count);
 
-        // Notify phase change via SignalR
-        _logger.LogDebug("[REPORT-GEN] Sending phase change notification via SignalR...");
-        await _hubContext.SendAgentPhaseChangedAsync(
-            session.Id, chairmanAgent.TeamMemberId, chairmanAgent.Role, "synthesis",
-            "Chairman is synthesizing the final report...").ConfigureAwait(false);
+        // Notify phase change via unified progress broadcaster with active agent info
+        _logger.LogDebug("[REPORT-GEN] Broadcasting synthesis phase progress...");
+        await _progressBroadcaster.BroadcastProgressAsync(
+            session.Id,
+            ResearchPhase.Synthesis,
+            0,
+            "Chairman is synthesizing the final report...",
+            new List<Contracts.ActiveAgentInfo>
+            {
+                new()
+                {
+                    TeamMemberId = chairmanAgent.TeamMemberId,
+                    Role = chairmanAgent.Role,
+                    RoleName = chairmanAgent.RoleName,
+                    Activity = "Synthesizing final report...",
+                    AgentProgressPercent = null
+                }
+            }).ConfigureAwait(false);
 
         // Report initial progress
-        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        await _progressBroadcaster.BroadcastProgressAsync(session.Id, new ResearchPhaseProgress
         {
             Phase = ResearchPhase.Synthesis,
             AgentRole = chairmanAgent.Role,
@@ -107,37 +120,30 @@ public class ReportGeneratorService : IReportGeneratorService
 
         // Get chat service for the Chairman
         _logger.LogDebug("[REPORT-GEN] Getting chat service for Chairman...");
-        var (chatService, serviceScope) = GetChatServiceForAgent(chairmanAgent);
+        var chatService = GetChatServiceForAgent(chairmanAgent);
 
         string executiveSummary;
         string? title;
 
-        try
+        if (chatService != null)
         {
-            if (chatService != null)
-            {
-                _logger.LogDebug("[REPORT-GEN] Chat service available: {ServiceType}", chatService.GetType().Name);
-                _logger.LogDebug("[REPORT-GEN] Using LLM to synthesize the report...");
-                // Use LLM to synthesize the report
-                (executiveSummary, title) = await SynthesizeReportWithLlmAsync(
-                    session, submissions, submissionScores, peerReviews,
-                    chairmanAgent, chatService, cancellationToken);
-                _logger.LogDebug("[REPORT-GEN] LLM synthesis complete. Title: {Title}, SummaryLength: {Length}",
-                    title, executiveSummary?.Length ?? 0);
-            }
-            else
-            {
-                // Fallback to stub implementation
-                _logger.LogWarning("[REPORT-GEN] No chat service available for Chairman!");
-                _logger.LogWarning("[REPORT-GEN] Chairman InferenceEngineId: {EngineId}", chairmanAgent.InferenceEngineId);
-                _logger.LogWarning("[REPORT-GEN] Using STUB synthesis - report will not contain real LLM content!");
-                executiveSummary = GenerateStubExecutiveSummary(session, submissions, submissionScores);
-                title = GenerateTitle(session.Query);
-            }
+            _logger.LogDebug("[REPORT-GEN] Chat service available: {ServiceType}", chatService.GetType().Name);
+            _logger.LogDebug("[REPORT-GEN] Using LLM to synthesize the report...");
+            // Use LLM to synthesize the report
+            (executiveSummary, title) = await SynthesizeReportWithLlmAsync(
+                session, submissions, submissionScores, peerReviews,
+                chairmanAgent, chatService, cancellationToken);
+            _logger.LogDebug("[REPORT-GEN] LLM synthesis complete. Title: {Title}, SummaryLength: {Length}",
+                title, executiveSummary?.Length ?? 0);
         }
-        finally
+        else
         {
-            serviceScope?.Dispose();
+            // Fallback to stub implementation
+            _logger.LogWarning("[REPORT-GEN] No chat service available for Chairman!");
+            _logger.LogWarning("[REPORT-GEN] Chairman InferenceEngineId: {EngineId}", chairmanAgent.InferenceEngineId);
+            _logger.LogWarning("[REPORT-GEN] Using STUB synthesis - report will not contain real LLM content!");
+            executiveSummary = GenerateStubExecutiveSummary(session, submissions, submissionScores);
+            title = GenerateTitle(session.Query);
         }
 
         // Build report from submissions
@@ -160,7 +166,7 @@ public class ReportGeneratorService : IReportGeneratorService
         report.FullMarkdown = ReportTemplates.GenerateFullMarkdown(report, session);
 
         // Report final progress
-        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        await _progressBroadcaster.BroadcastProgressAsync(session.Id, new ResearchPhaseProgress
         {
             Phase = ResearchPhase.Synthesis,
             AgentRole = chairmanAgent.Role,
@@ -193,7 +199,7 @@ public class ReportGeneratorService : IReportGeneratorService
         var synthesisPrompt = BuildSynthesisPrompt(session, submissions, submissionScores, peerReviews);
 
         // Report progress after prompt construction
-        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        await _progressBroadcaster.BroadcastProgressAsync(session.Id, new ResearchPhaseProgress
         {
             Phase = ResearchPhase.Synthesis,
             AgentRole = chairmanAgent.Role,
@@ -208,7 +214,7 @@ public class ReportGeneratorService : IReportGeneratorService
         _logger.LogDebug("Sending synthesis request to LLM for Chairman (non-streaming)");
 
         // Report progress before LLM call
-        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        await _progressBroadcaster.BroadcastProgressAsync(session.Id, new ResearchPhaseProgress
         {
             Phase = ResearchPhase.Synthesis,
             AgentRole = chairmanAgent.Role,
@@ -220,10 +226,29 @@ public class ReportGeneratorService : IReportGeneratorService
         // Execute non-streaming chat completion
         // Note: CancellationToken is checked before call; ChatCompletionsAsync doesn't accept one
         cancellationToken.ThrowIfCancellationRequested();
+        _logger.LogDebug("[REPORT-GEN] Calling ChatCompletionsAsync with model: {Model}", request.Model);
         var result = await chatService.ChatCompletionsAsync(request).ConfigureAwait(false);
 
+        // Log detailed result information for debugging
+        _logger.LogDebug("[REPORT-GEN] ChatCompletionsAsync returned:");
+        _logger.LogDebug("[REPORT-GEN]   TotalTokens: {TotalTokens}, PromptTokens: {PromptTokens}, CompletionTokens: {CompletionTokens}",
+            result.TotalTokens, result.PromptTokens, result.CompletionTokens);
+        _logger.LogDebug("[REPORT-GEN]   Conversation is null: {IsNull}", result.AesirConversation == null);
+        if (result.AesirConversation != null)
+        {
+            _logger.LogDebug("[REPORT-GEN]   Message count: {Count}", result.AesirConversation.Messages?.Count ?? 0);
+            if (result.AesirConversation.Messages != null)
+            {
+                foreach (var msg in result.AesirConversation.Messages)
+                {
+                    _logger.LogDebug("[REPORT-GEN]   Message - Role: {Role}, ContentLength: {Length}",
+                        msg.Role, msg.Content?.Length ?? 0);
+                }
+            }
+        }
+
         // Report progress after LLM response
-        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        await _progressBroadcaster.BroadcastProgressAsync(session.Id, new ResearchPhaseProgress
         {
             Phase = ResearchPhase.Synthesis,
             AgentRole = chairmanAgent.Role,
@@ -235,7 +260,12 @@ public class ReportGeneratorService : IReportGeneratorService
         // Extract the assistant response from the result
         var response = ExtractAssistantResponse(result);
 
-        _logger.LogDebug("Chairman synthesis complete, response length: {Length}", response.Length);
+        _logger.LogDebug("[REPORT-GEN] Chairman synthesis complete, response length: {Length}", response.Length);
+        if (response.Length == 0)
+        {
+            _logger.LogWarning("[REPORT-GEN] WARNING: Chairman synthesis returned empty response!");
+            _logger.LogWarning("[REPORT-GEN]   This may indicate the LLM didn't respond or there was an API error.");
+        }
 
         // Parse the response - extract title if present
         var title = ExtractTitle(response);
@@ -417,11 +447,10 @@ public class ReportGeneratorService : IReportGeneratorService
 
     /// <summary>
     /// Resolves the IChatService for an agent.
-    /// Creates a new DI scope that must be disposed by the caller when done using the service.
+    /// Uses the injected IServiceProvider to resolve keyed services directly.
     /// </summary>
-    /// <returns>A tuple containing the chat service and its scope. Both will be null if service cannot be resolved.
-    /// The caller MUST dispose the scope when finished using the service.</returns>
-    private (IChatService? Service, IServiceScope? Scope) GetChatServiceForAgent(ResearchAgent agent)
+    /// <returns>The chat service, or null if service cannot be resolved.</returns>
+    private IChatService? GetChatServiceForAgent(ResearchAgent agent)
     {
         _logger.LogDebug("[REPORT-GEN] GetChatServiceForAgent called for {Role}", agent.Role);
         _logger.LogDebug("[REPORT-GEN]   BaseAgentId: {BaseAgentId}", agent.BaseAgentId);
@@ -432,27 +461,24 @@ public class ReportGeneratorService : IReportGeneratorService
         {
             _logger.LogWarning("[REPORT-GEN] FAILURE: Chairman has no inference engine ID configured!");
             _logger.LogWarning("[REPORT-GEN]   The Chairman agent will not be able to perform LLM synthesis!");
-            return (null, null);
+            return null;
         }
 
-        // Create a new scope for this operation - critical for background tasks
-        var scope = _scopeFactory.CreateScope();
         var engineIdKey = agent.InferenceEngineId.Value.ToString();
         _logger.LogDebug("[REPORT-GEN] Attempting to get keyed service IChatService with key: '{EngineIdKey}'", engineIdKey);
 
-        var chatService = scope.ServiceProvider.GetKeyedService<IChatService>(engineIdKey);
+        var chatService = _serviceProvider.GetKeyedService<IChatService>(engineIdKey);
 
         if (chatService == null)
         {
             _logger.LogWarning("[REPORT-GEN] FAILURE: No IChatService found for inference engine ID: {EngineId}", agent.InferenceEngineId);
             _logger.LogWarning("[REPORT-GEN]   Available keyed services might not include this engine!");
             _logger.LogWarning("[REPORT-GEN]   Check that the inference engine module registered correctly.");
-            scope.Dispose();
-            return (null, null);
+            return null;
         }
 
         _logger.LogDebug("[REPORT-GEN] SUCCESS: IChatService resolved: {ServiceType}", chatService.GetType().Name);
-        return (chatService, scope);
+        return chatService;
     }
 
     /// <summary>

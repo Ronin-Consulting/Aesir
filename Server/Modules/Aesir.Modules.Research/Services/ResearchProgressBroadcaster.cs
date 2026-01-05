@@ -9,27 +9,31 @@ namespace Aesir.Modules.Research.Services;
 
 /// <summary>
 /// Service for broadcasting research progress updates via SignalR.
+/// This service is stateless - session ID is passed explicitly to all methods.
 /// </summary>
 public interface IResearchProgressBroadcaster
 {
     /// <summary>
-    /// Broadcasts a phase progress update to subscribed clients.
+    /// Broadcasts a unified progress update with optional active agent info.
     /// </summary>
-    /// <param name="progress">The progress update.</param>
-    Task BroadcastProgressAsync(ResearchPhaseProgress progress);
+    /// <param name="sessionId">The session ID to broadcast to.</param>
+    /// <param name="phase">The current research phase.</param>
+    /// <param name="phaseLocalPercent">Progress within the phase (0-100).</param>
+    /// <param name="message">Progress description.</param>
+    /// <param name="activeAgents">Optional list of currently active agents.</param>
+    Task BroadcastProgressAsync(
+        Guid sessionId,
+        ResearchPhase phase,
+        int phaseLocalPercent,
+        string message,
+        List<ActiveAgentInfo>? activeAgents = null);
 
     /// <summary>
-    /// Broadcasts a status change to subscribed clients.
+    /// Legacy method for broadcasting phase progress.
     /// </summary>
-    /// <param name="sessionId">The session ID.</param>
-    /// <param name="status">The new status.</param>
-    /// <param name="phase">The current phase.</param>
-    /// <param name="message">Optional status message.</param>
-    Task BroadcastStatusChangeAsync(
-        Guid sessionId,
-        ResearchStatus status,
-        ResearchPhase? phase = null,
-        string? message = null);
+    /// <param name="sessionId">The session ID to broadcast to.</param>
+    /// <param name="progress">The progress information.</param>
+    Task BroadcastProgressAsync(Guid sessionId, ResearchPhaseProgress progress);
 
     /// <summary>
     /// Broadcasts a research completion notification.
@@ -44,16 +48,11 @@ public interface IResearchProgressBroadcaster
     /// <param name="sessionId">The session ID.</param>
     /// <param name="errorMessage">The error message.</param>
     Task BroadcastErrorAsync(Guid sessionId, string errorMessage);
-
-    /// <summary>
-    /// Sets the current session ID for progress broadcasts.
-    /// </summary>
-    /// <param name="sessionId">The session ID.</param>
-    void SetCurrentSession(Guid sessionId);
 }
 
 /// <summary>
 /// Implementation of the research progress broadcaster using SignalR.
+/// This service is stateless - session ID is passed explicitly to all methods.
 /// Maps phase-local progress (0-100% within each phase) to overall progress (0-100%)
 /// to prevent progress bar resets when transitioning between phases.
 /// </summary>
@@ -61,7 +60,6 @@ public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
 {
     private readonly ILogger<ResearchProgressBroadcaster> _logger;
     private readonly IHubContext<ResearchHub> _hubContext;
-    private Guid _currentSessionId;
 
     public ResearchProgressBroadcaster(
         ILogger<ResearchProgressBroadcaster> logger,
@@ -72,92 +70,102 @@ public class ResearchProgressBroadcaster : IResearchProgressBroadcaster
     }
 
     /// <inheritdoc />
-    public void SetCurrentSession(Guid sessionId)
-    {
-        _logger.LogDebug("[BROADCASTER] SetCurrentSession: {SessionId}", sessionId);
-        _currentSessionId = sessionId;
-    }
-
-    /// <inheritdoc />
-    public async Task BroadcastProgressAsync(ResearchPhaseProgress progress)
+    public async Task BroadcastProgressAsync(
+        Guid sessionId,
+        ResearchPhase phase,
+        int phaseLocalPercent,
+        string message,
+        List<ActiveAgentInfo>? activeAgents = null)
     {
         _logger.LogDebug("[BROADCASTER] BroadcastProgressAsync called:");
-        _logger.LogDebug("[BROADCASTER]   Phase: {Phase}", progress.Phase);
-        _logger.LogDebug("[BROADCASTER]   AgentRole: {AgentRole}", progress.AgentRole);
-        _logger.LogDebug("[BROADCASTER]   Message: {Message}", progress.Message);
-        _logger.LogDebug("[BROADCASTER]   PhaseLocalPercent: {Percent}%", progress.PercentComplete);
-        _logger.LogDebug("[BROADCASTER]   CurrentSessionId: {SessionId}", _currentSessionId);
+        _logger.LogDebug("[BROADCASTER]   SessionId: {SessionId}", sessionId);
+        _logger.LogDebug("[BROADCASTER]   Phase: {Phase}", phase);
+        _logger.LogDebug("[BROADCASTER]   PhaseLocalPercent: {Percent}%", phaseLocalPercent);
+        _logger.LogDebug("[BROADCASTER]   Message: {Message}", message);
+        _logger.LogDebug("[BROADCASTER]   ActiveAgents: {Count}", activeAgents?.Count ?? 0);
 
-        if (_currentSessionId == Guid.Empty)
+        if (sessionId == Guid.Empty)
         {
-            _logger.LogWarning("[BROADCASTER] Cannot broadcast progress: no session ID set");
+            _logger.LogWarning("[BROADCASTER] Cannot broadcast progress: session ID is empty");
             return;
         }
 
         try
         {
             // Map phase-local progress to overall progress to prevent resets on phase transitions
-            // Uses shared helper from Aesir.Common (cast to int since server uses ResearchPhase enum)
             var overallPercent = ResearchPhaseProgressHelper.MapPhaseProgressToOverall(
-                (int)progress.Phase, progress.PercentComplete);
+                (int)phase, phaseLocalPercent);
 
             _logger.LogDebug(
                 "[BROADCASTER] Progress mapping: {Phase} {LocalPercent}% (local) → {OverallPercent}% (overall)",
-                progress.Phase, progress.PercentComplete, overallPercent);
+                phase, phaseLocalPercent, overallPercent);
 
             var update = new ResearchProgressUpdate
             {
-                SessionId = _currentSessionId,
-                Status = PhaseToStatus(progress.Phase),
-                Phase = progress.Phase,
-                Message = progress.Message,
-                ProgressPercent = overallPercent, // Use mapped overall progress
-                AgentRole = progress.AgentRole,
+                SessionId = sessionId,
+                Status = PhaseToStatus(phase),
+                Phase = phase,
+                Message = message,
+                ProgressPercent = overallPercent,
+                ActiveAgents = activeAgents ?? new List<ActiveAgentInfo>(),
+                // For backward compatibility, set AgentRole from first active agent
+                AgentRole = activeAgents?.FirstOrDefault()?.Role,
                 Timestamp = DateTime.UtcNow
             };
 
-            _logger.LogDebug("[BROADCASTER] Sending 'PhaseProgress' event via SignalR...");
-            await _hubContext.SendProgressAsync(
-                _currentSessionId,
-                "PhaseProgress",
-                update).ConfigureAwait(false);
+            await _hubContext.SendResearchProgressAsync(sessionId, update).ConfigureAwait(false);
 
             _logger.LogDebug(
-                "[BROADCASTER] SUCCESS - Progress broadcast for session {SessionId}: {Phase} - {Message} ({OverallPercent}% overall, {LocalPercent}% local)",
-                _currentSessionId, progress.Phase, progress.Message, overallPercent, progress.PercentComplete);
+                "[BROADCASTER] SUCCESS - Progress broadcast: {Phase} - {Message} ({OverallPercent}% overall, {AgentCount} agents)",
+                phase, message, overallPercent, activeAgents?.Count ?? 0);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[BROADCASTER] FAILED to broadcast progress for session {SessionId}", _currentSessionId);
+            _logger.LogError(ex, "[BROADCASTER] FAILED to broadcast progress for session {SessionId}", sessionId);
         }
     }
 
     /// <inheritdoc />
-    public async Task BroadcastStatusChangeAsync(
-        Guid sessionId,
-        ResearchStatus status,
-        ResearchPhase? phase = null,
-        string? message = null)
+    public async Task BroadcastProgressAsync(Guid sessionId, ResearchPhaseProgress progress)
     {
-        _logger.LogDebug("[BROADCASTER] BroadcastStatusChangeAsync called:");
-        _logger.LogDebug("[BROADCASTER]   SessionId: {SessionId}", sessionId);
-        _logger.LogDebug("[BROADCASTER]   Status: {Status}", status);
-        _logger.LogDebug("[BROADCASTER]   Phase: {Phase}", phase);
-        _logger.LogDebug("[BROADCASTER]   Message: {Message}", message);
-
-        try
+        // Convert legacy ResearchPhaseProgress to new format
+        List<ActiveAgentInfo>? activeAgents = null;
+        if (progress.AgentRole.HasValue)
         {
-            _logger.LogDebug("[BROADCASTER] Sending 'StatusUpdate' event via SignalR...");
-            await _hubContext.SendStatusUpdateAsync(sessionId, status, phase, message).ConfigureAwait(false);
+            activeAgents = new List<ActiveAgentInfo>
+            {
+                new ActiveAgentInfo
+                {
+                    TeamMemberId = Guid.Empty, // Unknown for legacy calls
+                    Role = progress.AgentRole.Value,
+                    RoleName = GetRoleDisplayName(progress.AgentRole.Value),
+                    Activity = progress.Message,
+                    AgentProgressPercent = null
+                }
+            };
+        }
 
-            _logger.LogDebug(
-                "[BROADCASTER] SUCCESS - Status change broadcast for session {SessionId}: {Status} ({Phase})",
-                sessionId, status, phase);
-        }
-        catch (Exception ex)
+        await BroadcastProgressAsync(
+            sessionId,
+            progress.Phase,
+            progress.PercentComplete,
+            progress.Message,
+            activeAgents).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Gets a human-readable display name for a research role.
+    /// </summary>
+    private static string GetRoleDisplayName(ResearchRole role)
+    {
+        return role switch
         {
-            _logger.LogError(ex, "[BROADCASTER] FAILED to broadcast status change for session {SessionId}", sessionId);
-        }
+            ResearchRole.DeepDiver => "Deep Diver",
+            ResearchRole.Synthesizer => "Synthesizer",
+            ResearchRole.DevilsAdvocate => "Devil's Advocate",
+            ResearchRole.Chairman => "Chairman",
+            _ => role.ToString()
+        };
     }
 
     /// <inheritdoc />

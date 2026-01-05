@@ -4,9 +4,7 @@ using Aesir.Common.Models;
 using Aesir.Common.Prompts;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
-using Aesir.Modules.Research.Hubs;
 using Aesir.Modules.Research.Models;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -52,25 +50,25 @@ public interface IClarificationService
 
 /// <summary>
 /// Implementation of the clarification service.
-/// Uses streaming IChatService for LLM-based clarification generation.
+/// Uses IChatService for LLM-based clarification generation.
 /// </summary>
 public class ClarificationService : IClarificationService
 {
     private readonly ILogger<ClarificationService> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly IHubContext<ResearchHub> _hubContext;
     private readonly IConfigurationService _configurationService;
+    private readonly IResearchProgressBroadcaster _progressBroadcaster;
 
     public ClarificationService(
         ILogger<ClarificationService> logger,
         IServiceProvider serviceProvider,
-        IHubContext<ResearchHub> hubContext,
-        IConfigurationService configurationService)
+        IConfigurationService configurationService,
+        IResearchProgressBroadcaster progressBroadcaster)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
-        _hubContext = hubContext;
         _configurationService = configurationService;
+        _progressBroadcaster = progressBroadcaster;
     }
 
     /// <inheritdoc />
@@ -93,10 +91,23 @@ public class ClarificationService : IClarificationService
 
         _logger.LogInformation("Generating clarification questions for query: {QueryLength} characters", query.Length);
 
-        // Notify phase change via SignalR
-        await _hubContext.SendAgentPhaseChangedAsync(
-            sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, "clarification",
-            "Chairman is analyzing the query for clarification needs...").ConfigureAwait(false);
+        // Notify phase change via broadcaster with active agent info
+        await _progressBroadcaster.BroadcastProgressAsync(
+            sessionId,
+            ResearchPhase.Clarification,
+            0,
+            "Chairman is analyzing the query for clarification needs...",
+            new List<Contracts.ActiveAgentInfo>
+            {
+                new()
+                {
+                    TeamMemberId = chairmanAgent.TeamMemberId,
+                    Role = chairmanAgent.Role,
+                    RoleName = chairmanAgent.RoleName,
+                    Activity = "Analyzing query...",
+                    AgentProgressPercent = null
+                }
+            }).ConfigureAwait(false);
 
         // Get chat service for the Chairman
         var chatService = GetChatServiceForAgent(chairmanAgent);
@@ -146,10 +157,23 @@ public class ClarificationService : IClarificationService
 
         _logger.LogInformation("Refining query with {Count} clarification answers", answers.Count);
 
-        // Notify phase change
-        await _hubContext.SendAgentPhaseChangedAsync(
-            sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, "refining",
-            "Chairman is refining the query with clarification answers...").ConfigureAwait(false);
+        // Notify phase change via broadcaster
+        await _progressBroadcaster.BroadcastProgressAsync(
+            sessionId,
+            ResearchPhase.Clarification,
+            50,
+            "Chairman is refining the query with clarification answers...",
+            new List<Contracts.ActiveAgentInfo>
+            {
+                new()
+                {
+                    TeamMemberId = chairmanAgent.TeamMemberId,
+                    Role = chairmanAgent.Role,
+                    RoleName = chairmanAgent.RoleName,
+                    Activity = "Refining query...",
+                    AgentProgressPercent = null
+                }
+            }).ConfigureAwait(false);
 
         // Get chat service for the Chairman
         var chatService = GetChatServiceForAgent(chairmanAgent);
@@ -173,7 +197,7 @@ public class ClarificationService : IClarificationService
     }
 
     /// <summary>
-    /// Uses streaming LLM to generate clarification questions.
+    /// Uses non-streaming LLM to generate clarification questions.
     /// </summary>
     private async Task<string> GenerateClarificationWithLlmAsync(
         Guid sessionId,
@@ -186,33 +210,20 @@ public class ClarificationService : IClarificationService
         var userPrompt = BuildClarificationUserPrompt(query);
         var request = await CreateClarificationRequestAsync(chairmanAgent, userPrompt).ConfigureAwait(false);
 
-        _logger.LogDebug("Sending clarification request to LLM");
+        _logger.LogDebug("Sending clarification request to LLM (non-streaming)");
 
-        var contentBuilder = new StringBuilder();
+        // Use non-streaming call - simplified from streaming as part of progress system cleanup
+        var result = await chatService.ChatCompletionsAsync(request).ConfigureAwait(false);
 
-        await foreach (var chunk in chatService.ChatCompletionsStreamedAsync(request)
-            .WithCancellation(cancellationToken).ConfigureAwait(false))
-        {
-            // Handle thinking content
-            if (chunk.IsThinking && chunk.Delta?.Content != null)
-            {
-                await _hubContext.SendAgentThinkingAsync(
-                    sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, chunk.Delta.Content).ConfigureAwait(false);
-            }
-            // Handle regular content
-            else if (chunk.Delta?.Content != null)
-            {
-                contentBuilder.Append(chunk.Delta.Content);
-                await _hubContext.SendAgentContentAsync(
-                    sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, chunk.Delta.Content).ConfigureAwait(false);
-            }
-        }
+        // Extract the assistant's response
+        var assistantMessage = result.AesirConversation?.Messages?
+            .LastOrDefault(m => m.Role == "assistant");
 
-        return contentBuilder.ToString();
+        return assistantMessage?.Content ?? string.Empty;
     }
 
     /// <summary>
-    /// Uses streaming LLM to refine the query based on answers.
+    /// Uses non-streaming LLM to refine the query based on answers.
     /// </summary>
     private async Task<string> RefineQueryWithLlmAsync(
         Guid sessionId,
@@ -227,29 +238,16 @@ public class ClarificationService : IClarificationService
         var userPrompt = BuildRefinementUserPrompt(originalQuery, questions, answers);
         var request = await CreateRefinementRequestAsync(chairmanAgent, userPrompt).ConfigureAwait(false);
 
-        _logger.LogDebug("Sending query refinement request to LLM");
+        _logger.LogDebug("Sending query refinement request to LLM (non-streaming)");
 
-        var contentBuilder = new StringBuilder();
+        // Use non-streaming call - simplified from streaming as part of progress system cleanup
+        var result = await chatService.ChatCompletionsAsync(request).ConfigureAwait(false);
 
-        await foreach (var chunk in chatService.ChatCompletionsStreamedAsync(request)
-            .WithCancellation(cancellationToken).ConfigureAwait(false))
-        {
-            // Handle thinking content
-            if (chunk.IsThinking && chunk.Delta?.Content != null)
-            {
-                await _hubContext.SendAgentThinkingAsync(
-                    sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, chunk.Delta.Content).ConfigureAwait(false);
-            }
-            // Handle regular content
-            else if (chunk.Delta?.Content != null)
-            {
-                contentBuilder.Append(chunk.Delta.Content);
-                await _hubContext.SendAgentContentAsync(
-                    sessionId, chairmanAgent.TeamMemberId, chairmanAgent.Role, chunk.Delta.Content).ConfigureAwait(false);
-            }
-        }
+        // Extract the assistant's response
+        var assistantMessage = result.AesirConversation?.Messages?
+            .LastOrDefault(m => m.Role == "assistant");
 
-        var response = contentBuilder.ToString().Trim();
+        var response = assistantMessage?.Content?.Trim() ?? string.Empty;
 
         // If the LLM returns a valid refined query, use it; otherwise return fallback
         if (!string.IsNullOrWhiteSpace(response) && response.Length > 10)

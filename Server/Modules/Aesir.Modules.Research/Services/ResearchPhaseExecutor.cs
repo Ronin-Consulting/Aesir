@@ -2,6 +2,7 @@ using System.Text;
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
+using Aesir.Modules.Research.Execution;
 using Aesir.Modules.Research.Hubs;
 using Aesir.Modules.Research.Models;
 using Microsoft.AspNetCore.SignalR;
@@ -16,15 +17,17 @@ namespace Aesir.Modules.Research.Services;
 public interface IResearchPhaseExecutor
 {
     /// <summary>
-    /// Executes the planning phase for all research agents.
+    /// Executes the planning phase using Chairman's unified planning.
     /// </summary>
     /// <param name="session">The research session.</param>
+    /// <param name="chairman">The Chairman agent.</param>
     /// <param name="agents">The research agents (excluding Chairman).</param>
     /// <param name="refinedQuery">The refined research query.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Dictionary of agent plans keyed by team member ID.</returns>
     Task<Dictionary<Guid, string>> ExecutePlanningPhaseAsync(
         ResearchSession session,
+        ResearchAgent chairman,
         IReadOnlyList<ResearchAgent> agents,
         string refinedQuery,
         CancellationToken cancellationToken = default);
@@ -128,7 +131,7 @@ public class ResearchPhaseProgress
 public class ResearchPhaseExecutor : IResearchPhaseExecutor
 {
     private readonly ILogger<ResearchPhaseExecutor> _logger;
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IHubContext<ResearchHub> _hubContext;
     private readonly IConfigurationService _configurationService;
     private readonly IAnonymizationService _anonymizationService;
@@ -136,20 +139,24 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
     private readonly IReportGeneratorService _reportGeneratorService;
     private readonly IScoringCalculator _scoringCalculator;
     private readonly IResearchProgressBroadcaster _progressBroadcaster;
+    private readonly IChairmanPlanningService _chairmanPlanningService;
+    private readonly IPhaseExecutionStrategyFactory _strategyFactory;
 
     public ResearchPhaseExecutor(
         ILogger<ResearchPhaseExecutor> logger,
-        IServiceScopeFactory scopeFactory,
+        IServiceProvider serviceProvider,
         IHubContext<ResearchHub> hubContext,
         IConfigurationService configurationService,
         IAnonymizationService anonymizationService,
         IPeerReviewService peerReviewService,
         IReportGeneratorService reportGeneratorService,
         IScoringCalculator scoringCalculator,
-        IResearchProgressBroadcaster progressBroadcaster)
+        IResearchProgressBroadcaster progressBroadcaster,
+        IChairmanPlanningService chairmanPlanningService,
+        IPhaseExecutionStrategyFactory strategyFactory)
     {
         _logger = logger;
-        _scopeFactory = scopeFactory;
+        _serviceProvider = serviceProvider;
         _hubContext = hubContext;
         _configurationService = configurationService;
         _anonymizationService = anonymizationService;
@@ -157,77 +164,29 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         _reportGeneratorService = reportGeneratorService;
         _scoringCalculator = scoringCalculator;
         _progressBroadcaster = progressBroadcaster;
+        _chairmanPlanningService = chairmanPlanningService;
+        _strategyFactory = strategyFactory;
     }
 
     /// <inheritdoc />
     public async Task<Dictionary<Guid, string>> ExecutePlanningPhaseAsync(
         ResearchSession session,
+        ResearchAgent chairman,
         IReadOnlyList<ResearchAgent> agents,
         string refinedQuery,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting planning phase for session {SessionId} with {Count} agents (sequential, non-streaming)",
+        _logger.LogInformation(
+            "Starting planning phase for session {SessionId} - Chairman creating unified plan for {Count} agents",
             session.Id, agents.Count);
 
-        var plans = new Dictionary<Guid, string>();
-        var researchAgents = agents.Where(a => !a.IsChairman).ToList();
-        var completedCount = 0;
-        var totalCount = researchAgents.Count;
+        // Chairman creates ONE unified plan for all agents
+        var plans = await _chairmanPlanningService.CreateUnifiedPlanAsync(
+            session, chairman, agents, refinedQuery, cancellationToken).ConfigureAwait(false);
 
-        // Broadcast phase start with 0%
-        var firstAgent = researchAgents.FirstOrDefault();
-        if (firstAgent != null)
-        {
-            await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
-            {
-                Phase = ResearchPhase.Planning,
-                AgentRole = firstAgent.Role,
-                Message = $"Starting planning phase with {totalCount} agents...",
-                PercentComplete = 0
-            }).ConfigureAwait(false);
-        }
-
-        // Execute agents sequentially to avoid overloading the inference engine
-        ResearchAgent? lastAgent = null;
-        foreach (var agent in researchAgents)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            lastAgent = agent;
-
-            var (teamMemberId, plan) = await ExecuteAgentPlanningAsync(
-                session, agent, refinedQuery, cancellationToken).ConfigureAwait(false);
-
-            if (!string.IsNullOrEmpty(plan))
-            {
-                plans[teamMemberId] = plan;
-            }
-
-            // Update progress after each agent completes
-            completedCount++;
-            var percentComplete = (completedCount * 100) / totalCount;
-            await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
-            {
-                Phase = ResearchPhase.Planning,
-                AgentRole = agent.Role,
-                Message = $"Planning: {completedCount} of {totalCount} agents completed",
-                PercentComplete = percentComplete
-            }).ConfigureAwait(false);
-        }
-
-        // Broadcast phase completion with 100%
-        if (lastAgent != null)
-        {
-            await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
-            {
-                Phase = ResearchPhase.Planning,
-                AgentRole = lastAgent.Role,
-                Message = $"Planning complete. {plans.Count} of {totalCount} agents created plans.",
-                PercentComplete = 100,
-                IsComplete = true
-            }).ConfigureAwait(false);
-        }
-
-        _logger.LogInformation("Planning phase complete. {Count} plans generated", plans.Count);
+        _logger.LogInformation(
+            "Planning phase complete. Chairman created {Count} agent plans",
+            plans.Count);
 
         return plans;
     }
@@ -240,148 +199,52 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         Dictionary<Guid, string> agentPlans,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting research phase for session {SessionId} with {Count} agents (sequential, non-streaming)",
+        _logger.LogInformation(
+            "Starting research phase for session {SessionId} with {Count} agents (parallel execution: max 2 concurrent)",
             session.Id, agents.Count);
 
-        var submissions = new List<ResearchSubmission>();
         var researchAgents = agents.Where(a => !a.IsChairman).ToList();
-        var completedCount = 0;
-        var totalCount = researchAgents.Count;
 
-        // Broadcast phase start with 0%
-        var firstAgent = researchAgents.FirstOrDefault();
-        if (firstAgent != null)
-        {
-            await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        // Prepare inputs: pair each agent with their plan
+        var inputs = researchAgents
+            .Select(agent => (Agent: agent, Plan: agentPlans.TryGetValue(agent.TeamMemberId, out var p) ? p : ""))
+            .ToList();
+
+        // Get the research execution strategy
+        var strategy = _strategyFactory.CreateResearchStrategy();
+
+        // Execute research phase with agent tracking for real-time progress
+        var results = await strategy.ExecutePhaseWithAgentTrackingAsync(
+            session,
+            inputs,
+            async (sess, input, ct) =>
             {
-                Phase = ResearchPhase.Research,
-                AgentRole = firstAgent.Role,
-                Message = $"Starting research phase with {totalCount} agents...",
-                PercentComplete = 0
-            }).ConfigureAwait(false);
-        }
-
-        // Execute agents sequentially to avoid overloading the inference engine
-        ResearchAgent? lastAgent = null;
-        foreach (var agent in researchAgents)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            lastAgent = agent;
-
-            var plan = agentPlans.TryGetValue(agent.TeamMemberId, out var p) ? p : "";
-
-            var submission = await ExecuteAgentResearchAsync(
-                session, agent, refinedQuery, plan, cancellationToken).ConfigureAwait(false);
-
-            if (submission != null)
+                var submission = await ExecuteAgentResearchAsync(
+                    sess, input.Agent, refinedQuery, input.Plan, ct).ConfigureAwait(false);
+                return submission ?? CreateFailedSubmission(sess, input.Agent, input.Plan);
+            },
+            input => new Contracts.ActiveAgentInfo
             {
-                submissions.Add(submission);
-            }
+                TeamMemberId = input.Agent.TeamMemberId,
+                Role = input.Agent.Role,
+                RoleName = input.Agent.RoleName,
+                Activity = $"{input.Agent.RoleName} is researching...",
+                AgentProgressPercent = null
+            },
+            cancellationToken).ConfigureAwait(false);
 
-            // Update progress after each agent completes
-            completedCount++;
-            var percentComplete = (completedCount * 100) / totalCount;
-            await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
-            {
-                Phase = ResearchPhase.Research,
-                AgentRole = agent.Role,
-                Message = $"Research: {completedCount} of {totalCount} agents completed",
-                PercentComplete = percentComplete
-            }).ConfigureAwait(false);
-        }
+        // Final completion broadcast (strategy already sends 100% but we add the summary message)
+        await _progressBroadcaster.BroadcastProgressAsync(
+            session.Id,
+            ResearchPhase.Research,
+            100,
+            $"Research complete. {results.Count(r => r.Status == SubmissionStatus.Completed)} of {results.Count} submissions successful.").ConfigureAwait(false);
 
-        // Broadcast phase completion with 100%
-        if (lastAgent != null)
-        {
-            await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
-            {
-                Phase = ResearchPhase.Research,
-                AgentRole = lastAgent.Role,
-                Message = $"Research complete. {submissions.Count} of {totalCount} submissions created.",
-                PercentComplete = 100,
-                IsComplete = true
-            }).ConfigureAwait(false);
-        }
+        _logger.LogInformation(
+            "Research phase complete. {Successful}/{Total} submissions successful",
+            results.Count(r => r.Status == SubmissionStatus.Completed), results.Count);
 
-        _logger.LogInformation("Research phase complete. {Count} submissions created", submissions.Count);
-
-        return submissions;
-    }
-
-    /// <summary>
-    /// Executes planning for a single agent using non-streaming chat completion.
-    /// </summary>
-    private async Task<(Guid TeamMemberId, string Plan)> ExecuteAgentPlanningAsync(
-        ResearchSession session,
-        ResearchAgent agent,
-        string refinedQuery,
-        CancellationToken cancellationToken)
-    {
-        _logger.LogDebug("[PHASE-EXEC-PLANNING] === ExecuteAgentPlanningAsync START ===");
-        _logger.LogDebug("[PHASE-EXEC-PLANNING] Agent: {Role} ({RoleName})", agent.Role, agent.RoleName);
-        _logger.LogDebug("[PHASE-EXEC-PLANNING] SessionId: {SessionId}", session.Id);
-
-        IServiceScope? serviceScope = null;
-        try
-        {
-            // Notify phase change via SignalR (agent activity indicator)
-            // NOTE: We don't send progress here because agent-level updates
-            // with PercentComplete=0 would reset the overall progress bar.
-            // Only phase-level progress (after each agent completes) should update PercentComplete.
-            await _hubContext.SendAgentPhaseChangedAsync(
-                session.Id, agent.TeamMemberId, agent.Role, "planning",
-                $"{agent.RoleName} is creating research plan...").ConfigureAwait(false);
-
-            // Get the chat service for this agent's inference engine
-            var (chatService, scope) = GetChatServiceForAgent(agent);
-            serviceScope = scope;
-            if (chatService == null)
-            {
-                _logger.LogWarning("[PHASE-EXEC-PLANNING] No chat service found for agent {Role} with inference engine {EngineId}",
-                    agent.Role, agent.InferenceEngineId);
-                return (agent.TeamMemberId, "");
-            }
-
-            // Build the planning prompt
-            var planningPrompt = agent.PlanningPrompt?
-                .Replace("{{QUERY}}", refinedQuery)
-                ?? $"Create a research plan for: {refinedQuery}";
-
-            // Create the chat request
-            var request = await CreateChatRequestAsync(agent, planningPrompt).ConfigureAwait(false);
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] Sending non-streaming planning request to LLM for agent {Role}", agent.Role);
-
-            // Execute non-streaming LLM call
-            var result = await chatService.ChatCompletionsAsync(request).ConfigureAwait(false);
-
-            // Extract the assistant's response from the conversation
-            var content = ExtractAssistantResponse(result);
-
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] Agent {Role} created plan with {Length} characters",
-                agent.Role, content.Length);
-
-            // NOTE: We don't send agent-level completion here because
-            // PercentComplete=100 for a single agent would incorrectly set overall progress to 100%.
-            // The phase-level progress (after this method returns) handles overall progress.
-
-            _logger.LogDebug("[PHASE-EXEC-PLANNING] === ExecuteAgentPlanningAsync COMPLETE ===");
-            return (agent.TeamMemberId, content);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[PHASE-EXEC-PLANNING] Error during planning for agent {Role}", agent.Role);
-
-            // Broadcast error state so UI shows the agent failed
-            await _hubContext.SendAgentPhaseChangedAsync(
-                session.Id, agent.TeamMemberId, agent.Role, "error",
-                $"{agent.RoleName} encountered an error during planning").ConfigureAwait(false);
-
-            return (agent.TeamMemberId, "");
-        }
-        finally
-        {
-            serviceScope?.Dispose();
-        }
+        return results.ToList();
     }
 
     /// <summary>
@@ -394,30 +257,24 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         string plan,
         CancellationToken cancellationToken)
     {
-        _logger.LogDebug("[PHASE-EXEC-RESEARCH] === ExecuteAgentResearchAsync START ===");
-        _logger.LogDebug("[PHASE-EXEC-RESEARCH] Agent: {Role} ({RoleName})", agent.Role, agent.RoleName);
-        _logger.LogDebug("[PHASE-EXEC-RESEARCH] SessionId: {SessionId}", session.Id);
+        _logger.LogInformation(
+            "Agent {Role} starting research for session {SessionId}",
+            agent.Role, session.Id);
 
-        IServiceScope? serviceScope = null;
+        // Get the chat service for this agent's inference engine
+        var chatService = GetChatServiceForAgent(agent);
+        if (chatService == null)
+        {
+            _logger.LogWarning(
+                "No chat service found for agent {Role} with inference engine {EngineId}",
+                agent.Role, agent.InferenceEngineId);
+            return CreateFailedSubmission(session, agent, plan);
+        }
+
         try
         {
-            // Notify phase change via SignalR (agent activity indicator)
-            // NOTE: We don't send progress here because agent-level updates
-            // with PercentComplete=0 would reset the overall progress bar.
-            // Only phase-level progress (after each agent completes) should update PercentComplete.
-            await _hubContext.SendAgentPhaseChangedAsync(
-                session.Id, agent.TeamMemberId, agent.Role, "researching",
-                $"{agent.RoleName} is researching...").ConfigureAwait(false);
-
-            // Get the chat service for this agent's inference engine
-            var (chatService, scope) = GetChatServiceForAgent(agent);
-            serviceScope = scope;
-            if (chatService == null)
-            {
-                _logger.LogWarning("[PHASE-EXEC-RESEARCH] No chat service found for agent {Role} with inference engine {EngineId}",
-                    agent.Role, agent.InferenceEngineId);
-                return CreateFailedSubmission(session, agent, plan);
-            }
+            // Agent tracking is handled by the execution strategy (ParallelPhaseExecutionStrategy)
+            // which broadcasts active agents via IResearchProgressBroadcaster
 
             // Build context from plan and any clarification answers
             var refinedContext = BuildResearchContext(session, plan);
@@ -430,7 +287,6 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
 
             // Create the chat request
             var request = await CreateChatRequestAsync(agent, researchPrompt).ConfigureAwait(false);
-            _logger.LogDebug("[PHASE-EXEC-RESEARCH] Sending non-streaming research request to LLM for agent {Role}", agent.Role);
 
             // Execute non-streaming LLM call
             var result = await chatService.ChatCompletionsAsync(request).ConfigureAwait(false);
@@ -438,7 +294,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             // Extract the assistant's response from the conversation
             var content = ExtractAssistantResponse(result);
 
-            // Create submission (tool calls are not tracked in non-streaming mode)
+            // Create submission
             var submission = new ResearchSubmission
             {
                 Id = Guid.NewGuid(),
@@ -449,35 +305,27 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 Content = content,
                 Status = string.IsNullOrEmpty(content) ? SubmissionStatus.Failed : SubmissionStatus.Completed,
                 Sources = [],
-                ToolCalls = [], // Tool calls handled internally by ChatCompletionsAsync
+                ToolCalls = [],
                 CreatedAt = DateTime.UtcNow,
                 CompletedAt = DateTime.UtcNow
             };
 
-            _logger.LogDebug("[PHASE-EXEC-RESEARCH] Agent {Role} created submission with {Length} characters",
-                agent.Role, content.Length);
+            _logger.LogInformation(
+                "Agent {Role} completed research: {Status}, {Length} characters",
+                agent.Role, submission.Status, content.Length);
 
-            // NOTE: We don't send agent-level completion here because
-            // PercentComplete=100 for a single agent would incorrectly set overall progress to 100%.
-            // The phase-level progress (after this method returns) handles overall progress.
-
-            _logger.LogDebug("[PHASE-EXEC-RESEARCH] === ExecuteAgentResearchAsync COMPLETE ===");
             return submission;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[PHASE-EXEC-RESEARCH] Error during research for agent {Role}", agent.Role);
+            _logger.LogError(ex, "Error during research for agent {Role}", agent.Role);
 
-            // Broadcast error state so UI shows the agent failed
-            await _hubContext.SendAgentPhaseChangedAsync(
-                session.Id, agent.TeamMemberId, agent.Role, "error",
-                $"{agent.RoleName} encountered an error during research").ConfigureAwait(false);
+            // Error handling is done by the execution strategy which will:
+            // 1. Update the agent's activity to show the error
+            // 2. Broadcast the updated active agents list
+            // 3. Continue with other agents (StopOnFirstError = false)
 
             return null;
-        }
-        finally
-        {
-            serviceScope?.Dispose();
         }
     }
 
@@ -499,47 +347,31 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         IReadOnlyList<ResearchSubmission> submissions,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting anonymization phase for session {SessionId} with {Count} submissions",
-            session.Id, submissions.Count);
-
-        // Use the first submission's role as representative for this phase
         var representativeRole = submissions.FirstOrDefault()?.Role ?? ResearchRole.DeepDiver;
 
-        // Report start
-        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
-        {
-            Phase = ResearchPhase.Anonymization,
-            AgentRole = representativeRole,
-            Message = "Anonymizing submissions for peer review...",
-            PercentComplete = 0
-        }).ConfigureAwait(false);
-
-        // Perform anonymization
-        var anonymized = await _anonymizationService.AnonymizeSubmissionsAsync(submissions).ConfigureAwait(false);
-
-        // Update submission records with anonymized IDs
-        foreach (var (anonymizedId, submission) in anonymized)
-        {
-            var original = submissions.FirstOrDefault(s => s.Id == submission.OriginalSubmissionId);
-            if (original != null)
+        return await ExecutePhaseWithProgressAsync(
+            session.Id,
+            ResearchPhase.Anonymization,
+            representativeRole,
+            "Anonymizing submissions for peer review...",
+            async () =>
             {
-                original.AnonymizedId = anonymizedId;
-            }
-        }
+                var anonymizationResult = await _anonymizationService.AnonymizeSubmissionsAsync(submissions).ConfigureAwait(false);
 
-        // Report completion
-        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
-        {
-            Phase = ResearchPhase.Anonymization,
-            AgentRole = representativeRole,
-            Message = $"Anonymization complete. {anonymized.Count} submissions ready for review.",
-            PercentComplete = 100,
-            IsComplete = true
-        }).ConfigureAwait(false);
+                // Update submission records with anonymized IDs
+                foreach (var (anonymizedId, submission) in anonymizationResult.Submissions)
+                {
+                    var original = submissions.FirstOrDefault(s => s.Id == submission.OriginalSubmissionId);
+                    if (original != null)
+                    {
+                        original.AnonymizedId = anonymizedId;
+                    }
+                }
 
-        _logger.LogInformation("Anonymization phase complete. {Count} submissions anonymized", anonymized.Count);
-
-        return anonymized;
+                // Convert to mutable dictionary for downstream compatibility
+                var anonymized = new Dictionary<string, AnonymizedSubmission>(anonymizationResult.Submissions);
+                return (anonymized, $"Anonymization complete. {anonymized.Count} submissions ready for review.");
+            }).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -558,7 +390,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         // Report start
         if (firstAgent != null)
         {
-            await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+            await _progressBroadcaster.BroadcastProgressAsync(session.Id, new ResearchPhaseProgress
             {
                 Phase = ResearchPhase.PeerReview,
                 AgentRole = firstAgent.Role,
@@ -578,7 +410,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         var lastAgent = reviewingAgents.LastOrDefault();
         if (lastAgent != null)
         {
-            await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+            await _progressBroadcaster.BroadcastProgressAsync(session.Id, new ResearchPhaseProgress
             {
                 Phase = ResearchPhase.PeerReview,
                 AgentRole = lastAgent.Role,
@@ -602,7 +434,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         _logger.LogInformation("Starting synthesis phase for session {SessionId}", session.Id);
 
         // Report start
-        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        await _progressBroadcaster.BroadcastProgressAsync(session.Id, new ResearchPhaseProgress
         {
             Phase = ResearchPhase.Synthesis,
             AgentRole = ResearchRole.Chairman,
@@ -614,7 +446,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         var submissionScores = CalculateSubmissionScores(session);
 
         // Report progress
-        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        await _progressBroadcaster.BroadcastProgressAsync(session.Id, new ResearchPhaseProgress
         {
             Phase = ResearchPhase.Synthesis,
             AgentRole = ResearchRole.Chairman,
@@ -630,7 +462,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             cancellationToken).ConfigureAwait(false);
 
         // Report completion
-        await _progressBroadcaster.BroadcastProgressAsync(new ResearchPhaseProgress
+        await _progressBroadcaster.BroadcastProgressAsync(session.Id, new ResearchPhaseProgress
         {
             Phase = ResearchPhase.Synthesis,
             AgentRole = ResearchRole.Chairman,
@@ -687,12 +519,10 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
 
     /// <summary>
     /// Resolves the IChatService for a research agent based on its inference engine ID.
-    /// Creates a new DI scope that must be disposed by the caller when done using the service.
-    /// This is necessary because research runs in a background task after the HTTP request scope is disposed.
+    /// Uses the injected IServiceProvider to resolve keyed services directly.
     /// </summary>
-    /// <returns>A tuple containing the chat service and its scope. Both will be null if service cannot be resolved.
-    /// The caller MUST dispose the scope when finished using the service.</returns>
-    private (IChatService? Service, IServiceScope? Scope) GetChatServiceForAgent(ResearchAgent agent)
+    /// <returns>The chat service, or null if service cannot be resolved.</returns>
+    private IChatService? GetChatServiceForAgent(ResearchAgent agent)
     {
         _logger.LogDebug("[PHASE-EXEC] GetChatServiceForAgent called for {Role}", agent.Role);
         _logger.LogDebug("[PHASE-EXEC]   BaseAgentId: {BaseAgentId}", agent.BaseAgentId);
@@ -703,28 +533,24 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         {
             _logger.LogWarning("[PHASE-EXEC] FAILURE: Agent {Role} has no inference engine ID configured", agent.Role);
             _logger.LogWarning("[PHASE-EXEC]   This agent will NOT be able to perform LLM calls!");
-            return (null, null);
+            return null;
         }
 
-        // Create a new scope for this operation - this is critical for background tasks
-        // where the original HTTP request scope may be disposed
-        var scope = _scopeFactory.CreateScope();
         var engineIdKey = agent.InferenceEngineId.Value.ToString();
         _logger.LogDebug("[PHASE-EXEC] Attempting to get keyed service IChatService with key: '{EngineIdKey}'", engineIdKey);
 
-        var chatService = scope.ServiceProvider.GetKeyedService<IChatService>(engineIdKey);
+        var chatService = _serviceProvider.GetKeyedService<IChatService>(engineIdKey);
 
         if (chatService == null)
         {
             _logger.LogWarning("[PHASE-EXEC] FAILURE: No IChatService found for inference engine ID: {EngineId}", agent.InferenceEngineId);
             _logger.LogWarning("[PHASE-EXEC]   Available keyed services might not include this engine!");
             _logger.LogWarning("[PHASE-EXEC]   Check that the inference engine module registered correctly.");
-            scope.Dispose();
-            return (null, null);
+            return null;
         }
 
         _logger.LogDebug("[PHASE-EXEC] SUCCESS: IChatService resolved: {ServiceType}", chatService.GetType().Name);
-        return (chatService, scope);
+        return chatService;
     }
 
     /// <summary>
@@ -865,5 +691,41 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             CreatedAt = DateTime.UtcNow,
             CompletedAt = DateTime.UtcNow
         };
+    }
+
+    /// <summary>
+    /// Helper method to execute a phase with automatic progress reporting.
+    /// Eliminates duplication of start/complete progress broadcast pattern.
+    /// </summary>
+    private async Task<TResult> ExecutePhaseWithProgressAsync<TResult>(
+        Guid sessionId,
+        ResearchPhase phase,
+        ResearchRole role,
+        string startMessage,
+        Func<Task<(TResult Result, string CompleteMessage)>> phaseWork)
+    {
+        // Report phase start
+        await _progressBroadcaster.BroadcastProgressAsync(sessionId, new ResearchPhaseProgress
+        {
+            Phase = phase,
+            AgentRole = role,
+            Message = startMessage,
+            PercentComplete = 0
+        }).ConfigureAwait(false);
+
+        // Execute phase work
+        var (result, completeMessage) = await phaseWork().ConfigureAwait(false);
+
+        // Report phase completion
+        await _progressBroadcaster.BroadcastProgressAsync(sessionId, new ResearchPhaseProgress
+        {
+            Phase = phase,
+            AgentRole = role,
+            Message = completeMessage,
+            PercentComplete = 100,
+            IsComplete = true
+        }).ConfigureAwait(false);
+
+        return result;
     }
 }

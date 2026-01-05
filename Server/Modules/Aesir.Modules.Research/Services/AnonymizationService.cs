@@ -6,6 +6,7 @@ namespace Aesir.Modules.Research.Services;
 
 /// <summary>
 /// Service for anonymizing research submissions before peer review.
+/// This service is stateless - all mappings are returned in the result.
 /// </summary>
 public interface IAnonymizationService
 {
@@ -13,28 +14,61 @@ public interface IAnonymizationService
     /// Anonymizes a list of submissions, replacing agent identities with anonymous IDs.
     /// </summary>
     /// <param name="submissions">The submissions to anonymize.</param>
-    /// <returns>Dictionary of anonymized ID to submission with anonymized content.</returns>
-    Task<Dictionary<string, AnonymizedSubmission>> AnonymizeSubmissionsAsync(
+    /// <returns>Result containing anonymized submissions and bidirectional mappings.</returns>
+    Task<AnonymizationResult> AnonymizeSubmissionsAsync(
         IReadOnlyList<ResearchSubmission> submissions);
+}
+
+/// <summary>
+/// Result of the anonymization process, containing submissions and bidirectional mappings.
+/// This class is immutable and thread-safe.
+/// </summary>
+public class AnonymizationResult
+{
+    /// <summary>
+    /// Dictionary of anonymized ID (A, B, C...) to anonymized submission.
+    /// </summary>
+    public IReadOnlyDictionary<string, AnonymizedSubmission> Submissions { get; }
+
+    /// <summary>
+    /// Mapping from original submission ID to anonymized ID.
+    /// </summary>
+    public IReadOnlyDictionary<Guid, string> SubmissionToAnonymizedMap { get; }
+
+    /// <summary>
+    /// Mapping from anonymized ID to original submission ID.
+    /// </summary>
+    public IReadOnlyDictionary<string, Guid> AnonymizedToSubmissionMap { get; }
+
+    public AnonymizationResult(
+        Dictionary<string, AnonymizedSubmission> submissions,
+        Dictionary<Guid, string> submissionToAnonymized,
+        Dictionary<string, Guid> anonymizedToSubmission)
+    {
+        Submissions = submissions;
+        SubmissionToAnonymizedMap = submissionToAnonymized;
+        AnonymizedToSubmissionMap = anonymizedToSubmission;
+    }
 
     /// <summary>
     /// Gets the anonymized ID for a submission.
     /// </summary>
     /// <param name="submissionId">The original submission ID.</param>
-    /// <returns>The anonymized ID (A, B, C, etc.).</returns>
-    string GetAnonymizedId(Guid submissionId);
+    /// <returns>The anonymized ID (A, B, C, etc.), or empty string if not found.</returns>
+    public string GetAnonymizedId(Guid submissionId)
+    {
+        return SubmissionToAnonymizedMap.TryGetValue(submissionId, out var id) ? id : string.Empty;
+    }
 
     /// <summary>
     /// Gets the original submission ID from an anonymized ID.
     /// </summary>
     /// <param name="anonymizedId">The anonymized ID.</param>
     /// <returns>The original submission ID, or null if not found.</returns>
-    Guid? GetOriginalId(string anonymizedId);
-
-    /// <summary>
-    /// Clears the anonymization mapping.
-    /// </summary>
-    void ClearMapping();
+    public Guid? GetOriginalId(string anonymizedId)
+    {
+        return AnonymizedToSubmissionMap.TryGetValue(anonymizedId, out var id) ? id : null;
+    }
 }
 
 /// <summary>
@@ -80,13 +114,12 @@ public class AnonymizedSubmission
 
 /// <summary>
 /// Implementation of the anonymization service.
+/// This service is stateless - all mappings are returned in the result.
 /// Uses simple pattern replacement for anonymization.
 /// </summary>
 public class AnonymizationService : IAnonymizationService
 {
     private readonly ILogger<AnonymizationService> _logger;
-    private readonly Dictionary<Guid, string> _submissionToAnonymized = new();
-    private readonly Dictionary<string, Guid> _anonymizedToSubmission = new();
 
     // Letters for anonymized IDs (up to 26 researchers)
     private static readonly string[] AnonymizedIds =
@@ -98,12 +131,14 @@ public class AnonymizationService : IAnonymizationService
     }
 
     /// <inheritdoc />
-    public Task<Dictionary<string, AnonymizedSubmission>> AnonymizeSubmissionsAsync(
+    public Task<AnonymizationResult> AnonymizeSubmissionsAsync(
         IReadOnlyList<ResearchSubmission> submissions)
     {
         _logger.LogInformation("Anonymizing {Count} submissions", submissions.Count);
 
-        ClearMapping();
+        // All state is local to this method - no instance state
+        var submissionToAnonymized = new Dictionary<Guid, string>();
+        var anonymizedToSubmission = new Dictionary<string, Guid>();
         var result = new Dictionary<string, AnonymizedSubmission>();
 
         // Shuffle submissions to randomize assignment
@@ -114,9 +149,9 @@ public class AnonymizationService : IAnonymizationService
             var submission = shuffled[i];
             var anonymizedId = AnonymizedIds[i % AnonymizedIds.Length];
 
-            // Store bidirectional mapping
-            _submissionToAnonymized[submission.Id] = anonymizedId;
-            _anonymizedToSubmission[anonymizedId] = submission.Id;
+            // Store bidirectional mapping (local to this result)
+            submissionToAnonymized[submission.Id] = anonymizedId;
+            anonymizedToSubmission[anonymizedId] = submission.Id;
 
             // Anonymize the content
             var anonymizedContent = AnonymizeContent(submission.Content, submission.Role);
@@ -138,26 +173,8 @@ public class AnonymizationService : IAnonymizationService
 
         _logger.LogInformation("Anonymization complete. Created {Count} anonymized submissions", result.Count);
 
-        return Task.FromResult(result);
-    }
-
-    /// <inheritdoc />
-    public string GetAnonymizedId(Guid submissionId)
-    {
-        return _submissionToAnonymized.TryGetValue(submissionId, out var id) ? id : string.Empty;
-    }
-
-    /// <inheritdoc />
-    public Guid? GetOriginalId(string anonymizedId)
-    {
-        return _anonymizedToSubmission.TryGetValue(anonymizedId, out var id) ? id : null;
-    }
-
-    /// <inheritdoc />
-    public void ClearMapping()
-    {
-        _submissionToAnonymized.Clear();
-        _anonymizedToSubmission.Clear();
+        // Return immutable result containing all data and mappings
+        return Task.FromResult(new AnonymizationResult(result, submissionToAnonymized, anonymizedToSubmission));
     }
 
     /// <summary>

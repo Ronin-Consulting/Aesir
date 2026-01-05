@@ -1,7 +1,10 @@
+using System.Collections.Concurrent;
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
 using Aesir.Modules.Research.Models;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Modules.Research.Services;
@@ -66,10 +69,17 @@ public class ResearchOrchestrator : IResearchOrchestrator
     private readonly IResearchTeamRepository _teamRepository;
     private readonly IResearchAgentFactory _agentFactory;
     private readonly IClarificationService _clarificationService;
-    private readonly IResearchPhaseExecutor _phaseExecutor;
     private readonly IResearchProgressBroadcaster _progressBroadcaster;
     private readonly IConfigurationService _configurationService;
     private readonly IChatHistoryService _chatHistoryService;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly IHostApplicationLifetime _applicationLifetime;
+
+    /// <summary>
+    /// Stores CancellationTokenSources for active research sessions.
+    /// Enables explicit cancellation via CancelResearchAsync and cleanup on completion.
+    /// </summary>
+    private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _sessionCancellationTokens = new();
 
     public ResearchOrchestrator(
         ILogger<ResearchOrchestrator> logger,
@@ -77,20 +87,22 @@ public class ResearchOrchestrator : IResearchOrchestrator
         IResearchTeamRepository teamRepository,
         IResearchAgentFactory agentFactory,
         IClarificationService clarificationService,
-        IResearchPhaseExecutor phaseExecutor,
         IResearchProgressBroadcaster progressBroadcaster,
         IConfigurationService configurationService,
-        IChatHistoryService chatHistoryService)
+        IChatHistoryService chatHistoryService,
+        IServiceScopeFactory serviceScopeFactory,
+        IHostApplicationLifetime applicationLifetime)
     {
         _logger = logger;
         _sessionRepository = sessionRepository;
         _teamRepository = teamRepository;
         _agentFactory = agentFactory;
         _clarificationService = clarificationService;
-        _phaseExecutor = phaseExecutor;
         _progressBroadcaster = progressBroadcaster;
         _configurationService = configurationService;
         _chatHistoryService = chatHistoryService;
+        _serviceScopeFactory = serviceScopeFactory;
+        _applicationLifetime = applicationLifetime;
     }
 
     /// <inheritdoc />
@@ -167,6 +179,8 @@ public class ResearchOrchestrator : IResearchOrchestrator
         await _sessionRepository.AddAsync(session).ConfigureAwait(false);
         _logger.LogDebug("[RESEARCH] Session created with ID: {SessionId}", session.Id);
 
+        // Note: Session ID is now passed explicitly to each broadcast call (stateless broadcaster)
+
         // Initialize ChatSession immediately so it appears in chat history
         // This persists the user's query and creates a placeholder title
         var chatSessionId = await InitializeChatSessionAsync(session, query, userId).ConfigureAwait(false);
@@ -215,19 +229,57 @@ public class ResearchOrchestrator : IResearchOrchestrator
 
         // Fire-and-forget the workflow - don't block the HTTP response
         // The workflow can take minutes; client will receive updates via SignalR
+        // Create a new scope for the background task to avoid using disposed scoped services
         _logger.LogDebug("[RESEARCH] === STARTING ExecuteResearchWorkflowAsync (fire-and-forget) ===");
+
+        // Create a CancellationTokenSource for this session that:
+        // 1. Cancels when the application is stopping (graceful shutdown)
+        // 2. Can be explicitly cancelled via CancelResearchAsync
+        // NOTE: We do NOT link to the HTTP request's cancellationToken because
+        // the workflow runs in background after the HTTP response is sent
+        var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(
+            _applicationLifetime.ApplicationStopping);
+        _sessionCancellationTokens[session.Id] = sessionCts;
+
+        // Task.Run uses CancellationToken.None so it always starts
+        // The workflow itself uses the session-specific token
         _ = Task.Run(async () =>
         {
             try
             {
-                await ExecuteResearchWorkflowAsync(session, researchAgents, CancellationToken.None).ConfigureAwait(false);
+                // Create a new scope for the background task
+                using var scope = _serviceScopeFactory.CreateScope();
+                var phaseExecutor = scope.ServiceProvider.GetRequiredService<IResearchPhaseExecutor>();
+
+                // Note: Session ID is now passed explicitly to each broadcast call (stateless broadcaster)
+                await ExecuteResearchWorkflowAsync(session, researchAgents, phaseExecutor, sessionCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("[RESEARCH] Research session {SessionId} was cancelled", session.Id);
+                // Cancellation is expected - update session status if not already done
+                var currentSession = await _sessionRepository.GetByIdAsync(session.Id).ConfigureAwait(false);
+                if (currentSession != null && currentSession.Status != ResearchStatus.Cancelled)
+                {
+                    currentSession.Status = ResearchStatus.Cancelled;
+                    currentSession.CompletedAt = DateTime.UtcNow;
+                    currentSession.UpdatedAt = DateTime.UtcNow;
+                    await _sessionRepository.UpdateAsync(currentSession).ConfigureAwait(false);
+                    await _progressBroadcaster.BroadcastErrorAsync(session.Id, "Research was cancelled").ConfigureAwait(false);
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[RESEARCH] Background workflow failed for session {SessionId}", session.Id);
                 // Error is already handled and broadcast within ExecuteResearchWorkflowAsync
             }
-        });
+            finally
+            {
+                // Cleanup: remove CTS from dictionary and dispose
+                _sessionCancellationTokens.TryRemove(session.Id, out _);
+                sessionCts.Dispose();
+            }
+        }, CancellationToken.None);
 
         _logger.LogDebug("[RESEARCH] === StartResearchAsync COMPLETE (workflow running in background) ===");
         return session;
@@ -251,6 +303,8 @@ public class ResearchOrchestrator : IResearchOrchestrator
         }
 
         _logger.LogInformation("Processing clarification answers for session {SessionId}", sessionId);
+
+        // Note: Session ID is now passed explicitly to each broadcast call (stateless broadcaster)
 
         // Store answers
         session.ClarificationAnswers = new Dictionary<string, string>(answers);
@@ -289,19 +343,57 @@ public class ResearchOrchestrator : IResearchOrchestrator
 
         // Fire-and-forget the workflow - don't block the HTTP response
         // The workflow can take minutes; client will receive updates via SignalR
+        // Create a new scope for the background task to avoid using disposed scoped services
         _logger.LogDebug("[RESEARCH] === STARTING ExecuteResearchWorkflowAsync (fire-and-forget) ===");
+
+        // Create a CancellationTokenSource for this session that:
+        // 1. Cancels when the application is stopping (graceful shutdown)
+        // 2. Can be explicitly cancelled via CancelResearchAsync
+        // NOTE: We do NOT link to the HTTP request's cancellationToken because
+        // the workflow runs in background after the HTTP response is sent
+        var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(
+            _applicationLifetime.ApplicationStopping);
+        _sessionCancellationTokens[session.Id] = sessionCts;
+
+        // Task.Run uses CancellationToken.None so it always starts
+        // The workflow itself uses the session-specific token
         _ = Task.Run(async () =>
         {
             try
             {
-                await ExecuteResearchWorkflowAsync(session, researchAgents, CancellationToken.None).ConfigureAwait(false);
+                // Create a new scope for the background task
+                using var scope = _serviceScopeFactory.CreateScope();
+                var phaseExecutor = scope.ServiceProvider.GetRequiredService<IResearchPhaseExecutor>();
+
+                // Note: Session ID is now passed explicitly to each broadcast call (stateless broadcaster)
+                await ExecuteResearchWorkflowAsync(session, researchAgents, phaseExecutor, sessionCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("[RESEARCH] Research session {SessionId} was cancelled", session.Id);
+                // Cancellation is expected - update session status if not already done
+                var currentSession = await _sessionRepository.GetByIdAsync(session.Id).ConfigureAwait(false);
+                if (currentSession != null && currentSession.Status != ResearchStatus.Cancelled)
+                {
+                    currentSession.Status = ResearchStatus.Cancelled;
+                    currentSession.CompletedAt = DateTime.UtcNow;
+                    currentSession.UpdatedAt = DateTime.UtcNow;
+                    await _sessionRepository.UpdateAsync(currentSession).ConfigureAwait(false);
+                    await _progressBroadcaster.BroadcastErrorAsync(session.Id, "Research was cancelled").ConfigureAwait(false);
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[RESEARCH] Background workflow failed for session {SessionId}", session.Id);
                 // Error is already handled and broadcast within ExecuteResearchWorkflowAsync
             }
-        });
+            finally
+            {
+                // Cleanup: remove CTS from dictionary and dispose
+                _sessionCancellationTokens.TryRemove(session.Id, out _);
+                sessionCts.Dispose();
+            }
+        }, CancellationToken.None);
     }
 
     /// <inheritdoc />
@@ -319,6 +411,14 @@ public class ResearchOrchestrator : IResearchOrchestrator
             throw new KeyNotFoundException($"Research session {sessionId} not found");
         }
 
+        // Cancel the running workflow if it exists
+        if (_sessionCancellationTokens.TryRemove(sessionId, out var cts))
+        {
+            _logger.LogInformation("Cancelling active research workflow for session {SessionId}", sessionId);
+            await cts.CancelAsync().ConfigureAwait(false);
+            // Note: The CTS will be disposed in the finally block of the background task
+        }
+
         session.Status = ResearchStatus.Cancelled;
         session.CompletedAt = DateTime.UtcNow;
         session.UpdatedAt = DateTime.UtcNow;
@@ -330,6 +430,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
     private async Task ExecuteResearchWorkflowAsync(
         ResearchSession session,
         IReadOnlyList<ResearchAgent> researchAgents,
+        IResearchPhaseExecutor phaseExecutor,
         CancellationToken cancellationToken)
     {
         _logger.LogDebug("[RESEARCH-WORKFLOW] === ExecuteResearchWorkflowAsync START ===");
@@ -338,16 +439,21 @@ public class ResearchOrchestrator : IResearchOrchestrator
 
         try
         {
-            // Set the session ID for broadcasting progress updates
-            _progressBroadcaster.SetCurrentSession(session.Id);
-            _logger.LogDebug("[RESEARCH-WORKFLOW] ProgressBroadcaster session set");
+            // Note: Session ID is now passed explicitly to each broadcast call (stateless broadcaster)
 
+            var chairmanAgent = researchAgents.FirstOrDefault(a => a.IsChairman);
             var nonChairmanAgents = researchAgents.Where(a => !a.IsChairman).ToList();
+            _logger.LogDebug("[RESEARCH-WORKFLOW] Chairman agent: {Role}", chairmanAgent?.Role ?? ResearchRole.Chairman);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Non-Chairman agents: {Count}", nonChairmanAgents.Count);
             foreach (var agent in nonChairmanAgents)
             {
                 _logger.LogDebug("[RESEARCH-WORKFLOW]   Agent: {Role}, InferenceEngineId={InferenceEngineId}",
                     agent.Role, agent.InferenceEngineId);
+            }
+
+            if (chairmanAgent == null)
+            {
+                throw new InvalidOperationException("Research session must have a Chairman agent");
             }
 
             // Phase 1: Planning
@@ -358,12 +464,13 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Broadcasting status change: Planning");
-            await _progressBroadcaster.BroadcastStatusChangeAsync(
-                session.Id, session.Status, session.CurrentPhase, "Starting planning phase...").ConfigureAwait(false);
+            await _progressBroadcaster.BroadcastProgressAsync(
+                session.Id, ResearchPhase.Planning, 0, "Starting planning phase...").ConfigureAwait(false);
 
-            _logger.LogDebug("[RESEARCH-WORKFLOW] Calling ExecutePlanningPhaseAsync...");
-            var plans = await _phaseExecutor.ExecutePlanningPhaseAsync(
+            _logger.LogDebug("[RESEARCH-WORKFLOW] Calling ExecutePlanningPhaseAsync with Chairman unified planning...");
+            var plans = await phaseExecutor.ExecutePlanningPhaseAsync(
                 session,
+                chairmanAgent,
                 nonChairmanAgents,
                 session.RefinedQuery ?? session.Query,
                 cancellationToken).ConfigureAwait(false);
@@ -376,11 +483,11 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Broadcasting status change: Researching");
-            await _progressBroadcaster.BroadcastStatusChangeAsync(
-                session.Id, session.Status, session.CurrentPhase, "Agents are conducting research...").ConfigureAwait(false);
+            await _progressBroadcaster.BroadcastProgressAsync(
+                session.Id, ResearchPhase.Research, 0, "Agents are conducting research...").ConfigureAwait(false);
 
             _logger.LogDebug("[RESEARCH-WORKFLOW] Calling ExecuteResearchPhaseAsync...");
-            var submissions = await _phaseExecutor.ExecuteResearchPhaseAsync(
+            var submissions = await phaseExecutor.ExecuteResearchPhaseAsync(
                 session,
                 nonChairmanAgents,
                 session.RefinedQuery ?? session.Query,
@@ -405,11 +512,11 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Broadcasting status change: Anonymizing");
-            await _progressBroadcaster.BroadcastStatusChangeAsync(
-                session.Id, session.Status, session.CurrentPhase, "Anonymizing submissions for peer review...").ConfigureAwait(false);
+            await _progressBroadcaster.BroadcastProgressAsync(
+                session.Id, ResearchPhase.Anonymization, 0, "Anonymizing submissions for peer review...").ConfigureAwait(false);
 
             _logger.LogDebug("[RESEARCH-WORKFLOW] Calling ExecuteAnonymizationPhaseAsync...");
-            var anonymizedSubmissions = await _phaseExecutor.ExecuteAnonymizationPhaseAsync(
+            var anonymizedSubmissions = await phaseExecutor.ExecuteAnonymizationPhaseAsync(
                 session,
                 submissions,
                 cancellationToken).ConfigureAwait(false);
@@ -422,11 +529,11 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Broadcasting status change: PeerReviewing");
-            await _progressBroadcaster.BroadcastStatusChangeAsync(
-                session.Id, session.Status, session.CurrentPhase, "Agents are reviewing each other's work...").ConfigureAwait(false);
+            await _progressBroadcaster.BroadcastProgressAsync(
+                session.Id, ResearchPhase.PeerReview, 0, "Agents are reviewing each other's work...").ConfigureAwait(false);
 
             _logger.LogDebug("[RESEARCH-WORKFLOW] Calling ExecutePeerReviewPhaseAsync...");
-            var peerReviews = await _phaseExecutor.ExecutePeerReviewPhaseAsync(
+            var peerReviews = await phaseExecutor.ExecutePeerReviewPhaseAsync(
                 session,
                 nonChairmanAgents,
                 anonymizedSubmissions,
@@ -445,8 +552,8 @@ public class ResearchOrchestrator : IResearchOrchestrator
             session.UpdatedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Broadcasting status change: Synthesizing");
-            await _progressBroadcaster.BroadcastStatusChangeAsync(
-                session.Id, session.Status, session.CurrentPhase, "Chairman is synthesizing the final report...").ConfigureAwait(false);
+            await _progressBroadcaster.BroadcastProgressAsync(
+                session.Id, ResearchPhase.Synthesis, 0, "Chairman is synthesizing the final report...").ConfigureAwait(false);
 
             // Get Chairman agent for synthesis
             var chairman = researchAgents.FirstOrDefault(a => a.IsChairman);
@@ -471,7 +578,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
             }
 
             _logger.LogDebug("[RESEARCH-WORKFLOW] Calling ExecuteSynthesisPhaseAsync...");
-            var report = await _phaseExecutor.ExecuteSynthesisPhaseAsync(
+            var report = await phaseExecutor.ExecuteSynthesisPhaseAsync(
                 session,
                 chairman,
                 cancellationToken).ConfigureAwait(false);
