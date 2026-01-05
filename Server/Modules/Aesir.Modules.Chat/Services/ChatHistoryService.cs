@@ -120,7 +120,7 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
 
             string sql2 = "SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title, is_starred as IsStarred "+
                 "FROM aesir.aesir_chat_session "+
-                "WHERE conversation->>'Id' in ('"+list+"') "+
+                "WHERE conversation->>'id' in ('"+list+"') "+
                 "ORDER BY is_starred DESC, updated_at DESC ";
 
             return await dbContext.UnitOfWorkAsync(async connection =>
@@ -192,13 +192,13 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
             to_tsvector('english', COALESCE(title, '')) @@ websearch_to_tsquery('english', @searchTerm)
             OR
             -- Full-text search in conversation messages content (excluding system messages)
-            to_tsvector('english', COALESCE(jsonb_path_query_array(conversation, '$.Messages[*] ? (@.Role <> ""system"").Content')::text, '')) @@ websearch_to_tsquery('english', @searchTerm)
+            to_tsvector('english', COALESCE(jsonb_path_query_array(conversation, '$.messages[*] ? (@.role <> ""system"").content')::text, '')) @@ websearch_to_tsquery('english', @searchTerm)
             OR
             -- ILIKE fallback for exact substring matches (case-insensitive)
             title ILIKE '%' || @searchTerm || '%'
             OR
             -- ILIKE fallback for message content search
-            jsonb_path_query_array(conversation, '$.Messages[*] ? (@.Role <> ""system"").Content')::text ILIKE '%' || @searchTerm || '%'
+            jsonb_path_query_array(conversation, '$.messages[*] ? (@.role <> ""system"").content')::text ILIKE '%' || @searchTerm || '%'
         )
         ORDER BY is_starred DESC, updated_at DESC";
 

@@ -185,7 +185,7 @@ namespace Aesir.Modules.Chat.Controllers
 
             // Check the master switch setting
             string? thinkingValue = null;
-            var hasConfig = inferenceEngine.Configuration?.TryGetValue("EnableChatModelThinking", out thinkingValue) == true;
+            var hasConfig = inferenceEngine.Configuration?.TryGetValue("enable_chat_model_thinking", out thinkingValue) == true;
             var engineEnableThinking = hasConfig && bool.TryParse(thinkingValue, out var thinking) && thinking;
 
             logger.LogDebug("[Master Switch] Ollama engine config: EnableChatModelThinking={ConfigValue}, Parsed={EngineEnableThinking}",

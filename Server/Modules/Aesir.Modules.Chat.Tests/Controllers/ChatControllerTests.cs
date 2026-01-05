@@ -201,7 +201,7 @@ public class ChatControllerTests
             Type = InferenceEngineType.Ollama,
             Configuration = new Dictionary<string, string?>
             {
-                ["EnableChatModelThinking"] = configValue
+                ["enable_chat_model_thinking"] = configValue
             }
         };
 
@@ -248,7 +248,7 @@ public class ChatControllerTests
             Type = InferenceEngineType.Ollama,
             Configuration = new Dictionary<string, string?>
             {
-                ["EnableChatModelThinking"] = configValue
+                ["enable_chat_model_thinking"] = configValue
             }
         };
 
@@ -289,7 +289,7 @@ public class ChatControllerTests
 
         if (enableThinking.HasValue)
         {
-            config["EnableChatModelThinking"] = enableThinking.Value.ToString().ToLower();
+            config["enable_chat_model_thinking"] = enableThinking.Value.ToString().ToLower();
         }
 
         return new AesirInferenceEngine
