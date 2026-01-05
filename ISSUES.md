@@ -138,3 +138,74 @@ Likely a state synchronization issue where the first click triggers a state chan
 **Status:** OPEN
 
 ---
+
+## Issue #4: Foreign key constraint violations show cryptic SQL errors instead of friendly messages
+
+**Date:** 2026-01-05
+
+**Severity:** Medium
+
+**Symptom:**
+When attempting to delete an entity (e.g., an Agent in the Agents Settings page) that is referenced by another entity via a foreign key constraint, the system throws a cryptic PostgreSQL referential integrity exception. This raw SQL error is displayed to the user in a toast message instead of a user-friendly explanation.
+
+**Example:**
+Attempting to delete an Agent that is referenced in the `aesir_research_team_member` table results in:
+
+```
+Npgsql.PostgresException (0x80004005): 23503: update or delete on table "aesir_agent"
+violates foreign key constraint "FK_aesir_research_team_member_agent_id_aesir_agent_id"
+on table "aesir_research_team_member"
+
+DETAIL: Key (id)=(515a0d64-bdd1-4f39-b6ca-faddf53db498) is still referenced from
+table "aesir_research_team_member".
+```
+
+**Expected Behavior:**
+When a foreign key constraint violation occurs, the user should see a friendly, actionable message such as:
+- "Cannot delete this Agent because it is currently assigned to a Research Team. Please remove it from all teams first."
+- "This Agent is in use and cannot be deleted. Remove it from Research Teams before trying again."
+
+**Root Cause:**
+The application does not catch and translate `Npgsql.PostgresException` with SQL state `23503` (foreign key violation) into user-friendly messages. The raw exception bubbles up to the UI layer.
+
+**Relevant Code:**
+- `Server/Modules/Aesir.Modules.Configuration/Controllers/ConfigurationController.cs` - Agent deletion endpoint
+- `Server/Modules/Aesir.Modules.Configuration/Services/ConfigurationService.cs` - Agent deletion logic
+- Potentially affects ALL delete operations across all modules (Agents, Engines, MCP Servers, etc.)
+
+**Exception Data Available for Translation:**
+- `SqlState`: `23503` (foreign key violation)
+- `ConstraintName`: `FK_aesir_research_team_member_agent_id_aesir_agent_id`
+- `TableName`: `aesir_research_team_member` (the referencing table)
+- `SchemaName`: `aesir`
+
+**Proposed Fix:**
+1. Create a centralized exception handler or extension method to catch `Npgsql.PostgresException`
+2. Check for `SqlState == "23503"` (foreign key violation)
+3. Parse the `ConstraintName` and `TableName` to determine what entity is preventing deletion
+4. Build a lookup table/dictionary to map constraint names to friendly messages:
+   ```csharp
+   private static readonly Dictionary<string, string> FriendlyMessages = new()
+   {
+       ["FK_aesir_research_team_member_agent_id_aesir_agent_id"] =
+           "Cannot delete this Agent because it is assigned to one or more Research Teams.",
+       // Add other FK constraints as needed
+   };
+   ```
+5. Return a user-friendly error message via API response (400 Bad Request with message)
+6. Display friendly message in UI toast notification instead of raw SQL error
+
+**Implementation Considerations:**
+- Could create a global exception filter middleware for consistent handling
+- Alternatively, add try-catch in service layer methods (DeleteAgentAsync, DeleteEngineAsync, etc.)
+- Consider making the friendly message include actionable guidance (e.g., "Remove from Research Teams first")
+- Log the full exception details for debugging while showing friendly message to user
+
+**Impact:**
+- Poor user experience - technical users might understand the error, but most users won't know what to do
+- Reduces application polish and professionalism
+- Users may not understand why deletion failed or how to resolve the issue
+
+**Status:** OPEN
+
+---
