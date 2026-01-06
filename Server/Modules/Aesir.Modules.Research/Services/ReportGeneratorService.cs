@@ -4,9 +4,7 @@ using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
 using Aesir.Modules.Research.Constants;
-using Aesir.Modules.Research.Hubs;
 using Aesir.Modules.Research.Models;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Modules.Research.Services;
@@ -48,7 +46,6 @@ public class ReportGeneratorService : IReportGeneratorService
     private readonly ILogger<ReportGeneratorService> _logger;
     private readonly IChatServiceResolver _chatServiceResolver;
     private readonly IChatRequestBuilder _chatRequestBuilder;
-    private readonly IHubContext<ResearchHub> _hubContext;
     private readonly IConfidenceCalculator _confidenceCalculator;
     private readonly IScoringCalculator _scoringCalculator;
     private readonly IResearchProgressBroadcaster _progressBroadcaster;
@@ -57,7 +54,6 @@ public class ReportGeneratorService : IReportGeneratorService
         ILogger<ReportGeneratorService> logger,
         IChatServiceResolver chatServiceResolver,
         IChatRequestBuilder chatRequestBuilder,
-        IHubContext<ResearchHub> hubContext,
         IConfidenceCalculator confidenceCalculator,
         IScoringCalculator scoringCalculator,
         IResearchProgressBroadcaster progressBroadcaster)
@@ -65,7 +61,6 @@ public class ReportGeneratorService : IReportGeneratorService
         _logger = logger;
         _chatServiceResolver = chatServiceResolver;
         _chatRequestBuilder = chatRequestBuilder;
-        _hubContext = hubContext;
         _confidenceCalculator = confidenceCalculator;
         _scoringCalculator = scoringCalculator;
         _progressBroadcaster = progressBroadcaster;
@@ -175,8 +170,8 @@ public class ReportGeneratorService : IReportGeneratorService
             PercentComplete = ResearchProgressMilestones.PhaseComplete
         }).ConfigureAwait(false);
 
-        // Notify research completed via SignalR
-        await _hubContext.SendResearchCompletedAsync(session.Id, report.Id).ConfigureAwait(false);
+        // NOTE: ResearchCompleted event is broadcast by ResearchOrchestrator after this method returns.
+        // This ensures all lifecycle events are managed by the orchestrator.
 
         _logger.LogInformation("Report generated with {FindingCount} findings", report.Findings?.Count ?? 0);
 

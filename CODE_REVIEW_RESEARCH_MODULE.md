@@ -3,7 +3,7 @@
 ## Summary
 - **Review Date**: 2026-01-05
 - **Files Reviewed**: 18 core service files
-- **Total Findings**: 29 (Critical: 3 ✅ ALL FIXED, High: 8 (4 FIXED), Medium: 12 (1 FIXED), Low: 6)
+- **Total Findings**: 29 (Critical: 3 ✅ ALL FIXED, High: 8 (4 FIXED), Medium: 12 (2 FIXED), Low: 6)
 - **Estimated Effort**: 16-24 hours
 
 ## Key Files Reviewed
@@ -382,15 +382,16 @@ public static partial class ResearchLoggerExtensions
 
 ---
 
-### MED-07: ReportGeneratorService Broadcasts ResearchCompleted Twice
+### ~~MED-07: ReportGeneratorService Broadcasts ResearchCompleted Twice~~ [FIXED]
 **File**: `/Users/ooartist/Src/Aesir/Server/Modules/Aesir.Modules.Research/Services/ReportGeneratorService.cs`
-**Line**: 178
+**Status**: FIXED on 2026-01-06
 
-**Problem**: `ReportGeneratorService.GenerateReportAsync` calls `_hubContext.SendResearchCompletedAsync()`, but so does `ResearchOrchestrator.ExecuteResearchWorkflowAsync` (line 544).
-
-**Impact**: Clients receive duplicate completion events.
-
-**Recommended Fix**: Remove the broadcast from ReportGeneratorService; let orchestrator handle all lifecycle events.
+**Fix Applied**:
+- Removed `_hubContext.SendResearchCompletedAsync()` call from `GenerateReportAsync()`
+- Removed unused `IHubContext<ResearchHub>` dependency from constructor
+- Removed unused `Microsoft.AspNetCore.SignalR` and `Aesir.Modules.Research.Hubs` imports
+- Added comment explaining that ResearchCompleted is broadcast by orchestrator
+- Lifecycle events now consistently managed by `ResearchOrchestrator` via `IResearchProgressBroadcaster`
 
 ---
 
