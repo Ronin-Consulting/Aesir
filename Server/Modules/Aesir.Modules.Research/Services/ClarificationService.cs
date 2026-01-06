@@ -1,11 +1,10 @@
 using System.Text;
 using System.Text.Json;
 using Aesir.Common.Models;
-using Aesir.Common.Prompts;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
+using Aesir.Modules.Research.Constants;
 using Aesir.Modules.Research.Models;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Modules.Research.Services;
@@ -55,19 +54,19 @@ public interface IClarificationService
 public class ClarificationService : IClarificationService
 {
     private readonly ILogger<ClarificationService> _logger;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IConfigurationService _configurationService;
+    private readonly IChatServiceResolver _chatServiceResolver;
+    private readonly IChatRequestBuilder _chatRequestBuilder;
     private readonly IResearchProgressBroadcaster _progressBroadcaster;
 
     public ClarificationService(
         ILogger<ClarificationService> logger,
-        IServiceProvider serviceProvider,
-        IConfigurationService configurationService,
+        IChatServiceResolver chatServiceResolver,
+        IChatRequestBuilder chatRequestBuilder,
         IResearchProgressBroadcaster progressBroadcaster)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
-        _configurationService = configurationService;
+        _chatServiceResolver = chatServiceResolver;
+        _chatRequestBuilder = chatRequestBuilder;
         _progressBroadcaster = progressBroadcaster;
     }
 
@@ -95,7 +94,7 @@ public class ClarificationService : IClarificationService
         await _progressBroadcaster.BroadcastProgressAsync(
             sessionId,
             ResearchPhase.Clarification,
-            0,
+            ResearchProgressMilestones.PhaseStart,
             "Chairman is analyzing the query for clarification needs...",
             new List<Contracts.ActiveAgentInfo>
             {
@@ -110,7 +109,7 @@ public class ClarificationService : IClarificationService
             }).ConfigureAwait(false);
 
         // Get chat service for the Chairman
-        var chatService = GetChatServiceForAgent(chairmanAgent);
+        var chatService = _chatServiceResolver.GetChatService(chairmanAgent.InferenceEngineId);
 
         if (chatService == null)
         {
@@ -161,7 +160,7 @@ public class ClarificationService : IClarificationService
         await _progressBroadcaster.BroadcastProgressAsync(
             sessionId,
             ResearchPhase.Clarification,
-            50,
+            ResearchProgressMilestones.LlmProcessing,
             "Chairman is refining the query with clarification answers...",
             new List<Contracts.ActiveAgentInfo>
             {
@@ -176,7 +175,7 @@ public class ClarificationService : IClarificationService
             }).ConfigureAwait(false);
 
         // Get chat service for the Chairman
-        var chatService = GetChatServiceForAgent(chairmanAgent);
+        var chatService = _chatServiceResolver.GetChatService(chairmanAgent.InferenceEngineId);
 
         if (chatService == null)
         {
@@ -208,7 +207,34 @@ public class ClarificationService : IClarificationService
     {
         // Build the clarification prompt
         var userPrompt = BuildClarificationUserPrompt(query);
-        var request = await CreateClarificationRequestAsync(chairmanAgent, userPrompt).ConfigureAwait(false);
+
+        var systemPrompt = chairmanAgent.ClarificationPrompt ?? """
+            You are the Chairman of a research team. Before research begins, you analyze the user's query
+            to determine if any clarifying questions would help focus the investigation.
+
+            Good clarifying questions:
+            - Help narrow overly broad topics
+            - Resolve ambiguous terminology
+            - Identify specific aspects of interest
+            - Understand the context or purpose of the research
+
+            Only ask questions if they would meaningfully improve the research. If the query is already
+            clear and specific, indicate that no clarification is needed.
+            """;
+
+        var request = await _chatRequestBuilder.BuildAsync(
+            chairmanAgent,
+            systemPrompt,
+            userPrompt,
+            new ChatRequestOptions
+            {
+                IncludeTools = false,
+                TemperatureOverride = 0.3,
+                MaxTokensOverride = 1024,
+                User = "research-clarification",
+                Title = "Research Clarification",
+                UseCustomPersona = true
+            }).ConfigureAwait(false);
 
         _logger.LogDebug("Sending clarification request to LLM (non-streaming)");
 
@@ -236,7 +262,28 @@ public class ClarificationService : IClarificationService
     {
         // Build the refinement prompt
         var userPrompt = BuildRefinementUserPrompt(originalQuery, questions, answers);
-        var request = await CreateRefinementRequestAsync(chairmanAgent, userPrompt).ConfigureAwait(false);
+
+        var systemPrompt = """
+            You are the Chairman of a research team. Your task is to refine a research query
+            based on clarification answers provided by the user.
+
+            Create a single, coherent, improved query that incorporates all the additional context.
+            The refined query should be clear, specific, and actionable for the research team.
+            """;
+
+        var request = await _chatRequestBuilder.BuildAsync(
+            chairmanAgent,
+            systemPrompt,
+            userPrompt,
+            new ChatRequestOptions
+            {
+                IncludeTools = false,
+                TemperatureOverride = 0.3,
+                MaxTokensOverride = 2048,
+                User = "research-refinement",
+                Title = "Query Refinement",
+                UseCustomPersona = true
+            }).ConfigureAwait(false);
 
         _logger.LogDebug("Sending query refinement request to LLM (non-streaming)");
 
@@ -321,166 +368,6 @@ public class ClarificationService : IClarificationService
         sb.AppendLine("Output ONLY the refined query text, nothing else.");
 
         return sb.ToString();
-    }
-
-    /// <summary>
-    /// Creates a chat request for clarification.
-    /// </summary>
-    private async Task<AesirChatRequestBase> CreateClarificationRequestAsync(ResearchAgent chairmanAgent, string userPrompt)
-    {
-        var systemMessage = new AesirChatMessage
-        {
-            Role = "system",
-            Content = chairmanAgent.ClarificationPrompt ?? """
-                You are the Chairman of a research team. Before research begins, you analyze the user's query
-                to determine if any clarifying questions would help focus the investigation.
-
-                Good clarifying questions:
-                - Help narrow overly broad topics
-                - Resolve ambiguous terminology
-                - Identify specific aspects of interest
-                - Understand the context or purpose of the research
-
-                Only ask questions if they would meaningfully improve the research. If the query is already
-                clear and specific, indicate that no clarification is needed.
-                """,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var userMessage = new AesirChatMessage
-        {
-            Role = "user",
-            Content = userPrompt,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var conversation = new AesirConversation
-        {
-            Id = Guid.NewGuid().ToString(),
-            Messages = [systemMessage, userMessage]
-        };
-
-        // Get thinking settings from base agent
-        bool? enableThinking = null;
-        ThinkValue? thinkValue = null;
-
-        try
-        {
-            var baseAgent = await _configurationService.GetAgentAsync(chairmanAgent.BaseAgentId).ConfigureAwait(false);
-            enableThinking = baseAgent.AllowThinking;
-            thinkValue = baseAgent.ThinkValue;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load Chairman agent thinking settings");
-        }
-
-        // Use the chairman's merged persona (base agent domain expertise + research role methodology)
-        // This was built by ResearchAgentFactory.BuildMergedPersona()
-        _logger.LogDebug("[CLARIFICATION] Using chairman's merged persona, length: {Length}",
-            chairmanAgent.Persona?.Length ?? 0);
-
-        return new AesirChatRequestBase
-        {
-            Model = chairmanAgent.Model ?? "gpt-4",
-            Temperature = 0.3f, // Lower temperature for more focused questions
-            MaxTokens = 1024,
-            Conversation = conversation,
-            User = "research-clarification",
-            Title = "Research Clarification",
-            EnableThinking = enableThinking,
-            ThinkValue = thinkValue,
-            // Use Custom persona with the merged persona string
-            ChatPromptPersona = PromptPersona.Custom,
-            ChatCustomPromptContent = chairmanAgent.Persona
-        };
-    }
-
-    /// <summary>
-    /// Creates a chat request for query refinement.
-    /// </summary>
-    private async Task<AesirChatRequestBase> CreateRefinementRequestAsync(ResearchAgent chairmanAgent, string userPrompt)
-    {
-        var systemMessage = new AesirChatMessage
-        {
-            Role = "system",
-            Content = """
-                You are the Chairman of a research team. Your task is to refine a research query
-                based on clarification answers provided by the user.
-
-                Create a single, coherent, improved query that incorporates all the additional context.
-                The refined query should be clear, specific, and actionable for the research team.
-                """,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var userMessage = new AesirChatMessage
-        {
-            Role = "user",
-            Content = userPrompt,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var conversation = new AesirConversation
-        {
-            Id = Guid.NewGuid().ToString(),
-            Messages = [systemMessage, userMessage]
-        };
-
-        // Get thinking settings from base agent
-        bool? enableThinking = null;
-        ThinkValue? thinkValue = null;
-
-        try
-        {
-            var baseAgent = await _configurationService.GetAgentAsync(chairmanAgent.BaseAgentId).ConfigureAwait(false);
-            enableThinking = baseAgent.AllowThinking;
-            thinkValue = baseAgent.ThinkValue;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load Chairman agent thinking settings");
-        }
-
-        // Use the chairman's merged persona (base agent domain expertise + research role methodology)
-        _logger.LogDebug("[CLARIFICATION] Refinement using chairman's merged persona, length: {Length}",
-            chairmanAgent.Persona?.Length ?? 0);
-
-        return new AesirChatRequestBase
-        {
-            Model = chairmanAgent.Model ?? "gpt-4",
-            Temperature = 0.3f,
-            MaxTokens = 2048,
-            Conversation = conversation,
-            User = "research-refinement",
-            Title = "Query Refinement",
-            EnableThinking = enableThinking,
-            ThinkValue = thinkValue,
-            // Use Custom persona with the merged persona string
-            ChatPromptPersona = PromptPersona.Custom,
-            ChatCustomPromptContent = chairmanAgent.Persona
-        };
-    }
-
-    /// <summary>
-    /// Resolves the IChatService for an agent.
-    /// </summary>
-    private IChatService? GetChatServiceForAgent(ResearchAgent agent)
-    {
-        if (!agent.InferenceEngineId.HasValue)
-        {
-            _logger.LogWarning("Chairman has no inference engine ID configured");
-            return null;
-        }
-
-        var chatService = _serviceProvider.GetKeyedService<IChatService>(agent.InferenceEngineId.Value.ToString());
-
-        if (chatService == null)
-        {
-            _logger.LogWarning("No IChatService found for inference engine ID: {EngineId}", agent.InferenceEngineId);
-        }
-
-        return chatService;
     }
 
     /// <summary>

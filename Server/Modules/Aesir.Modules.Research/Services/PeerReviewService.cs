@@ -4,8 +4,8 @@ using System.Text.RegularExpressions;
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
+using Aesir.Modules.Research.Execution;
 using Aesir.Modules.Research.Models;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Modules.Research.Services;
@@ -57,28 +57,31 @@ public class PeerReviewScores
 
 /// <summary>
 /// Implementation of the peer review service.
-/// Uses IChatService for LLM-based peer reviews.
+/// Uses IChatService for LLM-based peer reviews with parallel execution.
 /// </summary>
 public class PeerReviewService : IPeerReviewService
 {
     private readonly ILogger<PeerReviewService> _logger;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IConfigurationService _configurationService;
+    private readonly IChatServiceResolver _chatServiceResolver;
+    private readonly IChatRequestBuilder _chatRequestBuilder;
     private readonly IScoringCalculator _scoringCalculator;
     private readonly IResearchProgressBroadcaster _progressBroadcaster;
+    private readonly IPhaseExecutionStrategyFactory _strategyFactory;
 
     public PeerReviewService(
         ILogger<PeerReviewService> logger,
-        IServiceProvider serviceProvider,
-        IConfigurationService configurationService,
+        IChatServiceResolver chatServiceResolver,
+        IChatRequestBuilder chatRequestBuilder,
         IScoringCalculator scoringCalculator,
-        IResearchProgressBroadcaster progressBroadcaster)
+        IResearchProgressBroadcaster progressBroadcaster,
+        IPhaseExecutionStrategyFactory strategyFactory)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
-        _configurationService = configurationService;
+        _chatServiceResolver = chatServiceResolver;
+        _chatRequestBuilder = chatRequestBuilder;
         _scoringCalculator = scoringCalculator;
         _progressBroadcaster = progressBroadcaster;
+        _strategyFactory = strategyFactory;
     }
 
     /// <inheritdoc />
@@ -88,53 +91,139 @@ public class PeerReviewService : IPeerReviewService
         Dictionary<string, AnonymizedSubmission> anonymizedSubmissions,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "Starting peer review for session {SessionId} with {AgentCount} reviewers and {SubmissionCount} submissions (sequential, non-streaming)",
-            session.Id, agents.Count, anonymizedSubmissions.Count);
-
-        var reviews = new List<PeerReview>();
         var reviewers = agents.Where(a => !a.IsChairman).ToList();
 
-        // Execute reviewers sequentially to avoid overloading the inference engine
-        foreach (var agent in reviewers)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
+        // Build work items: each reviewer reviews each submission (except their own)
+        var workItems = BuildReviewWorkItems(reviewers, anonymizedSubmissions);
 
-            // Find this agent's own submission to exclude it
-            // Use Role for matching instead of BaseAgentId, because the same base agent
-            // can be reused across multiple research roles, but Role is unique per team
-            var ownSubmission = anonymizedSubmissions.Values
-                .FirstOrDefault(s => s.OriginalRole == agent.Role);
+        _logger.LogInformation(
+            "Starting peer review for session {SessionId} with {AgentCount} reviewers and {SubmissionCount} submissions, {WorkItemCount} total reviews (parallel execution: max 2 concurrent)",
+            session.Id, reviewers.Count, anonymizedSubmissions.Count, workItems.Count);
 
-            _logger.LogDebug(
-                "Peer review assignment: {ReviewerRole} will exclude submission {ExcludedId} (found={Found})",
-                agent.Role,
-                ownSubmission?.AnonymizedId ?? "none",
-                ownSubmission != null);
+        // Get the peer review execution strategy (uses parallel execution with throttling)
+        var strategy = _strategyFactory.CreatePeerReviewStrategy();
 
-            var submissionsToReview = anonymizedSubmissions
-                .Where(kv => ownSubmission == null || kv.Value.OriginalSubmissionId != ownSubmission.OriginalSubmissionId)
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
+        // Execute peer reviews in parallel with agent tracking
+        var results = await strategy.ExecutePhaseWithAgentTrackingAsync(
+            session,
+            workItems,
+            async (sess, input, ct) => await ConductSingleReviewAsync(sess, input.Reviewer, input.Submission, ct).ConfigureAwait(false),
+            input => new Contracts.ActiveAgentInfo
+            {
+                TeamMemberId = input.Reviewer.TeamMemberId,
+                Role = input.Reviewer.Role,
+                RoleName = input.Reviewer.RoleName,
+                Activity = $"{input.Reviewer.RoleName} reviewing {input.Submission.AnonymizedId}...",
+                AgentProgressPercent = null
+            },
+            cancellationToken).ConfigureAwait(false);
 
-            _logger.LogDebug(
-                "Peer review assignment: {ReviewerRole} will review {Count} submissions: {Ids}",
-                agent.Role,
-                submissionsToReview.Count,
-                string.Join(", ", submissionsToReview.Keys));
-
-            // Conduct this agent's reviews sequentially
-            var agentReviews = await ConductAgentReviewsAsync(
-                session,
-                agent,
-                submissionsToReview,
-                cancellationToken).ConfigureAwait(false);
-
-            reviews.AddRange(agentReviews);
-        }
+        var reviews = results.ToList();
 
         _logger.LogInformation("Peer review complete. Generated {Count} reviews", reviews.Count);
 
         return reviews;
+    }
+
+    /// <summary>
+    /// Builds work items for parallel peer review execution.
+    /// Each reviewer reviews each submission except their own.
+    /// </summary>
+    private List<(ResearchAgent Reviewer, AnonymizedSubmission Submission)> BuildReviewWorkItems(
+        List<ResearchAgent> reviewers,
+        Dictionary<string, AnonymizedSubmission> anonymizedSubmissions)
+    {
+        var workItems = new List<(ResearchAgent Reviewer, AnonymizedSubmission Submission)>();
+
+        foreach (var reviewer in reviewers)
+        {
+            // Find this agent's own submission to exclude it
+            // Use Role for matching instead of BaseAgentId, because the same base agent
+            // can be reused across multiple research roles, but Role is unique per team
+            var ownSubmission = anonymizedSubmissions.Values
+                .FirstOrDefault(s => s.OriginalRole == reviewer.Role);
+
+            _logger.LogDebug(
+                "Peer review assignment: {ReviewerRole} will exclude submission {ExcludedId} (found={Found})",
+                reviewer.Role,
+                ownSubmission?.AnonymizedId ?? "none",
+                ownSubmission != null);
+
+            var submissionsToReview = anonymizedSubmissions.Values
+                .Where(s => ownSubmission == null || s.OriginalSubmissionId != ownSubmission.OriginalSubmissionId)
+                .ToList();
+
+            _logger.LogDebug(
+                "Peer review assignment: {ReviewerRole} will review {Count} submissions: {Ids}",
+                reviewer.Role,
+                submissionsToReview.Count,
+                string.Join(", ", submissionsToReview.Select(s => s.AnonymizedId)));
+
+            foreach (var submission in submissionsToReview)
+            {
+                workItems.Add((reviewer, submission));
+            }
+        }
+
+        return workItems;
+    }
+
+    /// <summary>
+    /// Conducts a single peer review for one reviewer-submission pair.
+    /// </summary>
+    private async Task<PeerReview> ConductSingleReviewAsync(
+        ResearchSession session,
+        ResearchAgent reviewer,
+        AnonymizedSubmission submission,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogDebug(
+            "[PEER-REVIEW] {Reviewer} reviewing submission {SubmissionId}",
+            reviewer.Role, submission.AnonymizedId);
+
+        PeerReviewScores scores;
+
+        // Get chat service for this reviewer
+        var chatService = _chatServiceResolver.GetChatService(reviewer.InferenceEngineId);
+
+        if (chatService != null)
+        {
+            // Use LLM to conduct peer review
+            scores = await ConductLlmPeerReviewAsync(
+                session, reviewer, submission.AnonymizedId, submission, chatService, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            // Fallback to stub if no chat service available
+            _logger.LogWarning("[PEER-REVIEW] No chat service available for reviewer {Role}, using stub scores", reviewer.Role);
+            scores = GenerateFallbackScores(submission);
+        }
+
+        var review = new PeerReview
+        {
+            Id = Guid.NewGuid(),
+            SessionId = session.Id,
+            SubmissionId = submission.OriginalSubmissionId,
+            ReviewerAgentId = reviewer.BaseAgentId,
+            ReviewerRole = reviewer.Role,
+            ScoreDepth = scores.Depth,
+            ScoreAccuracy = scores.Accuracy,
+            ScoreSourceQuality = scores.SourceQuality,
+            ScoreNovelty = scores.Novelty,
+            ScoreCoherence = scores.Coherence,
+            WeightedAverage = scores.WeightedAverage,
+            Strengths = scores.Strengths,
+            Improvements = scores.Improvements,
+            Critique = scores.FullCritique,
+            Endorses = scores.Endorses,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _logger.LogDebug(
+            "[PEER-REVIEW] {Reviewer} reviewed submission {AnonymizedId} with score {Score}",
+            reviewer.Role, submission.AnonymizedId, review.WeightedAverage);
+
+        return review;
     }
 
     /// <inheritdoc />
@@ -203,110 +292,6 @@ public class PeerReviewService : IPeerReviewService
         return scores;
     }
 
-    private async Task<List<PeerReview>> ConductAgentReviewsAsync(
-        ResearchSession session,
-        ResearchAgent reviewer,
-        Dictionary<string, AnonymizedSubmission> submissions,
-        CancellationToken cancellationToken)
-    {
-        _logger.LogDebug("[PEER-REVIEW] === ConductAgentReviewsAsync START ===");
-        _logger.LogDebug("[PEER-REVIEW] Reviewer: {Role} ({RoleName})", reviewer.Role, reviewer.RoleName);
-        _logger.LogDebug("[PEER-REVIEW] SessionId: {SessionId}", session.Id);
-        _logger.LogDebug("[PEER-REVIEW] Submissions to review: {Count}", submissions.Count);
-
-        var reviews = new List<PeerReview>();
-
-        // Notify phase start via broadcaster with active agent info
-        await _progressBroadcaster.BroadcastProgressAsync(
-            session.Id,
-            ResearchPhase.PeerReview,
-            0,
-            $"{reviewer.RoleName} is conducting peer reviews...",
-            new List<Contracts.ActiveAgentInfo>
-            {
-                new()
-                {
-                    TeamMemberId = reviewer.TeamMemberId,
-                    Role = reviewer.Role,
-                    RoleName = reviewer.RoleName,
-                    Activity = "Conducting peer reviews...",
-                    AgentProgressPercent = null
-                }
-            }).ConfigureAwait(false);
-
-        // Get chat service for this reviewer
-        _logger.LogDebug("[PEER-REVIEW] Getting chat service for reviewer...");
-        var chatService = GetChatServiceForAgent(reviewer);
-
-        var completedCount = 0;
-        foreach (var (anonymizedId, submission) in submissions)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            PeerReviewScores scores;
-
-            if (chatService != null)
-            {
-                // Use LLM to conduct peer review
-                scores = await ConductLlmPeerReviewAsync(
-                    session, reviewer, anonymizedId, submission, chatService, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                // Fallback to stub if no chat service available
-                _logger.LogWarning("[PEER-REVIEW] No chat service available for reviewer {Role}, using stub scores", reviewer.Role);
-                scores = GenerateFallbackScores(submission);
-            }
-
-            var review = new PeerReview
-            {
-                Id = Guid.NewGuid(),
-                SessionId = session.Id,
-                SubmissionId = submission.OriginalSubmissionId,
-                ReviewerAgentId = reviewer.BaseAgentId,
-                ReviewerRole = reviewer.Role,
-                ScoreDepth = scores.Depth,
-                ScoreAccuracy = scores.Accuracy,
-                ScoreSourceQuality = scores.SourceQuality,
-                ScoreNovelty = scores.Novelty,
-                ScoreCoherence = scores.Coherence,
-                WeightedAverage = scores.WeightedAverage,
-                Strengths = scores.Strengths,
-                Improvements = scores.Improvements,
-                Critique = scores.FullCritique,
-                Endorses = scores.Endorses,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            reviews.Add(review);
-            completedCount++;
-
-            _logger.LogDebug(
-                "[PEER-REVIEW] {Reviewer} reviewed submission {AnonymizedId} with score {Score}",
-                reviewer.Role, anonymizedId, review.WeightedAverage);
-
-            // Report progress (consolidating per-review updates into unified progress broadcast)
-            var percent = Math.Min(100, (int)((double)completedCount / submissions.Count * 100));
-            await _progressBroadcaster.BroadcastProgressAsync(session.Id, new ResearchPhaseProgress
-            {
-                Phase = ResearchPhase.PeerReview,
-                AgentRole = reviewer.Role,
-                TeamMemberId = reviewer.TeamMemberId,
-                Message = $"{reviewer.RoleName} reviewed {completedCount}/{submissions.Count} submissions",
-                PercentComplete = percent
-            }).ConfigureAwait(false);
-        }
-
-        // NOTE: We don't send agent-level completion here because
-        // PercentComplete=100 for a single reviewer would incorrectly set overall progress to 100%.
-        // The phase-level progress (in ExecutePeerReviewPhaseAsync) handles overall progress.
-
-        _logger.LogDebug("[PEER-REVIEW] === ConductAgentReviewsAsync COMPLETE ===");
-        _logger.LogDebug("[PEER-REVIEW] Reviews generated: {Count}", reviews.Count);
-
-        return reviews;
-    }
-
     /// <summary>
     /// Conducts a peer review using non-streaming LLM chat completion.
     /// </summary>
@@ -321,8 +306,25 @@ public class PeerReviewService : IPeerReviewService
         // Build peer review prompt
         var reviewPrompt = BuildPeerReviewPrompt(session, anonymizedId, submission);
 
-        // Create chat request
-        var request = await CreatePeerReviewRequestAsync(reviewer, reviewPrompt);
+        // Create chat request using the builder
+        var systemPrompt = $"""
+            You are {reviewer.RoleName}, an expert peer reviewer.
+            Your role is to critically evaluate research submissions with fairness and objectivity.
+            Provide constructive feedback that helps improve research quality.
+            Score submissions honestly based on their actual merit.
+            """;
+
+        var request = await _chatRequestBuilder.BuildAsync(
+            reviewer,
+            systemPrompt,
+            reviewPrompt,
+            new ChatRequestOptions
+            {
+                IncludeTools = false,
+                MaxTokensOverride = 4096,
+                User = "research-peer-review",
+                Title = $"Peer Review: {reviewer.RoleName}"
+            }).ConfigureAwait(false);
 
         _logger.LogDebug("Sending non-streaming peer review request to LLM for reviewer {Role} on submission {SubmissionId}",
             reviewer.Role, anonymizedId);
@@ -385,95 +387,6 @@ public class PeerReviewService : IPeerReviewService
 
             Be specific and constructive in your feedback. Focus on the quality of the research, accuracy of claims, use of sources, and clarity of presentation.
             """;
-    }
-
-    /// <summary>
-    /// Creates a chat request for peer review.
-    /// </summary>
-    private async Task<AesirChatRequestBase> CreatePeerReviewRequestAsync(ResearchAgent reviewer, string userPrompt)
-    {
-        var systemMessage = new AesirChatMessage
-        {
-            Role = "system",
-            Content = $"""
-                You are {reviewer.RoleName}, an expert peer reviewer.
-                Your role is to critically evaluate research submissions with fairness and objectivity.
-                Provide constructive feedback that helps improve research quality.
-                Score submissions honestly based on their actual merit.
-                """,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var userMessage = new AesirChatMessage
-        {
-            Role = "user",
-            Content = userPrompt,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var conversation = new AesirConversation
-        {
-            Id = Guid.NewGuid().ToString(),
-            Messages = [systemMessage, userMessage]
-        };
-
-        // Get thinking settings from base agent
-        bool? enableThinking = null;
-        ThinkValue? thinkValue = null;
-
-        try
-        {
-            var baseAgent = await _configurationService.GetAgentAsync(reviewer.BaseAgentId);
-            enableThinking = baseAgent.AllowThinking;
-            thinkValue = baseAgent.ThinkValue;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to get base agent settings for reviewer {Role}", reviewer.Role);
-        }
-
-        return new AesirChatRequestBase
-        {
-            Model = reviewer.Model ?? "gpt-4",
-            Temperature = reviewer.Temperature,
-            MaxTokens = reviewer.MaxTokens ?? 4096,
-            Conversation = conversation,
-            User = "research-peer-review",
-            Title = $"Peer Review: {reviewer.RoleName}",
-            Tools = [], // Peer review doesn't need tools
-            EnableThinking = enableThinking,
-            ThinkValue = thinkValue
-        };
-    }
-
-    /// <summary>
-    /// Resolves the IChatService for a research agent based on its inference engine ID.
-    /// Uses the injected IServiceProvider to resolve keyed services directly.
-    /// </summary>
-    /// <returns>The chat service, or null if service cannot be resolved.</returns>
-    private IChatService? GetChatServiceForAgent(ResearchAgent agent)
-    {
-        _logger.LogDebug("[PEER-REVIEW] GetChatServiceForAgent called for {Role}", agent.Role);
-
-        if (!agent.InferenceEngineId.HasValue)
-        {
-            _logger.LogWarning("[PEER-REVIEW] Reviewer {Role} has no inference engine ID configured", agent.Role);
-            return null;
-        }
-
-        var engineIdKey = agent.InferenceEngineId.Value.ToString();
-        _logger.LogDebug("[PEER-REVIEW] Attempting to get keyed service IChatService with key: '{EngineIdKey}'", engineIdKey);
-
-        var chatService = _serviceProvider.GetKeyedService<IChatService>(engineIdKey);
-
-        if (chatService == null)
-        {
-            _logger.LogWarning("[PEER-REVIEW] No IChatService found for inference engine ID: {EngineId}", agent.InferenceEngineId);
-            return null;
-        }
-
-        _logger.LogDebug("[PEER-REVIEW] SUCCESS: IChatService resolved: {ServiceType}", chatService.GetType().Name);
-        return chatService;
     }
 
     /// <summary>

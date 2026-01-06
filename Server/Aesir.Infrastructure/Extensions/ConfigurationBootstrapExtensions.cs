@@ -52,7 +52,10 @@ public static class ConfigurationBootstrapExtensions
         await services.PrepareConfigurationAsync(configuration);
         
         services.AddAesirFeatureModules(configuration);
-        
+
+        // Register infrastructure services that depend on module-provided keyed services
+        services.AddSingleton<IChatServiceResolver, ChatServiceResolver>();
+
         return services;
     }
 

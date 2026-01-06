@@ -2,11 +2,11 @@ using System.Text;
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
+using Aesir.Modules.Research.Constants;
 using Aesir.Modules.Research.Execution;
 using Aesir.Modules.Research.Hubs;
 using Aesir.Modules.Research.Models;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Modules.Research.Services;
@@ -131,9 +131,9 @@ public class ResearchPhaseProgress
 public class ResearchPhaseExecutor : IResearchPhaseExecutor
 {
     private readonly ILogger<ResearchPhaseExecutor> _logger;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IChatServiceResolver _chatServiceResolver;
+    private readonly IChatRequestBuilder _chatRequestBuilder;
     private readonly IHubContext<ResearchHub> _hubContext;
-    private readonly IConfigurationService _configurationService;
     private readonly IAnonymizationService _anonymizationService;
     private readonly IPeerReviewService _peerReviewService;
     private readonly IReportGeneratorService _reportGeneratorService;
@@ -144,9 +144,9 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
 
     public ResearchPhaseExecutor(
         ILogger<ResearchPhaseExecutor> logger,
-        IServiceProvider serviceProvider,
+        IChatServiceResolver chatServiceResolver,
+        IChatRequestBuilder chatRequestBuilder,
         IHubContext<ResearchHub> hubContext,
-        IConfigurationService configurationService,
         IAnonymizationService anonymizationService,
         IPeerReviewService peerReviewService,
         IReportGeneratorService reportGeneratorService,
@@ -156,9 +156,9 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         IPhaseExecutionStrategyFactory strategyFactory)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
+        _chatServiceResolver = chatServiceResolver;
+        _chatRequestBuilder = chatRequestBuilder;
         _hubContext = hubContext;
-        _configurationService = configurationService;
         _anonymizationService = anonymizationService;
         _peerReviewService = peerReviewService;
         _reportGeneratorService = reportGeneratorService;
@@ -262,7 +262,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             agent.Role, session.Id);
 
         // Get the chat service for this agent's inference engine
-        var chatService = GetChatServiceForAgent(agent);
+        var chatService = _chatServiceResolver.GetChatService(agent.InferenceEngineId);
         if (chatService == null)
         {
             _logger.LogWarning(
@@ -285,8 +285,17 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 .Replace("{{REFINED_CONTEXT}}", refinedContext)
                 ?? $"Research the following query: {refinedQuery}\n\nContext:\n{refinedContext}";
 
-            // Create the chat request
-            var request = await CreateChatRequestAsync(agent, researchPrompt).ConfigureAwait(false);
+            // Create the chat request using the builder
+            var request = await _chatRequestBuilder.BuildAsync(
+                agent,
+                agent.Persona,
+                researchPrompt,
+                new ChatRequestOptions
+                {
+                    IncludeTools = true,
+                    User = "research-orchestrator",
+                    Title = $"Research: {agent.RoleName}"
+                }).ConfigureAwait(false);
 
             // Execute non-streaming LLM call
             var result = await chatService.ChatCompletionsAsync(request).ConfigureAwait(false);
@@ -395,7 +404,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 Phase = ResearchPhase.PeerReview,
                 AgentRole = firstAgent.Role,
                 Message = "Starting peer review process...",
-                PercentComplete = 0
+                PercentComplete = ResearchProgressMilestones.PhaseStart
             }).ConfigureAwait(false);
         }
 
@@ -415,7 +424,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 Phase = ResearchPhase.PeerReview,
                 AgentRole = lastAgent.Role,
                 Message = $"Peer review complete. {reviews.Count} reviews generated.",
-                PercentComplete = 100,
+                PercentComplete = ResearchProgressMilestones.PhaseComplete,
                 IsComplete = true
             }).ConfigureAwait(false);
         }
@@ -439,7 +448,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             Phase = ResearchPhase.Synthesis,
             AgentRole = ResearchRole.Chairman,
             Message = "Chairman is synthesizing the final report...",
-            PercentComplete = 0
+            PercentComplete = ResearchProgressMilestones.PhaseStart
         }).ConfigureAwait(false);
 
         // Calculate submission scores from peer reviews
@@ -451,7 +460,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             Phase = ResearchPhase.Synthesis,
             AgentRole = ResearchRole.Chairman,
             Message = "Analyzing peer review scores...",
-            PercentComplete = 30
+            PercentComplete = ResearchProgressMilestones.PromptBuilt
         }).ConfigureAwait(false);
 
         // Generate the report
@@ -467,7 +476,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             Phase = ResearchPhase.Synthesis,
             AgentRole = ResearchRole.Chairman,
             Message = $"Report generated: {report.Title}",
-            PercentComplete = 100,
+            PercentComplete = ResearchProgressMilestones.PhaseComplete,
             IsComplete = true
         }).ConfigureAwait(false);
 
@@ -515,128 +524,6 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         }
 
         return scores;
-    }
-
-    /// <summary>
-    /// Resolves the IChatService for a research agent based on its inference engine ID.
-    /// Uses the injected IServiceProvider to resolve keyed services directly.
-    /// </summary>
-    /// <returns>The chat service, or null if service cannot be resolved.</returns>
-    private IChatService? GetChatServiceForAgent(ResearchAgent agent)
-    {
-        _logger.LogDebug("[PHASE-EXEC] GetChatServiceForAgent called for {Role}", agent.Role);
-        _logger.LogDebug("[PHASE-EXEC]   BaseAgentId: {BaseAgentId}", agent.BaseAgentId);
-        _logger.LogDebug("[PHASE-EXEC]   InferenceEngineId: {InferenceEngineId}", agent.InferenceEngineId);
-        _logger.LogDebug("[PHASE-EXEC]   Model: {Model}", agent.Model);
-
-        if (!agent.InferenceEngineId.HasValue)
-        {
-            _logger.LogWarning("[PHASE-EXEC] FAILURE: Agent {Role} has no inference engine ID configured", agent.Role);
-            _logger.LogWarning("[PHASE-EXEC]   This agent will NOT be able to perform LLM calls!");
-            return null;
-        }
-
-        var engineIdKey = agent.InferenceEngineId.Value.ToString();
-        _logger.LogDebug("[PHASE-EXEC] Attempting to get keyed service IChatService with key: '{EngineIdKey}'", engineIdKey);
-
-        var chatService = _serviceProvider.GetKeyedService<IChatService>(engineIdKey);
-
-        if (chatService == null)
-        {
-            _logger.LogWarning("[PHASE-EXEC] FAILURE: No IChatService found for inference engine ID: {EngineId}", agent.InferenceEngineId);
-            _logger.LogWarning("[PHASE-EXEC]   Available keyed services might not include this engine!");
-            _logger.LogWarning("[PHASE-EXEC]   Check that the inference engine module registered correctly.");
-            return null;
-        }
-
-        _logger.LogDebug("[PHASE-EXEC] SUCCESS: IChatService resolved: {ServiceType}", chatService.GetType().Name);
-        return chatService;
-    }
-
-    /// <summary>
-    /// Creates a chat request configured for a research agent, including tools and thinking settings.
-    /// </summary>
-    private async Task<AesirChatRequestBase> CreateChatRequestAsync(ResearchAgent agent, string userPrompt)
-    {
-        var systemMessage = new AesirChatMessage
-        {
-            Role = "system",
-            Content = agent.Persona,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var userMessage = new AesirChatMessage
-        {
-            Role = "user",
-            Content = userPrompt,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var conversation = new AesirConversation
-        {
-            Id = Guid.NewGuid().ToString(),
-            Messages = [systemMessage, userMessage]
-        };
-
-        // Load tools and thinking settings from the base agent
-        var tools = new List<ToolRequest>();
-        bool? enableThinking = null;
-        ThinkValue? thinkValue = null;
-
-        try
-        {
-            // Get base agent configuration for tools and thinking settings
-            var baseAgent = await _configurationService.GetAgentAsync(agent.BaseAgentId);
-
-            // Get thinking settings from base agent
-            enableThinking = baseAgent.AllowThinking;
-            thinkValue = baseAgent.ThinkValue;
-
-            // Load tools configured for this agent
-            var agentTools = await _configurationService.GetToolsUsedByAgentAsync(agent.BaseAgentId);
-            var mcpServers = await _configurationService.GetMcpServersAsync();
-
-            foreach (var tool in agentTools)
-            {
-                string? mcpServerName = null;
-
-                // Check if this is an MCP server tool
-                if (tool.McpServerId.HasValue)
-                {
-                    var mcpServer = mcpServers.FirstOrDefault(m => m.Id == tool.McpServerId);
-                    if (mcpServer != null)
-                    {
-                        mcpServerName = mcpServer.Name;
-                    }
-                }
-
-                tools.Add(new ToolRequest
-                {
-                    ToolName = tool.ToolName ?? "",
-                    McpServerName = mcpServerName
-                });
-            }
-
-            _logger.LogDebug("Loaded {ToolCount} tools for agent {Role}, thinking={EnableThinking}",
-                tools.Count, agent.Role, enableThinking);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load configuration for agent {Role}", agent.Role);
-        }
-
-        return new AesirChatRequestBase
-        {
-            Model = agent.Model ?? "gpt-4",
-            Temperature = agent.Temperature,
-            MaxTokens = agent.MaxTokens ?? 8192,
-            Conversation = conversation,
-            User = "research-orchestrator",
-            Title = $"Research: {agent.RoleName}",
-            Tools = tools,
-            EnableThinking = enableThinking,
-            ThinkValue = thinkValue
-        };
     }
 
     /// <summary>
@@ -710,7 +597,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             Phase = phase,
             AgentRole = role,
             Message = startMessage,
-            PercentComplete = 0
+            PercentComplete = ResearchProgressMilestones.PhaseStart
         }).ConfigureAwait(false);
 
         // Execute phase work
@@ -722,7 +609,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             Phase = phase,
             AgentRole = role,
             Message = completeMessage,
-            PercentComplete = 100,
+            PercentComplete = ResearchProgressMilestones.PhaseComplete,
             IsComplete = true
         }).ConfigureAwait(false);
 

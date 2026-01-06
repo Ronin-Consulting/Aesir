@@ -3,10 +3,10 @@ using System.Text.Json;
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
+using Aesir.Modules.Research.Constants;
 using Aesir.Modules.Research.Hubs;
 using Aesir.Modules.Research.Models;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Modules.Research.Services;
@@ -46,26 +46,26 @@ public interface IReportGeneratorService
 public class ReportGeneratorService : IReportGeneratorService
 {
     private readonly ILogger<ReportGeneratorService> _logger;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IChatServiceResolver _chatServiceResolver;
+    private readonly IChatRequestBuilder _chatRequestBuilder;
     private readonly IHubContext<ResearchHub> _hubContext;
-    private readonly IConfigurationService _configurationService;
     private readonly IConfidenceCalculator _confidenceCalculator;
     private readonly IScoringCalculator _scoringCalculator;
     private readonly IResearchProgressBroadcaster _progressBroadcaster;
 
     public ReportGeneratorService(
         ILogger<ReportGeneratorService> logger,
-        IServiceProvider serviceProvider,
+        IChatServiceResolver chatServiceResolver,
+        IChatRequestBuilder chatRequestBuilder,
         IHubContext<ResearchHub> hubContext,
-        IConfigurationService configurationService,
         IConfidenceCalculator confidenceCalculator,
         IScoringCalculator scoringCalculator,
         IResearchProgressBroadcaster progressBroadcaster)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
+        _chatServiceResolver = chatServiceResolver;
+        _chatRequestBuilder = chatRequestBuilder;
         _hubContext = hubContext;
-        _configurationService = configurationService;
         _confidenceCalculator = confidenceCalculator;
         _scoringCalculator = scoringCalculator;
         _progressBroadcaster = progressBroadcaster;
@@ -94,7 +94,7 @@ public class ReportGeneratorService : IReportGeneratorService
         await _progressBroadcaster.BroadcastProgressAsync(
             session.Id,
             ResearchPhase.Synthesis,
-            0,
+            ResearchProgressMilestones.PhaseStart,
             "Chairman is synthesizing the final report...",
             new List<Contracts.ActiveAgentInfo>
             {
@@ -115,12 +115,12 @@ public class ReportGeneratorService : IReportGeneratorService
             AgentRole = chairmanAgent.Role,
             TeamMemberId = chairmanAgent.TeamMemberId,
             Message = "Preparing synthesis prompt...",
-            PercentComplete = 10
+            PercentComplete = ResearchProgressMilestones.PhaseInitializing
         }).ConfigureAwait(false);
 
         // Get chat service for the Chairman
         _logger.LogDebug("[REPORT-GEN] Getting chat service for Chairman...");
-        var chatService = GetChatServiceForAgent(chairmanAgent);
+        var chatService = _chatServiceResolver.GetChatService(chairmanAgent.InferenceEngineId);
 
         string executiveSummary;
         string? title;
@@ -172,7 +172,7 @@ public class ReportGeneratorService : IReportGeneratorService
             AgentRole = chairmanAgent.Role,
             TeamMemberId = chairmanAgent.TeamMemberId,
             Message = "Report generated successfully",
-            PercentComplete = 100
+            PercentComplete = ResearchProgressMilestones.PhaseComplete
         }).ConfigureAwait(false);
 
         // Notify research completed via SignalR
@@ -205,11 +205,31 @@ public class ReportGeneratorService : IReportGeneratorService
             AgentRole = chairmanAgent.Role,
             TeamMemberId = chairmanAgent.TeamMemberId,
             Message = "Building synthesis request...",
-            PercentComplete = 40
+            PercentComplete = ResearchProgressMilestones.LlmCallStarted
         }).ConfigureAwait(false);
 
-        // Create chat request
-        var request = await CreateSynthesisRequestAsync(chairmanAgent, synthesisPrompt).ConfigureAwait(false);
+        // Create chat request using the builder
+        var systemPrompt = chairmanAgent.SynthesisPrompt ?? """
+            You are the Chairman of a research team, responsible for synthesizing all research findings
+            into a cohesive, professional report. You have access to all team members' work and their
+            peer review scores. Your role is to:
+            1. Weigh findings by quality (higher peer review scores = more weight)
+            2. Integrate diverse perspectives fairly
+            3. Highlight consensus and resolve contradictions
+            4. Provide clear, actionable conclusions
+            5. Maintain objectivity and acknowledge limitations
+            """;
+
+        var request = await _chatRequestBuilder.BuildAsync(
+            chairmanAgent,
+            systemPrompt,
+            synthesisPrompt,
+            new ChatRequestOptions
+            {
+                IncludeTools = true,
+                User = "research-synthesis",
+                Title = "Research Report Synthesis"
+            }).ConfigureAwait(false);
 
         _logger.LogDebug("Sending synthesis request to LLM for Chairman (non-streaming)");
 
@@ -220,7 +240,7 @@ public class ReportGeneratorService : IReportGeneratorService
             AgentRole = chairmanAgent.Role,
             TeamMemberId = chairmanAgent.TeamMemberId,
             Message = "Chairman generating executive summary...",
-            PercentComplete = 50
+            PercentComplete = ResearchProgressMilestones.LlmProcessing
         }).ConfigureAwait(false);
 
         // Execute non-streaming chat completion
@@ -254,7 +274,7 @@ public class ReportGeneratorService : IReportGeneratorService
             AgentRole = chairmanAgent.Role,
             TeamMemberId = chairmanAgent.TeamMemberId,
             Message = "Processing synthesis results...",
-            PercentComplete = 85
+            PercentComplete = ResearchProgressMilestones.LlmCallCompleted
         }).ConfigureAwait(false);
 
         // Extract the assistant response from the result
@@ -354,131 +374,6 @@ public class ReportGeneratorService : IReportGeneratorService
         sb.AppendLine("```");
 
         return sb.ToString();
-    }
-
-    /// <summary>
-    /// Creates a chat request for synthesis.
-    /// </summary>
-    private async Task<AesirChatRequestBase> CreateSynthesisRequestAsync(ResearchAgent chairmanAgent, string userPrompt)
-    {
-        var systemMessage = new AesirChatMessage
-        {
-            Role = "system",
-            Content = chairmanAgent.SynthesisPrompt ?? """
-                You are the Chairman of a research team, responsible for synthesizing all research findings
-                into a cohesive, professional report. You have access to all team members' work and their
-                peer review scores. Your role is to:
-                1. Weigh findings by quality (higher peer review scores = more weight)
-                2. Integrate diverse perspectives fairly
-                3. Highlight consensus and resolve contradictions
-                4. Provide clear, actionable conclusions
-                5. Maintain objectivity and acknowledge limitations
-                """,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var userMessage = new AesirChatMessage
-        {
-            Role = "user",
-            Content = userPrompt,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var conversation = new AesirConversation
-        {
-            Id = Guid.NewGuid().ToString(),
-            Messages = [systemMessage, userMessage]
-        };
-
-        // Get thinking settings and tools from base agent
-        bool? enableThinking = null;
-        ThinkValue? thinkValue = null;
-        var tools = new List<ToolRequest>();
-
-        try
-        {
-            var baseAgent = await _configurationService.GetAgentAsync(chairmanAgent.BaseAgentId).ConfigureAwait(false);
-            enableThinking = baseAgent.AllowThinking;
-            thinkValue = baseAgent.ThinkValue;
-
-            // Chairman can use tools for validation
-            var agentTools = await _configurationService.GetToolsUsedByAgentAsync(chairmanAgent.BaseAgentId).ConfigureAwait(false);
-            var mcpServers = await _configurationService.GetMcpServersAsync().ConfigureAwait(false);
-
-            foreach (var tool in agentTools)
-            {
-                string? mcpServerName = null;
-                if (tool.McpServerId.HasValue)
-                {
-                    var mcpServer = mcpServers.FirstOrDefault(m => m.Id == tool.McpServerId);
-                    if (mcpServer != null)
-                    {
-                        mcpServerName = mcpServer.Name;
-                    }
-                }
-
-                tools.Add(new ToolRequest
-                {
-                    ToolName = tool.ToolName ?? "",
-                    McpServerName = mcpServerName
-                });
-            }
-
-            _logger.LogDebug("Loaded {ToolCount} tools for Chairman synthesis", tools.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load Chairman agent configuration");
-        }
-
-        return new AesirChatRequestBase
-        {
-            Model = chairmanAgent.Model ?? "gpt-4",
-            Temperature = chairmanAgent.Temperature,
-            MaxTokens = chairmanAgent.MaxTokens ?? 8192,
-            Conversation = conversation,
-            User = "research-synthesis",
-            Title = "Research Report Synthesis",
-            Tools = tools,
-            EnableThinking = enableThinking,
-            ThinkValue = thinkValue
-        };
-    }
-
-    /// <summary>
-    /// Resolves the IChatService for an agent.
-    /// Uses the injected IServiceProvider to resolve keyed services directly.
-    /// </summary>
-    /// <returns>The chat service, or null if service cannot be resolved.</returns>
-    private IChatService? GetChatServiceForAgent(ResearchAgent agent)
-    {
-        _logger.LogDebug("[REPORT-GEN] GetChatServiceForAgent called for {Role}", agent.Role);
-        _logger.LogDebug("[REPORT-GEN]   BaseAgentId: {BaseAgentId}", agent.BaseAgentId);
-        _logger.LogDebug("[REPORT-GEN]   InferenceEngineId: {InferenceEngineId}", agent.InferenceEngineId);
-        _logger.LogDebug("[REPORT-GEN]   Model: {Model}", agent.Model);
-
-        if (!agent.InferenceEngineId.HasValue)
-        {
-            _logger.LogWarning("[REPORT-GEN] FAILURE: Chairman has no inference engine ID configured!");
-            _logger.LogWarning("[REPORT-GEN]   The Chairman agent will not be able to perform LLM synthesis!");
-            return null;
-        }
-
-        var engineIdKey = agent.InferenceEngineId.Value.ToString();
-        _logger.LogDebug("[REPORT-GEN] Attempting to get keyed service IChatService with key: '{EngineIdKey}'", engineIdKey);
-
-        var chatService = _serviceProvider.GetKeyedService<IChatService>(engineIdKey);
-
-        if (chatService == null)
-        {
-            _logger.LogWarning("[REPORT-GEN] FAILURE: No IChatService found for inference engine ID: {EngineId}", agent.InferenceEngineId);
-            _logger.LogWarning("[REPORT-GEN]   Available keyed services might not include this engine!");
-            _logger.LogWarning("[REPORT-GEN]   Check that the inference engine module registered correctly.");
-            return null;
-        }
-
-        _logger.LogDebug("[REPORT-GEN] SUCCESS: IChatService resolved: {ServiceType}", chatService.GetType().Name);
-        return chatService;
     }
 
     /// <summary>

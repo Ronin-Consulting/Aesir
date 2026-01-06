@@ -3,7 +3,7 @@
 ## Summary
 - **Review Date**: 2026-01-05
 - **Files Reviewed**: 18 core service files
-- **Total Findings**: 29 (Critical: 3 ✅ ALL FIXED, High: 8, Medium: 12, Low: 6)
+- **Total Findings**: 29 (Critical: 3 ✅ ALL FIXED, High: 8 (4 FIXED), Medium: 12 (1 FIXED), Low: 6)
 - **Estimated Effort**: 16-24 hours
 
 ## Key Files Reviewed
@@ -78,93 +78,74 @@
 
 ## High Priority Findings
 
-### HIGH-01: Duplicate Code Pattern - GetChatServiceForAgent Repeated 5 Times
+### ~~HIGH-01: Duplicate Code Pattern - GetChatServiceForAgent Repeated 5 Times~~ [FIXED]
 **Files**:
-- `ResearchPhaseExecutor.cs` (Lines 521-550)
-- `ClarificationService.cs` (Lines 466-482)
-- `PeerReviewService.cs` (Lines 453-476)
-- `ReportGeneratorService.cs` (Lines 452-481)
-- `ChairmanPlanningService.cs` (Lines 120-137)
+- `ResearchPhaseExecutor.cs`
+- `ClarificationService.cs`
+- `PeerReviewService.cs`
+- `ReportGeneratorService.cs`
+- `ChairmanPlanningService.cs`
+**Status**: FIXED on 2026-01-05
 
-**Problem**: The exact same logic for resolving `IChatService` via keyed service is copy-pasted across 5 different service files, with only logging message differences.
-
-**Impact**: Maintenance burden; if resolution logic needs to change, 5 files need updating.
-
-**Recommended Fix**: Extract to shared infrastructure:
-
-```csharp
-// In Aesir.Infrastructure.Services
-public interface IChatServiceResolver
-{
-    IChatService? GetChatServiceForAgent(Guid? inferenceEngineId);
-}
-
-public class ChatServiceResolver : IChatServiceResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<ChatServiceResolver> _logger;
-
-    public IChatService? GetChatServiceForAgent(Guid? inferenceEngineId)
-    {
-        if (!inferenceEngineId.HasValue)
-        {
-            _logger.LogWarning("Agent has no inference engine ID configured");
-            return null;
-        }
-        return _serviceProvider.GetKeyedService<IChatService>(inferenceEngineId.Value.ToString());
-    }
-}
-```
+**Fix Applied**:
+- Created `IChatServiceResolver` interface in `Aesir.Infrastructure.Services`
+- Created `ChatServiceResolver` implementation with two methods:
+  - `GetChatService(Guid? inferenceEngineId)` - returns null if not found
+  - `GetRequiredChatService(Guid? inferenceEngineId, string agentDescription)` - throws if not found
+- Registered as singleton in `ConfigurationBootstrapExtensions.ConfigureAesirInfrastructureAsync`
+- Updated all 5 services to inject `IChatServiceResolver` instead of `IServiceProvider`
+- Removed duplicate `GetChatServiceForAgent` methods from all 5 files
+- Removed unused `Microsoft.Extensions.DependencyInjection` using statements
 
 ---
 
-### HIGH-02: Duplicate Code Pattern - CreateChatRequestAsync Repeated 4 Times
+### ~~HIGH-02: Duplicate Code Pattern - CreateChatRequestAsync Repeated 4 Times~~ [FIXED]
 **Files**:
-- `ResearchPhaseExecutor.cs` (Lines 555-636)
-- `ClarificationService.cs` (Lines 327-395, 400-461)
-- `PeerReviewService.cs` (Lines 392-446)
-- `ReportGeneratorService.cs` (Lines 361-445)
-- `ChairmanPlanningService.cs` (Lines 215-264)
+- `ResearchPhaseExecutor.cs`
+- `ClarificationService.cs`
+- `PeerReviewService.cs`
+- `ReportGeneratorService.cs`
+- `ChairmanPlanningService.cs`
+**Status**: FIXED on 2026-01-06
 
-**Problem**: Similar but slightly different chat request creation logic is duplicated across services.
+**Fix Applied**:
+- Created `IChatRequestBuilder` interface with `ChatRequestOptions` record in `Aesir.Modules.Research.Services`
+- Created `ChatRequestBuilder` implementation that centralizes:
+  - Conversation construction (system + user messages)
+  - Thinking settings lookup from base agent (`EnableThinking`, `ThinkValue`)
+  - Tool loading via `IConfigurationService.GetToolsUsedByAgentAsync()`
+  - Model/temperature/max tokens configuration
+  - Custom persona handling
+- Registered as scoped service in `ResearchModule.cs`
+- Updated all 5 services to inject `IChatRequestBuilder` instead of `IConfigurationService`
+- Removed duplicate `CreateChatRequestAsync`/`CreateClarificationRequestAsync`/`CreateRefinementRequestAsync`/`CreatePeerReviewRequestAsync`/`CreateSynthesisRequestAsync` methods (~400+ lines of duplicate code removed)
+- Each service now uses a single `_chatRequestBuilder.BuildAsync()` call with appropriate `ChatRequestOptions`
 
-**Impact**: Inconsistent handling of base agent settings, tools, and thinking configuration.
-
-**Recommended Fix**: Create a `ChatRequestBuilder` class:
-
-```csharp
-public interface IChatRequestBuilder
-{
-    Task<AesirChatRequestBase> BuildAsync(
-        ResearchAgent agent,
-        string userPrompt,
-        string? systemPromptOverride = null,
-        bool includeTools = false);
-}
-```
+**Original Problem**: Similar but slightly different chat request creation logic was duplicated across services, causing inconsistent handling of base agent settings, tools, and thinking configuration.
 
 ---
 
-### HIGH-03: Magic Numbers in Progress Broadcasting
-**File**: `/Users/ooartist/Src/Aesir/Server/Modules/Aesir.Modules.Research/Services/ResearchProgressBroadcaster.cs`
-**Lines**: Referenced from helper class, also in ReportGeneratorService.cs Lines 94-118, 201-257
+### ~~HIGH-03: Magic Numbers in Progress Broadcasting~~ [FIXED]
+**Files**:
+- `ReportGeneratorService.cs`
+- `ResearchPhaseExecutor.cs`
+- `ChairmanPlanningService.cs`
+- `ClarificationService.cs`
+**Status**: FIXED on 2026-01-06
 
-**Problem**: Progress percentages (10%, 30%, 40%, 50%, 85%, 100%) are hardcoded throughout the codebase without clear documentation of what they represent.
+**Fix Applied**:
+- Created `Constants/ResearchProgressMilestones.cs` static class with well-documented constants:
+  - `PhaseStart = 0` - Phase has just started
+  - `PhaseInitializing = 10` - Setting up resources and configurations
+  - `PromptBuilt = 30` - Prompt constructed, ready for LLM
+  - `LlmCallStarted = 40` - Inference request sent
+  - `LlmProcessing = 50` - LLM actively working
+  - `LlmCallCompleted = 85` - Response received, before post-processing
+  - `PhaseComplete = 100` - Phase done
+- Updated all 4 services to use named constants instead of magic numbers
+- Each constant includes XML documentation explaining its purpose
 
-**Impact**: Difficult to maintain consistent progress reporting; values seem arbitrary.
-
-**Recommended Fix**: Define progress milestones as constants:
-
-```csharp
-public static class ResearchProgressMilestones
-{
-    public const int PhaseStart = 0;
-    public const int PromptBuilt = 30;
-    public const int LlmCallStarted = 40;
-    public const int LlmCallCompleted = 85;
-    public const int PhaseComplete = 100;
-}
-```
+**Original Problem**: Progress percentages (10%, 30%, 40%, 50%, 85%, 100%) were hardcoded throughout the codebase without documentation, making it difficult to maintain consistent progress reporting.
 
 ---
 
@@ -385,20 +366,19 @@ public static partial class ResearchLoggerExtensions
 
 ---
 
-### MED-06: PeerReviewService Uses Sequential Execution Despite Parallel Capability
+### ~~MED-06: PeerReviewService Uses Sequential Execution Despite Parallel Capability~~ [FIXED]
 **File**: `/Users/ooartist/Src/Aesir/Server/Modules/Aesir.Modules.Research/Services/PeerReviewService.cs`
-**Lines**: 98-138
+**Status**: FIXED on 2026-01-06
 
-**Problem**: The `ConductPeerReviewsAsync` method executes reviewers sequentially with the comment "to avoid overloading the inference engine", but `ResearchPhaseExecutor.ExecuteResearchPhaseAsync` uses parallel execution with throttling.
-
-**Impact**: Inconsistent execution patterns; peer review phase is slower than necessary.
-
-**Recommended Fix**: Use the same parallel execution strategy as research phase:
-
-```csharp
-// Use the existing ParallelPhaseExecutionStrategy with maxParallelism=2
-var strategy = _strategyFactory.CreatePeerReviewStrategy();
-```
+**Fix Applied**:
+- Injected `IPhaseExecutionStrategyFactory` into `PeerReviewService`
+- Refactored `ConductPeerReviewsAsync` to use parallel execution via `CreatePeerReviewStrategy()`
+- Created `BuildReviewWorkItems()` method to flatten nested loops into work items (reviewer × submission pairs)
+- Created `ConductSingleReviewAsync()` method for individual review execution
+- Uses `ExecutePhaseWithAgentTrackingAsync()` for parallel execution with agent progress tracking
+- Removed old sequential `ConductAgentReviewsAsync()` method (~100 lines removed)
+- Peer reviews now execute with throttling (max 2 concurrent) instead of fully sequential
+- Consistent execution pattern with `ResearchPhaseExecutor.ExecuteResearchPhaseAsync`
 
 ---
 

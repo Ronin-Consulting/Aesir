@@ -1,10 +1,9 @@
 using System.Text;
-using System.Text.RegularExpressions;
 using Aesir.Common.Models;
 using Aesir.Infrastructure.Services;
 using Aesir.Modules.Research.Agents;
+using Aesir.Modules.Research.Constants;
 using Aesir.Modules.Research.Models;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Aesir.Modules.Research.Services;
@@ -15,19 +14,19 @@ namespace Aesir.Modules.Research.Services;
 public class ChairmanPlanningService : IChairmanPlanningService
 {
     private readonly ILogger<ChairmanPlanningService> _logger;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IConfigurationService _configurationService;
+    private readonly IChatServiceResolver _chatServiceResolver;
+    private readonly IChatRequestBuilder _chatRequestBuilder;
     private readonly IResearchProgressBroadcaster _progressBroadcaster;
 
     public ChairmanPlanningService(
         ILogger<ChairmanPlanningService> logger,
-        IServiceProvider serviceProvider,
-        IConfigurationService configurationService,
+        IChatServiceResolver chatServiceResolver,
+        IChatRequestBuilder chatRequestBuilder,
         IResearchProgressBroadcaster progressBroadcaster)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
-        _configurationService = configurationService;
+        _chatServiceResolver = chatServiceResolver;
+        _chatRequestBuilder = chatRequestBuilder;
         _progressBroadcaster = progressBroadcaster;
     }
 
@@ -47,7 +46,7 @@ public class ChairmanPlanningService : IChairmanPlanningService
             Phase = ResearchPhase.Planning,
             AgentRole = ResearchRole.Chairman,
             Message = "Chairman is creating unified research plan...",
-            PercentComplete = 10
+            PercentComplete = ResearchProgressMilestones.PhaseInitializing
         }).ConfigureAwait(false);
 
         // Build the Chairman's planning prompt
@@ -69,7 +68,7 @@ public class ChairmanPlanningService : IChairmanPlanningService
             Phase = ResearchPhase.Planning,
             AgentRole = ResearchRole.Chairman,
             Message = "Unified research plan created",
-            PercentComplete = 100,
+            PercentComplete = ResearchProgressMilestones.PhaseComplete,
             IsComplete = true
         }).ConfigureAwait(false);
 
@@ -122,21 +121,22 @@ public class ChairmanPlanningService : IChairmanPlanningService
         string prompt,
         CancellationToken cancellationToken)
     {
-        if (!chairman.InferenceEngineId.HasValue)
-        {
-            throw new InvalidOperationException("Chairman must have an inference engine configured");
-        }
+        var chatService = _chatServiceResolver.GetRequiredChatService(
+            chairman.InferenceEngineId, "Chairman");
 
-        var chatService = _serviceProvider.GetKeyedService<IChatService>(
-            chairman.InferenceEngineId.Value.ToString());
+        var systemPrompt = chairman.Persona ?? "You are a research chairman coordinating a research team.";
 
-        if (chatService == null)
-        {
-            throw new InvalidOperationException(
-                $"No IChatService found for Chairman's inference engine {chairman.InferenceEngineId}");
-        }
+        var request = await _chatRequestBuilder.BuildAsync(
+            chairman,
+            systemPrompt,
+            prompt,
+            new ChatRequestOptions
+            {
+                IncludeTools = false,
+                User = "research-chairman-planning",
+                Title = "Chairman Unified Planning"
+            }).ConfigureAwait(false);
 
-        var request = await CreateChatRequestAsync(chairman, prompt);
         var result = await chatService.ChatCompletionsAsync(request).ConfigureAwait(false);
 
         return result.AesirConversation?.Messages?
@@ -210,57 +210,6 @@ public class ChairmanPlanningService : IChairmanPlanningService
         }
 
         return plans;
-    }
-
-    private async Task<AesirChatRequestBase> CreateChatRequestAsync(ResearchAgent chairman, string prompt)
-    {
-        var systemMessage = new AesirChatMessage
-        {
-            Role = "system",
-            Content = chairman.Persona ?? "You are a research chairman coordinating a research team.",
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var userMessage = new AesirChatMessage
-        {
-            Role = "user",
-            Content = prompt,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        var conversation = new AesirConversation
-        {
-            Id = Guid.NewGuid().ToString(),
-            Messages = [systemMessage, userMessage]
-        };
-
-        // Get thinking settings from base agent
-        bool? enableThinking = null;
-        ThinkValue? thinkValue = null;
-
-        try
-        {
-            var baseAgent = await _configurationService.GetAgentAsync(chairman.BaseAgentId);
-            enableThinking = baseAgent.AllowThinking;
-            thinkValue = baseAgent.ThinkValue;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load Chairman base agent settings");
-        }
-
-        return new AesirChatRequestBase
-        {
-            Model = chairman.Model ?? "gpt-4",
-            Temperature = chairman.Temperature,
-            MaxTokens = chairman.MaxTokens ?? 8192,
-            Conversation = conversation,
-            User = "research-chairman-planning",
-            Title = "Chairman Unified Planning",
-            Tools = [], // Chairman doesn't need tools for planning
-            EnableThinking = enableThinking,
-            ThinkValue = thinkValue
-        };
     }
 
     private static string GetRoleDescription(ResearchRole role)

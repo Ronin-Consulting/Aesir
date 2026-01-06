@@ -45,6 +45,7 @@ public class ResearchModule : ModuleBase
 
         // Register agent orchestration services
         services.AddScoped<IResearchAgentFactory, ResearchAgentFactory>();
+        services.AddScoped<IChatRequestBuilder, ChatRequestBuilder>();
         services.AddScoped<IClarificationService, ClarificationService>();
         services.AddScoped<IChairmanPlanningService, ChairmanPlanningService>();
 
