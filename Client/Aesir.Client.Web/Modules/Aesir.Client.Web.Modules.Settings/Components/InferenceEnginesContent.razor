@@ -26,45 +26,79 @@
     <div class="content-body">
         <MudDataGrid T="AesirInferenceEngineBase"
                      Items="@_engines"
-                     Dense="true"
+                     Dense="false"
                      Hover="true"
-                     Striped="true"
+                     Striped="false"
                      Elevation="0"
-                     Outlined="true"
+                     Class="aesir-data-grid"
                      Loading="@_isLoading"
                      LoadingProgressColor="Color.Primary">
             <Columns>
-                <PropertyColumn Property="x => x.Name" Title="Name" />
-                <PropertyColumn Property="x => x.Type" Title="Type">
+                <TemplateColumn Title="Engine" SortBy="x => x.Name">
+                    <CellTemplate>
+                        <div class="entity-name-cell">
+                            <MudAvatar Size="Size.Medium"
+                                       Class="entity-avatar"
+                                       Style="@GetEngineAvatarStyle(context.Item.Name)">
+                                @(context.Item.Name?.FirstOrDefault().ToString().ToUpper() ?? "?")
+                            </MudAvatar>
+                            <div class="entity-info">
+                                <div class="entity-name">@context.Item.Name</div>
+                                @if (!string.IsNullOrEmpty(context.Item.Description))
+                                {
+                                    <div class="entity-description">@context.Item.Description</div>
+                                }
+                            </div>
+                        </div>
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn Title="Type" Sortable="false">
                     <CellTemplate>
                         <MudChip T="string"
                                  Size="Size.Small"
-                                 Color="@GetTypeColor(context.Item.Type)">
+                                 Color="@GetTypeColor(context.Item.Type)"
+                                 Variant="Variant.Text"
+                                 Icon="@GetTypeIcon(context.Item.Type)">
                             @GetTypeDisplayName(context.Item.Type)
                         </MudChip>
                     </CellTemplate>
-                </PropertyColumn>
-                <PropertyColumn Property="x => x.Description" Title="Description" />
-                <TemplateColumn Title="Actions" Sortable="false">
+                </TemplateColumn>
+
+                <TemplateColumn Title="" Sortable="false" CellStyle="width: 100px;">
                     <CellTemplate>
-                        <MudStack Row="true" Spacing="1">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                           Size="Size.Small"
-                                           Color="Color.Primary"
-                                           OnClick="@(() => OpenEditDialog(context.Item))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                           Size="Size.Small"
-                                           Color="Color.Error"
-                                           OnClick="@(() => ConfirmDelete(context.Item))" />
+                        <MudStack Row="true" Spacing="1" Class="row-actions">
+                            <MudTooltip Text="Edit engine" Placement="Placement.Top">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                               Size="Size.Small"
+                                               Class="action-btn"
+                                               OnClick="@(() => OpenEditDialog(context.Item))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Delete engine" Placement="Placement.Top">
+                                <MudIconButton Icon="@Icons.Material.Outlined.DeleteOutline"
+                                               Size="Size.Small"
+                                               Class="action-btn action-btn-danger"
+                                               OnClick="@(() => ConfirmDelete(context.Item))" />
+                            </MudTooltip>
                         </MudStack>
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
             <NoRecordsContent>
-                <MudText Typo="Typo.body1">No inference engines configured.</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                    Click "Add Engine" to create your first inference engine.
-                </MudText>
+                <div class="empty-state-container">
+                    <MudIcon Icon="@Icons.Material.Outlined.Memory" Class="empty-state-icon" />
+                    <MudText Typo="Typo.h6" Class="empty-state-title">No inference engines yet</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="empty-state-description">
+                        Configure your first AI backend to enable chat completions
+                    </MudText>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenCreateDialog"
+                               Class="empty-state-action mt-4">
+                        Add First Engine
+                    </MudButton>
+                </div>
             </NoRecordsContent>
         </MudDataGrid>
     </div>
@@ -193,4 +227,22 @@
         null => "Unknown",
         _ => type.ToString() ?? "Unknown"
     };
+
+    private static string GetTypeIcon(InferenceEngineType? type) => type switch
+    {
+        InferenceEngineType.Ollama => Icons.Material.Outlined.Pets,
+        InferenceEngineType.OpenAICompatible => Icons.Material.Outlined.Cloud,
+        _ => Icons.Material.Outlined.QuestionMark
+    };
+
+    private static string GetEngineAvatarStyle(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return "";
+
+        // Generate consistent color based on name
+        var hash = name.GetHashCode();
+        var hue = Math.Abs(hash % 360);
+
+        return $"background: hsl({hue}, 60%, 45%); color: white;";
+    }
 }

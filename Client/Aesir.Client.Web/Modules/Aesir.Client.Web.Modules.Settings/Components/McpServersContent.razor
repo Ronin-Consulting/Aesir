@@ -26,63 +26,98 @@
     <div class="content-body">
         <MudDataGrid T="AesirMcpServerBase"
                      Items="@_servers"
-                     Dense="true"
+                     Dense="false"
                      Hover="true"
-                     Striped="true"
+                     Striped="false"
                      Elevation="0"
-                     Outlined="true"
+                     Class="aesir-data-grid"
                      Loading="@_isLoading"
                      LoadingProgressColor="Color.Primary">
             <Columns>
-                <PropertyColumn Property="x => x.Name" Title="Name" />
-                <PropertyColumn Property="x => x.Location" Title="Location">
+                <TemplateColumn Title="Server" SortBy="x => x.Name">
+                    <CellTemplate>
+                        <div class="entity-name-cell">
+                            <MudAvatar Size="Size.Medium"
+                                       Class="entity-avatar"
+                                       Style="@GetServerAvatarStyle(context.Item.Name)">
+                                @(context.Item.Name?.FirstOrDefault().ToString().ToUpper() ?? "?")
+                            </MudAvatar>
+                            <div class="entity-info">
+                                <div class="entity-name">@context.Item.Name</div>
+                                @if (!string.IsNullOrEmpty(context.Item.Description))
+                                {
+                                    <div class="entity-description">@context.Item.Description</div>
+                                }
+                            </div>
+                        </div>
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn Title="Location" Sortable="false">
                     <CellTemplate>
                         <MudChip T="string"
                                  Size="Size.Small"
-                                 Color="@GetLocationColor(context.Item.Location)">
+                                 Color="@GetLocationColor(context.Item.Location)"
+                                 Variant="Variant.Text"
+                                 Icon="@GetLocationIcon(context.Item.Location)">
                             @GetLocationDisplayName(context.Item.Location)
                         </MudChip>
                     </CellTemplate>
-                </PropertyColumn>
-                <PropertyColumn Property="x => x.Description" Title="Description" />
+                </TemplateColumn>
+
                 <TemplateColumn Title="Connection" Sortable="false">
                     <CellTemplate>
-                        @if (context.Item.Location == ServerLocation.Local)
-                        {
-                            <MudText Typo="Typo.body2">@context.Item.Command</MudText>
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.body2">@context.Item.Url</MudText>
-                        }
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@(context.Item.Location == ServerLocation.Local ? Icons.Material.Outlined.Terminal : Icons.Material.Outlined.Link)"
+                                     Size="Size.Small"
+                                     Color="Color.Secondary" />
+                            <MudText Typo="Typo.body2" Class="entity-description">
+                                @(context.Item.Location == ServerLocation.Local ? context.Item.Command : context.Item.Url)
+                            </MudText>
+                        </MudStack>
                     </CellTemplate>
                 </TemplateColumn>
-                <TemplateColumn Title="Actions" Sortable="false">
+
+                <TemplateColumn Title="" Sortable="false" CellStyle="width: 140px;">
                     <CellTemplate>
-                        <MudStack Row="true" Spacing="1">
-                            <MudTooltip Text="Discover Tools">
-                                <MudIconButton Icon="@Icons.Material.Filled.Search"
+                        <MudStack Row="true" Spacing="1" Class="row-actions">
+                            <MudTooltip Text="Discover tools" Placement="Placement.Top">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Search"
                                                Size="Size.Small"
-                                               Color="Color.Info"
+                                               Class="action-btn"
                                                OnClick="@(() => DiscoverToolsAsync(context.Item))" />
                             </MudTooltip>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                           Size="Size.Small"
-                                           Color="Color.Primary"
-                                           OnClick="@(() => OpenEditDialog(context.Item))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                           Size="Size.Small"
-                                           Color="Color.Error"
-                                           OnClick="@(() => ConfirmDelete(context.Item))" />
+                            <MudTooltip Text="Edit server" Placement="Placement.Top">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                               Size="Size.Small"
+                                               Class="action-btn"
+                                               OnClick="@(() => OpenEditDialog(context.Item))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Delete server" Placement="Placement.Top">
+                                <MudIconButton Icon="@Icons.Material.Outlined.DeleteOutline"
+                                               Size="Size.Small"
+                                               Class="action-btn action-btn-danger"
+                                               OnClick="@(() => ConfirmDelete(context.Item))" />
+                            </MudTooltip>
                         </MudStack>
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
             <NoRecordsContent>
-                <MudText Typo="Typo.body1">No MCP servers configured.</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                    Click "Add Server" to create your first MCP server.
-                </MudText>
+                <div class="empty-state-container">
+                    <MudIcon Icon="@Icons.Material.Outlined.Dns" Class="empty-state-icon" />
+                    <MudText Typo="Typo.h6" Class="empty-state-title">No MCP servers yet</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="empty-state-description">
+                        Connect to Model Context Protocol servers to enable tool integration
+                    </MudText>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenCreateDialog"
+                               Class="empty-state-action mt-4">
+                        Add First Server
+                    </MudButton>
+                </div>
             </NoRecordsContent>
         </MudDataGrid>
     </div>
@@ -230,4 +265,22 @@
         null => "Unknown",
         _ => location.ToString() ?? "Unknown"
     };
+
+    private static string GetLocationIcon(ServerLocation? location) => location switch
+    {
+        ServerLocation.Local => Icons.Material.Outlined.Computer,
+        ServerLocation.Remote => Icons.Material.Outlined.Cloud,
+        _ => Icons.Material.Outlined.QuestionMark
+    };
+
+    private static string GetServerAvatarStyle(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return "";
+
+        // Generate consistent color based on name
+        var hash = name.GetHashCode();
+        var hue = Math.Abs(hash % 360);
+
+        return $"background: hsl({hue}, 60%, 45%); color: white;";
+    }
 }

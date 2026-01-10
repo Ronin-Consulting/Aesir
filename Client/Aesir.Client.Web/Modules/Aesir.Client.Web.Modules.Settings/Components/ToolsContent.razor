@@ -36,77 +36,119 @@
     <div class="content-body">
         <MudDataGrid T="AesirToolBase"
                      Items="@FilteredTools"
-                     Dense="true"
+                     Dense="false"
                      Hover="true"
-                     Striped="true"
+                     Striped="false"
                      Elevation="0"
-                     Outlined="true"
+                     Class="aesir-data-grid"
                      Loading="@_isLoading"
                      LoadingProgressColor="Color.Primary">
             <Columns>
-                <PropertyColumn Property="x => x.Name" Title="Name" />
-                <PropertyColumn Property="x => x.Type" Title="Type">
+                <TemplateColumn Title="Tool" SortBy="x => x.Name">
+                    <CellTemplate>
+                        <div class="entity-name-cell">
+                            <MudAvatar Size="Size.Medium"
+                                       Class="entity-avatar"
+                                       Style="@GetToolAvatarStyle(context.Item.Name)">
+                                @(context.Item.Name?.FirstOrDefault().ToString().ToUpper() ?? "?")
+                            </MudAvatar>
+                            <div class="entity-info">
+                                <div class="entity-name">@context.Item.Name</div>
+                                @if (!string.IsNullOrEmpty(context.Item.Description))
+                                {
+                                    <div class="entity-description">@context.Item.Description</div>
+                                }
+                            </div>
+                        </div>
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn Title="Type" Sortable="false">
                     <CellTemplate>
                         <MudChip T="string"
                                  Size="Size.Small"
-                                 Color="@GetTypeColor(context.Item.Type)">
+                                 Color="@GetTypeColor(context.Item.Type)"
+                                 Variant="Variant.Text"
+                                 Icon="@GetTypeIcon(context.Item.Type)">
                             @GetTypeDisplayName(context.Item.Type)
                         </MudChip>
                     </CellTemplate>
-                </PropertyColumn>
-                <PropertyColumn Property="x => x.Description" Title="Description" />
+                </TemplateColumn>
+
                 <TemplateColumn Title="Source" Sortable="false">
                     <CellTemplate>
                         @if (context.Item.Type == ToolType.McpServer && context.Item.McpServerId.HasValue)
                         {
                             var server = _servers.FirstOrDefault(s => s.Id == context.Item.McpServerId);
-                            if (server != null)
-                            {
-                                <MudText Typo="Typo.body2">@server.Name</MudText>
-                            }
-                            else
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">Unknown Server</MudText>
-                            }
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Built-in</MudText>
-                        }
-                    </CellTemplate>
-                </TemplateColumn>
-                <TemplateColumn Title="Actions" Sortable="false">
-                    <CellTemplate>
-                        @if (context.Item.Type == ToolType.Internal)
-                        {
-                            <MudStack Row="true" Spacing="1">
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                               Size="Size.Small"
-                                               Color="Color.Primary"
-                                               OnClick="@(() => OpenEditDialog(context.Item))" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                               Size="Size.Small"
-                                               Color="Color.Error"
-                                               OnClick="@(() => ConfirmDelete(context.Item))" />
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@Icons.Material.Outlined.Dns"
+                                         Size="Size.Small"
+                                         Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2">
+                                    @(server?.Name ?? "Unknown Server")
+                                </MudText>
                             </MudStack>
                         }
                         else
                         {
-                            <MudTooltip Text="MCP tools are managed by their server">
-                                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                               Size="Size.Small"
-                                               Color="Color.Default"
-                                               Disabled="true" />
-                            </MudTooltip>
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@Icons.Material.Outlined.Inventory"
+                                         Size="Size.Small"
+                                         Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Built-in</MudText>
+                            </MudStack>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+
+                <TemplateColumn Title="" Sortable="false" CellStyle="width: 100px;">
+                    <CellTemplate>
+                        @if (context.Item.Type == ToolType.Internal)
+                        {
+                            <MudStack Row="true" Spacing="1" Class="row-actions">
+                                <MudTooltip Text="Edit tool" Placement="Placement.Top">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                                   Size="Size.Small"
+                                                   Class="action-btn"
+                                                   OnClick="@(() => OpenEditDialog(context.Item))" />
+                                </MudTooltip>
+                                <MudTooltip Text="Delete tool" Placement="Placement.Top">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.DeleteOutline"
+                                                   Size="Size.Small"
+                                                   Class="action-btn action-btn-danger"
+                                                   OnClick="@(() => ConfirmDelete(context.Item))" />
+                                </MudTooltip>
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudStack Row="true" Spacing="1" Class="row-actions">
+                                <MudTooltip Text="Managed by MCP server" Placement="Placement.Top">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Lock"
+                                                   Size="Size.Small"
+                                                   Class="action-btn"
+                                                   Disabled="true" />
+                                </MudTooltip>
+                            </MudStack>
                         }
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
             <NoRecordsContent>
-                <MudText Typo="Typo.body1">No tools configured.</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                    Add internal tools or discover them from MCP servers.
-                </MudText>
+                <div class="empty-state-container">
+                    <MudIcon Icon="@Icons.Material.Outlined.Build" Class="empty-state-icon" />
+                    <MudText Typo="Typo.h6" Class="empty-state-title">No tools available</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="empty-state-description">
+                        Add internal tools or discover them from MCP servers
+                    </MudText>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenCreateDialog"
+                               Class="empty-state-action mt-4">
+                        Add First Tool
+                    </MudButton>
+                </div>
             </NoRecordsContent>
         </MudDataGrid>
     </div>
@@ -252,4 +294,22 @@
         null => "Unknown",
         _ => type.ToString() ?? "Unknown"
     };
+
+    private static string GetTypeIcon(ToolType? type) => type switch
+    {
+        ToolType.Internal => Icons.Material.Outlined.Handyman,
+        ToolType.McpServer => Icons.Material.Outlined.Extension,
+        _ => Icons.Material.Outlined.QuestionMark
+    };
+
+    private static string GetToolAvatarStyle(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return "";
+
+        // Generate consistent color based on name
+        var hash = name.GetHashCode();
+        var hue = Math.Abs(hash % 360);
+
+        return $"background: hsl({hue}, 60%, 45%); color: white;";
+    }
 }

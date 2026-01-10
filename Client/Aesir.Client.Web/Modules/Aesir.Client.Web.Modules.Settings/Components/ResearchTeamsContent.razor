@@ -27,56 +27,97 @@
     <div class="content-body">
         <MudDataGrid T="ResearchTeamBase"
                      Items="@_teams"
-                     Dense="true"
+                     Dense="false"
                      Hover="true"
-                     Striped="true"
+                     Striped="false"
                      Elevation="0"
-                     Outlined="true"
+                     Class="aesir-data-grid"
                      Loading="@_isLoading"
                      LoadingProgressColor="Color.Primary">
             <Columns>
-                <PropertyColumn Property="x => x.Name" Title="Name" />
-                <PropertyColumn Property="x => x.Description" Title="Description" />
+                <TemplateColumn Title="Team" SortBy="x => x.Name">
+                    <CellTemplate>
+                        <div class="entity-name-cell">
+                            <MudAvatar Size="Size.Medium"
+                                       Class="entity-avatar"
+                                       Style="@GetTeamAvatarStyle(context.Item.Name)">
+                                @(context.Item.Name?.FirstOrDefault().ToString().ToUpper() ?? "?")
+                            </MudAvatar>
+                            <div class="entity-info">
+                                <div class="entity-name">@context.Item.Name</div>
+                                @if (!string.IsNullOrEmpty(context.Item.Description))
+                                {
+                                    <div class="entity-description">@context.Item.Description</div>
+                                }
+                            </div>
+                        </div>
+                    </CellTemplate>
+                </TemplateColumn>
+
                 <TemplateColumn Title="Members" Sortable="false">
                     <CellTemplate>
-                        <MudChip T="string" Size="Size.Small" Color="Color.Info">
-                            @(context.Item.Members?.Count ?? 0) members
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="Color.Info"
+                                 Variant="Variant.Text"
+                                 Icon="@Icons.Material.Outlined.Group">
+                            @(context.Item.Members?.Count ?? 0)
                         </MudChip>
                     </CellTemplate>
                 </TemplateColumn>
+
                 <TemplateColumn Title="Status" Sortable="false">
                     <CellTemplate>
                         <MudChip T="string"
                                  Size="Size.Small"
-                                 Color="@(context.Item.IsActive ? Color.Success : Color.Default)">
+                                 Color="@(context.Item.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Text"
+                                 Icon="@(context.Item.IsActive ? Icons.Material.Outlined.CheckCircle : Icons.Material.Outlined.PauseCircle)">
                             @(context.Item.IsActive ? "Active" : "Inactive")
                         </MudChip>
                     </CellTemplate>
                 </TemplateColumn>
-                <TemplateColumn Title="Actions" Sortable="false">
+
+                <TemplateColumn Title="" Sortable="false" CellStyle="width: 140px;">
                     <CellTemplate>
-                        <MudStack Row="true" Spacing="1">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                           Size="Size.Small"
-                                           Color="Color.Primary"
-                                           OnClick="@(() => OpenEditDialog(context.Item))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
-                                           Size="Size.Small"
-                                           Color="Color.Secondary"
-                                           OnClick="@(() => DuplicateTeam(context.Item))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                           Size="Size.Small"
-                                           Color="Color.Error"
-                                           OnClick="@(() => ConfirmDelete(context.Item))" />
+                        <MudStack Row="true" Spacing="1" Class="row-actions">
+                            <MudTooltip Text="Edit team" Placement="Placement.Top">
+                                <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                               Size="Size.Small"
+                                               Class="action-btn"
+                                               OnClick="@(() => OpenEditDialog(context.Item))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Duplicate team" Placement="Placement.Top">
+                                <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
+                                               Size="Size.Small"
+                                               Class="action-btn"
+                                               OnClick="@(() => DuplicateTeam(context.Item))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Delete team" Placement="Placement.Top">
+                                <MudIconButton Icon="@Icons.Material.Outlined.DeleteOutline"
+                                               Size="Size.Small"
+                                               Class="action-btn action-btn-danger"
+                                               OnClick="@(() => ConfirmDelete(context.Item))" />
+                            </MudTooltip>
                         </MudStack>
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
             <NoRecordsContent>
-                <MudText Typo="Typo.body1">No research teams configured.</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                    Click "Add Team" to create your first research team.
-                </MudText>
+                <div class="empty-state-container">
+                    <MudIcon Icon="@Icons.Material.Outlined.Diversity3" Class="empty-state-icon" />
+                    <MudText Typo="Typo.h6" Class="empty-state-title">No research teams yet</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="empty-state-description">
+                        Configure multi-agent teams for collaborative research tasks
+                    </MudText>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenCreateDialog"
+                               Class="empty-state-action mt-4">
+                        Create First Team
+                    </MudButton>
+                </div>
             </NoRecordsContent>
         </MudDataGrid>
     </div>
@@ -252,5 +293,16 @@
 
             await LoadDataAsync();
         }
+    }
+
+    private static string GetTeamAvatarStyle(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return "";
+
+        // Generate consistent color based on name
+        var hash = name.GetHashCode();
+        var hue = Math.Abs(hash % 360);
+
+        return $"background: hsl({hue}, 60%, 45%); color: white;";
     }
 }
