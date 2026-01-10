@@ -367,6 +367,9 @@
 
     private async Task SelectTeam(ResearchTeamBase team)
     {
+        // Clear agent selection when selecting a team (symmetry with SelectAgent)
+        ChatState.SelectAgent(null);
+
         ResearchState.SelectTeam(team);
         await OnTeamSelected.InvokeAsync(team);
     }
