@@ -76,7 +76,7 @@
     else
     {
         @* Main Welcome View - Enhanced *@
-        <div class="welcome-content stagger-in">
+        <div class="welcome-content">
             @* Hero Greeting Section *@
             <div class="greeting-section">
                 <div class="greeting-logo-wrapper">
@@ -298,36 +298,11 @@
         color: var(--mud-palette-text-primary);
         text-align: center;
         margin: 0;
-        opacity: 0;
-        animation: textReveal 0.6s ease-out 0.2s forwards;
-    }
-
-    @@keyframes textReveal {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
     }
 
     .input-section {
         width: 100%;
-        opacity: 0;
-        animation: slideUp 0.5s ease-out 0.4s forwards;
-    }
-
-    @@keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        margin-top: 16px;
     }
 
     /* Staggered animation for state content */
