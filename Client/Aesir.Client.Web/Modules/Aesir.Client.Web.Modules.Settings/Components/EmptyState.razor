@@ -1,0 +1,140 @@
+@namespace Aesir.Client.Web.Modules.Settings.Components
+
+<div class="empty-state @Class">
+    <div class="empty-state-icon-container">
+        <div class="empty-state-icon-bg"></div>
+        <MudIcon Icon="@Icon" Size="Size.Large" Class="empty-state-icon" />
+    </div>
+
+    <MudText Typo="Typo.h6" Class="empty-state-title">
+        @Title
+    </MudText>
+
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="empty-state-description">
+        @Description
+    </MudText>
+
+    @if (!string.IsNullOrEmpty(ActionText))
+    {
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@ActionIcon"
+                   OnClick="OnAction"
+                   Class="empty-state-action">
+            @ActionText
+        </MudButton>
+    }
+
+    @if (ChildContent != null)
+    {
+        <div class="empty-state-custom">
+            @ChildContent
+        </div>
+    }
+</div>
+
+<style>
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: var(--aesir-space-16) var(--aesir-space-6);
+        text-align: center;
+        min-height: 300px;
+    }
+
+    .empty-state-icon-container {
+        position: relative;
+        margin-bottom: var(--aesir-space-6);
+    }
+
+    .empty-state-icon-bg {
+        width: 96px;
+        height: 96px;
+        border-radius: var(--aesir-radius-xl);
+        background: var(--aesir-gradient-primary);
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        animation: empty-state-pulse 3s ease-in-out infinite;
+    }
+
+    @@keyframes empty-state-pulse {
+        0%, 100% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        50% {
+            transform: translate(-50%, -50%) scale(1.05);
+            opacity: 0.8;
+        }
+    }
+
+    .empty-state-icon {
+        position: relative;
+        z-index: 1;
+        width: 96px;
+        height: 96px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .empty-state-title {
+        margin-bottom: var(--aesir-space-2);
+        font-weight: 600;
+    }
+
+    .empty-state-description {
+        max-width: 400px;
+        margin-bottom: var(--aesir-space-6);
+        line-height: 1.6;
+    }
+
+    .empty-state-action {
+        padding: var(--aesir-space-3) var(--aesir-space-6);
+        font-weight: 600;
+        border-radius: var(--aesir-radius-md);
+        box-shadow: var(--aesir-shadow-glow-primary);
+        transition: var(--aesir-transition-normal);
+    }
+
+    .empty-state-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 24px rgba(84, 169, 255, 0.35);
+    }
+
+    .empty-state-custom {
+        margin-top: var(--aesir-space-4);
+    }
+
+    /* Compact variant */
+    .empty-state.compact {
+        padding: var(--aesir-space-8) var(--aesir-space-4);
+        min-height: 200px;
+    }
+
+    .empty-state.compact .empty-state-icon-bg {
+        width: 64px;
+        height: 64px;
+    }
+
+    .empty-state.compact .empty-state-icon {
+        width: 64px;
+        height: 64px;
+    }
+</style>
+
+@code {
+    [Parameter] public string Icon { get; set; } = Icons.Material.Outlined.Inbox;
+    [Parameter] public string Title { get; set; } = "Nothing here yet";
+    [Parameter] public string Description { get; set; } = "";
+    [Parameter] public string? ActionText { get; set; }
+    [Parameter] public string ActionIcon { get; set; } = Icons.Material.Filled.Add;
+    [Parameter] public EventCallback OnAction { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
