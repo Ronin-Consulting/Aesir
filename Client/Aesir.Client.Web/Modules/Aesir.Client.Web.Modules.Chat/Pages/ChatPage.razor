@@ -299,6 +299,7 @@
     private bool _isLoadingSession;
     private bool _isUploadingFiles;
     private bool _showScrollButton;
+    private bool _scrollListenerInitialized;
     private DotNetObjectReference<ChatPage>? _scrollListenerRef;
     private string _streamingContent = string.Empty;
     private string? _currentThinkingContent;
@@ -520,11 +521,18 @@
                 }
             }
 
-            // Initialize scroll listener for scroll-to-bottom button
+        }
+
+        // Initialize scroll listener when messages container becomes visible
+        // Must be outside firstRender since the container doesn't exist until _hasMessages is true
+        if (_hasMessages && !_scrollListenerInitialized)
+        {
             try
             {
+                _scrollListenerRef?.Dispose();
                 _scrollListenerRef = DotNetObjectReference.Create(this);
                 await JSRuntime.InvokeVoidAsync("initializeScrollListener", "chat-messages-container", _scrollListenerRef, 100);
+                _scrollListenerInitialized = true;
             }
             catch (Exception ex)
             {
@@ -728,6 +736,8 @@
             ClearResearchSessionCache();
             _conversation = new AesirConversation { Id = Guid.NewGuid().ToString() };
             _hasMessages = false;
+            _scrollListenerInitialized = false; // Reset so listener re-initializes when messages appear
+            _showScrollButton = false;
             _streamingContent = string.Empty;
             _currentThinkingContent = null;
             _errorMessage = null;
