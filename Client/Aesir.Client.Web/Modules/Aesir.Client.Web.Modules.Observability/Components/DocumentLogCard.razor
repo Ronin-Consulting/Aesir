@@ -189,10 +189,10 @@
         font-size: 1.2rem !important;
     }
 
-    .operation-icon.op-upload { color: #60a5fa; }
-    .operation-icon.op-embed { color: #a855f7; }
-    .operation-icon.op-update { color: #fbbf24; }
-    .operation-icon.op-delete { color: #ef4444; }
+    .operation-icon.op-upload { color: var(--aesir-op-upload); }
+    .operation-icon.op-embed { color: var(--aesir-op-embed); }
+    .operation-icon.op-update { color: var(--aesir-op-update); }
+    .operation-icon.op-delete { color: var(--aesir-op-delete); }
 
     .log-entry-filename {
         flex: 1;
@@ -238,23 +238,23 @@
     }
 
     .operation-badge.op-upload {
-        background-color: rgba(96, 165, 250, 0.15);
-        color: #60a5fa;
+        background-color: rgba(var(--aesir-op-upload-rgb), 0.15);
+        color: var(--aesir-op-upload);
     }
 
     .operation-badge.op-embed {
-        background-color: rgba(168, 85, 247, 0.15);
-        color: #a855f7;
+        background-color: rgba(var(--aesir-op-embed-rgb), 0.15);
+        color: var(--aesir-op-embed);
     }
 
     .operation-badge.op-update {
-        background-color: rgba(251, 191, 36, 0.15);
-        color: #fbbf24;
+        background-color: rgba(var(--aesir-op-update-rgb), 0.15);
+        color: var(--aesir-op-update);
     }
 
     .operation-badge.op-delete {
-        background-color: rgba(239, 68, 68, 0.15);
-        color: #ef4444;
+        background-color: rgba(var(--aesir-op-delete-rgb), 0.15);
+        color: var(--aesir-op-delete);
     }
 
     .log-entry-duration {

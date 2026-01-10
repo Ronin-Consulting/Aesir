@@ -153,10 +153,10 @@
         background-color: rgba(255, 255, 255, 0.05);
     }
 
-    .header-icon .op-upload { color: #60a5fa; }
-    .header-icon .op-embed { color: #a855f7; }
-    .header-icon .op-update { color: #fbbf24; }
-    .header-icon .op-delete { color: #ef4444; }
+    .header-icon .op-upload { color: var(--aesir-op-upload); }
+    .header-icon .op-embed { color: var(--aesir-op-embed); }
+    .header-icon .op-update { color: var(--aesir-op-update); }
+    .header-icon .op-delete { color: var(--aesir-op-delete); }
 
     .header-content {
         flex: 1;
@@ -181,23 +181,23 @@
     }
 
     .operation-badge.op-upload {
-        background-color: rgba(96, 165, 250, 0.15);
-        color: #60a5fa;
+        background-color: rgba(var(--aesir-op-upload-rgb), 0.15);
+        color: var(--aesir-op-upload);
     }
 
     .operation-badge.op-embed {
-        background-color: rgba(168, 85, 247, 0.15);
-        color: #a855f7;
+        background-color: rgba(var(--aesir-op-embed-rgb), 0.15);
+        color: var(--aesir-op-embed);
     }
 
     .operation-badge.op-update {
-        background-color: rgba(251, 191, 36, 0.15);
-        color: #fbbf24;
+        background-color: rgba(var(--aesir-op-update-rgb), 0.15);
+        color: var(--aesir-op-update);
     }
 
     .operation-badge.op-delete {
-        background-color: rgba(239, 68, 68, 0.15);
-        color: #ef4444;
+        background-color: rgba(var(--aesir-op-delete-rgb), 0.15);
+        color: var(--aesir-op-delete);
     }
 
     .status-badge {
@@ -208,18 +208,18 @@
     }
 
     .status-badge.status-completed {
-        background-color: rgba(34, 197, 94, 0.15);
-        color: #4ade80;
+        background-color: rgba(var(--aesir-success-rgb), 0.15);
+        color: var(--aesir-success-light);
     }
 
     .status-badge.status-failed {
-        background-color: rgba(239, 68, 68, 0.15);
-        color: #ef4444;
+        background-color: rgba(var(--aesir-error-rgb), 0.15);
+        color: var(--aesir-error);
     }
 
     .status-badge.status-inprogress {
-        background-color: rgba(59, 130, 246, 0.15);
-        color: #60a5fa;
+        background-color: rgba(var(--aesir-primary-rgb), 0.15);
+        color: var(--aesir-primary);
     }
 
     .section-title {

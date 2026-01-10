@@ -79,6 +79,7 @@ public static class AesirTheme
     public const string Category4 = Warning;        // Amber
     public const string Category5 = "#F472B6";      // Pink (for variety)
     public const string Category6 = "#06B6D4";      // Cyan (for variety)
+    public const string Muted = "#9CA3AF";          // Neutral gray
 
     #endregion
 

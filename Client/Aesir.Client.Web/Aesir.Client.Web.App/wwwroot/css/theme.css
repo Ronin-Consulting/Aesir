@@ -71,6 +71,47 @@
     --aesir-category-4: var(--aesir-warning);
     --aesir-category-5: #F472B6;  /* Pink */
     --aesir-category-6: #06B6D4;  /* Cyan */
+    --aesir-category-5-rgb: 244, 114, 182;
+    --aesir-category-6-rgb: 6, 182, 212;
+    --aesir-muted: #9CA3AF;       /* Neutral gray */
+    --aesir-muted-rgb: 156, 163, 175;
+
+    /* ========================================
+       Semantic Tool Type Colors
+       Used in Observability for tool badges
+       ======================================== */
+    --aesir-tool-mcp: var(--aesir-accent);
+    --aesir-tool-mcp-rgb: var(--aesir-accent-rgb);
+    --aesir-tool-web: var(--aesir-primary);
+    --aesir-tool-web-rgb: var(--aesir-primary-rgb);
+    --aesir-tool-document: var(--aesir-success);
+    --aesir-tool-document-rgb: var(--aesir-success-rgb);
+    --aesir-tool-image: var(--aesir-category-5);
+    --aesir-tool-image-rgb: var(--aesir-category-5-rgb);
+    --aesir-tool-summarize: var(--aesir-warning);
+    --aesir-tool-summarize-rgb: var(--aesir-warning-rgb);
+    --aesir-tool-other: var(--aesir-muted);
+    --aesir-tool-other-rgb: var(--aesir-muted-rgb);
+
+    /* ========================================
+       Semantic Operation Colors
+       Used for document/file operations
+       ======================================== */
+    --aesir-op-upload: var(--aesir-primary);
+    --aesir-op-upload-rgb: var(--aesir-primary-rgb);
+    --aesir-op-embed: var(--aesir-accent);
+    --aesir-op-embed-rgb: var(--aesir-accent-rgb);
+    --aesir-op-update: var(--aesir-warning);
+    --aesir-op-update-rgb: var(--aesir-warning-rgb);
+    --aesir-op-delete: var(--aesir-error);
+    --aesir-op-delete-rgb: var(--aesir-error-rgb);
+
+    /* ========================================
+       Log Level Colors
+       Used in Observability for log entries
+       ======================================== */
+    --aesir-log-inference: var(--aesir-primary);
+    --aesir-log-document: var(--aesir-accent);
 
     /* ========================================
        Dark Mode Colors (Option B - Moderate Lift)
