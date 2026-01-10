@@ -1,13 +1,15 @@
 @namespace Aesir.Client.Web.Modules.Settings.Components
 
-<MudDialog>
+<MudDialog Class="aesir-dialog">
     <DialogContent>
-        <MudText Class="mb-4">@ContentText</MudText>
-        <MudTextField @bind-Value="_inputValue"
-                      Label="@Label"
-                      Variant="Variant.Outlined"
-                      Required="true"
-                      AutoFocus="true" />
+        <div class="dialog-panel" style="min-height: auto;">
+            <MudText Class="mb-4">@ContentText</MudText>
+            <MudTextField @bind-Value="_inputValue"
+                          Label="@Label"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          AutoFocus="true" />
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>

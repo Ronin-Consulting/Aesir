@@ -766,6 +766,89 @@
     line-height: 1.5;
 }
 
+/* Step Progress Indicator */
+.dialog-progress {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--aesir-space-2);
+    padding: var(--aesir-space-6) var(--aesir-space-6) var(--aesir-space-4);
+    background: rgba(0, 0, 0, 0.02);
+    border-bottom: 1px solid var(--mud-palette-divider);
+}
+
+.mud-theme-dark .dialog-progress {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.progress-step {
+    display: flex;
+    align-items: center;
+    gap: var(--aesir-space-2);
+}
+
+.step-indicator {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.75rem;
+    border: 2px solid var(--mud-palette-divider);
+    color: var(--mud-palette-text-secondary);
+    background: var(--mud-palette-surface);
+    transition: var(--aesir-transition-normal);
+}
+
+.progress-step.active .step-indicator {
+    border-color: var(--mud-palette-primary);
+    background: var(--mud-palette-primary);
+    color: white;
+    box-shadow: var(--aesir-shadow-glow-primary);
+}
+
+.progress-step.completed .step-indicator {
+    border-color: var(--mud-palette-success);
+    background: var(--mud-palette-success);
+    color: white;
+}
+
+.step-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--mud-palette-text-secondary);
+    transition: var(--aesir-transition-fast);
+    display: none;
+}
+
+.progress-step.active .step-label {
+    display: block;
+    color: var(--mud-palette-text-primary);
+}
+
+.step-connector {
+    width: 40px;
+    height: 2px;
+    background: var(--mud-palette-divider);
+    transition: var(--aesir-transition-normal);
+}
+
+.step-connector.completed {
+    background: var(--mud-palette-success);
+}
+
+/* Form improvements inside dialogs */
+.aesir-dialog .mud-input-outlined .mud-input-slot {
+    border-radius: var(--aesir-radius-sm);
+}
+
+.aesir-dialog .mud-tabs {
+    border-radius: var(--aesir-radius-md);
+    overflow: hidden;
+}
+
 /* ==========================================================================
    15. RESPONSIVE ADJUSTMENTS
    Mobile-first responsive utilities
