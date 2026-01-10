@@ -1,0 +1,22 @@
+@namespace Aesir.Client.Web.Modules.Settings.Components
+
+<MudPaper Class="settings-card" Elevation="0">
+    <div class="card-header">
+        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="20px" Height="20px" />
+        <MudSkeleton Width="40%" Height="20px" />
+    </div>
+    <MudSkeleton Width="80%" Height="14px" Class="mt-2" />
+    <MudSkeleton Width="60%" Height="14px" Class="mt-1 mb-5" />
+    <MudSkeleton Height="56px" Class="mt-4" />
+    @if (ShowSecondField)
+    {
+        <MudSkeleton Height="56px" Class="mt-3" />
+    }
+</MudPaper>
+
+@code {
+    /// <summary>
+    /// Whether to show a second input field skeleton.
+    /// </summary>
+    [Parameter] public bool ShowSecondField { get; set; } = true;
+}
