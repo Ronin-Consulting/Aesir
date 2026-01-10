@@ -26,22 +26,34 @@ window.isScrolledToBottom = function (elementId, threshold = 50) {
 
 // Scroll position listener for showing/hiding scroll-to-bottom button
 window.scrollListeners = {};
+window.scrollListenerRefs = {};
 
 window.initializeScrollListener = function (elementId, dotNetRef, threshold = 100) {
     const element = document.getElementById(elementId);
-    if (!element) return;
+    if (!element) {
+        console.warn('[ScrollListener] Element not found:', elementId);
+        return false;
+    }
 
     // Remove existing listener if any
     if (window.scrollListeners[elementId]) {
         element.removeEventListener('scroll', window.scrollListeners[elementId]);
     }
 
+    // Store the dotNetRef for later use
+    window.scrollListenerRefs[elementId] = dotNetRef;
+
     let ticking = false;
     const handler = function () {
         if (!ticking) {
             window.requestAnimationFrame(function () {
                 const isAtBottom = element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
-                dotNetRef.invokeMethodAsync('OnScrollPositionChanged', !isAtBottom);
+                const showButton = !isAtBottom;
+                const ref = window.scrollListenerRefs[elementId];
+                if (ref) {
+                    ref.invokeMethodAsync('OnScrollPositionChanged', showButton)
+                        .catch(err => console.error('[ScrollListener] Callback error:', err));
+                }
                 ticking = false;
             });
             ticking = true;
@@ -50,14 +62,24 @@ window.initializeScrollListener = function (elementId, dotNetRef, threshold = 10
 
     window.scrollListeners[elementId] = handler;
     element.addEventListener('scroll', handler, { passive: true });
+
+    // Do an initial check immediately
+    const isAtBottom = element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
+    const showButton = !isAtBottom;
+    dotNetRef.invokeMethodAsync('OnScrollPositionChanged', showButton)
+        .catch(err => console.error('[ScrollListener] Initial callback error:', err));
+
+    console.log('[ScrollListener] Initialized for:', elementId, 'Initial showButton:', showButton);
+    return true;
 };
 
 window.disposeScrollListener = function (elementId) {
     const element = document.getElementById(elementId);
     if (element && window.scrollListeners[elementId]) {
         element.removeEventListener('scroll', window.scrollListeners[elementId]);
-        delete window.scrollListeners[elementId];
     }
+    delete window.scrollListeners[elementId];
+    delete window.scrollListenerRefs[elementId];
 };
 
 // File drop handling

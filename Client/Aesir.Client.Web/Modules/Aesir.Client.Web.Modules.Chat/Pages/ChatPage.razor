@@ -527,23 +527,54 @@
         // Must be outside firstRender since the container doesn't exist until _hasMessages is true
         if (_hasMessages && !_scrollListenerInitialized)
         {
+            // Small delay to ensure DOM is fully rendered
+            await Task.Delay(50);
+            await InitializeScrollListenerAsync();
+        }
+    }
+
+    private async Task InitializeScrollListenerAsync()
+    {
+        const int maxRetries = 3;
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        {
             try
             {
                 _scrollListenerRef?.Dispose();
                 _scrollListenerRef = DotNetObjectReference.Create(this);
-                await JSRuntime.InvokeVoidAsync("initializeScrollListener", "chat-messages-container", _scrollListenerRef, 100);
-                _scrollListenerInitialized = true;
+                var success = await JSRuntime.InvokeAsync<bool>(
+                    "initializeScrollListener",
+                    "chat-messages-container",
+                    _scrollListenerRef,
+                    100);
+
+                if (success)
+                {
+                    _scrollListenerInitialized = true;
+                    Console.WriteLine($"Scroll listener initialized on attempt {attempt}");
+                    return;
+                }
+
+                Console.WriteLine($"Scroll listener init returned false, attempt {attempt}/{maxRetries}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to initialize scroll listener: {ex.Message}");
+                Console.WriteLine($"Scroll listener init failed on attempt {attempt}: {ex.Message}");
+            }
+
+            if (attempt < maxRetries)
+            {
+                await Task.Delay(100 * attempt); // Progressive delay
             }
         }
+
+        Console.WriteLine("Failed to initialize scroll listener after all retries");
     }
 
     [JSInvokable]
     public void OnScrollPositionChanged(bool showButton)
     {
+        Console.WriteLine($"OnScrollPositionChanged called: showButton={showButton}, current={_showScrollButton}");
         if (_showScrollButton != showButton)
         {
             _showScrollButton = showButton;
