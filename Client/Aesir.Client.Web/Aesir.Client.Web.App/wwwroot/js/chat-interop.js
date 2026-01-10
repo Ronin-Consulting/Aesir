@@ -24,6 +24,42 @@ window.isScrolledToBottom = function (elementId, threshold = 50) {
     return true;
 };
 
+// Scroll position listener for showing/hiding scroll-to-bottom button
+window.scrollListeners = {};
+
+window.initializeScrollListener = function (elementId, dotNetRef, threshold = 100) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    // Remove existing listener if any
+    if (window.scrollListeners[elementId]) {
+        element.removeEventListener('scroll', window.scrollListeners[elementId]);
+    }
+
+    let ticking = false;
+    const handler = function () {
+        if (!ticking) {
+            window.requestAnimationFrame(function () {
+                const isAtBottom = element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
+                dotNetRef.invokeMethodAsync('OnScrollPositionChanged', !isAtBottom);
+                ticking = false;
+            });
+            ticking = true;
+        }
+    };
+
+    window.scrollListeners[elementId] = handler;
+    element.addEventListener('scroll', handler, { passive: true });
+};
+
+window.disposeScrollListener = function (elementId) {
+    const element = document.getElementById(elementId);
+    if (element && window.scrollListeners[elementId]) {
+        element.removeEventListener('scroll', window.scrollListeners[elementId]);
+        delete window.scrollListeners[elementId];
+    }
+};
+
 // File drop handling
 // Store reference to the hidden file input element ID
 window.dropZoneInputId = null;

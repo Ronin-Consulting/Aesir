@@ -321,14 +321,23 @@
 
     .action-btn {
         color: var(--mud-palette-text-secondary);
+        border-radius: 8px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .action-btn:hover {
         color: var(--aesir-primary);
+        background-color: rgba(84, 169, 255, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .action-btn:active {
+        transform: translateY(0) scale(0.92);
     }
 
     .delete-btn:hover {
         color: var(--aesir-error) !important;
+        background-color: rgba(239, 68, 68, 0.1) !important;
     }
 
     /* Empty State */

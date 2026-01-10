@@ -367,10 +367,18 @@
 
     .left-actions .mud-icon-button {
         opacity: 0.6;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 8px;
     }
 
-    .left-actions .mud-icon-button:hover {
+    .left-actions .mud-icon-button:hover:not(:disabled) {
         opacity: 1;
+        background: rgba(84, 169, 255, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .left-actions .mud-icon-button:active:not(:disabled) {
+        transform: translateY(0) scale(0.95);
     }
 
     .right-actions {
@@ -417,12 +425,19 @@
 
     .hands-free-button {
         opacity: 0.6;
-        transition: opacity 0.15s ease, color 0.15s ease;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 8px;
     }
 
-    .hands-free-button:hover {
+    .hands-free-button:hover:not(:disabled) {
         opacity: 1;
         color: var(--mud-palette-primary);
+        background: rgba(84, 169, 255, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .hands-free-button:active:not(:disabled) {
+        transform: translateY(0) scale(0.95);
     }
 
     .rag-disabled {

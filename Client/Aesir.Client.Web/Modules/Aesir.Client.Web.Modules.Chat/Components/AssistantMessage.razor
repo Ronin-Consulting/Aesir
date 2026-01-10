@@ -298,24 +298,36 @@
         color: var(--mud-palette-text-secondary);
         width: 32px;
         height: 32px;
+        border-radius: 8px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .assistant-message .action-btn:hover {
-        color: var(--mud-palette-text-primary);
-        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--aesir-primary);
+        background-color: rgba(84, 169, 255, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .assistant-message .action-btn:active {
+        transform: translateY(0) scale(0.92);
     }
 
     .assistant-message .action-text {
         color: var(--mud-palette-text-secondary);
         cursor: pointer;
         padding: 4px 8px;
-        border-radius: 4px;
-        transition: color 0.2s ease, background-color 0.2s ease;
+        border-radius: 6px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .assistant-message .action-text:hover {
-        color: var(--mud-palette-text-primary);
-        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--aesir-primary);
+        background-color: rgba(84, 169, 255, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .assistant-message .action-text:active {
+        transform: translateY(0) scale(0.95);
     }
 
     /* Large Brand Section - Only on latest message */

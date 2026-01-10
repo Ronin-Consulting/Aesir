@@ -138,6 +138,14 @@
                       OnThinkLevelChanged="@HandleThinkLevelChanged" />
     }
 
+    @* Scroll to Bottom FAB *@
+    @if (_showScrollButton && _hasMessages)
+    {
+        <div class="scroll-to-bottom-fab @(_showScrollButton ? "visible" : "")" @onclick="ScrollToBottomAsync">
+            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Medium" />
+        </div>
+    }
+
     @* Drop Zone Overlay *@
     <DropZoneOverlay IsVisible="@_isDragging"
                      IsHovering="@_isDragOver"
@@ -209,6 +217,55 @@
             padding-right: 16px;
         }
     }
+
+    /* Scroll to Bottom FAB */
+    .scroll-to-bottom-fab {
+        position: absolute;
+        bottom: 140px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-lines-default);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 10;
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .scroll-to-bottom-fab.visible {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .scroll-to-bottom-fab:hover {
+        background: var(--aesir-primary);
+        border-color: var(--aesir-primary);
+        color: white;
+        transform: translateX(-50%) translateY(-2px);
+        box-shadow: 0 6px 16px rgba(84, 169, 255, 0.3);
+    }
+
+    .scroll-to-bottom-fab:active {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .scroll-to-bottom-fab .mud-icon-root {
+        color: var(--mud-palette-text-secondary);
+        transition: color 0.2s ease;
+    }
+
+    .scroll-to-bottom-fab:hover .mud-icon-root {
+        color: white;
+    }
 </style>
 
 @code {
@@ -241,6 +298,8 @@
     private bool _hasMessages;
     private bool _isLoadingSession;
     private bool _isUploadingFiles;
+    private bool _showScrollButton;
+    private DotNetObjectReference<ChatPage>? _scrollListenerRef;
     private string _streamingContent = string.Empty;
     private string? _currentThinkingContent;
     private string? _errorMessage;
@@ -460,6 +519,27 @@
                     Console.WriteLine($"Failed to restore research session: {ex.Message}");
                 }
             }
+
+            // Initialize scroll listener for scroll-to-bottom button
+            try
+            {
+                _scrollListenerRef = DotNetObjectReference.Create(this);
+                await JSRuntime.InvokeVoidAsync("initializeScrollListener", "chat-messages-container", _scrollListenerRef, 100);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to initialize scroll listener: {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public void OnScrollPositionChanged(bool showButton)
+    {
+        if (_showScrollButton != showButton)
+        {
+            _showScrollButton = showButton;
+            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -1424,6 +1504,7 @@
         ResearchState.OnTeamChanged -= HandleResearchTeamChanged;
         _streamingCts?.Cancel();
         _streamingCts?.Dispose();
+        _scrollListenerRef?.Dispose();
     }
 
     // Research state handlers
