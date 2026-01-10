@@ -6,8 +6,9 @@
         </MudText>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="_form" Model="@_model" @bind-IsValid="@_isValid">
-            <MudStack Spacing="3">
+        <div class="dialog-panel">
+            <MudForm @ref="_form" Model="@_model" @bind-IsValid="@_isValid">
+                <MudStack Spacing="3">
                 <MudTextField @bind-Value="_model.Name"
                               Label="Name"
                               Required="true"
@@ -43,8 +44,9 @@
                         </MudSelectItem>
                     }
                 </MudSelect>
-            </MudStack>
-        </MudForm>
+                </MudStack>
+            </MudForm>
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
