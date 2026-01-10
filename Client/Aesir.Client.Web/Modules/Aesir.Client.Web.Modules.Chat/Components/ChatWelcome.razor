@@ -4,78 +4,89 @@
 @inject NavigationManager Navigation
 
 <div class="chat-welcome-container">
+    @* Atmospheric gradient background *@
+    <div class="welcome-atmosphere"></div>
+
     @if (_isLoading)
     {
-        <MudProgressCircular Indeterminate="true" Size="Size.Large" />
-        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">Loading...</MudText>
+        <div class="welcome-state-content">
+            <div class="loading-orb">
+                <img src="images/logo-blue.svg" alt="" class="loading-logo" />
+            </div>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4 fade-in">Initializing...</MudText>
+        </div>
     }
     else if (_apiError)
     {
         @* API Connection Error State *@
-        <MudIcon Icon="@Icons.Material.Filled.CloudOff"
-                 Style="font-size: 4rem; opacity: 0.5;"
-                 Color="Color.Error" />
+        <div class="welcome-state-content stagger-in">
+            <div class="state-icon error-state">
+                <MudIcon Icon="@Icons.Material.Filled.CloudOff" Style="font-size: 3rem;" />
+            </div>
 
-        <MudText Typo="Typo.h5" Align="Align.Center" Color="Color.Error" Class="mt-4">
-            Unable to Connect
-        </MudText>
+            <MudText Typo="Typo.h5" Align="Align.Center" Class="state-title">
+                Unable to Connect
+            </MudText>
 
-        <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Style="max-width: 400px;" Class="mt-2">
-            Could not connect to the ÆSIR server. Please check that the server is running.
-        </MudText>
+            <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Class="state-description">
+                Could not connect to the ÆSIR server. Please check that the server is running.
+            </MudText>
 
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Refresh"
-                   OnClick="RetryLoadAsync"
-                   Class="mt-4">
-            Retry Connection
-        </MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="RetryLoadAsync"
+                       Class="state-action">
+                Retry Connection
+            </MudButton>
+        </div>
     }
     else if (!_hasAgents || !_hasInferenceEngines)
     {
         @* Setup Required State *@
-        <MudIcon Icon="@Icons.Material.Filled.Settings"
-                 Style="font-size: 4rem; opacity: 0.5;"
-                 Color="Color.Warning" />
+        <div class="welcome-state-content stagger-in">
+            <div class="state-icon warning-state">
+                <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Style="font-size: 3rem;" />
+            </div>
 
-        <MudText Typo="Typo.h5" Align="Align.Center" Color="Color.Secondary" Class="mt-4">
-            Setup Required
-        </MudText>
+            <MudText Typo="Typo.h5" Align="Align.Center" Class="state-title">
+                Setup Required
+            </MudText>
 
-        <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Style="max-width: 400px;" Class="mt-2">
-            @if (!_hasInferenceEngines)
-            {
-                @("Connect an inference engine to get started.")
-            }
-            else
-            {
-                @("Configure an AI agent to start chatting.")
-            }
-        </MudText>
+            <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Class="state-description">
+                @if (!_hasInferenceEngines)
+                {
+                    @("Connect an inference engine to get started.")
+                }
+                else
+                {
+                    @("Configure an AI agent to start chatting.")
+                }
+            </MudText>
 
-        <MudStack Row="true" Spacing="2" Class="mt-4">
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.AutoAwesome"
-                       Href="/setup">
+                       StartIcon="@Icons.Material.Filled.RocketLaunch"
+                       Href="/setup"
+                       Class="state-action">
                 Run Setup Wizard
             </MudButton>
-        </MudStack>
+        </div>
     }
     else
     {
-        @* Main Welcome View - Claude Style *@
-        <div class="welcome-content">
-            @* Decorative Greeting *@
+        @* Main Welcome View - Enhanced *@
+        <div class="welcome-content stagger-in">
+            @* Hero Greeting Section *@
             <div class="greeting-section">
-                <img src="images/logo-blue.svg" alt="" class="greeting-logo" />
-                <MudText Typo="Typo.h3" Class="greeting-text">
-                    @_currentGreeting
-                </MudText>
+                <div class="greeting-logo-wrapper">
+                    <img src="images/logo-blue.svg" alt="AESIR" class="greeting-logo" />
+                    <div class="logo-glow"></div>
+                </div>
+                <h2 class="greeting-text">@_currentGreeting</h2>
             </div>
 
-            @* Centered Input Area - Using shared MessageInput component *@
+            @* Centered Input Area *@
             <div class="input-section">
                 <MessageInput @ref="_messageInput"
                               OnSend="@SendMessage"
@@ -105,8 +116,134 @@
         padding: 24px;
         min-height: 0;
         height: 100%;
+        position: relative;
+        overflow: hidden;
     }
 
+    /* Atmospheric gradient background */
+    .welcome-atmosphere {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background:
+            radial-gradient(ellipse 80% 60% at 50% 20%, rgba(84, 169, 255, 0.08) 0%, transparent 50%),
+            radial-gradient(ellipse 60% 50% at 80% 60%, rgba(123, 111, 255, 0.06) 0%, transparent 40%),
+            radial-gradient(ellipse 50% 40% at 20% 70%, rgba(84, 169, 255, 0.05) 0%, transparent 40%);
+        animation: atmosphereShift 20s ease-in-out infinite alternate;
+    }
+
+    @@keyframes atmosphereShift {
+        0% {
+            opacity: 0.7;
+            transform: scale(1) translateY(0);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1.05) translateY(-10px);
+        }
+    }
+
+    /* State content wrapper */
+    .welcome-state-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        z-index: 1;
+        max-width: 400px;
+        text-align: center;
+    }
+
+    /* Loading orb animation */
+    .loading-orb {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .loading-orb::before {
+        content: '';
+        position: absolute;
+        inset: -8px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        border-top-color: var(--aesir-primary);
+        border-right-color: rgba(84, 169, 255, 0.3);
+        animation: orbSpin 1.2s linear infinite;
+    }
+
+    .loading-orb::after {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(84, 169, 255, 0.15) 0%, transparent 70%);
+        animation: orbPulse 2s ease-in-out infinite;
+    }
+
+    .loading-logo {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+        animation: logoFloat 2s ease-in-out infinite;
+    }
+
+    @@keyframes orbSpin {
+        to { transform: rotate(360deg); }
+    }
+
+    @@keyframes orbPulse {
+        0%, 100% { opacity: 0.5; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.1); }
+    }
+
+    @@keyframes logoFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+    }
+
+    /* State icons */
+    .state-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .state-icon.error-state {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--aesir-error);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .state-icon.warning-state {
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--aesir-warning);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .state-title {
+        font-weight: 500;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .state-description {
+        max-width: 320px;
+        line-height: 1.6;
+    }
+
+    .state-action {
+        margin-top: 8px;
+    }
+
+    /* Main welcome content */
     .welcome-content {
         display: flex;
         flex-direction: column;
@@ -114,28 +251,125 @@
         justify-content: center;
         width: 100%;
         max-width: 900px;
-        gap: 32px;
+        gap: 48px;
+        z-index: 1;
     }
 
+    /* Greeting section */
     .greeting-section {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 12px;
+        gap: 20px;
+    }
+
+    .greeting-logo-wrapper {
+        position: relative;
+        width: 72px;
+        height: 72px;
     }
 
     .greeting-logo {
-        width: 48px;
-        height: 48px;
+        width: 100%;
+        height: 100%;
         object-fit: contain;
+        position: relative;
+        z-index: 1;
+        filter: drop-shadow(0 0 20px rgba(84, 169, 255, 0.3));
+    }
+
+    .logo-glow {
+        position: absolute;
+        inset: -20px;
+        background: radial-gradient(circle, rgba(84, 169, 255, 0.2) 0%, transparent 70%);
+        animation: glowPulse 3s ease-in-out infinite;
+        z-index: 0;
+    }
+
+    @@keyframes glowPulse {
+        0%, 100% { opacity: 0.5; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.1); }
     }
 
     .greeting-text {
+        font-size: 1.75rem;
         font-weight: 400;
         letter-spacing: -0.02em;
+        color: var(--mud-palette-text-primary);
+        text-align: center;
+        margin: 0;
+        opacity: 0;
+        animation: textReveal 0.6s ease-out 0.2s forwards;
+    }
+
+    @@keyframes textReveal {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .input-section {
         width: 100%;
+        opacity: 0;
+        animation: slideUp 0.5s ease-out 0.4s forwards;
+    }
+
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Staggered animation for state content */
+    .stagger-in > *:nth-child(1) { animation: fadeSlideIn 0.4s ease-out 0s forwards; opacity: 0; }
+    .stagger-in > *:nth-child(2) { animation: fadeSlideIn 0.4s ease-out 0.1s forwards; opacity: 0; }
+    .stagger-in > *:nth-child(3) { animation: fadeSlideIn 0.4s ease-out 0.2s forwards; opacity: 0; }
+    .stagger-in > *:nth-child(4) { animation: fadeSlideIn 0.4s ease-out 0.3s forwards; opacity: 0; }
+
+    @@keyframes fadeSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .greeting-text {
+            font-size: 1.4rem;
+        }
+
+        .greeting-logo-wrapper {
+            width: 60px;
+            height: 60px;
+        }
+
+        .welcome-content {
+            gap: 32px;
+        }
     }
 </style>
 

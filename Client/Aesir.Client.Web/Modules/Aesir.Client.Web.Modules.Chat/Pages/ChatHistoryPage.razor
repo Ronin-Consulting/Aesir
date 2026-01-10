@@ -1,42 +1,407 @@
 @page "/chat/history"
+@inject NavigationManager Navigation
 
 <PageTitle>Chat History - AESIR</PageTitle>
 
-<MudText Typo="Typo.h4" GutterBottom="true">Chat History</MudText>
-<MudText Typo="Typo.body2" Class="mb-4">
-    View and manage your conversation history.
-</MudText>
+<div class="history-page">
+    @* Page Header *@
+    <div class="history-header">
+        <div class="header-title">
+            <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Large" Class="title-icon" />
+            <div>
+                <h1 class="page-title">Chat History</h1>
+                <p class="page-subtitle">Review and continue your past conversations</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <MudTextField @bind-Value="_searchQuery"
+                          Placeholder="Search conversations..."
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          Class="search-field" />
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Href="/chat"
+                       Class="new-chat-btn">
+                New Chat
+            </MudButton>
+        </div>
+    </div>
 
-<MudPaper Elevation="2" Class="pa-4">
-    <MudTable Items="@_sessions" Hover="true" Striped="true" Dense="true">
-        <HeaderContent>
-            <MudTh>Title</MudTh>
-            <MudTh>Last Updated</MudTh>
-            <MudTh>Messages</MudTh>
-            <MudTh>Actions</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd DataLabel="Title">@context.Title</MudTd>
-            <MudTd DataLabel="Last Updated">@context.UpdatedAt.ToString("g")</MudTd>
-            <MudTd DataLabel="Messages">@context.MessageCount</MudTd>
-            <MudTd DataLabel="Actions">
-                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
-                               Size="Size.Small"
-                               OnClick="@(() => OpenSession(context.Id))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                               Size="Size.Small"
-                               Color="Color.Error"
-                               OnClick="@(() => DeleteSession(context.Id))" />
-            </MudTd>
-        </RowTemplate>
-        <NoRecordsContent>
-            <MudText>No chat sessions found.</MudText>
-        </NoRecordsContent>
-    </MudTable>
-</MudPaper>
+    @* Session Cards Grid *@
+    @if (FilteredSessions.Any())
+    {
+        <div class="sessions-grid">
+            @foreach (var (session, index) in FilteredSessions.Select((s, i) => (s, i)))
+            {
+                <div class="session-card" style="animation-delay: @(index * 50)ms" @onclick="() => OpenSession(session.Id)">
+                    <div class="card-header">
+                        <div class="card-avatar">
+                            <MudIcon Icon="@Icons.Material.Filled.ChatBubbleOutline" Size="Size.Small" />
+                        </div>
+                        <div class="card-meta">
+                            <span class="meta-messages">@session.MessageCount messages</span>
+                            <span class="meta-separator">·</span>
+                            <span class="meta-time">@FormatRelativeTime(session.UpdatedAt)</span>
+                        </div>
+                    </div>
+
+                    <h3 class="card-title">@session.Title</h3>
+
+                    @if (!string.IsNullOrEmpty(session.Preview))
+                    {
+                        <p class="card-preview">@session.Preview</p>
+                    }
+
+                    <div class="card-footer">
+                        <div class="card-tags">
+                            @if (session.AgentName != null)
+                            {
+                                <span class="tag agent-tag">
+                                    <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" />
+                                    @session.AgentName
+                                </span>
+                            }
+                        </div>
+                        <div class="card-actions">
+                            <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                           Size="Size.Small"
+                                           Title="Open conversation"
+                                           OnClick="@(() => OpenSession(session.Id))"
+                                           OnClick:stopPropagation="true"
+                                           Class="action-btn" />
+                            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                           Size="Size.Small"
+                                           Title="Delete conversation"
+                                           OnClick="@(() => DeleteSession(session.Id))"
+                                           OnClick:stopPropagation="true"
+                                           Class="action-btn delete-btn" />
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else if (_sessions.Any())
+    {
+        @* No search results *@
+        <div class="empty-state">
+            <div class="empty-icon">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Style="font-size: 3rem;" />
+            </div>
+            <h3 class="empty-title">No matches found</h3>
+            <p class="empty-description">Try adjusting your search terms</p>
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       OnClick="ClearSearch">
+                Clear search
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        @* No sessions at all *@
+        <div class="empty-state">
+            <div class="empty-icon">
+                <MudIcon Icon="@Icons.Material.Filled.Forum" Style="font-size: 3rem;" />
+            </div>
+            <h3 class="empty-title">No conversations yet</h3>
+            <p class="empty-description">Start a new chat to begin your journey</p>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Href="/chat">
+                Start New Chat
+            </MudButton>
+        </div>
+    }
+</div>
+
+<style>
+    .history-page {
+        padding: 32px 48px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* Header */
+    .history-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 32px;
+        gap: 24px;
+        flex-wrap: wrap;
+    }
+
+    .header-title {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .title-icon {
+        color: var(--aesir-primary);
+        opacity: 0.8;
+        margin-top: 4px;
+    }
+
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 600;
+        margin: 0;
+        letter-spacing: -0.02em;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .page-subtitle {
+        font-size: 0.9rem;
+        color: var(--mud-palette-text-secondary);
+        margin: 4px 0 0 0;
+    }
+
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .search-field {
+        width: 280px;
+    }
+
+    .search-field .mud-input-outlined {
+        border-radius: 10px;
+    }
+
+    .new-chat-btn {
+        border-radius: 10px !important;
+    }
+
+    /* Session Cards Grid */
+    .sessions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+
+    .session-card {
+        background: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-lines-default);
+        border-radius: 12px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: cardSlideIn 0.4s ease-out backwards;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .session-card:hover {
+        border-color: var(--aesir-primary);
+        transform: translateY(-4px);
+        box-shadow:
+            0 8px 24px rgba(0, 0, 0, 0.12),
+            0 0 0 1px rgba(84, 169, 255, 0.2);
+    }
+
+    .session-card:active {
+        transform: translateY(-2px);
+    }
+
+    @@keyframes cardSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(16px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Card Header */
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .card-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, rgba(84, 169, 255, 0.15) 0%, rgba(123, 111, 255, 0.15) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--aesir-primary);
+    }
+
+    .card-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .meta-separator {
+        opacity: 0.5;
+    }
+
+    /* Card Content */
+    .card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0;
+        color: var(--mud-palette-text-primary);
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .card-preview {
+        font-size: 0.85rem;
+        color: var(--mud-palette-text-secondary);
+        margin: 0;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* Card Footer */
+    .card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: auto;
+        padding-top: 8px;
+    }
+
+    .card-tags {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 500;
+    }
+
+    .agent-tag {
+        background: rgba(84, 169, 255, 0.1);
+        color: var(--aesir-primary);
+    }
+
+    .card-actions {
+        display: flex;
+        gap: 4px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .session-card:hover .card-actions {
+        opacity: 1;
+    }
+
+    .action-btn {
+        color: var(--mud-palette-text-secondary);
+    }
+
+    .action-btn:hover {
+        color: var(--aesir-primary);
+    }
+
+    .delete-btn:hover {
+        color: var(--aesir-error) !important;
+    }
+
+    /* Empty State */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 24px;
+        text-align: center;
+    }
+
+    .empty-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: rgba(84, 169, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--aesir-primary);
+        margin-bottom: 20px;
+    }
+
+    .empty-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 0 8px 0;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .empty-description {
+        font-size: 0.9rem;
+        color: var(--mud-palette-text-secondary);
+        margin: 0 0 20px 0;
+        max-width: 300px;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .history-page {
+            padding: 24px 16px;
+        }
+
+        .history-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .header-actions {
+            flex-direction: column;
+        }
+
+        .search-field {
+            width: 100%;
+        }
+
+        .sessions-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 
 @code {
     private List<ChatSessionSummary> _sessions = [];
+    private string _searchQuery = string.Empty;
+
+    private IEnumerable<ChatSessionSummary> FilteredSessions =>
+        string.IsNullOrWhiteSpace(_searchQuery)
+            ? _sessions
+            : _sessions.Where(s =>
+                s.Title.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                (s.Preview?.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ?? false));
 
     protected override void OnInitialized()
     {
@@ -47,36 +412,74 @@
             new ChatSessionSummary
             {
                 Id = Guid.NewGuid(),
-                Title = "Demo Conversation 1",
+                Title = "Building a REST API with .NET",
+                Preview = "How do I implement authentication in my .NET API?",
                 UpdatedAt = DateTimeOffset.Now.AddHours(-1),
-                MessageCount = 5
+                MessageCount = 5,
+                AgentName = "Claude"
             },
             new ChatSessionSummary
             {
                 Id = Guid.NewGuid(),
-                Title = "Demo Conversation 2",
+                Title = "React Component Architecture",
+                Preview = "What's the best way to structure a large React application?",
                 UpdatedAt = DateTimeOffset.Now.AddDays(-1),
-                MessageCount = 12
+                MessageCount = 12,
+                AgentName = "Claude"
+            },
+            new ChatSessionSummary
+            {
+                Id = Guid.NewGuid(),
+                Title = "Database Query Optimization",
+                Preview = "My PostgreSQL queries are running slow...",
+                UpdatedAt = DateTimeOffset.Now.AddDays(-3),
+                MessageCount = 8,
+                AgentName = "Ollama"
             }
         ];
     }
 
     private void OpenSession(Guid id)
     {
-        // TODO: Navigate to chat with session loaded
+        Navigation.NavigateTo($"/chat/{id}");
     }
 
     private void DeleteSession(Guid id)
     {
-        // TODO: Confirm and delete
+        // TODO: Confirm and delete via API
         _sessions.RemoveAll(s => s.Id == id);
+    }
+
+    private void ClearSearch()
+    {
+        _searchQuery = string.Empty;
+    }
+
+    private string FormatRelativeTime(DateTimeOffset time)
+    {
+        var diff = DateTimeOffset.Now - time;
+
+        if (diff.TotalMinutes < 1)
+            return "Just now";
+        if (diff.TotalMinutes < 60)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+        if (diff.TotalDays < 30)
+            return $"{(int)(diff.TotalDays / 7)}w ago";
+
+        return time.ToString("MMM d");
     }
 
     private record ChatSessionSummary
     {
         public Guid Id { get; init; }
         public required string Title { get; init; }
+        public string? Preview { get; init; }
         public DateTimeOffset UpdatedAt { get; init; }
         public int MessageCount { get; init; }
+        public string? AgentName { get; init; }
     }
 }
