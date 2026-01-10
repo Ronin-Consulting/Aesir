@@ -1,0 +1,808 @@
+/* ==========================================================================
+   AESIR Settings Module - Design System
+   Version: 1.0.0
+
+   A comprehensive design token system for the Settings module UI refinements.
+   Based on the "Nordic Control Center" aesthetic vision.
+   ========================================================================== */
+
+/* ==========================================================================
+   1. SPACING SCALE
+   Based on 4px grid system for consistent rhythm
+   ========================================================================== */
+
+:root {
+    /* Core spacing tokens */
+    --aesir-space-1: 4px;
+    --aesir-space-2: 8px;
+    --aesir-space-3: 12px;
+    --aesir-space-4: 16px;
+    --aesir-space-5: 20px;
+    --aesir-space-6: 24px;
+    --aesir-space-8: 32px;
+    --aesir-space-10: 40px;
+    --aesir-space-12: 48px;
+    --aesir-space-16: 64px;
+    --aesir-space-20: 80px;
+}
+
+/* ==========================================================================
+   2. BORDER RADIUS SCALE
+   Consistent corner treatments across components
+   ========================================================================== */
+
+:root {
+    --aesir-radius-xs: 4px;
+    --aesir-radius-sm: 6px;
+    --aesir-radius-md: 10px;
+    --aesir-radius-lg: 14px;
+    --aesir-radius-xl: 20px;
+    --aesir-radius-2xl: 28px;
+    --aesir-radius-full: 9999px;
+}
+
+/* ==========================================================================
+   3. SHADOWS
+   Layered depth system for visual hierarchy
+   ========================================================================== */
+
+:root {
+    /* Elevation shadows (dark mode optimized) */
+    --aesir-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.12);
+    --aesir-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.15);
+    --aesir-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.2);
+    --aesir-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.25);
+    --aesir-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.3);
+    --aesir-shadow-2xl: 0 24px 64px rgba(0, 0, 0, 0.35);
+
+    /* Glow shadows for emphasis (using brand colors) */
+    --aesir-shadow-glow-primary: 0 4px 20px rgba(84, 169, 255, 0.25);
+    --aesir-shadow-glow-primary-lg: 0 8px 32px rgba(84, 169, 255, 0.35);
+    --aesir-shadow-glow-accent: 0 4px 20px rgba(123, 111, 255, 0.25);
+    --aesir-shadow-glow-success: 0 4px 20px rgba(16, 185, 129, 0.25);
+    --aesir-shadow-glow-error: 0 4px 20px rgba(239, 68, 68, 0.25);
+
+    /* Inset shadows for depth */
+    --aesir-shadow-inset-sm: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+    --aesir-shadow-inset-md: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* Light mode shadow overrides */
+.mud-theme-light {
+    --aesir-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --aesir-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+    --aesir-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --aesir-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --aesir-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.15);
+    --aesir-shadow-2xl: 0 24px 64px rgba(0, 0, 0, 0.18);
+}
+
+/* ==========================================================================
+   4. TRANSITIONS
+   Consistent motion design tokens
+   ========================================================================== */
+
+:root {
+    /* Duration tokens */
+    --aesir-duration-instant: 50ms;
+    --aesir-duration-fast: 150ms;
+    --aesir-duration-normal: 200ms;
+    --aesir-duration-slow: 300ms;
+    --aesir-duration-slower: 400ms;
+
+    /* Easing tokens */
+    --aesir-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+    --aesir-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --aesir-ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --aesir-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --aesir-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* Composite transition tokens */
+    --aesir-transition-fast: var(--aesir-duration-fast) var(--aesir-ease-default);
+    --aesir-transition-normal: var(--aesir-duration-normal) var(--aesir-ease-default);
+    --aesir-transition-slow: var(--aesir-duration-slow) var(--aesir-ease-default);
+    --aesir-transition-bounce: var(--aesir-duration-normal) var(--aesir-ease-bounce);
+}
+
+/* ==========================================================================
+   5. GRADIENTS
+   Atmospheric depth through subtle color transitions
+   ========================================================================== */
+
+:root {
+    /* Primary gradient family (blue-violet harmony) */
+    --aesir-gradient-primary: linear-gradient(
+        135deg,
+        rgba(84, 169, 255, 0.12) 0%,
+        rgba(123, 111, 255, 0.06) 100%
+    );
+    --aesir-gradient-primary-hover: linear-gradient(
+        135deg,
+        rgba(84, 169, 255, 0.18) 0%,
+        rgba(123, 111, 255, 0.10) 100%
+    );
+    --aesir-gradient-primary-active: linear-gradient(
+        135deg,
+        rgba(84, 169, 255, 0.24) 0%,
+        rgba(123, 111, 255, 0.14) 100%
+    );
+
+    /* Surface gradients for depth */
+    --aesir-gradient-surface: linear-gradient(
+        180deg,
+        var(--mud-palette-surface) 0%,
+        rgba(30, 30, 34, 0.98) 100%
+    );
+    --aesir-gradient-surface-subtle: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.02) 0%,
+        transparent 100%
+    );
+
+    /* Accent gradients */
+    --aesir-gradient-accent: linear-gradient(
+        135deg,
+        rgba(123, 111, 255, 0.15) 0%,
+        rgba(84, 169, 255, 0.08) 100%
+    );
+
+    /* Success/Error gradients */
+    --aesir-gradient-success: linear-gradient(
+        135deg,
+        rgba(16, 185, 129, 0.12) 0%,
+        rgba(52, 211, 153, 0.06) 100%
+    );
+    --aesir-gradient-error: linear-gradient(
+        135deg,
+        rgba(239, 68, 68, 0.12) 0%,
+        rgba(248, 113, 113, 0.06) 100%
+    );
+
+    /* Shimmer effect for loading states */
+    --aesir-gradient-shimmer: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        transparent 100%
+    );
+}
+
+/* Light mode gradient overrides */
+.mud-theme-light {
+    --aesir-gradient-surface: linear-gradient(
+        180deg,
+        var(--mud-palette-surface) 0%,
+        rgba(244, 244, 245, 0.98) 100%
+    );
+    --aesir-gradient-surface-subtle: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.01) 0%,
+        transparent 100%
+    );
+    --aesir-gradient-shimmer: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(0, 0, 0, 0.03) 50%,
+        transparent 100%
+    );
+}
+
+/* ==========================================================================
+   6. Z-INDEX SCALE
+   Layering system for proper stacking
+   ========================================================================== */
+
+:root {
+    --aesir-z-base: 0;
+    --aesir-z-dropdown: 100;
+    --aesir-z-sticky: 200;
+    --aesir-z-fixed: 300;
+    --aesir-z-modal-backdrop: 400;
+    --aesir-z-modal: 500;
+    --aesir-z-popover: 600;
+    --aesir-z-tooltip: 700;
+    --aesir-z-toast: 800;
+    --aesir-z-max: 9999;
+}
+
+/* ==========================================================================
+   7. ANIMATION KEYFRAMES
+   Reusable animation definitions
+   ========================================================================== */
+
+/* Fade in with subtle upward movement */
+@keyframes aesir-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Fade in from left */
+@keyframes aesir-fade-in-left {
+    from {
+        opacity: 0;
+        transform: translateX(-12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Fade in from right */
+@keyframes aesir-fade-in-right {
+    from {
+        opacity: 0;
+        transform: translateX(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Scale in */
+@keyframes aesir-scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Subtle pulse for attention */
+@keyframes aesir-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Gentle breathing effect */
+@keyframes aesir-breathe {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.02);
+        opacity: 0.9;
+    }
+}
+
+/* Shimmer loading effect */
+@keyframes aesir-shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Spin animation */
+@keyframes aesir-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Indicator slide in */
+@keyframes aesir-slide-indicator {
+    from {
+        height: 0;
+        opacity: 0;
+    }
+    to {
+        height: var(--indicator-height, 24px);
+        opacity: 1;
+    }
+}
+
+/* ==========================================================================
+   8. ANIMATION UTILITY CLASSES
+   Easy-to-apply animation classes
+   ========================================================================== */
+
+.aesir-animate-fade-in {
+    animation: aesir-fade-in var(--aesir-duration-normal) var(--aesir-ease-out) forwards;
+}
+
+.aesir-animate-fade-in-left {
+    animation: aesir-fade-in-left var(--aesir-duration-normal) var(--aesir-ease-out) forwards;
+}
+
+.aesir-animate-fade-in-right {
+    animation: aesir-fade-in-right var(--aesir-duration-normal) var(--aesir-ease-out) forwards;
+}
+
+.aesir-animate-scale-in {
+    animation: aesir-scale-in var(--aesir-duration-normal) var(--aesir-ease-out) forwards;
+}
+
+.aesir-animate-pulse {
+    animation: aesir-pulse 2s var(--aesir-ease-in-out) infinite;
+}
+
+.aesir-animate-breathe {
+    animation: aesir-breathe 3s var(--aesir-ease-in-out) infinite;
+}
+
+.aesir-animate-spin {
+    animation: aesir-spin 1s linear infinite;
+}
+
+/* Staggered children animation */
+.aesir-animate-stagger > * {
+    opacity: 0;
+    animation: aesir-fade-in var(--aesir-duration-normal) var(--aesir-ease-out) forwards;
+}
+
+.aesir-animate-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.aesir-animate-stagger > *:nth-child(2) { animation-delay: 0.1s; }
+.aesir-animate-stagger > *:nth-child(3) { animation-delay: 0.15s; }
+.aesir-animate-stagger > *:nth-child(4) { animation-delay: 0.2s; }
+.aesir-animate-stagger > *:nth-child(5) { animation-delay: 0.25s; }
+.aesir-animate-stagger > *:nth-child(6) { animation-delay: 0.3s; }
+.aesir-animate-stagger > *:nth-child(7) { animation-delay: 0.35s; }
+.aesir-animate-stagger > *:nth-child(8) { animation-delay: 0.4s; }
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .aesir-animate-fade-in,
+    .aesir-animate-fade-in-left,
+    .aesir-animate-fade-in-right,
+    .aesir-animate-scale-in,
+    .aesir-animate-pulse,
+    .aesir-animate-breathe,
+    .aesir-animate-spin,
+    .aesir-animate-stagger > * {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ==========================================================================
+   9. INTERACTION UTILITY CLASSES
+   Hover, focus, and active state helpers
+   ========================================================================== */
+
+/* Subtle lift on hover */
+.aesir-hover-lift {
+    transition: transform var(--aesir-transition-fast), box-shadow var(--aesir-transition-fast);
+}
+
+.aesir-hover-lift:hover {
+    transform: translateY(-2px);
+}
+
+/* Scale on hover */
+.aesir-hover-scale {
+    transition: transform var(--aesir-transition-fast);
+}
+
+.aesir-hover-scale:hover {
+    transform: scale(1.02);
+}
+
+/* Press effect */
+.aesir-press:active {
+    transform: scale(0.98);
+}
+
+/* Focus ring for accessibility */
+.aesir-focus-ring:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+}
+
+/* Focus ring with inset style */
+.aesir-focus-ring-inset:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--mud-palette-primary);
+}
+
+/* ==========================================================================
+   10. SKELETON LOADING STYLES
+   Placeholder loading states
+   ========================================================================== */
+
+.aesir-skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--mud-palette-background-gray) 0%,
+        var(--mud-palette-surface) 50%,
+        var(--mud-palette-background-gray) 100%
+    );
+    background-size: 200% 100%;
+    animation: aesir-shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--aesir-radius-sm);
+}
+
+.aesir-skeleton-text {
+    height: 1em;
+    margin-bottom: 0.5em;
+}
+
+.aesir-skeleton-title {
+    height: 1.5em;
+    width: 60%;
+    margin-bottom: 0.75em;
+}
+
+.aesir-skeleton-avatar {
+    border-radius: var(--aesir-radius-full);
+}
+
+.aesir-skeleton-button {
+    height: 40px;
+    width: 120px;
+    border-radius: var(--aesir-radius-md);
+}
+
+/* ==========================================================================
+   11. MUDBLAZOR COMPONENT OVERRIDES
+   Global refinements to MudBlazor defaults
+   ========================================================================== */
+
+/* Tooltip improvements */
+.mud-tooltip {
+    border-radius: var(--aesir-radius-sm) !important;
+    font-size: 0.75rem !important;
+    padding: var(--aesir-space-2) var(--aesir-space-3) !important;
+    box-shadow: var(--aesir-shadow-md) !important;
+}
+
+/* Snackbar improvements */
+.mud-snackbar {
+    border-radius: var(--aesir-radius-md) !important;
+    box-shadow: var(--aesir-shadow-lg) !important;
+}
+
+/* Chip improvements */
+.mud-chip {
+    border-radius: var(--aesir-radius-sm) !important;
+    font-weight: 500 !important;
+}
+
+/* Alert improvements */
+.mud-alert {
+    border-radius: var(--aesir-radius-md) !important;
+}
+
+/* Card improvements */
+.mud-card {
+    border-radius: var(--aesir-radius-lg) !important;
+}
+
+/* Dialog improvements */
+.mud-dialog {
+    border-radius: var(--aesir-radius-lg) !important;
+    overflow: hidden;
+}
+
+/* Paper improvements */
+.mud-paper {
+    border-radius: var(--aesir-radius-md);
+}
+
+/* Button focus states */
+.mud-button:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+}
+
+/* Input field focus improvements */
+.mud-input-outlined:focus-within {
+    box-shadow: 0 0 0 3px rgba(84, 169, 255, 0.15);
+}
+
+/* ==========================================================================
+   12. SETTINGS-SPECIFIC STYLES
+   Styles specific to the Settings module
+   ========================================================================== */
+
+/* Settings content container */
+.settings-content-container {
+    padding: 0 var(--aesir-space-8) var(--aesir-space-8);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Content body area */
+.content-body {
+    padding-bottom: var(--aesir-space-12);
+}
+
+/* Settings card base */
+.settings-card {
+    padding: var(--aesir-space-6);
+    border-radius: var(--aesir-radius-lg);
+    border: 1px solid var(--mud-palette-divider);
+    background: var(--mud-palette-surface);
+    transition: border-color var(--aesir-transition-fast), box-shadow var(--aesir-transition-fast);
+    height: 100%;
+}
+
+.settings-card:hover {
+    border-color: rgba(84, 169, 255, 0.3);
+    box-shadow: 0 0 0 3px rgba(84, 169, 255, 0.08);
+}
+
+.settings-card:focus-within {
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 0 0 3px rgba(84, 169, 255, 0.15);
+}
+
+/* Card header */
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--aesir-space-2);
+    margin-bottom: var(--aesir-space-2);
+}
+
+.card-header-icon {
+    color: var(--mud-palette-primary);
+    opacity: 0.8;
+}
+
+.card-header-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+/* Card description */
+.card-description {
+    font-size: 0.8rem;
+    color: var(--mud-palette-text-secondary);
+    margin-bottom: var(--aesir-space-5);
+    line-height: 1.5;
+}
+
+/* Settings section grouping */
+.settings-section {
+    margin-bottom: var(--aesir-space-10);
+}
+
+.settings-section:last-child {
+    margin-bottom: 0;
+}
+
+/* Section header */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--aesir-space-3);
+    margin-bottom: var(--aesir-space-5);
+    padding-bottom: var(--aesir-space-3);
+    border-bottom: 1px solid var(--mud-palette-divider);
+}
+
+.section-header-icon {
+    color: var(--mud-palette-primary);
+}
+
+.section-title {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.section-description {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.875rem;
+    margin-left: auto;
+}
+
+/* ==========================================================================
+   13. DATA GRID ENHANCEMENTS
+   Improved table/grid styling
+   ========================================================================== */
+
+.aesir-data-grid {
+    border-radius: var(--aesir-radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--mud-palette-divider);
+    background: var(--mud-palette-surface);
+}
+
+/* Header styling */
+.aesir-data-grid .mud-table-head {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.mud-theme-dark .aesir-data-grid .mud-table-head {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.aesir-data-grid .mud-table-head th {
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--mud-palette-text-secondary);
+    padding: var(--aesir-space-4);
+    border-bottom: 1px solid var(--mud-palette-divider);
+}
+
+/* Row styling */
+.aesir-data-grid .mud-table-row {
+    transition: background-color var(--aesir-transition-fast);
+}
+
+.aesir-data-grid .mud-table-row:hover {
+    background: var(--aesir-gradient-primary) !important;
+}
+
+.aesir-data-grid .mud-table-cell {
+    padding: var(--aesir-space-4);
+    border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+/* Last row no border */
+.aesir-data-grid .mud-table-body tr:last-child .mud-table-cell {
+    border-bottom: none;
+}
+
+/* Action buttons in rows */
+.aesir-data-grid .row-actions {
+    opacity: 0.5;
+    transition: opacity var(--aesir-transition-fast);
+}
+
+.aesir-data-grid .mud-table-row:hover .row-actions {
+    opacity: 1;
+}
+
+.aesir-data-grid .action-btn {
+    border-radius: var(--aesir-radius-sm);
+    transition: background-color var(--aesir-transition-fast), color var(--aesir-transition-fast);
+}
+
+.aesir-data-grid .action-btn:hover {
+    background: rgba(128, 128, 128, 0.1);
+}
+
+.aesir-data-grid .action-btn-danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--mud-palette-error);
+}
+
+/* Entity name cell pattern */
+.entity-name-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--aesir-space-3);
+}
+
+.entity-avatar {
+    flex-shrink: 0;
+}
+
+.entity-info {
+    min-width: 0;
+}
+
+.entity-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.entity-description {
+    font-size: 0.8rem;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+/* ==========================================================================
+   14. DIALOG ENHANCEMENTS
+   Improved modal dialog styling
+   ========================================================================== */
+
+.aesir-dialog {
+    border-radius: var(--aesir-radius-lg);
+    overflow: hidden;
+}
+
+.aesir-dialog .mud-dialog-title {
+    padding: var(--aesir-space-5) var(--aesir-space-6);
+    border-bottom: 1px solid var(--mud-palette-divider);
+    font-weight: 600;
+}
+
+.aesir-dialog .mud-dialog-content {
+    padding: 0;
+}
+
+.aesir-dialog .mud-dialog-actions {
+    padding: var(--aesir-space-4) var(--aesir-space-6);
+    border-top: 1px solid var(--mud-palette-divider);
+    gap: var(--aesir-space-3);
+}
+
+/* Dialog tabs */
+.aesir-dialog .mud-tabs-toolbar {
+    background: rgba(0, 0, 0, 0.02);
+    min-height: 48px;
+}
+
+.mud-theme-dark .aesir-dialog .mud-tabs-toolbar {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Dialog panel content */
+.dialog-panel {
+    padding: var(--aesir-space-6);
+    min-height: 300px;
+}
+
+.dialog-panel-title {
+    font-weight: 600;
+    margin-bottom: var(--aesir-space-1);
+}
+
+.dialog-panel-description {
+    color: var(--mud-palette-text-secondary);
+    margin-bottom: var(--aesir-space-6);
+    line-height: 1.5;
+}
+
+/* ==========================================================================
+   15. RESPONSIVE ADJUSTMENTS
+   Mobile-first responsive utilities
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .settings-content-container {
+        padding: 0 var(--aesir-space-4) var(--aesir-space-6);
+    }
+
+    .settings-card {
+        padding: var(--aesir-space-4);
+    }
+
+    .section-header {
+        flex-wrap: wrap;
+    }
+
+    .section-description {
+        margin-left: 0;
+        width: 100%;
+        margin-top: var(--aesir-space-2);
+    }
+
+    .entity-description {
+        max-width: 150px;
+    }
+}
+
+@media (max-width: 480px) {
+    .settings-content-container {
+        padding: 0 var(--aesir-space-3) var(--aesir-space-4);
+    }
+
+    .entity-name-cell {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--aesir-space-2);
+    }
+}

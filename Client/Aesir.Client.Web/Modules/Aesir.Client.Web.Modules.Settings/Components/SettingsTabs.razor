@@ -2,11 +2,13 @@
 @inject ISettingsTabRegistry TabRegistry
 
 <div class="settings-panel">
-    <div class="settings-tabs-container">
+    <nav class="settings-tabs-container" role="navigation" aria-label="Settings navigation">
         <div class="settings-tabs">
             @* Configuration Group *@
-            <div class="tab-group">
-                <div class="tab-group-header">Configuration</div>
+            <div class="tab-group" role="tablist" aria-label="Configuration settings">
+                <div class="tab-group-header">
+                    <span>Configuration</span>
+                </div>
                 <SettingsTabItem Icon="Tune" Label="General" TabId="general"
                                  IsSelected="@(SelectedTab == "general")"
                                  OnClick="HandleTabClick" />
@@ -30,8 +32,10 @@
             @* Utilities Group - Dynamic tabs from registry *@
             @if (TabRegistry.GetTabs().Any())
             {
-                <div class="tab-group">
-                    <div class="tab-group-header">Utilities</div>
+                <div class="tab-group" role="tablist" aria-label="Utility settings">
+                    <div class="tab-group-header">
+                        <span>Utilities</span>
+                    </div>
                     @foreach (var tab in TabRegistry.GetTabs())
                     {
                         <SettingsTabItem Icon="@tab.Icon" Label="@tab.Label" TabId="@tab.TabId"
@@ -44,98 +48,228 @@
             @* Setup Wizard Link *@
             <div class="settings-footer">
                 <a href="/setup" class="wizard-link">
-                    <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Class="wizard-icon" />
-                    <span>Run Setup Wizard</span>
+                    <div class="wizard-icon-container">
+                        <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Class="wizard-icon" />
+                    </div>
+                    <span class="wizard-text">Run Setup Wizard</span>
                 </a>
             </div>
         </div>
-    </div>
+    </nav>
 
-    <div class="settings-content">
+    <main class="settings-content">
         @ChildContent
-    </div>
+    </main>
 </div>
 
 <style>
+    /* ==========================================================================
+       Settings Panel - Main Container
+       ========================================================================== */
     .settings-panel {
         display: flex;
         height: 100%;
         min-height: calc(100vh - 48px);
-        padding-top: 48px; /* Space for top bar */
-        background-color: var(--mud-palette-surface);
+        padding-top: 48px;
+        background-color: var(--mud-palette-background);
     }
 
+    /* ==========================================================================
+       Settings Tabs Container - Left Sidebar
+       ========================================================================== */
     .settings-tabs-container {
-        width: 220px;
+        width: 260px;
         flex-shrink: 0;
-        background-color: var(--mud-palette-surface);
+        background: var(--mud-palette-surface);
+        border-right: 1px solid var(--mud-palette-divider);
         display: flex;
         flex-direction: column;
+        position: relative;
+    }
+
+    /* Subtle gradient overlay for depth */
+    .settings-tabs-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 80px;
+        background: linear-gradient(180deg,
+            rgba(84, 169, 255, 0.03) 0%,
+            transparent 100%
+        );
+        pointer-events: none;
+    }
+
+    /* Top accent line */
+    .settings-tabs-container::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(84, 169, 255, 0.3) 50%,
+            transparent 100%
+        );
     }
 
     .settings-tabs {
         display: flex;
         flex-direction: column;
         height: 100%;
-        padding: 12px 8px;
+        padding: var(--aesir-space-5, 20px) var(--aesir-space-3, 12px);
         overflow-y: auto;
+        overflow-x: hidden;
+        position: relative;
+        z-index: 1;
     }
 
+    /* Custom scrollbar for navigation */
+    .settings-tabs::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .settings-tabs::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .settings-tabs::-webkit-scrollbar-thumb {
+        background: var(--mud-palette-divider);
+        border-radius: 9999px;
+    }
+
+    .settings-tabs::-webkit-scrollbar-thumb:hover {
+        background: var(--mud-palette-text-secondary);
+    }
+
+    /* ==========================================================================
+       Tab Groups
+       ========================================================================== */
     .tab-group {
-        margin-bottom: 20px;
+        margin-bottom: var(--aesir-space-6, 24px);
+    }
+
+    .tab-group:first-child {
+        margin-top: var(--aesir-space-2, 8px);
     }
 
     .tab-group-header {
-        font-size: 0.7rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--mud-palette-text-secondary);
-        padding: 0 16px;
-        margin-bottom: 8px;
-        opacity: 0.7;
+        display: flex;
+        align-items: center;
+        gap: var(--aesir-space-2, 8px);
+        padding: var(--aesir-space-2, 8px) var(--aesir-space-4, 16px);
+        margin-bottom: var(--aesir-space-2, 8px);
     }
 
+    .tab-group-header span {
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--mud-palette-text-secondary);
+        opacity: 0.6;
+    }
+
+    .tab-group-header::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg,
+            var(--mud-palette-divider) 0%,
+            transparent 100%
+        );
+    }
+
+    /* ==========================================================================
+       Settings Footer - Wizard Link
+       ========================================================================== */
     .settings-footer {
         margin-top: auto;
-        padding: 12px 8px;
+        padding: var(--aesir-space-4, 16px) var(--aesir-space-3, 12px);
+        border-top: 1px solid var(--mud-palette-divider);
     }
 
     .wizard-link {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 6px;
+        gap: var(--aesir-space-3, 12px);
+        padding: var(--aesir-space-3, 12px) var(--aesir-space-4, 16px);
+        border-radius: var(--aesir-radius-md, 10px);
         color: var(--mud-palette-text-secondary);
         text-decoration: none;
         font-size: 0.8rem;
-        transition: all 0.15s ease;
-        opacity: 0.7;
+        font-weight: 500;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        background: transparent;
+        border: 1px dashed transparent;
     }
 
     .wizard-link:hover {
-        background-color: var(--mud-palette-action-default-hover);
-        color: var(--mud-palette-text-primary);
-        opacity: 1;
+        background: linear-gradient(135deg,
+            rgba(84, 169, 255, 0.08) 0%,
+            rgba(123, 111, 255, 0.04) 100%
+        );
+        color: var(--mud-palette-primary);
+        border-color: rgba(84, 169, 255, 0.25);
+    }
+
+    .wizard-icon-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
     }
 
     .wizard-icon {
-        opacity: 0.7;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        opacity: 0.6;
     }
 
     .wizard-link:hover .wizard-icon {
+        transform: rotate(15deg) scale(1.15);
+        color: var(--mud-palette-primary);
         opacity: 1;
     }
 
+    .wizard-text {
+        transition: color 0.2s ease;
+    }
+
+    /* ==========================================================================
+       Settings Content Area
+       ========================================================================== */
     .settings-content {
         flex: 1;
         overflow-y: auto;
-        background-color: var(--mud-palette-surface);
+        background-color: var(--mud-palette-background);
+        position: relative;
     }
 
-    /* Responsive - collapse tabs on mobile */
-    @@media (max-width: 768px) {
+    /* Subtle inset shadow at top for depth */
+    .settings-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 40px;
+        background: linear-gradient(180deg,
+            rgba(0, 0, 0, 0.02) 0%,
+            transparent 100%
+        );
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    /* ==========================================================================
+       Responsive - Mobile Layout (max-width: 900px)
+       ========================================================================== */
+    @@media (max-width: 900px) {
         .settings-panel {
             flex-direction: column;
         }
@@ -143,41 +277,62 @@
         .settings-tabs-container {
             width: 100%;
             border-right: none;
-            border-bottom: 1px solid var(--mud-palette-lines-default);
-            max-height: 200px;
+            border-bottom: 1px solid var(--mud-palette-divider);
+            max-height: none;
+        }
+
+        .settings-tabs-container::before,
+        .settings-tabs-container::after {
+            display: none;
         }
 
         .settings-tabs {
             flex-direction: row;
-            flex-wrap: wrap;
-            padding: 8px;
-            gap: 8px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: var(--aesir-space-3, 12px);
+            gap: var(--aesir-space-2, 8px);
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .settings-tabs::-webkit-scrollbar {
+            display: none;
         }
 
         .tab-group {
             display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin-bottom: 8px;
+            flex-wrap: nowrap;
+            gap: var(--aesir-space-2, 8px);
+            margin-bottom: 0;
+            flex-shrink: 0;
         }
 
         .tab-group-header {
-            width: 100%;
-            padding: 0 8px;
-            margin-bottom: 4px;
+            display: none;
         }
 
         .settings-footer {
-            margin-top: 0;
-            padding: 8px;
-        }
-
-        .wizard-link {
-            font-size: 0.75rem;
+            display: none;
         }
 
         .settings-content {
-            min-height: 400px;
+            min-height: 500px;
+        }
+
+        .settings-content::before {
+            display: none;
+        }
+    }
+
+    /* ==========================================================================
+       Responsive - Small Mobile (max-width: 600px)
+       ========================================================================== */
+    @@media (max-width: 600px) {
+        .settings-tabs {
+            padding: var(--aesir-space-2, 8px);
+            gap: var(--aesir-space-1, 4px);
         }
     }
 </style>

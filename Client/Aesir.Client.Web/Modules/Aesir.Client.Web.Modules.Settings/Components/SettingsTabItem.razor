@@ -1,53 +1,222 @@
 @namespace Aesir.Client.Web.Modules.Settings.Components
 
-<div class="settings-tab-item @(IsSelected ? "selected" : "")" @onclick="HandleClick">
-    <MudIcon Icon="@GetIcon()" Size="Size.Small" Class="tab-icon" />
+<div class="settings-tab-item @(IsSelected ? "selected" : "")"
+     @onclick="HandleClick"
+     @onkeydown="HandleKeyDown"
+     role="tab"
+     aria-selected="@IsSelected"
+     tabindex="0">
+    <div class="tab-indicator"></div>
+    <div class="tab-icon-container">
+        <MudIcon Icon="@GetIcon()" Size="Size.Small" Class="tab-icon" />
+    </div>
     <span class="tab-label">@Label</span>
 </div>
 
 <style>
+    /* ==========================================================================
+       Settings Tab Item - Navigation Tab Button
+       ========================================================================== */
     .settings-tab-item {
+        position: relative;
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 10px 16px;
-        border-radius: 8px;
+        gap: var(--aesir-space-3, 12px);
+        padding: var(--aesir-space-3, 12px) var(--aesir-space-4, 16px);
+        border-radius: var(--aesir-radius-md, 10px);
         cursor: pointer;
-        transition: all 0.15s ease;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         color: var(--mud-palette-text-secondary);
-        margin-bottom: 2px;
+        margin-bottom: var(--aesir-space-1, 4px);
+        background: transparent;
+        user-select: none;
+        outline: none;
+        overflow: hidden;
     }
 
-    .settings-tab-item:hover {
-        background-color: var(--mud-palette-action-default-hover);
-        color: var(--mud-palette-text-primary);
+    /* ==========================================================================
+       Left Indicator Bar
+       ========================================================================== */
+    .tab-indicator {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 0;
+        background: linear-gradient(180deg,
+            var(--mud-palette-primary) 0%,
+            var(--mud-palette-secondary) 100%
+        );
+        border-radius: 0 var(--aesir-radius-sm, 6px) var(--aesir-radius-sm, 6px) 0;
+        transition: height 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 0 8px rgba(84, 169, 255, 0.4);
+        opacity: 0;
     }
 
-    .settings-tab-item.selected {
-        background-color: var(--mud-palette-primary);
-        color: var(--mud-palette-primary-text);
-    }
-
-    .settings-tab-item.selected .tab-icon {
-        color: var(--mud-palette-primary-text);
+    /* ==========================================================================
+       Icon Container
+       ========================================================================== */
+    .tab-icon-container {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border-radius: var(--aesir-radius-sm, 6px);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .tab-icon {
-        flex-shrink: 0;
-        opacity: 0.8;
+        transition: all 0.15s ease;
+        opacity: 0.6;
     }
 
-    .settings-tab-item:hover .tab-icon,
-    .settings-tab-item.selected .tab-icon {
-        opacity: 1;
-    }
-
+    /* ==========================================================================
+       Label
+       ========================================================================== */
     .tab-label {
-        font-size: 0.9rem;
+        font-size: 0.875rem;
         font-weight: 500;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        transition: all 0.15s ease;
+        letter-spacing: -0.01em;
+    }
+
+    /* ==========================================================================
+       Hover State
+       ========================================================================== */
+    .settings-tab-item:hover {
+        background: linear-gradient(135deg,
+            rgba(84, 169, 255, 0.08) 0%,
+            rgba(123, 111, 255, 0.04) 100%
+        );
+        color: var(--mud-palette-text-primary);
+    }
+
+    .settings-tab-item:hover .tab-indicator {
+        height: 16px;
+        opacity: 0.6;
+    }
+
+    .settings-tab-item:hover .tab-icon {
+        opacity: 1;
+        color: var(--mud-palette-primary);
+    }
+
+    .settings-tab-item:hover .tab-icon-container {
+        background: rgba(84, 169, 255, 0.1);
+    }
+
+    /* ==========================================================================
+       Focus State (Keyboard Navigation)
+       ========================================================================== */
+    .settings-tab-item:focus-visible {
+        outline: 2px solid var(--mud-palette-primary);
+        outline-offset: 2px;
+    }
+
+    /* ==========================================================================
+       Selected State
+       ========================================================================== */
+    .settings-tab-item.selected {
+        background: linear-gradient(135deg,
+            rgba(84, 169, 255, 0.15) 0%,
+            rgba(123, 111, 255, 0.08) 100%
+        );
+        color: var(--mud-palette-primary);
+    }
+
+    .settings-tab-item.selected .tab-indicator {
+        height: 28px;
+        opacity: 1;
+    }
+
+    .settings-tab-item.selected .tab-icon {
+        opacity: 1;
+        color: var(--mud-palette-primary);
+    }
+
+    .settings-tab-item.selected .tab-icon-container {
+        background: rgba(84, 169, 255, 0.15);
+    }
+
+    .settings-tab-item.selected .tab-label {
+        font-weight: 600;
+        color: var(--mud-palette-primary);
+    }
+
+    /* ==========================================================================
+       Active/Pressed State
+       ========================================================================== */
+    .settings-tab-item:active {
+        transform: scale(0.98);
+    }
+
+    .settings-tab-item:active .tab-indicator {
+        height: 20px;
+    }
+
+    /* ==========================================================================
+       Responsive - Mobile Compact Mode (max-width: 900px)
+       ========================================================================== */
+    @@media (max-width: 900px) {
+        .settings-tab-item {
+            flex-direction: column;
+            padding: var(--aesir-space-2, 8px) var(--aesir-space-3, 12px);
+            gap: var(--aesir-space-1, 4px);
+            min-width: 72px;
+            margin-bottom: 0;
+            border-radius: var(--aesir-radius-md, 10px);
+        }
+
+        /* Indicator moves to bottom on mobile */
+        .tab-indicator {
+            top: auto;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 3px;
+            border-radius: var(--aesir-radius-sm, 6px) var(--aesir-radius-sm, 6px) 0 0;
+        }
+
+        .settings-tab-item:hover .tab-indicator {
+            width: 20px;
+            height: 3px;
+        }
+
+        .settings-tab-item.selected .tab-indicator {
+            width: 28px;
+            height: 3px;
+        }
+
+        .tab-label {
+            font-size: 0.7rem;
+            text-align: center;
+        }
+
+        .tab-icon-container {
+            width: 28px;
+            height: 28px;
+        }
+    }
+
+    /* ==========================================================================
+       Responsive - Small Mobile (max-width: 600px)
+       ========================================================================== */
+    @@media (max-width: 600px) {
+        .settings-tab-item {
+            min-width: 64px;
+            padding: var(--aesir-space-2, 8px);
+        }
+
+        .tab-label {
+            font-size: 0.65rem;
+        }
     }
 </style>
 
@@ -87,6 +256,15 @@
         await OnClick.InvokeAsync(TabId);
     }
 
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        // Handle Enter and Space for keyboard accessibility
+        if (e.Key == "Enter" || e.Key == " ")
+        {
+            await OnClick.InvokeAsync(TabId);
+        }
+    }
+
     private string GetIcon() => Icon.ToLower() switch
     {
         "settings" => Icons.Material.Filled.Settings,
@@ -98,6 +276,11 @@
         "tune" => Icons.Material.Filled.Tune,
         "autoawesome" => Icons.Material.Filled.AutoAwesome,
         "diversity3" => Icons.Material.Filled.Diversity3,
+        "extension" => Icons.Material.Filled.Extension,
+        "hub" => Icons.Material.Filled.Hub,
+        "code" => Icons.Material.Filled.Code,
+        "terminal" => Icons.Material.Filled.Terminal,
+        "storage" => Icons.Material.Filled.Storage,
         _ => Icons.Material.Filled.Circle
     };
 }

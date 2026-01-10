@@ -284,102 +284,122 @@ public static class AesirTheme
         };
     }
 
+    /// <summary>
+    /// Primary font stack for the application.
+    /// Plus Jakarta Sans provides a distinctive, modern character while
+    /// Inter serves as a reliable fallback for broader compatibility.
+    /// </summary>
+    private static readonly string[] FontStack =
+        ["Plus Jakarta Sans", "Inter", "system-ui", "-apple-system", "sans-serif"];
+
     private static Typography CreateTypography()
     {
         return new Typography
         {
             Default = new DefaultTypography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                FontFamily = FontStack,
                 FontSize = ".875rem",
                 FontWeight = "400",
-                LineHeight = "1.5",
-                LetterSpacing = "normal"
+                LineHeight = "1.6",
+                LetterSpacing = "-0.01em"
             },
             H1 = new H1Typography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
-                FontSize = "2.5rem",
-                FontWeight = "600",
-                LineHeight = "1.2"
+                FontFamily = FontStack,
+                FontSize = "2.75rem",
+                FontWeight = "700",
+                LineHeight = "1.15",
+                LetterSpacing = "-0.03em"
             },
             H2 = new H2Typography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
-                FontSize = "2rem",
-                FontWeight = "600",
-                LineHeight = "1.25"
+                FontFamily = FontStack,
+                FontSize = "2.25rem",
+                FontWeight = "700",
+                LineHeight = "1.2",
+                LetterSpacing = "-0.025em"
             },
             H3 = new H3Typography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
-                FontSize = "1.75rem",
+                FontFamily = FontStack,
+                FontSize = "1.875rem",
                 FontWeight = "600",
-                LineHeight = "1.3"
+                LineHeight = "1.25",
+                LetterSpacing = "-0.02em"
             },
             H4 = new H4Typography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                FontFamily = FontStack,
                 FontSize = "1.5rem",
                 FontWeight = "600",
-                LineHeight = "1.35"
+                LineHeight = "1.3",
+                LetterSpacing = "-0.015em"
             },
             H5 = new H5Typography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                FontFamily = FontStack,
                 FontSize = "1.25rem",
                 FontWeight = "600",
-                LineHeight = "1.4"
+                LineHeight = "1.35",
+                LetterSpacing = "-0.01em"
             },
             H6 = new H6Typography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                FontFamily = FontStack,
                 FontSize = "1rem",
                 FontWeight = "600",
-                LineHeight = "1.45"
+                LineHeight = "1.4",
+                LetterSpacing = "-0.005em"
             },
             Body1 = new Body1Typography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                FontFamily = FontStack,
                 FontSize = "1rem",
                 FontWeight = "400",
-                LineHeight = "1.5"
+                LineHeight = "1.6",
+                LetterSpacing = "-0.01em"
             },
             Body2 = new Body2Typography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                FontFamily = FontStack,
                 FontSize = ".875rem",
                 FontWeight = "400",
-                LineHeight = "1.5"
+                LineHeight = "1.5",
+                LetterSpacing = "-0.005em"
             },
             Button = new ButtonTypography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                FontFamily = FontStack,
                 FontSize = ".875rem",
-                FontWeight = "500",
+                FontWeight = "600",
                 LineHeight = "1.75",
-                TextTransform = "uppercase"
+                LetterSpacing = "0.02em",
+                TextTransform = "none"  // Modern approach: sentence case buttons
             },
             Caption = new CaptionTypography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                FontFamily = FontStack,
                 FontSize = ".75rem",
-                FontWeight = "400",
-                LineHeight = "1.5"
+                FontWeight = "500",
+                LineHeight = "1.4",
+                LetterSpacing = "0.01em"
             },
             Subtitle1 = new Subtitle1Typography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                FontFamily = FontStack,
                 FontSize = "1rem",
                 FontWeight = "500",
-                LineHeight = "1.5"
+                LineHeight = "1.5",
+                LetterSpacing = "-0.005em"
             },
             Subtitle2 = new Subtitle2Typography
             {
-                FontFamily = ["Inter", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                FontFamily = FontStack,
                 FontSize = ".875rem",
                 FontWeight = "500",
-                LineHeight = "1.5"
+                LineHeight = "1.5",
+                LetterSpacing = "-0.005em"
             }
         };
     }
@@ -388,10 +408,10 @@ public static class AesirTheme
     {
         return new LayoutProperties
         {
-            DefaultBorderRadius = "8px",
+            DefaultBorderRadius = "10px",  // Matches --aesir-radius-md
             DrawerWidthLeft = "260px",
             DrawerWidthRight = "300px",
-            AppbarHeight = "64px"
+            AppbarHeight = "56px"  // Slightly reduced for a more modern feel
         };
     }
 }
