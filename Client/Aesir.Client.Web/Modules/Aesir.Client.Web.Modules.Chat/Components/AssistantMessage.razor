@@ -1,7 +1,7 @@
 @inject IMarkdownService MarkdownService
 @inject IJSRuntime JSRuntime
 
-<div class="assistant-message @ThemeClass">
+<div class="assistant-message @ThemeClass @(IsStreaming ? "streaming" : "")" >
     <div class="message-container">
             @* Collapsible Tool Calls Section *@
             @if (ShowToolCalls && ToolCalls?.Count > 0)
@@ -134,47 +134,80 @@
     .assistant-message .thinking-toggle {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         cursor: pointer;
-        padding: 8px 12px;
-        background-color: rgba(84, 169, 255, 0.1);
-        border-radius: 8px;
-        transition: background-color 0.2s ease;
+        padding: 10px 14px;
+        background: linear-gradient(135deg, rgba(123, 111, 255, 0.1) 0%, rgba(84, 169, 255, 0.1) 100%);
+        border: 1px solid rgba(123, 111, 255, 0.15);
+        border-radius: 10px;
+        transition: all 0.25s ease;
     }
 
     .assistant-message .thinking-toggle:hover {
-        background-color: rgba(84, 169, 255, 0.15);
+        background: linear-gradient(135deg, rgba(123, 111, 255, 0.15) 0%, rgba(84, 169, 255, 0.15) 100%);
+        border-color: rgba(123, 111, 255, 0.25);
+        transform: translateY(-1px);
+    }
+
+    .assistant-message .thinking-toggle.expanded {
+        border-radius: 10px 10px 0 0;
+        border-bottom-color: transparent;
+        box-shadow: 0 0 12px rgba(123, 111, 255, 0.15);
     }
 
     .assistant-message .thinking-toggle .toggle-icon {
-        color: var(--aesir-primary);
-        transition: transform 0.2s ease;
+        color: var(--aesir-accent);
+        transition: transform 0.25s ease;
     }
 
     .assistant-message .thinking-toggle.expanded .toggle-icon {
-        transform: rotate(0deg);
+        transform: rotate(180deg);
+    }
+
+    .assistant-message .thinking-toggle .thought-icon {
+        color: var(--aesir-accent);
+        opacity: 0.8;
+    }
+
+    .assistant-message .thinking-toggle.expanded .thought-icon {
+        animation: thoughtPulse 2s ease-in-out infinite;
+    }
+
+    @@keyframes thoughtPulse {
+        0%, 100% { opacity: 0.8; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.1); }
     }
 
     .assistant-message .thinking-summary {
-        font-size: 0.875rem;
+        font-size: 0.85rem;
         color: var(--mud-palette-text-secondary);
-        font-style: italic;
+        font-weight: 500;
     }
 
     .assistant-message .thinking-content {
         font-size: 0.85rem;
         color: var(--mud-palette-text-secondary);
-        background-color: rgba(84, 169, 255, 0.05);
-        border-radius: 0 0 8px 8px;
-        padding: 12px 16px;
-        margin-top: -4px;
-        border-left: 2px solid var(--aesir-primary);
-        animation: fadeIn 0.2s ease;
+        background: linear-gradient(180deg, rgba(123, 111, 255, 0.08) 0%, rgba(84, 169, 255, 0.04) 100%);
+        border-radius: 0 0 10px 10px;
+        padding: 14px 16px;
+        margin-top: 0;
+        border: 1px solid rgba(123, 111, 255, 0.15);
+        border-top: none;
+        border-left: 3px solid var(--aesir-accent);
+        animation: thinkingExpand 0.25s ease-out;
     }
 
-    @@keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-4px); }
-        to { opacity: 1; transform: translateY(0); }
+    @@keyframes thinkingExpand {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+            max-height: 0;
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+            max-height: 500px;
+        }
     }
 
     /* Message Content - Clean minimal style */
@@ -183,6 +216,50 @@
         overflow-wrap: break-word;
         line-height: 1.6;
         color: var(--mud-palette-text-primary);
+    }
+
+    /* Streaming cursor animation */
+    .assistant-message.streaming .message-content::after {
+        content: '';
+        display: inline-block;
+        width: 2px;
+        height: 1.1em;
+        background: linear-gradient(to bottom, var(--aesir-primary), var(--aesir-accent));
+        margin-left: 2px;
+        vertical-align: text-bottom;
+        animation: cursorBlink 0.8s ease-in-out infinite;
+        border-radius: 1px;
+    }
+
+    @@keyframes cursorBlink {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.3;
+        }
+    }
+
+    /* Streaming state - subtle container glow */
+    .assistant-message.streaming .message-container {
+        box-shadow: 0 0 20px rgba(84, 169, 255, 0.08);
+    }
+
+    .assistant-message.streaming .message-container::before {
+        opacity: 1;
+        background: linear-gradient(
+            to bottom,
+            var(--aesir-primary) 0%,
+            var(--aesir-accent) 50%,
+            var(--aesir-primary) 100%
+        );
+        background-size: 100% 200%;
+        animation: gradientFlow 2s ease-in-out infinite;
+    }
+
+    @@keyframes gradientFlow {
+        0%, 100% { background-position: 0% 0%; }
+        50% { background-position: 0% 100%; }
     }
 
     /* Message metadata - outside container, right-aligned, visible on row hover */

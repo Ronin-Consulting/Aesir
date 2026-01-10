@@ -1,14 +1,24 @@
-@* AESIR Processing Indicator - Animated brand icon with shimmering status text *@
+@* AESIR Processing Indicator - Animated brand icon with concentric rings and status text *@
 
-<div class="aesir-processing">
-    <div class="aesir-icon @(_isActive ? "active" : "")">
-        <img src="images/logo-blue.svg" alt="AESIR" class="brand-icon-animated" />
+<div class="aesir-processing @(_isActive ? "active" : "")">
+    <div class="icon-container">
+        @* Concentric ring animations *@
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+
+        @* Center icon *@
+        <div class="aesir-icon">
+            <img src="images/logo-blue.svg" alt="AESIR" class="brand-icon" />
+        </div>
     </div>
+
     @if (_isActive && !string.IsNullOrEmpty(_currentStatus))
     {
-        <span class="status-text">
-            <span class="shimmer-text">@_currentStatus</span>
-        </span>
+        <div class="status-pill">
+            <span class="status-dot"></span>
+            <span class="status-text">@_currentStatus</span>
+        </div>
     }
 </div>
 
@@ -17,61 +27,187 @@
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        gap: 8px;
+        gap: 12px;
         padding: 16px 24px;
     }
 
-    .aesir-icon {
-        width: 60px;
-        height: 60px;
-        flex-shrink: 0;
-        opacity: 0.5;
+    .icon-container {
+        position: relative;
+        width: 64px;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .aesir-icon .brand-icon-animated {
+    /* Concentric rings */
+    .ring {
+        position: absolute;
+        border-radius: 50%;
+        border: 1px solid transparent;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .aesir-processing.active .ring {
+        opacity: 1;
+    }
+
+    .ring-1 {
+        inset: -4px;
+        border-color: rgba(84, 169, 255, 0.4);
+        animation: ringPulse1 2s ease-out infinite;
+    }
+
+    .ring-2 {
+        inset: -12px;
+        border-color: rgba(84, 169, 255, 0.25);
+        animation: ringPulse2 2s ease-out 0.4s infinite;
+    }
+
+    .ring-3 {
+        inset: -20px;
+        border-color: rgba(123, 111, 255, 0.15);
+        animation: ringPulse3 2s ease-out 0.8s infinite;
+    }
+
+    @@keyframes ringPulse1 {
+        0% {
+            transform: scale(0.95);
+            opacity: 0.6;
+        }
+        50% {
+            transform: scale(1.05);
+            opacity: 0.3;
+        }
+        100% {
+            transform: scale(0.95);
+            opacity: 0.6;
+        }
+    }
+
+    @@keyframes ringPulse2 {
+        0% {
+            transform: scale(0.9);
+            opacity: 0.4;
+        }
+        50% {
+            transform: scale(1.1);
+            opacity: 0.2;
+        }
+        100% {
+            transform: scale(0.9);
+            opacity: 0.4;
+        }
+    }
+
+    @@keyframes ringPulse3 {
+        0% {
+            transform: scale(0.85);
+            opacity: 0.3;
+        }
+        50% {
+            transform: scale(1.15);
+            opacity: 0.1;
+        }
+        100% {
+            transform: scale(0.85);
+            opacity: 0.3;
+        }
+    }
+
+    /* Center icon */
+    .aesir-icon {
+        width: 48px;
+        height: 48px;
+        position: relative;
+        z-index: 1;
+        opacity: 0.4;
+        transition: opacity 0.3s ease;
+    }
+
+    .aesir-processing.active .aesir-icon {
+        opacity: 1;
+    }
+
+    .brand-icon {
         width: 100%;
         height: 100%;
+        filter: drop-shadow(0 0 12px rgba(84, 169, 255, 0.4));
     }
 
-    /* Active state animations */
-    .aesir-icon.active .brand-icon-animated {
-        animation: pulse 1.5s ease-in-out infinite, gentle-spin 4s ease-in-out infinite;
-        transform-origin: center;
+    .aesir-processing.active .brand-icon {
+        animation: iconFloat 2.5s ease-in-out infinite;
     }
 
-    @@keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
+    @@keyframes iconFloat {
+        0%, 100% {
+            transform: translateY(0) rotate(-3deg);
+            filter: drop-shadow(0 0 12px rgba(84, 169, 255, 0.4));
+        }
+        50% {
+            transform: translateY(-4px) rotate(3deg);
+            filter: drop-shadow(0 0 20px rgba(84, 169, 255, 0.6));
+        }
     }
 
-    @@keyframes gentle-spin {
-        0%, 100% { transform: rotate(-5deg); }
-        50% { transform: rotate(5deg); }
+    /* Status pill */
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: rgba(84, 169, 255, 0.1);
+        border: 1px solid rgba(84, 169, 255, 0.2);
+        border-radius: 20px;
+        animation: pillFadeIn 0.3s ease-out;
     }
 
-    /* Shimmer text effect */
+    @@keyframes pillFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-4px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--aesir-primary);
+        animation: dotPulse 1.5s ease-in-out infinite;
+    }
+
+    @@keyframes dotPulse {
+        0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.5;
+            transform: scale(0.8);
+        }
+    }
+
     .status-text {
-        position: relative;
-        overflow: hidden;
-    }
-
-    .shimmer-text {
-        font-size: 0.875rem;
-        font-style: italic;
-        color: var(--mud-palette-text-secondary);
+        font-size: 0.8rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
         background: linear-gradient(
             90deg,
             var(--mud-palette-text-secondary) 0%,
-            var(--aesir-primary) 25%,
-            var(--mud-palette-text-secondary) 50%,
-            var(--aesir-primary) 75%,
+            var(--aesir-primary) 50%,
             var(--mud-palette-text-secondary) 100%
         );
         background-size: 200% auto;
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
-        animation: shimmer var(--shimmer-duration, 2s) linear infinite;
+        animation: shimmer 2.5s linear infinite;
     }
 
     @@keyframes shimmer {
