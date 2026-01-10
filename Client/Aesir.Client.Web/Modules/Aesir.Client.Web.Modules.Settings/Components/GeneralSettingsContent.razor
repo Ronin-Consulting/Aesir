@@ -27,149 +27,211 @@
 
     @* Content Section *@
     <div class="content-body">
-        <MudStack Spacing="4">
-            @* RAG Embedding Configuration Section *@
-            <MudCard Elevation="0" Outlined="true">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                            <MudIcon Icon="@Icons.Material.Filled.TextFields" Color="Color.Primary" />
-                            <MudText Typo="Typo.h6">RAG Embedding</MudText>
+        @* RAG Configuration Section *@
+        <div class="settings-section">
+            <div class="section-header">
+                <MudIcon Icon="@Icons.Material.Filled.Psychology"
+                         Size="Size.Small"
+                         Class="section-header-icon" />
+                <span class="section-title">RAG Configuration</span>
+                <span class="section-description">Retrieval-Augmented Generation models</span>
+            </div>
+
+            <MudGrid Spacing="4">
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="settings-card" Elevation="0">
+                        <div class="card-header">
+                            <MudIcon Icon="@Icons.Material.Outlined.TextFields"
+                                     Size="Size.Small"
+                                     Class="card-header-icon" />
+                            <span class="card-header-title">Embedding Model</span>
+                        </div>
+                        <p class="card-description">
+                            Converts text into vector representations for semantic search and document retrieval.
+                        </p>
+
+                        <MudStack Spacing="3">
+                            <MudSelect T="Guid?"
+                                       Value="_settings.RagEmbeddingInferenceEngineId"
+                                       Label="Inference Engine"
+                                       Variant="Variant.Outlined"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Disabled="@_isLoading"
+                                       ValueChanged="OnEmbeddingEngineChanged">
+                                <MudSelectItem Value="@((Guid?)null)">
+                                    <em>Select an engine</em>
+                                </MudSelectItem>
+                                @foreach (var engine in _inferenceEngines)
+                                {
+                                    <MudSelectItem Value="@engine.Id">@engine.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+
+                            <ModelSelector @bind-SelectedModel="_settings.RagEmbeddingModel"
+                                           InferenceEngineId="_settings.RagEmbeddingInferenceEngineId"
+                                           Category="ModelCategory.Embedding"
+                                           Label="Embedding Model"
+                                           OnModelSelected="OnEmbeddingModelSelected" />
                         </MudStack>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">
-                            Configure the embedding model used for document retrieval and semantic search.
-                        </MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudStack Spacing="3">
-                        <MudSelect T="Guid?"
-                                   Value="_settings.RagEmbeddingInferenceEngineId"
-                                   Label="Inference Engine"
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="settings-card" Elevation="0">
+                        <div class="card-header">
+                            <MudIcon Icon="@Icons.Material.Outlined.Image"
+                                     Size="Size.Small"
+                                     Class="card-header-icon" />
+                            <span class="card-header-title">Vision Model</span>
+                        </div>
+                        <p class="card-description">
+                            Processes images for understanding and extraction during document retrieval.
+                        </p>
+
+                        <MudStack Spacing="3">
+                            <MudSelect T="Guid?"
+                                       Value="_settings.RagVisionInferenceEngineId"
+                                       Label="Inference Engine"
+                                       Variant="Variant.Outlined"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Disabled="@_isLoading"
+                                       ValueChanged="OnVisionEngineChanged">
+                                <MudSelectItem Value="@((Guid?)null)">
+                                    <em>Select an engine</em>
+                                </MudSelectItem>
+                                @foreach (var engine in _inferenceEngines)
+                                {
+                                    <MudSelectItem Value="@engine.Id">@engine.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+
+                            <ModelSelector @bind-SelectedModel="_settings.RagVisionModel"
+                                           InferenceEngineId="_settings.RagVisionInferenceEngineId"
+                                           Category="ModelCategory.Vision"
+                                           Label="Vision Model"
+                                           OnModelSelected="OnVisionModelSelected" />
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </div>
+
+        @* Voice & Speech Section *@
+        <div class="settings-section">
+            <div class="section-header">
+                <MudIcon Icon="@Icons.Material.Filled.RecordVoiceOver"
+                         Size="Size.Small"
+                         Class="section-header-icon" />
+                <span class="section-title">Voice & Speech</span>
+                <span class="section-description">Text-to-speech configuration</span>
+            </div>
+
+            <MudGrid Spacing="4">
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="settings-card" Elevation="0">
+                        <div class="card-header">
+                            <MudIcon Icon="@Icons.Material.Outlined.VolumeUp"
+                                     Size="Size.Small"
+                                     Class="card-header-icon" />
+                            <span class="card-header-title">Speech Model</span>
+                        </div>
+                        <p class="card-description">
+                            Voice used for hands-free mode and audio responses.
+                        </p>
+
+                        <MudSelect T="string"
+                                   Value="@_selectedTtsModel"
+                                   ValueChanged="OnTtsModelChanged"
+                                   Label="Voice Model"
                                    Variant="Variant.Outlined"
                                    AnchorOrigin="Origin.BottomCenter"
-                                   Disabled="@_isLoading"
-                                   ValueChanged="OnEmbeddingEngineChanged">
-                            <MudSelectItem Value="@((Guid?)null)">-- Select an engine --</MudSelectItem>
-                            @foreach (var engine in _inferenceEngines)
-                            {
-                                <MudSelectItem Value="@engine.Id">@engine.Name</MudSelectItem>
-                            }
+                                   Disabled="@_isLoading">
+                            <MudSelectItem Value="@("Lessac")">
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <span>Lessac</span>
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">
+                                        High Quality
+                                    </MudChip>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@("Joe")">
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <span>Joe</span>
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                                        Fast
+                                    </MudChip>
+                                </MudStack>
+                            </MudSelectItem>
                         </MudSelect>
 
-                        <ModelSelector @bind-SelectedModel="_settings.RagEmbeddingModel"
-                                       InferenceEngineId="_settings.RagEmbeddingInferenceEngineId"
-                                       Category="ModelCategory.Embedding"
-                                       Label="Embedding Model"
-                                       OnModelSelected="OnEmbeddingModelSelected" />
-                    </MudStack>
-                </MudCardContent>
-            </MudCard>
-
-            @* RAG Vision Configuration Section *@
-            <MudCard Elevation="0" Outlined="true">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                            <MudIcon Icon="@Icons.Material.Filled.Image" Color="Color.Primary" />
-                            <MudText Typo="Typo.h6">RAG Vision</MudText>
-                        </MudStack>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">
-                            Configure the vision model used for image understanding in document retrieval.
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-3">
+                            @GetTtsModelDescription()
                         </MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudStack Spacing="3">
-                        <MudSelect T="Guid?"
-                                   Value="_settings.RagVisionInferenceEngineId"
-                                   Label="Inference Engine"
-                                   Variant="Variant.Outlined"
-                                   AnchorOrigin="Origin.BottomCenter"
-                                   Disabled="@_isLoading"
-                                   ValueChanged="OnVisionEngineChanged">
-                            <MudSelectItem Value="@((Guid?)null)">-- Select an engine --</MudSelectItem>
-                            @foreach (var engine in _inferenceEngines)
-                            {
-                                <MudSelectItem Value="@engine.Id">@engine.Name</MudSelectItem>
-                            }
-                        </MudSelect>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </div>
 
-                        <ModelSelector @bind-SelectedModel="_settings.RagVisionModel"
-                                       InferenceEngineId="_settings.RagVisionInferenceEngineId"
-                                       Category="ModelCategory.Vision"
-                                       Label="Vision Model"
-                                       OnModelSelected="OnVisionModelSelected" />
-                    </MudStack>
-                </MudCardContent>
-            </MudCard>
+        @* Integrations Section *@
+        <div class="settings-section">
+            <div class="section-header">
+                <MudIcon Icon="@Icons.Material.Filled.Extension"
+                         Size="Size.Small"
+                         Class="section-header-icon" />
+                <span class="section-title">Integrations</span>
+                <span class="section-description">External service connections</span>
+            </div>
 
-            @* Speech Configuration Section *@
-            <MudCard Elevation="0" Outlined="true">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                            <MudIcon Icon="@Icons.Material.Filled.RecordVoiceOver" Color="Color.Primary" />
-                            <MudText Typo="Typo.h6">Speech Model</MudText>
+            <MudGrid Spacing="4">
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="settings-card" Elevation="0">
+                        <div class="card-header">
+                            <MudIcon Icon="@Icons.Material.Outlined.Search"
+                                     Size="Size.Small"
+                                     Class="card-header-icon" />
+                            <span class="card-header-title">Google Search</span>
+                        </div>
+                        <p class="card-description">
+                            Enable web search capabilities for agents using Google Custom Search.
+                        </p>
+
+                        <MudStack Spacing="3">
+                            <MudTextField @bind-Value="_settings.GoogleSearchEngineId"
+                                          Label="Search Engine ID"
+                                          Variant="Variant.Outlined"
+                                          Placeholder="Enter your Search Engine ID"
+                                          Immediate="true"
+                                          TextChanged="OnSettingsChanged" />
+
+                            <MudTextField @bind-Value="_settings.GoogleApiKey"
+                                          Label="API Key"
+                                          Variant="Variant.Outlined"
+                                          InputType="@(_showApiKey ? InputType.Text : InputType.Password)"
+                                          Placeholder="Enter your API Key"
+                                          Immediate="true"
+                                          TextChanged="OnSettingsChanged"
+                                          Adornment="Adornment.End"
+                                          AdornmentIcon="@(_showApiKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                          OnAdornmentClick="ToggleApiKeyVisibility" />
                         </MudStack>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">
-                            Text-to-speech voice used for hands-free mode.
-                        </MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudSelect T="string"
-                               Value="@_selectedTtsModel"
-                               ValueChanged="OnTtsModelChanged"
-                               Label="Voice Model"
-                               Variant="Variant.Outlined"
-                               AnchorOrigin="Origin.BottomCenter"
-                               Disabled="@_isLoading"
-                               HelperText="@GetTtsModelDescription()">
-                        <MudSelectItem Value="@("Lessac")">Lessac (High Quality)</MudSelectItem>
-                        <MudSelectItem Value="@("Joe")">Joe (Medium Quality)</MudSelectItem>
-                    </MudSelect>
-                </MudCardContent>
-            </MudCard>
 
-            @* Google Search Configuration Section *@
-            <MudCard Elevation="0" Outlined="true">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                            <MudIcon Icon="@Icons.Material.Filled.Search" Color="Color.Primary" />
-                            <MudText Typo="Typo.h6">Google Search</MudText>
+                        <MudStack Row="true" Spacing="2" Class="mt-4">
+                            <MudLink Href="https://programmablesearchengine.google.com"
+                                     Target="_blank"
+                                     Typo="Typo.caption">
+                                Create Search Engine
+                            </MudLink>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">|</MudText>
+                            <MudLink Href="https://console.cloud.google.com"
+                                     Target="_blank"
+                                     Typo="Typo.caption">
+                                Get API Key
+                            </MudLink>
                         </MudStack>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">
-                            Configure Google Custom Search for web search functionality in agents.
-                        </MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudStack Spacing="3">
-                        <MudTextField @bind-Value="_settings.GoogleSearchEngineId"
-                                      Label="Search Engine ID"
-                                      Variant="Variant.Outlined"
-                                      Placeholder="Enter your Google Custom Search Engine ID"
-                                      HelperText="Create a search engine at programmablesearchengine.google.com"
-                                      Immediate="true"
-                                      TextChanged="OnSettingsChanged" />
-
-                        <MudTextField @bind-Value="_settings.GoogleApiKey"
-                                      Label="API Key"
-                                      Variant="Variant.Outlined"
-                                      InputType="@(_showApiKey ? InputType.Text : InputType.Password)"
-                                      Placeholder="Enter your Google API Key"
-                                      HelperText="Get your API key from console.cloud.google.com"
-                                      Immediate="true"
-                                      TextChanged="OnSettingsChanged"
-                                      Adornment="Adornment.End"
-                                      AdornmentIcon="@(_showApiKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                                      OnAdornmentClick="ToggleApiKeyVisibility" />
-                    </MudStack>
-                </MudCardContent>
-            </MudCard>
-        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </div>
     </div>
 </div>
 
