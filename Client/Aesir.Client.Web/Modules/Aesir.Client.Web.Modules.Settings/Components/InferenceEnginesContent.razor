@@ -1,21 +1,14 @@
 @namespace Aesir.Client.Web.Modules.Settings.Components
 
 <div class="settings-content-container">
-    @* Header Section *@
-    <div class="content-header">
-        <div class="header-text">
-            <MudText Typo="Typo.h5">Inference Engines</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Configure the AI backends used for chat completions.
-            </MudText>
-        </div>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="OpenCreateDialog">
-            Add Engine
-        </MudButton>
-    </div>
+    <SettingsContentHeader
+        Icon="@Icons.Material.Filled.Memory"
+        Title="Inference Engines"
+        Description="Configure the AI backends used for chat completions."
+        Badge="@(_engines.Count > 0 ? $"{_engines.Count} configured" : null)"
+        PrimaryActionText="Add Engine"
+        PrimaryActionIcon="@Icons.Material.Filled.Add"
+        OnPrimaryAction="OpenCreateDialog" />
 
     @if (_isLoading)
     {
@@ -77,30 +70,6 @@
     </div>
 </div>
 
-<style>
-    .settings-content-container {
-        padding: 24px;
-        max-width: 1200px;
-    }
-
-    .content-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
-        gap: 16px;
-    }
-
-    .header-text {
-        flex: 1;
-        min-width: 200px;
-    }
-
-    .content-body {
-        padding-bottom: 40px;
-    }
-</style>
 
 @code {
     [Inject] private IInferenceEngineService EngineService { get; set; } = null!;

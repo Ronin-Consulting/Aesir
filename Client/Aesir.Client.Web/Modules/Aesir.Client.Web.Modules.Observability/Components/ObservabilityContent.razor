@@ -3,24 +3,33 @@
 @implements IDisposable
 
 <div class="observability-content">
-    <div class="content-header">
-        <div class="header-content">
+    <div class="observability-header">
+        <div class="header-main">
+            <div class="header-icon-wrapper">
+                <div class="header-icon-bg"></div>
+                <MudIcon Icon="@Icons.Material.Filled.Timeline" Size="Size.Large" Class="header-icon" />
+            </div>
             <div class="header-text">
-                <MudText Typo="Typo.h5">Observability</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Monitor AI operations, document processing, and function executions</MudText>
+                <div class="header-title-row">
+                    <MudText Typo="Typo.h4" Class="header-title">Observability</MudText>
+                </div>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="header-description">
+                    Monitor AI operations, document processing, and function executions.
+                </MudText>
             </div>
         </div>
         @if (ObservabilityService.CurrentUnifiedResponse != null)
         {
             <div class="header-stats">
-                <span class="stat-item">
+                <div class="stat-item">
                     <span class="stat-value">@ObservabilityService.CurrentUnifiedResponse.TotalCount</span>
-                    <span class="stat-label">Total</span>
-                </span>
-                <span class="stat-item">
+                    <span class="stat-label">Total Logs</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
                     <span class="stat-value">@ObservabilityService.CurrentUnifiedResponse.Page</span>
-                    <span class="stat-label">of @ObservabilityService.CurrentUnifiedResponse.TotalPages</span>
-                </span>
+                    <span class="stat-label">of @ObservabilityService.CurrentUnifiedResponse.TotalPages pages</span>
+                </div>
             </div>
         }
     </div>
@@ -106,54 +115,127 @@
 
 <style>
     .observability-content {
-        padding: 24px;
+        padding: var(--aesir-space-6, 24px);
         max-width: 100%;
     }
 
-    .content-header {
+    /* ==========================================================================
+       Header Styles (matching SettingsContentHeader pattern)
+       ========================================================================== */
+    .observability-header {
         display: flex;
-        align-items: center;
         justify-content: space-between;
-        margin-bottom: 20px;
+        align-items: flex-start;
+        padding: var(--aesir-space-8, 32px) 0 var(--aesir-space-6, 24px);
+        gap: var(--aesir-space-6, 24px);
         flex-wrap: wrap;
-        gap: 16px;
     }
 
-    .header-content {
+    .header-main {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--aesir-space-5, 20px);
+        flex: 1;
+        min-width: 280px;
+    }
+
+    .header-icon-wrapper {
+        position: relative;
+        flex-shrink: 0;
+        width: 64px;
+        height: 64px;
+    }
+
+    .header-icon-bg {
+        width: 64px;
+        height: 64px;
+        border-radius: var(--aesir-radius-lg, 14px);
+        background: linear-gradient(135deg,
+            rgba(84, 169, 255, 0.15) 0%,
+            rgba(123, 111, 255, 0.08) 100%
+        );
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+
+    .header-icon {
+        position: relative;
+        z-index: 1;
+        width: 64px;
+        height: 64px;
         display: flex;
         align-items: center;
-        gap: 16px;
+        justify-content: center;
+        color: var(--mud-palette-primary);
     }
 
     .header-text {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
+        flex: 1;
+        min-width: 0;
     }
 
+    .header-title-row {
+        display: flex;
+        align-items: center;
+        gap: var(--aesir-space-3, 12px);
+        margin-bottom: var(--aesir-space-1, 4px);
+    }
+
+    .header-title {
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+    }
+
+    .header-description {
+        line-height: 1.5;
+        max-width: 500px;
+    }
+
+    /* ==========================================================================
+       Stats Display
+       ========================================================================== */
     .header-stats {
         display: flex;
-        gap: 24px;
+        align-items: center;
+        gap: var(--aesir-space-5, 20px);
+        padding: var(--aesir-space-4, 16px) var(--aesir-space-5, 20px);
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: var(--aesir-radius-lg, 14px);
+        border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .stat-item {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 2px;
+        gap: var(--aesir-space-1, 4px);
     }
 
     .stat-value {
-        font-size: 1.25rem;
-        font-weight: 600;
+        font-size: 1.5rem;
+        font-weight: 700;
         color: var(--mud-palette-primary);
+        line-height: 1;
     }
 
     .stat-label {
         font-size: 0.75rem;
         color: var(--mud-palette-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
+    .stat-divider {
+        width: 1px;
+        height: 32px;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* ==========================================================================
+       Content States
+       ========================================================================== */
     .loading-state {
         display: flex;
         flex-direction: column;
@@ -221,20 +303,30 @@
         color: var(--mud-palette-text-secondary);
     }
 
-    /* Responsive adjustments */
+    /* ==========================================================================
+       Responsive - Tablet and Mobile
+       ========================================================================== */
     @@media (max-width: 768px) {
         .observability-content {
-            padding: 16px;
+            padding: var(--aesir-space-4, 16px);
         }
 
-        .content-header {
+        .observability-header {
+            padding: var(--aesir-space-6, 24px) 0 var(--aesir-space-4, 16px);
+        }
+
+        .header-main {
             flex-direction: column;
-            align-items: flex-start;
+            gap: var(--aesir-space-3, 12px);
+        }
+
+        .header-icon-wrapper {
+            display: none;
         }
 
         .header-stats {
             width: 100%;
-            justify-content: flex-start;
+            justify-content: center;
         }
     }
 </style>

@@ -1,41 +1,17 @@
 @namespace Aesir.Client.Web.Modules.Settings.Components
 
 <div class="settings-content-container">
-    @* Header Section *@
-    <div class="content-header">
-        <div class="header-text">
-            <MudText Typo="Typo.h5">General Settings</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Configure RAG (Retrieval-Augmented Generation), Speech, and Search settings.
-            </MudText>
-            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
-                Changes to these settings require a server restart to take effect.
-            </MudAlert>
-        </div>
-        <MudStack Row="true" Spacing="2">
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Default"
-                       OnClick="CancelChanges"
-                       Disabled="@(!_hasChanges || _isSaving)">
-                Cancel
-            </MudButton>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Save"
-                       OnClick="SaveSettings"
-                       Disabled="@(!_hasChanges || _isSaving)">
-                @if (_isSaving)
-                {
-                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                    <span>Saving...</span>
-                }
-                else
-                {
-                    <span>Save Changes</span>
-                }
-            </MudButton>
-        </MudStack>
-    </div>
+    <SettingsContentHeader
+        Icon="@Icons.Material.Filled.Tune"
+        Title="General Settings"
+        Description="Configure RAG, Speech, and Search settings for the platform."
+        ShowSaveCancel="true"
+        HasChanges="_hasChanges"
+        IsSaving="_isSaving"
+        OnSave="SaveSettings"
+        OnCancel="CancelChanges"
+        ShowWarning="true"
+        WarningText="Changes require a server restart to take effect." />
 
     @if (_isLoading)
     {
@@ -46,13 +22,6 @@
     {
         <MudAlert Severity="Severity.Error" Class="my-2" ShowCloseIcon="true" CloseIconClicked="() => _errorMessage = null">
             @_errorMessage
-        </MudAlert>
-    }
-
-    @if (_hasChanges)
-    {
-        <MudAlert Severity="Severity.Info" Class="my-2" Dense="true">
-            You have unsaved changes. Click "Save Changes" to apply them.
         </MudAlert>
     }
 
@@ -204,30 +173,6 @@
     </div>
 </div>
 
-<style>
-    .settings-content-container {
-        padding: 24px;
-        max-width: 900px;
-    }
-
-    .content-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
-        gap: 16px;
-    }
-
-    .header-text {
-        flex: 1;
-        min-width: 200px;
-    }
-
-    .content-body {
-        padding-bottom: 40px;
-    }
-</style>
 
 @code {
     [Inject] private IGeneralSettingsService SettingsService { get; set; } = null!;

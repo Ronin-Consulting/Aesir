@@ -2,21 +2,14 @@
 @using Aesir.Common.Models
 
 <div class="settings-content-container">
-    @* Header Section *@
-    <div class="content-header">
-        <div class="header-text">
-            <MudText Typo="Typo.h5">Research Teams</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Configure multi-agent research teams with role assignments and parameter overrides.
-            </MudText>
-        </div>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="OpenCreateDialog">
-            Add Team
-        </MudButton>
-    </div>
+    <SettingsContentHeader
+        Icon="@Icons.Material.Filled.Diversity3"
+        Title="Research Teams"
+        Description="Configure multi-agent research teams with role assignments and parameter overrides."
+        Badge="@(_teams.Count > 0 ? $"{_teams.Count} teams" : null)"
+        PrimaryActionText="Add Team"
+        PrimaryActionIcon="@Icons.Material.Filled.Add"
+        OnPrimaryAction="OpenCreateDialog" />
 
     @if (_isLoading)
     {
@@ -88,31 +81,6 @@
         </MudDataGrid>
     </div>
 </div>
-
-<style>
-    .settings-content-container {
-        padding: 24px;
-        max-width: 1200px;
-    }
-
-    .content-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
-        gap: 16px;
-    }
-
-    .header-text {
-        flex: 1;
-        min-width: 200px;
-    }
-
-    .content-body {
-        padding-bottom: 40px;
-    }
-</style>
 
 @code {
     [Inject] private IResearchTeamApiService ResearchTeamService { get; set; } = null!;

@@ -959,7 +959,169 @@ Create prominent, informative page headers that establish context and provide cl
 </div>
 ```
 
-#### 3.4 Update Content Container Styles
+#### 3.4 Update InferenceEnginesContent Header
+**File:** `Client/Aesir.Client.Web/Modules/Aesir.Client.Web.Modules.Settings/Components/InferenceEnginesContent.razor`
+
+**Replace lines 3-18 (header section) with:**
+
+```razor
+<div class="settings-content-container">
+    <SettingsContentHeader
+        Icon="@Icons.Material.Filled.Memory"
+        Title="Inference Engines"
+        Description="Configure the AI backends used for chat completions."
+        Badge="@(_engines.Count > 0 ? $"{_engines.Count} configured" : null)"
+        PrimaryActionText="Add Engine"
+        PrimaryActionIcon="@Icons.Material.Filled.Add"
+        OnPrimaryAction="OpenCreateDialog" />
+
+    @* ... rest of component ... *@
+</div>
+```
+
+**Remove existing `<style>` block** - styles now provided by `settings-refinements.css`.
+
+---
+
+#### 3.5 Update McpServersContent Header
+**File:** `Client/Aesir.Client.Web/Modules/Aesir.Client.Web.Modules.Settings/Components/McpServersContent.razor`
+
+**Replace lines 3-18 (header section) with:**
+
+```razor
+<div class="settings-content-container">
+    <SettingsContentHeader
+        Icon="@Icons.Material.Filled.Dns"
+        Title="MCP Servers"
+        Description="Configure Model Context Protocol servers for tool integration."
+        Badge="@(_servers.Count > 0 ? $"{_servers.Count} configured" : null)"
+        PrimaryActionText="Add Server"
+        PrimaryActionIcon="@Icons.Material.Filled.Add"
+        OnPrimaryAction="OpenCreateDialog" />
+
+    @* ... rest of component ... *@
+</div>
+```
+
+**Remove existing `<style>` block** - styles now provided by `settings-refinements.css`.
+
+---
+
+#### 3.6 Update ToolsContent Header
+**File:** `Client/Aesir.Client.Web/Modules/Aesir.Client.Web.Modules.Settings/Components/ToolsContent.razor`
+
+**Replace lines 3-18 (header section) with:**
+
+```razor
+<div class="settings-content-container">
+    <SettingsContentHeader
+        Icon="@Icons.Material.Filled.Build"
+        Title="Tools"
+        Description="Manage internal tools and view discovered MCP server tools."
+        Badge="@(_tools.Count > 0 ? $"{_tools.Count} available" : null)"
+        PrimaryActionText="Add Internal Tool"
+        PrimaryActionIcon="@Icons.Material.Filled.Add"
+        OnPrimaryAction="OpenCreateDialog" />
+
+    @* ... rest of component (filter section, data grid, etc.) ... *@
+</div>
+```
+
+**Remove existing `<style>` block** - styles now provided by `settings-refinements.css`.
+
+---
+
+#### 3.7 Update ResearchTeamsContent Header
+**File:** `Client/Aesir.Client.Web/Modules/Aesir.Client.Web.Modules.Settings/Components/ResearchTeamsContent.razor`
+
+**Replace lines 4-19 (header section) with:**
+
+```razor
+<div class="settings-content-container">
+    <SettingsContentHeader
+        Icon="@Icons.Material.Filled.Diversity3"
+        Title="Research Teams"
+        Description="Configure multi-agent research teams with role assignments and parameter overrides."
+        Badge="@(_teams.Count > 0 ? $"{_teams.Count} teams" : null)"
+        PrimaryActionText="Add Team"
+        PrimaryActionIcon="@Icons.Material.Filled.Add"
+        OnPrimaryAction="OpenCreateDialog" />
+
+    @* ... rest of component ... *@
+</div>
+```
+
+**Remove existing `<style>` block** - styles now provided by `settings-refinements.css`.
+
+---
+
+#### 3.8 Update ObservabilityContent Header
+**File:** `Client/Aesir.Client.Web/Modules/Aesir.Client.Web.Modules.Observability/Components/ObservabilityContent.razor`
+
+**Note:** Observability is in a different module and has a unique header with stats display. We need to:
+1. Add a reference to the Settings module for the SettingsContentHeader component, OR
+2. Create a similar header component within the Observability module
+
+**Option A - Use ChildContent for custom stats:**
+
+```razor
+<div class="settings-content-container">
+    <SettingsContentHeader
+        Icon="@Icons.Material.Filled.Timeline"
+        Title="Observability"
+        Description="Monitor AI operations, document processing, and function executions.">
+        <ChildContent>
+            @if (ObservabilityService.CurrentUnifiedResponse != null)
+            {
+                <div class="header-stats">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                        @ObservabilityService.CurrentUnifiedResponse.TotalCount total
+                    </MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
+                        Page @ObservabilityService.CurrentUnifiedResponse.Page of @ObservabilityService.CurrentUnifiedResponse.TotalPages
+                    </MudChip>
+                </div>
+            }
+        </ChildContent>
+    </SettingsContentHeader>
+
+    @* ... rest of component ... *@
+</div>
+```
+
+**Option B - Keep existing header but apply styling:**
+
+If cross-module dependency is undesirable, update the existing `.observability-content` styles to match the Settings design system:
+
+```css
+/* Add to Observability module styles or settings-refinements.css */
+.observability-content {
+    padding: 0 var(--aesir-space-8, 32px) var(--aesir-space-8, 32px);
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.observability-content .content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--aesir-space-8, 32px) 0 var(--aesir-space-6, 24px);
+    gap: var(--aesir-space-6, 24px);
+    flex-wrap: wrap;
+}
+
+.observability-content .header-stats {
+    display: flex;
+    gap: var(--aesir-space-3, 12px);
+    align-items: center;
+}
+```
+
+**Recommendation:** Use Option A if the Observability module can reference the Settings module. Otherwise, use Option B for visual consistency without coupling.
+
+---
+
+#### 3.9 Update Content Container Styles
 **Add to:** `Client/Aesir.Client.Web/Aesir.Client.Web.App/wwwroot/css/settings-refinements.css`
 
 ```css

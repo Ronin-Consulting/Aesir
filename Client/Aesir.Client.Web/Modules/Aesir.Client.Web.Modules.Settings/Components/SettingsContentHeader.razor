@@ -1,0 +1,354 @@
+@namespace Aesir.Client.Web.Modules.Settings.Components
+
+<div class="settings-content-header">
+    <div class="header-main">
+        <div class="header-icon-wrapper">
+            <div class="header-icon-bg"></div>
+            <MudIcon Icon="@Icon" Size="Size.Large" Class="header-icon" />
+        </div>
+        <div class="header-text">
+            <div class="header-title-row">
+                <MudText Typo="Typo.h4" Class="header-title">@Title</MudText>
+                @if (!string.IsNullOrEmpty(Badge))
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@BadgeColor"
+                             Variant="Variant.Outlined"
+                             Class="header-badge">
+                        @Badge
+                    </MudChip>
+                }
+            </div>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="header-description">
+                @Description
+            </MudText>
+        </div>
+    </div>
+
+    <div class="header-actions">
+        @if (ShowSaveCancel)
+        {
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Default"
+                       OnClick="OnCancel"
+                       Disabled="@(!HasChanges || IsSaving)"
+                       Class="header-action-btn">
+                Cancel
+            </MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="OnSave"
+                       Disabled="@(!HasChanges || IsSaving)"
+                       Class="header-action-btn header-action-primary">
+                @if (IsSaving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <span>Save Changes</span>
+                }
+            </MudButton>
+        }
+        else if (ChildContent != null)
+        {
+            @ChildContent
+        }
+        else if (!string.IsNullOrEmpty(PrimaryActionText))
+        {
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@PrimaryActionIcon"
+                       OnClick="OnPrimaryAction"
+                       Class="header-action-btn header-action-primary">
+                @PrimaryActionText
+            </MudButton>
+        }
+    </div>
+</div>
+
+@if (ShowWarning && !string.IsNullOrEmpty(WarningText))
+{
+    <MudAlert Severity="Severity.Warning"
+              Dense="true"
+              Class="header-warning"
+              Icon="@Icons.Material.Outlined.Warning">
+        @WarningText
+    </MudAlert>
+}
+
+@if (HasChanges && ShowUnsavedIndicator)
+{
+    <MudAlert Severity="Severity.Info"
+              Dense="true"
+              Class="header-unsaved"
+              Icon="@Icons.Material.Outlined.Edit">
+        You have unsaved changes
+    </MudAlert>
+}
+
+<style>
+    /* ==========================================================================
+       Settings Content Header
+       ========================================================================== */
+    .settings-content-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: var(--aesir-space-8, 32px) 0 var(--aesir-space-6, 24px);
+        gap: var(--aesir-space-6, 24px);
+        flex-wrap: wrap;
+    }
+
+    .header-main {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--aesir-space-5, 20px);
+        flex: 1;
+        min-width: 280px;
+    }
+
+    /* ==========================================================================
+       Icon Wrapper with Gradient Background
+       ========================================================================== */
+    .header-icon-wrapper {
+        position: relative;
+        flex-shrink: 0;
+        width: 64px;
+        height: 64px;
+    }
+
+    .header-icon-bg {
+        width: 64px;
+        height: 64px;
+        border-radius: var(--aesir-radius-lg, 14px);
+        background: linear-gradient(135deg,
+            rgba(84, 169, 255, 0.15) 0%,
+            rgba(123, 111, 255, 0.08) 100%
+        );
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+
+    .header-icon {
+        position: relative;
+        z-index: 1;
+        width: 64px;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--mud-palette-primary);
+    }
+
+    /* ==========================================================================
+       Header Text Content
+       ========================================================================== */
+    .header-text {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .header-title-row {
+        display: flex;
+        align-items: center;
+        gap: var(--aesir-space-3, 12px);
+        margin-bottom: var(--aesir-space-1, 4px);
+    }
+
+    .header-title {
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+    }
+
+    .header-badge {
+        font-size: 0.7rem;
+    }
+
+    .header-description {
+        line-height: 1.5;
+        max-width: 500px;
+    }
+
+    /* ==========================================================================
+       Header Actions
+       ========================================================================== */
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--aesir-space-3, 12px);
+        flex-shrink: 0;
+    }
+
+    .header-action-btn {
+        white-space: nowrap;
+    }
+
+    .header-action-primary {
+        padding: var(--aesir-space-3, 12px) var(--aesir-space-6, 24px);
+        font-weight: 600;
+        border-radius: var(--aesir-radius-md, 10px);
+        box-shadow: 0 4px 20px rgba(84, 169, 255, 0.25);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .header-action-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 24px rgba(84, 169, 255, 0.35);
+    }
+
+    .header-action-primary:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    /* ==========================================================================
+       Alert Styles
+       ========================================================================== */
+    .header-warning {
+        margin-top: var(--aesir-space-4, 16px);
+        border-radius: var(--aesir-radius-md, 10px);
+    }
+
+    .header-unsaved {
+        margin-top: var(--aesir-space-3, 12px);
+        border-radius: var(--aesir-radius-md, 10px);
+        animation: pulse-subtle 2s ease-in-out infinite;
+    }
+
+    @@keyframes pulse-subtle {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
+
+    /* ==========================================================================
+       Responsive - Tablet and Mobile
+       ========================================================================== */
+    @@media (max-width: 768px) {
+        .settings-content-header {
+            padding: var(--aesir-space-6, 24px) 0 var(--aesir-space-4, 16px);
+        }
+
+        .header-main {
+            flex-direction: column;
+            gap: var(--aesir-space-3, 12px);
+        }
+
+        .header-icon-wrapper {
+            display: none;
+        }
+
+        .header-actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Material Design icon to display in the header.
+    /// </summary>
+    [Parameter]
+    public string Icon { get; set; } = Icons.Material.Filled.Settings;
+
+    /// <summary>
+    /// Main title text for the header.
+    /// </summary>
+    [Parameter]
+    public string Title { get; set; } = "Settings";
+
+    /// <summary>
+    /// Description text displayed below the title.
+    /// </summary>
+    [Parameter]
+    public string Description { get; set; } = "";
+
+    /// <summary>
+    /// Optional badge text (e.g., "3 configured").
+    /// </summary>
+    [Parameter]
+    public string? Badge { get; set; }
+
+    /// <summary>
+    /// Color for the badge chip.
+    /// </summary>
+    [Parameter]
+    public Color BadgeColor { get; set; } = Color.Info;
+
+    /// <summary>
+    /// Text for the primary action button.
+    /// </summary>
+    [Parameter]
+    public string? PrimaryActionText { get; set; }
+
+    /// <summary>
+    /// Icon for the primary action button.
+    /// </summary>
+    [Parameter]
+    public string PrimaryActionIcon { get; set; } = Icons.Material.Filled.Add;
+
+    /// <summary>
+    /// Callback when the primary action button is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnPrimaryAction { get; set; }
+
+    /// <summary>
+    /// Whether to show Save/Cancel buttons instead of primary action.
+    /// </summary>
+    [Parameter]
+    public bool ShowSaveCancel { get; set; }
+
+    /// <summary>
+    /// Whether there are unsaved changes.
+    /// </summary>
+    [Parameter]
+    public bool HasChanges { get; set; }
+
+    /// <summary>
+    /// Whether a save operation is in progress.
+    /// </summary>
+    [Parameter]
+    public bool IsSaving { get; set; }
+
+    /// <summary>
+    /// Whether to show the unsaved changes indicator.
+    /// </summary>
+    [Parameter]
+    public bool ShowUnsavedIndicator { get; set; } = true;
+
+    /// <summary>
+    /// Callback when Save is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    /// <summary>
+    /// Callback when Cancel is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    /// <summary>
+    /// Whether to show a warning alert.
+    /// </summary>
+    [Parameter]
+    public bool ShowWarning { get; set; }
+
+    /// <summary>
+    /// Warning message text.
+    /// </summary>
+    [Parameter]
+    public string? WarningText { get; set; }
+
+    /// <summary>
+    /// Optional custom content for the actions area.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

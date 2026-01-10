@@ -1,21 +1,14 @@
 @namespace Aesir.Client.Web.Modules.Settings.Components
 
 <div class="settings-content-container">
-    @* Header Section *@
-    <div class="content-header">
-        <div class="header-text">
-            <MudText Typo="Typo.h5">Tools</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Manage internal tools and view discovered MCP server tools.
-            </MudText>
-        </div>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="OpenCreateDialog">
-            Add Internal Tool
-        </MudButton>
-    </div>
+    <SettingsContentHeader
+        Icon="@Icons.Material.Filled.Build"
+        Title="Tools"
+        Description="Manage internal tools and view discovered MCP server tools."
+        Badge="@(_tools.Count > 0 ? $"{_tools.Count} available" : null)"
+        PrimaryActionText="Add Internal Tool"
+        PrimaryActionIcon="@Icons.Material.Filled.Add"
+        OnPrimaryAction="OpenCreateDialog" />
 
     @if (_isLoading)
     {
@@ -118,31 +111,6 @@
         </MudDataGrid>
     </div>
 </div>
-
-<style>
-    .settings-content-container {
-        padding: 24px;
-        max-width: 1200px;
-    }
-
-    .content-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
-        gap: 16px;
-    }
-
-    .header-text {
-        flex: 1;
-        min-width: 200px;
-    }
-
-    .content-body {
-        padding-bottom: 40px;
-    }
-</style>
 
 @code {
     [Inject] private IToolService ToolService { get; set; } = null!;
