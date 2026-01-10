@@ -77,16 +77,16 @@
     }
 
     .phase-step.active .step-indicator {
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     .phase-step.active .step-circle {
-        border-color: #9C27B0;
-        color: #9C27B0;
+        border-color: var(--aesir-accent);
+        color: var(--aesir-accent);
     }
 
     .phase-step.completed .step-indicator {
-        color: #4CAF50;
+        color: var(--aesir-success);
     }
 
     .step-label {
@@ -103,7 +103,7 @@
     }
 
     .phase-step.active .step-label {
-        color: #9C27B0;
+        color: var(--aesir-accent);
         font-weight: 600;
     }
 
@@ -122,11 +122,11 @@
     }
 
     .step-connector.completed {
-        background-color: #4CAF50;
+        background-color: var(--aesir-success);
     }
 
     .step-connector.active {
-        background: linear-gradient(90deg, #4CAF50 0%, #9C27B0 100%);
+        background: linear-gradient(90deg, var(--aesir-success) 0%, var(--aesir-accent) 100%);
     }
 
     /* Responsive adjustments */

@@ -99,7 +99,7 @@
     }
 
     .research-progress .phase-icon {
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     .research-progress .phase-name {
@@ -111,7 +111,7 @@
     .research-progress .progress-percent {
         font-weight: 600;
         font-size: 0.9rem;
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     /* Progress Bar */
@@ -129,7 +129,7 @@
         align-items: center;
         gap: 10px;
         padding: 10px 12px;
-        background-color: rgba(156, 39, 176, 0.08);
+        background-color: rgba(var(--aesir-accent-rgb), 0.08);
         border-radius: 6px;
         margin-bottom: 12px;
         margin-top: 12px;
@@ -159,7 +159,7 @@
     .research-progress .agent-name {
         font-size: 0.85rem;
         font-weight: 600;
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     .research-progress .agent-spinner {
@@ -213,11 +213,11 @@
     }
 
     .research-progress .phase-step.active .step-indicator {
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     .research-progress .phase-step.completed .step-indicator {
-        color: #4CAF50;
+        color: var(--aesir-success);
     }
 
     .research-progress .step-name {
@@ -234,12 +234,12 @@
     }
 
     .research-progress .phase-step.active .step-name {
-        color: #9C27B0;
+        color: var(--aesir-accent);
         font-weight: 600;
     }
 
     .research-progress .phase-step.completed .step-name {
-        color: #4CAF50;
+        color: var(--aesir-success);
     }
 
     /* Responsive: hide step names on small screens */

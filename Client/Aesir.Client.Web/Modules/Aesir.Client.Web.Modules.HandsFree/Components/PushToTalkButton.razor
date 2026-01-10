@@ -164,42 +164,42 @@
 
     /* State-specific styles */
     .ptt-button.state-listening {
-        border-color: rgba(76, 175, 80, 0.7);
-        background: linear-gradient(135deg, rgba(76, 175, 80, 0.3) 0%, rgba(76, 175, 80, 0.15) 100%);
-        box-shadow: 0 0 30px rgba(76, 175, 80, 0.4);
+        border-color: rgba(var(--aesir-success-rgb), 0.7);
+        background: linear-gradient(135deg, rgba(var(--aesir-success-rgb), 0.3) 0%, rgba(var(--aesir-success-rgb), 0.15) 100%);
+        box-shadow: 0 0 30px rgba(var(--aesir-success-rgb), 0.4);
     }
 
     .ptt-button.state-listening .ptt-icon {
-        color: #4CAF50;
+        color: var(--aesir-success);
         animation: iconPulse 0.8s ease-in-out infinite;
     }
 
     .ptt-button.state-processing {
-        border-color: rgba(255, 193, 7, 0.7);
-        background: linear-gradient(135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 193, 7, 0.1) 100%);
+        border-color: rgba(var(--aesir-warning-rgb), 0.7);
+        background: linear-gradient(135deg, rgba(var(--aesir-warning-rgb), 0.2) 0%, rgba(var(--aesir-warning-rgb), 0.1) 100%);
     }
 
     .ptt-button.state-processing .ptt-icon {
-        color: #FFC107;
+        color: var(--aesir-warning-light);
         animation: iconSpin 1.5s linear infinite;
     }
 
     .ptt-button.state-speaking {
-        border-color: rgba(156, 39, 176, 0.7);
-        background: linear-gradient(135deg, rgba(156, 39, 176, 0.2) 0%, rgba(156, 39, 176, 0.1) 100%);
+        border-color: rgba(var(--aesir-accent-rgb), 0.7);
+        background: linear-gradient(135deg, rgba(var(--aesir-accent-rgb), 0.2) 0%, rgba(var(--aesir-accent-rgb), 0.1) 100%);
     }
 
     .ptt-button.state-speaking .ptt-icon {
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     .ptt-button.state-error {
-        border-color: rgba(244, 67, 54, 0.7);
-        background: linear-gradient(135deg, rgba(244, 67, 54, 0.2) 0%, rgba(244, 67, 54, 0.1) 100%);
+        border-color: rgba(var(--aesir-error-rgb), 0.7);
+        background: linear-gradient(135deg, rgba(var(--aesir-error-rgb), 0.2) 0%, rgba(var(--aesir-error-rgb), 0.1) 100%);
     }
 
     .ptt-button.state-error .ptt-icon {
-        color: #F44336;
+        color: var(--aesir-error);
     }
 
     @@keyframes iconPulse {

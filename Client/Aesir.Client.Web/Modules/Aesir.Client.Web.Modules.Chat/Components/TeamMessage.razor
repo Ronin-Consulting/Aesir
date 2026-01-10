@@ -190,7 +190,7 @@
         justify-content: center;
         width: 40px;
         height: 40px;
-        background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+        background: linear-gradient(135deg, var(--aesir-accent) 0%, var(--aesir-accent-dark) 100%);
         border-radius: 10px;
         color: white;
     }
@@ -215,23 +215,23 @@
     }
 
     .team-message .team-status.status-active {
-        color: #4CAF50;
+        color: var(--aesir-success);
     }
 
     .team-message .team-status.status-pending {
-        color: #FFC107;
+        color: var(--aesir-warning-light);
     }
 
     .team-message .team-status.status-completed {
-        color: #2196F3;
+        color: var(--aesir-primary);
     }
 
     .team-message .team-status.status-failed {
-        color: #F44336;
+        color: var(--aesir-error);
     }
 
     .team-message .team-status.status-cancelled {
-        color: #9E9E9E;
+        color: var(--aesir-dark-text-secondary);
     }
 
     .team-message .session-actions {
@@ -251,7 +251,7 @@
     .team-message .clarification-title {
         display: flex;
         align-items: center;
-        color: #F59E0B;
+        color: var(--aesir-warning);
         margin-bottom: 12px;
     }
 
@@ -273,7 +273,7 @@
         padding: 8px 12px;
         background-color: rgba(255, 193, 7, 0.1);
         border-radius: 6px;
-        border-left: 3px solid #F59E0B;
+        border-left: 3px solid var(--aesir-warning);
     }
 
     .team-message .clarification-question .question-input {
@@ -345,12 +345,12 @@
     }
 
     .team-message .markdown-body pre {
-        background-color: #1e1e2e;
+        background-color: var(--aesir-dark-code-block);
         border-radius: 8px;
         padding: 16px;
         overflow-x: auto;
         margin: 12px 0;
-        color: #e0e0e0;
+        color: var(--aesir-dark-text);
     }
 
     .team-message .markdown-body code {
@@ -364,7 +364,7 @@
     .team-message .markdown-body pre code {
         background-color: transparent;
         padding: 0;
-        color: #e0e0e0;
+        color: var(--aesir-dark-text);
     }
 
     .team-message .markdown-body ul,
@@ -379,7 +379,7 @@
     }
 
     .team-message .markdown-body a {
-        color: #9C27B0;
+        color: var(--aesir-accent);
         text-decoration: none;
     }
 

@@ -148,11 +148,11 @@
     }
 
     .status-icon.completed {
-        color: #10B981;
+        color: var(--aesir-success);
     }
 
     .status-icon.failed {
-        color: #EF4444;
+        color: var(--aesir-error);
     }
 
     .duration {
@@ -211,11 +211,11 @@
     }
 
     .arg-key {
-        color: #9CDCFE;
+        color: var(--aesir-syntax-key);
     }
 
     .arg-value {
-        color: #CE9178;
+        color: var(--aesir-syntax-string);
         margin-left: 4px;
     }
 
@@ -233,57 +233,57 @@
     }
 
     .error-value {
-        color: #EF4444;
+        color: var(--aesir-error);
         font-size: 0.85rem;
     }
 
-    /* Tool Type Colors */
+    /* Tool Type Colors - using harmonious palette */
     .tool-call-card.tool-document-search {
-        background-color: rgba(16, 185, 129, 0.1);
+        background-color: rgba(var(--aesir-success-rgb), 0.1);
     }
     .tool-call-card.tool-document-search .tool-call-icon {
-        background-color: rgba(16, 185, 129, 0.2);
-        color: #10B981;
+        background-color: rgba(var(--aesir-success-rgb), 0.2);
+        color: var(--aesir-success);
     }
 
     .tool-call-card.tool-web-search {
-        background-color: rgba(84, 169, 255, 0.1);
+        background-color: rgba(var(--aesir-primary-rgb), 0.1);
     }
     .tool-call-card.tool-web-search .tool-call-icon {
-        background-color: rgba(84, 169, 255, 0.2);
-        color: #54A9FF;
+        background-color: rgba(var(--aesir-primary-rgb), 0.2);
+        color: var(--aesir-primary);
     }
 
     .tool-call-card.tool-mcp-server {
-        background-color: rgba(245, 158, 11, 0.1);
+        background-color: rgba(var(--aesir-warning-rgb), 0.1);
     }
     .tool-call-card.tool-mcp-server .tool-call-icon {
-        background-color: rgba(245, 158, 11, 0.2);
-        color: #F59E0B;
+        background-color: rgba(var(--aesir-warning-rgb), 0.2);
+        color: var(--aesir-warning);
     }
 
     .tool-call-card.tool-image-analysis {
-        background-color: rgba(233, 30, 99, 0.1);
+        background-color: rgba(244, 114, 182, 0.1);
     }
     .tool-call-card.tool-image-analysis .tool-call-icon {
-        background-color: rgba(233, 30, 99, 0.2);
-        color: #E91E63;
+        background-color: rgba(244, 114, 182, 0.2);
+        color: var(--aesir-category-5);
     }
 
     .tool-call-card.tool-summarization {
-        background-color: rgba(156, 39, 176, 0.1);
+        background-color: rgba(var(--aesir-accent-rgb), 0.1);
     }
     .tool-call-card.tool-summarization .tool-call-icon {
-        background-color: rgba(156, 39, 176, 0.2);
-        color: #9C27B0;
+        background-color: rgba(var(--aesir-accent-rgb), 0.2);
+        color: var(--aesir-accent);
     }
 
     .tool-call-card.tool-other {
-        background-color: rgba(96, 125, 139, 0.1);
+        background-color: rgba(161, 161, 170, 0.1);
     }
     .tool-call-card.tool-other .tool-call-icon {
-        background-color: rgba(96, 125, 139, 0.2);
-        color: #607D8B;
+        background-color: rgba(161, 161, 170, 0.2);
+        color: var(--aesir-dark-text-secondary);
     }
 
     /* Status styles */

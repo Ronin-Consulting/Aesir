@@ -147,7 +147,7 @@
     }
 
     .research-details .section-header.error {
-        color: #F44336;
+        color: var(--aesir-error);
     }
 
     /* Details Grid */
@@ -197,8 +197,8 @@
     }
 
     .research-details .query-block.refined {
-        background-color: rgba(156, 39, 176, 0.05);
-        border-left: 3px solid #9C27B0;
+        background-color: rgba(var(--aesir-accent-rgb), 0.05);
+        border-left: 3px solid var(--aesir-accent);
     }
 
     .research-details .query-label {
@@ -238,11 +238,11 @@
         top: 32px;
         bottom: 0;
         width: 2px;
-        background-color: rgba(156, 39, 176, 0.2);
+        background-color: rgba(var(--aesir-accent-rgb), 0.2);
     }
 
     .research-details .timeline-item.completed:not(:last-child)::after {
-        background-color: #4CAF50;
+        background-color: var(--aesir-success);
     }
 
     .research-details .timeline-marker {
@@ -261,11 +261,11 @@
     }
 
     .research-details .timeline-item.active .timeline-marker {
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     .research-details .timeline-item.completed .timeline-marker {
-        color: #4CAF50;
+        color: var(--aesir-success);
     }
 
     .research-details .timeline-content {
@@ -284,7 +284,7 @@
     }
 
     .research-details .timeline-item.active .timeline-phase {
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     .research-details .timeline-item.completed .timeline-phase {
@@ -306,7 +306,7 @@
 
     .research-details .error-content {
         font-size: 0.85rem;
-        color: #F44336;
+        color: var(--aesir-error);
         font-family: 'Consolas', 'Monaco', monospace;
         white-space: pre-wrap;
         word-break: break-word;

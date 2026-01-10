@@ -70,12 +70,12 @@
         width: 80px;
         height: 80px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+        background: linear-gradient(135deg, var(--aesir-primary) 0%, var(--aesir-primary-dark) 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 1;
-        box-shadow: 0 0 30px rgba(33, 150, 243, 0.5);
+        box-shadow: 0 0 30px rgba(var(--aesir-primary-rgb), 0.5);
     }
 
     .avatar-icon {
@@ -97,7 +97,7 @@
 
     /* Listening state - pulsing glow */
     .state-listening .avatar-ring {
-        border-color: rgba(76, 175, 80, 0.5);
+        border-color: rgba(var(--aesir-success-rgb), 0.5);
         animation: pulse 0.8s ease-in-out infinite;
     }
 
@@ -105,8 +105,8 @@
     .state-listening .avatar-ring.inner { animation-delay: 0.2s; }
 
     .state-listening .avatar-core {
-        background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
-        box-shadow: 0 0 40px rgba(76, 175, 80, 0.6);
+        background: linear-gradient(135deg, var(--aesir-success) 0%, var(--aesir-success-dark) 100%);
+        box-shadow: 0 0 40px rgba(var(--aesir-success-rgb), 0.6);
         animation: corePulse 0.8s ease-in-out infinite;
     }
 
@@ -122,7 +122,7 @@
 
     /* Processing state - gentle rotation */
     .state-processing .avatar-ring {
-        border-color: rgba(255, 193, 7, 0.5);
+        border-color: rgba(var(--aesir-warning-rgb), 0.5);
         animation: rotate 3s linear infinite;
     }
 
@@ -135,8 +135,8 @@
     }
 
     .state-processing .avatar-core {
-        background: linear-gradient(135deg, #FFC107 0%, #FFA000 100%);
-        box-shadow: 0 0 40px rgba(255, 193, 7, 0.6);
+        background: linear-gradient(135deg, var(--aesir-warning-light) 0%, var(--aesir-warning-dark) 100%);
+        box-shadow: 0 0 40px rgba(var(--aesir-warning-rgb), 0.6);
     }
 
     @@keyframes rotate {
@@ -146,7 +146,7 @@
 
     /* Speaking state - expanding ripples */
     .state-speaking .avatar-ring {
-        border-color: rgba(156, 39, 176, 0.5);
+        border-color: rgba(var(--aesir-accent-rgb), 0.5);
         animation: ripple 1.5s ease-out infinite;
     }
 
@@ -154,8 +154,8 @@
     .state-speaking .avatar-ring.inner { animation-delay: 0.6s; }
 
     .state-speaking .avatar-core {
-        background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
-        box-shadow: 0 0 40px rgba(156, 39, 176, 0.6);
+        background: linear-gradient(135deg, var(--aesir-accent) 0%, var(--aesir-accent-dark) 100%);
+        box-shadow: 0 0 40px rgba(var(--aesir-accent-rgb), 0.6);
     }
 
     @@keyframes ripple {
@@ -165,12 +165,12 @@
 
     /* Error state - red shake */
     .state-error .avatar-ring {
-        border-color: rgba(244, 67, 54, 0.5);
+        border-color: rgba(var(--aesir-error-rgb), 0.5);
     }
 
     .state-error .avatar-core {
-        background: linear-gradient(135deg, #F44336 0%, #D32F2F 100%);
-        box-shadow: 0 0 40px rgba(244, 67, 54, 0.6);
+        background: linear-gradient(135deg, var(--aesir-error) 0%, var(--aesir-error-dark) 100%);
+        box-shadow: 0 0 40px rgba(var(--aesir-error-rgb), 0.6);
         animation: shake 0.5s ease-in-out infinite;
     }
 

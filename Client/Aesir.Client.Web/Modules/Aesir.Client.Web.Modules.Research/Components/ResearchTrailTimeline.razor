@@ -61,7 +61,7 @@
         align-items: center;
         gap: 10px;
         margin-bottom: 16px;
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     .timeline-title {
@@ -95,30 +95,30 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: rgba(156, 39, 176, 0.1);
-        color: #9C27B0;
+        background-color: rgba(var(--aesir-accent-rgb), 0.1);
+        color: var(--aesir-accent);
         flex-shrink: 0;
     }
 
     .timeline-entry.phase-change .marker-dot {
-        background-color: rgba(33, 150, 243, 0.1);
-        color: #2196F3;
+        background-color: rgba(var(--aesir-primary-rgb), 0.1);
+        color: var(--aesir-primary);
     }
 
     .timeline-entry.completed .marker-dot {
-        background-color: rgba(76, 175, 80, 0.1);
-        color: #4CAF50;
+        background-color: rgba(var(--aesir-success-rgb), 0.1);
+        color: var(--aesir-success);
     }
 
     .timeline-entry.error .marker-dot {
-        background-color: rgba(244, 67, 54, 0.1);
-        color: #F44336;
+        background-color: rgba(var(--aesir-error-rgb), 0.1);
+        color: var(--aesir-error);
     }
 
     .marker-line {
         width: 2px;
         flex: 1;
-        background-color: rgba(156, 39, 176, 0.2);
+        background-color: rgba(var(--aesir-accent-rgb), 0.2);
         margin: 4px 0;
     }
 

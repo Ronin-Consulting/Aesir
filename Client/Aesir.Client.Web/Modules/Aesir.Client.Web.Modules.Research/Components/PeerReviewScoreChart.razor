@@ -73,7 +73,7 @@
         align-items: center;
         gap: 10px;
         margin-bottom: 16px;
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     .chart-title {
@@ -88,22 +88,22 @@
         gap: 2px;
         padding: 4px 10px;
         border-radius: 6px;
-        background-color: rgba(156, 39, 176, 0.1);
+        background-color: rgba(var(--aesir-accent-rgb), 0.1);
     }
 
     .overall-score.high {
         background-color: rgba(76, 175, 80, 0.1);
-        color: #4CAF50;
+        color: var(--aesir-success);
     }
 
     .overall-score.medium {
         background-color: rgba(255, 152, 0, 0.1);
-        color: #FF9800;
+        color: var(--aesir-warning);
     }
 
     .overall-score.low {
         background-color: rgba(244, 67, 54, 0.1);
-        color: #F44336;
+        color: var(--aesir-error);
     }
 
     .overall-score .score-value {
@@ -157,15 +157,15 @@
     }
 
     .score-bar.high {
-        background: linear-gradient(90deg, #4CAF50, #66BB6A);
+        background: linear-gradient(90deg, var(--aesir-success), var(--aesir-success-light));
     }
 
     .score-bar.medium {
-        background: linear-gradient(90deg, #FF9800, #FFB74D);
+        background: linear-gradient(90deg, var(--aesir-warning), var(--aesir-warning-light));
     }
 
     .score-bar.low {
-        background: linear-gradient(90deg, #F44336, #EF5350);
+        background: linear-gradient(90deg, var(--aesir-error), var(--aesir-error-light));
     }
 
     .score-value-text {
@@ -175,9 +175,9 @@
         font-weight: 600;
     }
 
-    .score-value-text.high { color: #4CAF50; }
-    .score-value-text.medium { color: #FF9800; }
-    .score-value-text.low { color: #F44336; }
+    .score-value-text.high { color: var(--aesir-success); }
+    .score-value-text.medium { color: var(--aesir-warning); }
+    .score-value-text.low { color: var(--aesir-error); }
 
     .review-summary {
         margin-top: 16px;
@@ -211,11 +211,11 @@
     }
 
     .summary-section.strengths .summary-header {
-        color: #4CAF50;
+        color: var(--aesir-success);
     }
 
     .summary-section.improvements .summary-header {
-        color: #FF9800;
+        color: var(--aesir-warning);
     }
 
     .summary-section p {

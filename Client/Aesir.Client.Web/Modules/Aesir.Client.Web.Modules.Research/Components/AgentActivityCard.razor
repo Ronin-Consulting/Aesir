@@ -82,7 +82,7 @@
     }
 
     .agent-activity-card.working {
-        background-color: rgba(156, 39, 176, 0.05);
+        background-color: rgba(var(--aesir-accent-rgb), 0.05);
         border-color: rgba(156, 39, 176, 0.2);
     }
 
@@ -109,11 +109,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: rgba(156, 39, 176, 0.1);
+        background-color: rgba(var(--aesir-accent-rgb), 0.1);
     }
 
     .role-icon {
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     .agent-info {
@@ -147,15 +147,15 @@
     }
 
     .agent-activity-card.working .status-indicator {
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     .agent-activity-card.completed .status-indicator {
-        color: #4CAF50;
+        color: var(--aesir-success);
     }
 
     .agent-activity-card.error .status-indicator {
-        color: #F44336;
+        color: var(--aesir-error);
     }
 
     .current-task {
@@ -164,10 +164,10 @@
         gap: 6px;
         margin-top: 8px;
         padding: 8px;
-        background-color: rgba(156, 39, 176, 0.05);
+        background-color: rgba(var(--aesir-accent-rgb), 0.05);
         border-radius: 4px;
         font-size: 0.8rem;
-        color: #9C27B0;
+        color: var(--aesir-accent);
     }
 
     .completion-info {
@@ -199,7 +199,7 @@
         background-color: rgba(244, 67, 54, 0.1);
         border-radius: 4px;
         font-size: 0.8rem;
-        color: #F44336;
+        color: var(--aesir-error);
     }
 </style>
 

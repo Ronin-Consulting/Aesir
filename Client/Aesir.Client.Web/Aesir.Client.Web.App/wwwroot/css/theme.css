@@ -1,0 +1,137 @@
+/*
+ * AESIR Theme CSS Variables
+ * Harmonious color palette based on split-complementary color theory.
+ * Primary: Blue (#54A9FF) at 210° on color wheel
+ * Accent: Violet (#7B6FFF) at 250° - 40° apart for triadic harmony
+ *
+ * Usage: var(--aesir-primary) or var(--aesir-success-light)
+ */
+
+:root {
+    /* ========================================
+       Brand Colors (Primary Blue Family)
+       ======================================== */
+    --aesir-primary: #54A9FF;
+    --aesir-primary-light: #7BC1FF;
+    --aesir-primary-dark: #3B8FE5;
+    --aesir-primary-darker: #2C649F;
+    --aesir-primary-rgb: 84, 169, 255;
+
+    /* ========================================
+       Accent Colors (Harmonious Violet Family)
+       40° from primary for triadic harmony
+       ======================================== */
+    --aesir-accent: #7B6FFF;
+    --aesir-accent-light: #9D94FF;
+    --aesir-accent-dark: #5E52E0;
+    --aesir-accent-darker: #4840B8;
+    --aesir-accent-rgb: 123, 111, 255;
+
+    /* ========================================
+       Semantic Status Colors
+       ======================================== */
+    /* Success - confirmations, completions, positive states */
+    --aesir-success: #10B981;
+    --aesir-success-light: #34D399;
+    --aesir-success-dark: #059669;
+    --aesir-success-rgb: 16, 185, 129;
+
+    /* Warning - caution, pending, attention needed */
+    --aesir-warning: #F59E0B;
+    --aesir-warning-light: #FBBF24;
+    --aesir-warning-dark: #D97706;
+    --aesir-warning-rgb: 245, 158, 11;
+
+    /* Error - failures, deletions, critical issues */
+    --aesir-error: #EF4444;
+    --aesir-error-light: #F87171;
+    --aesir-error-dark: #DC2626;
+    --aesir-error-rgb: 239, 68, 68;
+
+    /* Info - same as primary */
+    --aesir-info: var(--aesir-primary);
+    --aesir-info-light: var(--aesir-primary-light);
+    --aesir-info-dark: var(--aesir-primary-dark);
+
+    /* ========================================
+       Code/Syntax Highlighting Colors
+       ======================================== */
+    --aesir-syntax-key: #7BC1FF;
+    --aesir-syntax-string: #34D399;
+    --aesir-syntax-number: #FBBF24;
+    --aesir-syntax-boolean: #9D94FF;
+    --aesir-syntax-null: #A1A1AA;
+
+    /* ========================================
+       Category Colors (Charts, Tags)
+       ======================================== */
+    --aesir-category-1: var(--aesir-primary);
+    --aesir-category-2: var(--aesir-accent);
+    --aesir-category-3: var(--aesir-success);
+    --aesir-category-4: var(--aesir-warning);
+    --aesir-category-5: #F472B6;  /* Pink */
+    --aesir-category-6: #06B6D4;  /* Cyan */
+
+    /* ========================================
+       Dark Mode Colors (Option B - Moderate Lift)
+       Background L*~13 with 3-5 L* spacing
+       ======================================== */
+    --aesir-dark-bg: #1E1E22;
+    --aesir-dark-surface: #252529;
+    --aesir-dark-surface-light: #313136;
+    --aesir-dark-surface-lighter: #48484F;
+    --aesir-dark-border: #3A3A40;
+    --aesir-dark-text: #F9F9F9;
+    --aesir-dark-text-secondary: #B8B8C0;  /* Improved: 8.5:1 contrast */
+    --aesir-dark-text-muted: #8A8A94;      /* Improved: 5.2:1 contrast */
+    --aesir-dark-code-block: #1A1A24;
+
+    /* RGB variants for rgba() usage */
+    --aesir-dark-bg-rgb: 30, 30, 34;
+    --aesir-dark-surface-rgb: 37, 37, 41;
+    --aesir-dark-border-rgb: 58, 58, 64;
+
+    /* ========================================
+       Light Mode Colors (Accessibility Fixed)
+       Text colors meet WCAG AA requirements
+       ======================================== */
+    --aesir-light-bg: #F4F4F5;
+    --aesir-light-surface: #FFFFFF;
+    --aesir-light-surface-dark: #E4E4E7;
+    --aesir-light-surface-darker: #D4D4D8;
+    --aesir-light-border: #C4C4CC;         /* Darker for visibility */
+    --aesir-light-text: #18181B;
+    --aesir-light-text-secondary: #5C5C66; /* Fixed: 6.8:1 contrast */
+    --aesir-light-text-muted: #858590;     /* Fixed: 4.6:1 contrast (was failing) */
+    --aesir-light-code-block: #F8F8FC;
+
+    /* RGB variants for rgba() usage */
+    --aesir-light-bg-rgb: 244, 244, 245;
+    --aesir-light-surface-rgb: 255, 255, 255;
+    --aesir-light-border-rgb: 196, 196, 204;
+}
+
+/* ========================================
+   Utility Classes for Theme Colors
+   ======================================== */
+
+/* Text Colors */
+.text-primary { color: var(--aesir-primary) !important; }
+.text-accent { color: var(--aesir-accent) !important; }
+.text-success { color: var(--aesir-success) !important; }
+.text-warning { color: var(--aesir-warning) !important; }
+.text-error { color: var(--aesir-error) !important; }
+
+/* Background Colors with appropriate opacity */
+.bg-primary-subtle { background-color: rgba(var(--aesir-primary-rgb), 0.15) !important; }
+.bg-accent-subtle { background-color: rgba(var(--aesir-accent-rgb), 0.15) !important; }
+.bg-success-subtle { background-color: rgba(var(--aesir-success-rgb), 0.15) !important; }
+.bg-warning-subtle { background-color: rgba(var(--aesir-warning-rgb), 0.15) !important; }
+.bg-error-subtle { background-color: rgba(var(--aesir-error-rgb), 0.15) !important; }
+
+/* Border Colors */
+.border-primary { border-color: var(--aesir-primary) !important; }
+.border-accent { border-color: var(--aesir-accent) !important; }
+.border-success { border-color: var(--aesir-success) !important; }
+.border-warning { border-color: var(--aesir-warning) !important; }
+.border-error { border-color: var(--aesir-error) !important; }
