@@ -25,8 +25,8 @@ public class LoggingModule : ModuleBase
     {
         Log("Registering logging services...");
 
-        // Register inference logging service
-        services.AddScoped<IInferenceLogService, InferenceLogService>();
+        // Register inference logging service (singleton - IDbContext is singleton and service is stateless)
+        services.AddSingleton<IInferenceLogService, InferenceLogService>();
 
         // Register document logging service (Singleton to match document collection services)
         services.AddSingleton<IDocumentLogService, DocumentLogService>();

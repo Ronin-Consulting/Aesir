@@ -126,7 +126,7 @@
         <MessageInput @ref="_messageInput"
                       OnSend="@SendMessageAsync"
                       OnSendWithFiles="@SendMessageWithFilesAsync"
-                      IsDisabled="@(_isStreaming || _isThinking || ChatState.SelectedAgent == null || _isLoadingSession || _isUploadingFiles)"
+                      IsDisabled="@(_isStreaming || _isThinking || (ChatState.SelectedAgent == null && !ResearchState.IsTeamSelected) || _isLoadingSession || _isUploadingFiles)"
                       IsLoading="@(_isStreaming || _isThinking || _isUploadingFiles)"
                       GetConversationId="@GetOrCreateConversationId"
                       AvailableTools="@(ResearchState.IsTeamSelected ? Array.Empty<AesirToolBase>() : _agentTools)"
@@ -1566,17 +1566,9 @@
     {
         InvokeAsync(async () =>
         {
-            // Add final team message with report
-            if (session.Report != null)
-            {
-                var teamMessage = AesirChatMessage.NewResearchTeamMessage(
-                    $"Research complete: {session.Report.Title}",
-                    session.Id,
-                    session.ResearchTeamId ?? Guid.Empty,
-                    ResearchState.SelectedTeam?.Name ?? "Research Team");
-                _conversation.Messages.Add(teamMessage);
-                _hasMessages = true;
-            }
+            // Note: Do NOT add the report message here - the server already persists it
+            // via ResearchOrchestrator.AddReportToChatSessionAsync. Adding it here would
+            // cause duplicate messages. The persisted message is loaded via RefreshSessionAsync.
 
             ResearchState.ClearSession();
             StateHasChanged();

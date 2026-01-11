@@ -393,8 +393,8 @@ public class TeamMessageTests : TestContext
             .Add(p => p.Message, message)
             .Add(p => p.Session, session));
 
-        // Assert
-        cut.Markup.Should().Contain("research-report");
+        // Assert - TeamMessageReport now uses "professional-report" as the outer class
+        cut.Markup.Should().Contain("professional-report");
         cut.Markup.Should().Contain("Research Report Title");
     }
 

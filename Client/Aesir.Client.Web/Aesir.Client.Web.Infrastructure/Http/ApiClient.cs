@@ -67,6 +67,12 @@ public class ApiClient : IApiClient
     {
         var response = await _httpClient.DeleteAsync(endpoint, ct).ConfigureAwait(false);
 
+        // Return false for NotFound - resource doesn't exist, nothing to delete
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+
         if (!response.IsSuccessStatusCode)
         {
             // Try to read error details from response body

@@ -28,9 +28,9 @@ public class AesirProcessingIndicatorTests : TestContext
         var cut = RenderComponent<AesirProcessingIndicator>(parameters => parameters
             .Add(p => p.IsProcessing, true));
 
-        // Assert
+        // Assert - Component shows status-pill with status-text when processing
+        cut.Markup.Should().Contain("status-pill");
         cut.Markup.Should().Contain("status-text");
-        cut.Markup.Should().Contain("shimmer-text");
     }
 
     [Fact]
@@ -72,8 +72,8 @@ public class AesirProcessingIndicatorTests : TestContext
         // Act
         var cut = RenderComponent<AesirProcessingIndicator>();
 
-        // Assert
-        cut.Markup.Should().Contain("brand-icon-animated");
+        // Assert - Component has brand-icon class with logo-blue.svg image
+        cut.Markup.Should().Contain("brand-icon");
         cut.Markup.Should().Contain("logo-blue.svg");
     }
 

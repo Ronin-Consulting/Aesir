@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using MudBlazor;
 using MudBlazor.Services;
 using Aesir.Client.Web.Modules.Chat.Components;
+using Aesir.Client.Web.Infrastructure.Http;
 using Aesir.Client.Web.Infrastructure.Services;
 using Aesir.Common.Models;
 
@@ -10,6 +12,7 @@ public class TeamMessageReportTests : TestContext
 {
     private readonly Mock<IResearchSessionApiService> _researchApiMock;
     private readonly Mock<IMarkdownService> _markdownServiceMock;
+    private readonly Mock<ISnackbar> _snackbarMock;
 
     public TeamMessageReportTests()
     {
@@ -18,6 +21,7 @@ public class TeamMessageReportTests : TestContext
 
         _researchApiMock = new Mock<IResearchSessionApiService>();
         _markdownServiceMock = new Mock<IMarkdownService>();
+        _snackbarMock = new Mock<ISnackbar>();
 
         _markdownServiceMock
             .Setup(m => m.ToHtml(It.IsAny<string>()))
@@ -25,22 +29,51 @@ public class TeamMessageReportTests : TestContext
 
         Services.AddSingleton(_researchApiMock.Object);
         Services.AddSingleton(_markdownServiceMock.Object);
+        Services.AddSingleton(_snackbarMock.Object);
+    }
+
+    /// <summary>
+    /// Sets up the mock to return a full report when GetReportAsync is called.
+    /// </summary>
+    private void SetupFullReportMock(ResearchReportSummaryBase summary)
+    {
+        var fullReport = new ResearchReportBase
+        {
+            Id = summary.Id,
+            Title = summary.Title,
+            ExecutiveSummary = summary.ExecutiveSummary,
+            CreatedAt = summary.CreatedAt,
+            Findings = new List<ResearchFindingBase>
+            {
+                new ResearchFindingBase { Title = "Test Finding", Content = "Test content", Confidence = "High" }
+            },
+            Bibliography = new List<ResearchSourceBase>
+            {
+                new ResearchSourceBase { Title = "Test Source", Author = "Test Author" }
+            }
+        };
+
+        _researchApiMock
+            .Setup(x => x.GetReportAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ResearchReportBase>.Success(fullReport));
     }
 
     #region Rendering Tests
 
     [Fact]
-    public void Renders_ReportSection()
+    public void Renders_ReportDocument_WhenLoaded()
     {
         // Arrange
         var report = CreateReport();
+        SetupFullReportMock(report);
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
-        // Assert
-        cut.Markup.Should().Contain("research-report");
+        // Assert - Wait for async load and check document is rendered
+        cut.WaitForState(() => cut.Markup.Contains("report-document"), TimeSpan.FromSeconds(2));
+        cut.Markup.Should().Contain("report-document");
     }
 
     [Fact]
@@ -49,41 +82,47 @@ public class TeamMessageReportTests : TestContext
         // Arrange
         var report = CreateReport();
         report.Title = "AI in Healthcare: A Comprehensive Analysis";
+        SetupFullReportMock(report);
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
         // Assert
+        cut.WaitForState(() => cut.Markup.Contains("document-title"), TimeSpan.FromSeconds(2));
         cut.Markup.Should().Contain("AI in Healthcare: A Comprehensive Analysis");
     }
 
     [Fact]
-    public void Renders_ReportIcon()
+    public void Renders_DocumentHeader()
     {
         // Arrange
         var report = CreateReport();
+        SetupFullReportMock(report);
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
         // Assert
-        cut.Markup.Should().Contain("report-icon");
+        cut.WaitForState(() => cut.Markup.Contains("document-header"), TimeSpan.FromSeconds(2));
+        cut.Markup.Should().Contain("document-header");
     }
 
     [Fact]
-    public void Renders_CompleteChip()
+    public void Renders_DocumentMeta()
     {
         // Arrange
         var report = CreateReport();
+        SetupFullReportMock(report);
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
         // Assert
-        cut.Markup.Should().Contain("Complete");
+        cut.WaitForState(() => cut.Markup.Contains("document-meta"), TimeSpan.FromSeconds(2));
+        cut.Markup.Should().Contain("document-meta");
     }
 
     #endregion
@@ -96,13 +135,15 @@ public class TeamMessageReportTests : TestContext
         // Arrange
         var report = CreateReport();
         report.ExecutiveSummary = "This report examines the latest developments in AI healthcare applications.";
+        SetupFullReportMock(report);
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
         // Assert
-        cut.Markup.Should().Contain("executive-summary");
+        cut.WaitForState(() => cut.Markup.Contains("executive-summary-section"), TimeSpan.FromSeconds(2));
+        cut.Markup.Should().Contain("executive-summary-section");
         cut.Markup.Should().Contain("This report examines the latest developments in AI healthcare applications.");
     }
 
@@ -112,13 +153,15 @@ public class TeamMessageReportTests : TestContext
         // Arrange
         var report = CreateReport();
         report.ExecutiveSummary = null;
+        SetupFullReportMockWithCustomReport(report, executiveSummary: null);
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
         // Assert
-        var summaryElements = cut.FindAll(".executive-summary");
+        cut.WaitForState(() => cut.Markup.Contains("report-document"), TimeSpan.FromSeconds(2));
+        var summaryElements = cut.FindAll(".executive-summary-section");
         summaryElements.Should().BeEmpty();
     }
 
@@ -128,79 +171,86 @@ public class TeamMessageReportTests : TestContext
         // Arrange
         var report = CreateReport();
         report.ExecutiveSummary = string.Empty;
+        SetupFullReportMockWithCustomReport(report, executiveSummary: string.Empty);
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
         // Assert
-        var summaryElements = cut.FindAll(".executive-summary");
+        cut.WaitForState(() => cut.Markup.Contains("report-document"), TimeSpan.FromSeconds(2));
+        var summaryElements = cut.FindAll(".executive-summary-section");
         summaryElements.Should().BeEmpty();
     }
 
     #endregion
 
-    #region Stats Tests
+    #region Findings and Sources Tests
 
     [Fact]
-    public void Renders_FindingCount()
+    public void Renders_FindingsSection_WhenFindingsExist()
     {
         // Arrange
         var report = CreateReport();
-        report.FindingCount = 12;
+        SetupFullReportMock(report);
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
         // Assert
-        cut.Markup.Should().Contain("12");
+        cut.WaitForState(() => cut.Markup.Contains("findings-list"), TimeSpan.FromSeconds(2));
+        cut.Markup.Should().Contain("findings-list");
         cut.Markup.Should().Contain("Key Findings");
     }
 
     [Fact]
-    public void Renders_SourceCount()
+    public void Renders_SourcesSection_WhenSourcesExist()
     {
         // Arrange
         var report = CreateReport();
-        report.SourceCount = 25;
+        SetupFullReportMock(report);
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
         // Assert
-        cut.Markup.Should().Contain("25");
-        cut.Markup.Should().Contain("Sources Cited");
+        cut.WaitForState(() => cut.Markup.Contains("sources-list"), TimeSpan.FromSeconds(2));
+        cut.Markup.Should().Contain("sources-list");
+        cut.Markup.Should().Contain("Sources");
     }
 
     [Fact]
-    public void Renders_Duration()
+    public void Renders_FindingsCount_InMeta()
     {
         // Arrange
         var report = CreateReport();
-        report.CreatedAt = DateTime.UtcNow.AddMinutes(-5);
+        SetupFullReportMock(report);
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
-        // Assert
-        cut.Markup.Should().Contain("Duration");
+        // Assert - The full report has 1 finding in our mock
+        cut.WaitForState(() => cut.Markup.Contains("1 findings"), TimeSpan.FromSeconds(2));
+        cut.Markup.Should().Contain("1 findings");
     }
 
     [Fact]
-    public void Renders_StatsSection()
+    public void Renders_SourcesCount_InMeta()
     {
         // Arrange
         var report = CreateReport();
+        SetupFullReportMock(report);
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
-        // Assert
-        cut.Markup.Should().Contain("report-stats");
+        // Assert - The full report has 1 source in our mock
+        cut.WaitForState(() => cut.Markup.Contains("1 sources"), TimeSpan.FromSeconds(2));
+        cut.Markup.Should().Contain("1 sources");
     }
 
     #endregion
@@ -208,114 +258,95 @@ public class TeamMessageReportTests : TestContext
     #region Action Button Tests
 
     [Fact]
-    public void Renders_ViewFullReportButton()
-    {
-        // Arrange
-        var report = CreateReport();
-
-        // Act
-        var cut = RenderComponent<TeamMessageReport>(parameters => parameters
-            .Add(p => p.Report, report));
-
-        // Assert
-        cut.Markup.Should().Contain("View Full Report");
-    }
-
-    [Fact]
     public void Renders_DownloadButton()
     {
         // Arrange
         var report = CreateReport();
+        SetupFullReportMock(report);
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
         // Assert
+        cut.WaitForState(() => cut.Markup.Contains("Download"), TimeSpan.FromSeconds(2));
         cut.Markup.Should().Contain("Download");
     }
 
     [Fact]
-    public void TogglesReportVisibility_OnViewFullReportClick()
+    public void Renders_CopyButton()
     {
         // Arrange
         var report = CreateReport();
+        SetupFullReportMock(report);
+
+        // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
-        // Assert initial state - no full report preview
-        var initialPreview = cut.FindAll(".full-report-preview");
-        initialPreview.Should().BeEmpty();
+        // Assert
+        cut.WaitForState(() => cut.Markup.Contains("Copy"), TimeSpan.FromSeconds(2));
+        cut.Markup.Should().Contain("Copy");
+    }
 
-        // Act - click view full report
-        var viewButton = cut.FindAll("button").First(b => b.TextContent.Contains("View Full Report"));
-        viewButton.Click();
+    [Fact]
+    public void Renders_TechnicalDetailsPanel()
+    {
+        // Arrange
+        var report = CreateReport();
+        SetupFullReportMock(report);
 
-        // Assert - full report preview shown
-        cut.Markup.Should().Contain("full-report-preview");
+        // Act
+        var cut = RenderComponent<TeamMessageReport>(parameters => parameters
+            .Add(p => p.Report, report));
 
-        // Act - click again (now shows "Hide Full Report")
-        var hideButton = cut.FindAll("button").First(b => b.TextContent.Contains("Hide Full Report"));
-        hideButton.Click();
-
-        // Assert - full report preview hidden
-        var finalPreview = cut.FindAll(".full-report-preview");
-        finalPreview.Should().BeEmpty();
+        // Assert
+        cut.WaitForState(() => cut.Markup.Contains("Technical Details"), TimeSpan.FromSeconds(2));
+        cut.Markup.Should().Contain("Technical Details");
     }
 
     #endregion
 
-    #region Report Meta Tests
+    #region Error Handling Tests
 
     [Fact]
-    public void Renders_ReportMeta()
+    public void Shows_FallbackContent_WhenLoadFails()
     {
-        // Arrange
+        // Arrange - Set up mock to return failure
         var report = CreateReport();
-        report.FindingCount = 5;
-        report.SourceCount = 10;
+        report.Title = "Fallback Report Title";
+
+        _researchApiMock
+            .Setup(x => x.GetReportAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ResearchReportBase>.Failure("Report not found"));
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
-        // Assert
-        cut.Markup.Should().Contain("5 findings");
-        cut.Markup.Should().Contain("10 sources");
-    }
-
-    #endregion
-
-    #region Edge Cases
-
-    [Fact]
-    public void Renders_WithZeroFindings()
-    {
-        // Arrange
-        var report = CreateReport();
-        report.FindingCount = 0;
-
-        // Act
-        var cut = RenderComponent<TeamMessageReport>(parameters => parameters
-            .Add(p => p.Report, report));
-
-        // Assert
-        cut.Markup.Should().Contain("0");
+        // Assert - Shows fallback with title
+        cut.WaitForState(() => cut.Markup.Contains("report-fallback"), TimeSpan.FromSeconds(2));
+        cut.Markup.Should().Contain("report-fallback");
+        cut.Markup.Should().Contain("Fallback Report Title");
     }
 
     [Fact]
-    public void Renders_WithZeroSources()
+    public void Shows_ErrorMessage_WhenLoadFails()
     {
-        // Arrange
+        // Arrange - Set up mock to return failure
         var report = CreateReport();
-        report.SourceCount = 0;
+
+        _researchApiMock
+            .Setup(x => x.GetReportAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ResearchReportBase>.Failure("Report not found"));
 
         // Act
         var cut = RenderComponent<TeamMessageReport>(parameters => parameters
             .Add(p => p.Report, report));
 
-        // Assert
-        cut.Markup.Should().Contain("0");
+        // Assert - Note: the component shows "Unable to load full report details" not "Failed to load report"
+        cut.WaitForState(() => cut.Markup.Contains("Unable to load"), TimeSpan.FromSeconds(2));
+        cut.Markup.Should().Contain("Unable to load full report details");
     }
 
     #endregion
@@ -333,6 +364,30 @@ public class TeamMessageReportTests : TestContext
             SourceCount = 10,
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    /// <summary>
+    /// Sets up the mock to return a full report with custom properties.
+    /// </summary>
+    private void SetupFullReportMockWithCustomReport(
+        ResearchReportSummaryBase summary,
+        string? executiveSummary = null,
+        List<ResearchFindingBase>? findings = null,
+        List<ResearchSourceBase>? bibliography = null)
+    {
+        var fullReport = new ResearchReportBase
+        {
+            Id = summary.Id,
+            Title = summary.Title,
+            ExecutiveSummary = executiveSummary,
+            CreatedAt = summary.CreatedAt,
+            Findings = findings ?? new List<ResearchFindingBase>(),
+            Bibliography = bibliography ?? new List<ResearchSourceBase>()
+        };
+
+        _researchApiMock
+            .Setup(x => x.GetReportAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ResearchReportBase>.Success(fullReport));
     }
 
     #endregion

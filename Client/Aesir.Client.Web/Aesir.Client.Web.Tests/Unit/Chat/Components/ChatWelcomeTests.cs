@@ -182,10 +182,17 @@ public class ChatWelcomeTests : TestContext
         // Act
         var cut = RenderComponent<ChatWelcome>();
 
-        // Assert - Input should be disabled
-        cut.WaitForState(() => !cut.Markup.Contains("Loading"));
-        var input = cut.Find("input, textarea");
-        input.HasAttribute("disabled").Should().BeTrue();
+        // Assert - Wait for component to finish loading (shows greeting-section when loaded)
+        cut.WaitForState(() => cut.Markup.Contains("greeting-section"), TimeSpan.FromSeconds(2));
+
+        // Find input or textarea within the MessageInput component
+        var inputs = cut.FindAll("input, textarea");
+        inputs.Should().NotBeEmpty("MessageInput should render an input element");
+
+        // When no agent is selected, the MessageInput's IsDisabled parameter is true
+        // which should disable the input element
+        var input = inputs.First();
+        input.HasAttribute("disabled").Should().BeTrue("input should be disabled when no agent is selected");
     }
 
     [Fact]

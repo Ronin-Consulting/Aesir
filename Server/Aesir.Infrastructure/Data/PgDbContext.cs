@@ -28,4 +28,42 @@ public class PgDbContext : IDbContext
     {
         return _dataSource.CreateConnection();
     }
+
+    /// <inheritdoc />
+    public async Task<T> UnitOfWorkAsync<T>(Func<IDbConnection, Task<T>> actionAsync, bool withTransaction = false)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        if (withTransaction)
+        {
+            using var transaction = connection.BeginTransaction();
+            var result = await actionAsync(connection);
+            transaction.Commit();
+
+            return result;
+        }
+        else
+        {
+            return await actionAsync(connection);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task UnitOfWorkAsync(Func<IDbConnection, Task> actionAsync, bool withTransaction = false)
+    {
+        using var connection = GetConnection();
+        connection.Open();
+
+        if (withTransaction)
+        {
+            using var transaction = connection.BeginTransaction();
+            await actionAsync(connection);
+            transaction.Commit();
+        }
+        else
+        {
+            await actionAsync(connection);
+        }
+    }
 }

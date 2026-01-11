@@ -130,9 +130,9 @@ public class ConfigurationServiceTests
 
         var agentId = Guid.NewGuid();
 
-        // Mock GetAgentAsync to return null
-        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirAgent?>>>()))
-            .ReturnsAsync((AesirAgent?)null);
+        // Mock GetAgentAsync to return null - use callback to invoke the func with null connection
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirAgent?>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AesirAgent?>> _, bool _) => Task.FromResult<AesirAgent?>(null));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<EntityNotFoundException>(
@@ -155,28 +155,20 @@ public class ConfigurationServiceTests
         var agentId = Guid.NewGuid();
         var agentName = "Research Assistant";
 
-        // Setup sequence: First call returns agent, second call returns reference count
-        var callCount = 0;
-        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<object>>>()))
-            .ReturnsAsync((Func<IDbConnection, Task<object>> _) =>
-            {
-                callCount++;
-                if (callCount == 1)
+        // Mock GetAgentAsync to return an agent (no inference engine to avoid ComputeIsThinkingAvailableAsync lookup)
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirAgent?>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AesirAgent?>> _, bool _) =>
+                Task.FromResult<AesirAgent?>(new AesirAgent { Id = Guid.NewGuid(), Name = agentName, ChatInferenceEngineId = null }));
+
+        // Mock reference count check to return TeamMemberCount > 0
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AgentReferenceCount>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AgentReferenceCount>> _, bool _) =>
+                Task.FromResult(new AgentReferenceCount
                 {
-                    // First call: GetAgentAsync
-                    return CreateAgent(Guid.NewGuid(), allowThinking: true, name: agentName);
-                }
-                else
-                {
-                    // Second call: Reference count check
-                    return new AgentReferenceCount
-                    {
-                        TeamMemberCount = 3,
-                        SubmissionCount = 0,
-                        ReviewCount = 0
-                    };
-                }
-            });
+                    TeamMemberCount = 3,
+                    SubmissionCount = 0,
+                    ReviewCount = 0
+                }));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ForeignKeyViolationException>(
@@ -201,25 +193,20 @@ public class ConfigurationServiceTests
         var agentId = Guid.NewGuid();
         var agentName = "Data Analyst";
 
-        var callCount = 0;
-        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<object>>>()))
-            .ReturnsAsync((Func<IDbConnection, Task<object>> _) =>
-            {
-                callCount++;
-                if (callCount == 1)
+        // Mock GetAgentAsync to return an agent (no inference engine to avoid ComputeIsThinkingAvailableAsync lookup)
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirAgent?>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AesirAgent?>> _, bool _) =>
+                Task.FromResult<AesirAgent?>(new AesirAgent { Id = Guid.NewGuid(), Name = agentName, ChatInferenceEngineId = null }));
+
+        // Mock reference count check to return SubmissionCount > 0
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AgentReferenceCount>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AgentReferenceCount>> _, bool _) =>
+                Task.FromResult(new AgentReferenceCount
                 {
-                    return CreateAgent(Guid.NewGuid(), allowThinking: true, name: agentName);
-                }
-                else
-                {
-                    return new AgentReferenceCount
-                    {
-                        TeamMemberCount = 0,
-                        SubmissionCount = 5,
-                        ReviewCount = 0
-                    };
-                }
-            });
+                    TeamMemberCount = 0,
+                    SubmissionCount = 5,
+                    ReviewCount = 0
+                }));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ForeignKeyViolationException>(
@@ -245,25 +232,20 @@ public class ConfigurationServiceTests
         var agentId = Guid.NewGuid();
         var agentName = "Reviewer Bot";
 
-        var callCount = 0;
-        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<object>>>()))
-            .ReturnsAsync((Func<IDbConnection, Task<object>> _) =>
-            {
-                callCount++;
-                if (callCount == 1)
+        // Mock GetAgentAsync to return an agent (no inference engine to avoid ComputeIsThinkingAvailableAsync lookup)
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirAgent?>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AesirAgent?>> _, bool _) =>
+                Task.FromResult<AesirAgent?>(new AesirAgent { Id = Guid.NewGuid(), Name = agentName, ChatInferenceEngineId = null }));
+
+        // Mock reference count check to return ReviewCount > 0
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AgentReferenceCount>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AgentReferenceCount>> _, bool _) =>
+                Task.FromResult(new AgentReferenceCount
                 {
-                    return CreateAgent(Guid.NewGuid(), allowThinking: true, name: agentName);
-                }
-                else
-                {
-                    return new AgentReferenceCount
-                    {
-                        TeamMemberCount = 0,
-                        SubmissionCount = 0,
-                        ReviewCount = 10
-                    };
-                }
-            });
+                    TeamMemberCount = 0,
+                    SubmissionCount = 0,
+                    ReviewCount = 10
+                }));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ForeignKeyViolationException>(
@@ -293,8 +275,8 @@ public class ConfigurationServiceTests
         var engineId = Guid.NewGuid();
 
         // Mock GetInferenceEngineAsync to return null
-        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirInferenceEngine?>>>()))
-            .ReturnsAsync((AesirInferenceEngine?)null);
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirInferenceEngine?>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AesirInferenceEngine?>> _, bool _) => Task.FromResult<AesirInferenceEngine?>(null));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<EntityNotFoundException>(
@@ -317,22 +299,14 @@ public class ConfigurationServiceTests
         var engineId = Guid.NewGuid();
         var engineName = "GPT-4 Engine";
 
-        var callCount = 0;
-        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<object>>>()))
-            .ReturnsAsync((Func<IDbConnection, Task<object>> _) =>
-            {
-                callCount++;
-                if (callCount == 1)
-                {
-                    // First call: GetInferenceEngineAsync
-                    return CreateInferenceEngine(engineId, InferenceEngineType.OpenAICompatible, name: engineName);
-                }
-                else
-                {
-                    // Second call: Agent count check
-                    return 7; // 7 agents using this engine
-                }
-            });
+        // Mock GetInferenceEngineAsync to return an engine
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirInferenceEngine?>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AesirInferenceEngine?>> _, bool _) =>
+                Task.FromResult<AesirInferenceEngine?>(CreateInferenceEngine(engineId, InferenceEngineType.OpenAICompatible, name: engineName)));
+
+        // Mock agent count check to return 7
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<int>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<int>> _, bool _) => Task.FromResult(7));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ForeignKeyViolationException>(
@@ -357,31 +331,23 @@ public class ConfigurationServiceTests
         var engineId = Guid.NewGuid();
         var engineName = "Embedding Engine";
 
-        var callCount = 0;
-        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<object>>>()))
-            .ReturnsAsync((Func<IDbConnection, Task<object>> _) =>
-            {
-                callCount++;
-                if (callCount == 1)
+        // Mock GetInferenceEngineAsync to return an engine
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirInferenceEngine?>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AesirInferenceEngine?>> _, bool _) =>
+                Task.FromResult<AesirInferenceEngine?>(CreateInferenceEngine(engineId, InferenceEngineType.OpenAICompatible, name: engineName)));
+
+        // Mock agent count check to return 0 (no agents)
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<int>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<int>> _, bool _) => Task.FromResult(0));
+
+        // Mock GetGeneralSettingsAsync to return engine as RAG embedding
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirGeneralSettings?>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AesirGeneralSettings?>> _, bool _) =>
+                Task.FromResult<AesirGeneralSettings?>(new AesirGeneralSettings
                 {
-                    // First call: GetInferenceEngineAsync
-                    return CreateInferenceEngine(engineId, InferenceEngineType.OpenAICompatible, name: engineName);
-                }
-                else if (callCount == 2)
-                {
-                    // Second call: Agent count check (0 agents)
-                    return 0;
-                }
-                else
-                {
-                    // Third call: GetGeneralSettingsAsync
-                    return new AesirGeneralSettings
-                    {
-                        RagEmbeddingInferenceEngineId = engineId, // This engine is configured as RAG embedding
-                        RagVisionInferenceEngineId = null
-                    };
-                }
-            });
+                    RagEmbeddingInferenceEngineId = engineId,
+                    RagVisionInferenceEngineId = null
+                }));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ForeignKeyViolationException>(
@@ -406,31 +372,23 @@ public class ConfigurationServiceTests
         var engineId = Guid.NewGuid();
         var engineName = "Vision Engine";
 
-        var callCount = 0;
-        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<object>>>()))
-            .ReturnsAsync((Func<IDbConnection, Task<object>> _) =>
-            {
-                callCount++;
-                if (callCount == 1)
+        // Mock GetInferenceEngineAsync to return an engine
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirInferenceEngine?>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AesirInferenceEngine?>> _, bool _) =>
+                Task.FromResult<AesirInferenceEngine?>(CreateInferenceEngine(engineId, InferenceEngineType.OpenAICompatible, name: engineName)));
+
+        // Mock agent count check to return 0 (no agents)
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<int>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<int>> _, bool _) => Task.FromResult(0));
+
+        // Mock GetGeneralSettingsAsync to return engine as RAG vision
+        _dbContextMock.Setup(x => x.UnitOfWorkAsync(It.IsAny<Func<IDbConnection, Task<AesirGeneralSettings?>>>(), It.IsAny<bool>()))
+            .Returns((Func<IDbConnection, Task<AesirGeneralSettings?>> _, bool _) =>
+                Task.FromResult<AesirGeneralSettings?>(new AesirGeneralSettings
                 {
-                    // First call: GetInferenceEngineAsync
-                    return CreateInferenceEngine(engineId, InferenceEngineType.OpenAICompatible, name: engineName);
-                }
-                else if (callCount == 2)
-                {
-                    // Second call: Agent count check (0 agents)
-                    return 0;
-                }
-                else
-                {
-                    // Third call: GetGeneralSettingsAsync
-                    return new AesirGeneralSettings
-                    {
-                        RagEmbeddingInferenceEngineId = null,
-                        RagVisionInferenceEngineId = engineId // This engine is configured as RAG vision
-                    };
-                }
-            });
+                    RagEmbeddingInferenceEngineId = null,
+                    RagVisionInferenceEngineId = engineId
+                }));
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ForeignKeyViolationException>(

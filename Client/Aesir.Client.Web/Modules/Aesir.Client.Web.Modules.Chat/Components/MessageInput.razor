@@ -1,5 +1,6 @@
 @using Aesir.Client.Web.Modules.Chat.Models
 @inject IChatStateService ChatState
+@inject IResearchStateService ResearchState
 @inject IAgentToolsService AgentToolsService
 @inject IDocumentApiService DocumentService
 @inject ISnackbar Snackbar
@@ -527,7 +528,7 @@
     private bool CanSend => !string.IsNullOrWhiteSpace(_message) &&
                             !IsDisabled &&
                             !IsLoading &&
-                            ChatState.SelectedAgent != null &&
+                            (ChatState.SelectedAgent != null || ResearchState.IsTeamSelected) &&
                             !_pendingFiles.Any(f => f.Status == UploadStatus.Uploading);
 
     private string AttachButtonTooltip => _isRagEnabled
