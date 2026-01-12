@@ -554,7 +554,8 @@
     protected override void OnInitialized()
     {
         ChatState.OnAgentChanged += HandleAgentChangedAsync;
-        // Check RAG status for currently selected agent
+        ResearchState.OnTeamChanged += HandleTeamChangedAsync;
+        // Check RAG status for currently selected agent or team
         _ = CheckRagEnabledAsync();
     }
 
@@ -581,8 +582,21 @@
         await InvokeAsync(StateHasChanged);
     }
 
+    private async void HandleTeamChangedAsync()
+    {
+        await CheckRagEnabledAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
     private async Task CheckRagEnabledAsync()
     {
+        // Research teams always support file attachments
+        if (ResearchState.IsTeamSelected)
+        {
+            _isRagEnabled = true;
+            return;
+        }
+
         var agent = ChatState.SelectedAgent;
         if (agent?.Id == null)
         {
@@ -866,6 +880,7 @@
     public async ValueTask DisposeAsync()
     {
         ChatState.OnAgentChanged -= HandleAgentChangedAsync;
+        ResearchState.OnTeamChanged -= HandleTeamChangedAsync;
 
         // Disable tab key insertion handler
         if (_tabInsertionEnabled)

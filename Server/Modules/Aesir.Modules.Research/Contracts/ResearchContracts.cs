@@ -77,6 +77,12 @@ public class ResearchSessionResponse
     public Guid? ResearchTeamId { get; set; }
 
     /// <summary>
+    /// The conversation/chat session ID this research is linked to.
+    /// </summary>
+    [JsonPropertyName("conversation_id")]
+    public Guid? ConversationId { get; set; }
+
+    /// <summary>
     /// The user who created the session.
     /// </summary>
     [JsonPropertyName("user_id")]
@@ -157,6 +163,7 @@ public class ResearchSessionResponse
         {
             Id = session.Id,
             ResearchTeamId = session.ResearchTeamId,
+            ConversationId = session.ConversationId,
             UserId = session.UserId,
             Query = session.Query,
             RefinedQuery = session.RefinedQuery,

@@ -20,6 +20,12 @@ public class ResearchSessionBase
     public Guid? ResearchTeamId { get; set; }
 
     /// <summary>
+    /// The conversation/chat session ID this research is linked to.
+    /// </summary>
+    [JsonPropertyName("conversation_id")]
+    public Guid? ConversationId { get; set; }
+
+    /// <summary>
     /// The user who created the session.
     /// </summary>
     [JsonPropertyName("user_id")]

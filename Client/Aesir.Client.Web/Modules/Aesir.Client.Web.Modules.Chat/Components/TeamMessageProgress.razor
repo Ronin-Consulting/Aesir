@@ -58,7 +58,7 @@
                     }
                     else if (status == "active")
                     {
-                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Secondary" Class="step-spinner" />
                     }
                     else
                     {
@@ -206,6 +206,12 @@
         justify-content: center;
         width: 24px;
         height: 24px;
+    }
+
+    .research-progress .step-spinner {
+        flex-shrink: 0;
+        width: 20px !important;
+        height: 20px !important;
     }
 
     .research-progress .phase-step.pending .step-indicator {

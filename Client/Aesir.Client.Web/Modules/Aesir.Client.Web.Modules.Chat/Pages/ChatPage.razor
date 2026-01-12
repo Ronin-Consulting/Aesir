@@ -485,6 +485,7 @@
             }
 
             // Restore any in-progress research session so progress is shown after page refresh
+            // Only show progress if the session belongs to this conversation
             if (!ResearchState.IsResearchInProgress)
             {
                 try
@@ -494,25 +495,36 @@
                     {
                         Console.WriteLine($"Restored in-progress research session: {ResearchState.ActiveSession.Id}");
 
-                        // Add a placeholder TeamMessage to show progress
-                        // This message was in client memory before refresh but not persisted to server
-                        var existingTeamMessage = _conversation.Messages
-                            .FirstOrDefault(m => m.IsResearchTeamMessage &&
-                                                 m.ResearchSessionId == ResearchState.ActiveSession.Id);
+                        // Only add a placeholder if this research session belongs to this conversation
+                        var currentConversationId = GetOrCreateConversationId();
+                        var sessionBelongsToConversation = ResearchState.ActiveSession.ConversationId == currentConversationId;
 
-                        if (existingTeamMessage == null)
+                        if (sessionBelongsToConversation)
                         {
-                            var teamMessage = AesirChatMessage.NewResearchTeamMessage(
-                                $"Research in progress: {ResearchState.ActiveSession.Query}",
-                                ResearchState.ActiveSession.Id,
-                                ResearchState.ActiveSession.ResearchTeamId ?? Guid.Empty,
-                                "Research Team");
-                            _conversation.Messages.Add(teamMessage);
-                            _hasMessages = true;
-                            Console.WriteLine("Added placeholder TeamMessage for restored research session");
-                        }
+                            // Add a placeholder TeamMessage to show progress
+                            // This message was in client memory before refresh but not persisted to server
+                            var existingTeamMessage = _conversation.Messages
+                                .FirstOrDefault(m => m.IsResearchTeamMessage &&
+                                                     m.ResearchSessionId == ResearchState.ActiveSession.Id);
 
-                        StateHasChanged();
+                            if (existingTeamMessage == null)
+                            {
+                                var teamMessage = AesirChatMessage.NewResearchTeamMessage(
+                                    $"Research in progress: {ResearchState.ActiveSession.Query}",
+                                    ResearchState.ActiveSession.Id,
+                                    ResearchState.ActiveSession.ResearchTeamId ?? Guid.Empty,
+                                    "Research Team");
+                                _conversation.Messages.Add(teamMessage);
+                                _hasMessages = true;
+                                Console.WriteLine("Added placeholder TeamMessage for restored research session");
+                            }
+
+                            StateHasChanged();
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Research session {ResearchState.ActiveSession.Id} belongs to conversation {ResearchState.ActiveSession.ConversationId}, not current {currentConversationId} - not adding placeholder");
+                        }
                     }
                 }
                 catch (Exception ex)
