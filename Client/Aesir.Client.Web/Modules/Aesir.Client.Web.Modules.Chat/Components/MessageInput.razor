@@ -130,7 +130,7 @@
                                Size="Size.Small"
                                Color="Color.Default"
                                OnClick="NavigateToHandsFree"
-                               Disabled="@HasPendingUnsubmittedFiles"
+                               Disabled="@(HasPendingUnsubmittedFiles || ResearchState.IsTeamSelected)"
                                Title="@HandsFreeButtonTooltip"
                                Class="hands-free-button" />
 
@@ -544,9 +544,11 @@
         f.Status == UploadStatus.Uploading ||
         f.Status == UploadStatus.Completed);
 
-    private string HandsFreeButtonTooltip => HasPendingUnsubmittedFiles
-        ? "Submit or remove attached files before using hands-free mode"
-        : "Hands-Free Mode";
+    private string HandsFreeButtonTooltip => ResearchState.IsTeamSelected
+        ? "Hands-free mode is not available for research teams"
+        : HasPendingUnsubmittedFiles
+            ? "Submit or remove attached files before using hands-free mode"
+            : "Hands-Free Mode";
 
     private ElementReference _textFieldWrapper;
     private bool _tabInsertionEnabled;
