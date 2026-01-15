@@ -126,8 +126,9 @@
         <MessageInput @ref="_messageInput"
                       OnSend="@SendMessageAsync"
                       OnSendWithFiles="@SendMessageWithFilesAsync"
-                      IsDisabled="@(_isStreaming || _isThinking || (ChatState.SelectedAgent == null && !ResearchState.IsTeamSelected) || _isLoadingSession || _isUploadingFiles)"
-                      IsLoading="@(_isStreaming || _isThinking || _isUploadingFiles)"
+                      IsDisabled="@(_isStreaming || _isThinking || (ChatState.SelectedAgent == null && !ResearchState.IsTeamSelected) || _isLoadingSession || _isUploadingFiles || ResearchState.IsResearchInProgress)"
+                      IsLoading="@(_isStreaming || _isThinking || _isUploadingFiles || ResearchState.IsResearchInProgress)"
+                      Placeholder="@(ResearchState.IsResearchInProgress ? "Research in progress..." : "How can I help you today?")"
                       GetConversationId="@GetOrCreateConversationId"
                       AvailableTools="@(ResearchState.IsTeamSelected ? Array.Empty<AesirToolBase>() : _agentTools)"
                       DisabledToolIds="@ChatState.DisabledToolIds"
@@ -484,47 +485,36 @@
                 StateHasChanged();
             }
 
-            // Restore any in-progress research session so progress is shown after page refresh
-            // Only show progress if the session belongs to this conversation
-            if (!ResearchState.IsResearchInProgress)
+            // Restore research session for current conversation (if any)
+            // This uses the conversation-aware method that queries by conversation ID
+            var currentConversationId = GetOrCreateConversationId();
+            if (currentConversationId != Guid.Empty && !ResearchState.IsResearchInProgress)
             {
                 try
                 {
-                    var restored = await ResearchState.RestoreActiveSessionAsync();
+                    var restored = await ResearchState.RestoreSessionForConversationAsync(currentConversationId);
                     if (restored && ResearchState.ActiveSession != null)
                     {
-                        Console.WriteLine($"Restored in-progress research session: {ResearchState.ActiveSession.Id}");
+                        Console.WriteLine($"Restored research session for conversation: {ResearchState.ActiveSession.Id}, Status={ResearchState.ActiveSession.Status}");
 
-                        // Only add a placeholder if this research session belongs to this conversation
-                        var currentConversationId = GetOrCreateConversationId();
-                        var sessionBelongsToConversation = ResearchState.ActiveSession.ConversationId == currentConversationId;
+                        // Add a placeholder TeamMessage to show progress if not already present
+                        var existingTeamMessage = _conversation.Messages
+                            .FirstOrDefault(m => m.IsResearchTeamMessage &&
+                                                 m.ResearchSessionId == ResearchState.ActiveSession.Id);
 
-                        if (sessionBelongsToConversation)
+                        if (existingTeamMessage == null)
                         {
-                            // Add a placeholder TeamMessage to show progress
-                            // This message was in client memory before refresh but not persisted to server
-                            var existingTeamMessage = _conversation.Messages
-                                .FirstOrDefault(m => m.IsResearchTeamMessage &&
-                                                     m.ResearchSessionId == ResearchState.ActiveSession.Id);
-
-                            if (existingTeamMessage == null)
-                            {
-                                var teamMessage = AesirChatMessage.NewResearchTeamMessage(
-                                    $"Research in progress: {ResearchState.ActiveSession.Query}",
-                                    ResearchState.ActiveSession.Id,
-                                    ResearchState.ActiveSession.ResearchTeamId ?? Guid.Empty,
-                                    "Research Team");
-                                _conversation.Messages.Add(teamMessage);
-                                _hasMessages = true;
-                                Console.WriteLine("Added placeholder TeamMessage for restored research session");
-                            }
-
-                            StateHasChanged();
+                            var teamMessage = AesirChatMessage.NewResearchTeamMessage(
+                                $"Research: {ResearchState.ActiveSession.Query}",
+                                ResearchState.ActiveSession.Id,
+                                ResearchState.ActiveSession.ResearchTeamId ?? Guid.Empty,
+                                "Research Team");
+                            _conversation.Messages.Add(teamMessage);
+                            _hasMessages = true;
+                            Console.WriteLine("Added placeholder TeamMessage for restored research session");
                         }
-                        else
-                        {
-                            Console.WriteLine($"Research session {ResearchState.ActiveSession.Id} belongs to conversation {ResearchState.ActiveSession.ConversationId}, not current {currentConversationId} - not adding placeholder");
-                        }
+
+                        StateHasChanged();
                     }
                 }
                 catch (Exception ex)
@@ -620,6 +610,30 @@
                 // Restore tool toggles for this session from localStorage
                 await ChatState.RestoreToolTogglesForSessionAsync(sessionId);
                 _hasRestoredToolTogglesForSession = true;
+
+                // Restore research session for this conversation (if any)
+                var restored = await ResearchState.RestoreSessionForConversationAsync(sessionId);
+
+                // Add TeamMessage placeholder if research session was restored and is in-progress
+                // This ensures the progress UI renders when navigating back to an active research conversation
+                if (restored && ResearchState.ActiveSession != null && ResearchState.IsResearchInProgress)
+                {
+                    var existingTeamMessage = _conversation.Messages
+                        .FirstOrDefault(m => m.IsResearchTeamMessage &&
+                                             m.ResearchSessionId == ResearchState.ActiveSession.Id);
+
+                    if (existingTeamMessage == null)
+                    {
+                        Console.WriteLine($"[CHAT-PAGE] Adding TeamMessage placeholder for restored in-progress research: {ResearchState.ActiveSession.Id}");
+                        var teamMessage = AesirChatMessage.NewResearchTeamMessage(
+                            $"Research: {ResearchState.ActiveSession.Query}",
+                            ResearchState.ActiveSession.Id,
+                            ResearchState.ActiveSession.ResearchTeamId ?? Guid.Empty,
+                            "Research Team");
+                        _conversation.Messages.Add(teamMessage);
+                        _hasMessages = true;
+                    }
+                }
 
                 await ScrollToBottomAsync();
             }
@@ -1198,6 +1212,25 @@
 
             if (session != null)
             {
+                // Update URL and ChatState with the new session ID (similar to regular chat flow)
+                // This ensures:
+                // 1. Browser URL shows the correct session ID
+                // 2. When navigating back to this conversation, LoadSessionAsync uses the correct ID
+                // 3. RestoreSessionForConversationAsync can find the research session
+                if (session.ConversationId.HasValue && session.ConversationId.Value != Guid.Empty)
+                {
+                    var chatSessionId = session.ConversationId.Value;
+
+                    // Update ChatState and local tracking
+                    ChatState.SetCurrentSession(chatSessionId);
+                    _previousSessionId = chatSessionId;
+                    _conversation.Id = chatSessionId.ToString();
+
+                    // Update browser URL without forcing navigation
+                    var newUrl = NavigationManager.GetUriWithQueryParameter("session", chatSessionId.ToString());
+                    NavigationManager.NavigateTo(newUrl, forceLoad: false, replace: true);
+                }
+
                 // Create a team message to show the research is in progress
                 var teamMessage = AesirChatMessage.NewResearchTeamMessage(
                     $"Research started: {message}",
@@ -1578,11 +1611,27 @@
     {
         InvokeAsync(async () =>
         {
-            // Note: Do NOT add the report message here - the server already persists it
-            // via ResearchOrchestrator.AddReportToChatSessionAsync. Adding it here would
-            // cause duplicate messages. The persisted message is loaded via RefreshSessionAsync.
+            // The server persists the research report as an assistant message via
+            // ResearchOrchestrator.AddReportToChatSessionAsync. We need to reload
+            // the chat session to get this new message.
 
             ResearchState.ClearSession();
+
+            // Get the current session ID to reload
+            var sessionId = ChatState.CurrentSessionId ?? _previousSessionId;
+
+            if (sessionId.HasValue)
+            {
+                // Reload the session from the server to get the persisted research report
+                var result = await HistoryService.GetSessionAsync(sessionId.Value);
+
+                if (result.IsSuccess && result.Value?.Conversation != null)
+                {
+                    _conversation = result.Value.Conversation;
+                    _hasMessages = _conversation.Messages.Any(m => m.Role != "system");
+                }
+            }
+
             StateHasChanged();
             await ScrollToBottomAsync();
         });

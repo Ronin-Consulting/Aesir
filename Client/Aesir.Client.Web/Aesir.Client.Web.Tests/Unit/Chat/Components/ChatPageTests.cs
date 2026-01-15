@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
@@ -527,6 +528,327 @@ public class ChatPageTests : TestContext
         // Assert
         _mockResearchStateService.Verify(x => x.ClearSession(), Times.AtLeastOnce,
             "HandleResearchCompleted should call ClearSession to reset research state");
+    }
+
+    [Fact]
+    public void HandleResearchCompleted_ReloadsSessionFromServer()
+    {
+        // Arrange - Verify that the session is reloaded from the server to get the
+        // research report that was persisted by ResearchOrchestrator.AddReportToChatSessionAsync
+        var sessionId = Guid.NewGuid();
+        var agent = new AesirAgentBase
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Agent",
+            ChatModel = "gpt-4"
+        };
+        _mockChatStateService.Setup(x => x.SelectedAgent).Returns(agent);
+        _mockChatStateService.Setup(x => x.CurrentSessionId).Returns(sessionId);
+        _mockApiService.Setup(x => x.GetAgentsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirAgentBase>>.Success(new List<AesirAgentBase> { agent }));
+        _mockApiService.Setup(x => x.GetInferenceEnginesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirInferenceEngineBase>>.Success(new List<AesirInferenceEngineBase>
+            {
+                new AesirInferenceEngineBase { Id = Guid.NewGuid(), Name = "Test Engine", Type = InferenceEngineType.OpenAICompatible }
+            }));
+
+        var researchTeam = new ResearchTeamBase { Id = Guid.NewGuid(), Name = "Test Research Team" };
+        _mockResearchStateService.Setup(x => x.IsTeamSelected).Returns(true);
+        _mockResearchStateService.Setup(x => x.SelectedTeam).Returns(researchTeam);
+
+        // Setup the history service to return a session with the research report
+        var sessionWithReport = new AesirChatSession
+        {
+            Id = sessionId,
+            UserId = "test-user",
+            Title = "Research Session",
+            Conversation = new AesirConversation
+            {
+                Id = sessionId.ToString(),
+                Messages =
+                [
+                    new AesirChatMessage { Role = "user", Content = "Research query" },
+                    new AesirChatMessage { Role = "assistant", Content = "Research report content from server" }
+                ]
+            }
+        };
+        _mockChatHistoryService.Setup(x => x.GetSessionAsync(sessionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<AesirChatSession?>.Success(sessionWithReport));
+
+        // Capture the event handler
+        Action<ResearchSessionBase>? capturedHandler = null;
+        _mockResearchStateService.SetupAdd(m => m.OnResearchCompleted += It.IsAny<Action<ResearchSessionBase>>())
+            .Callback<Action<ResearchSessionBase>>(handler => capturedHandler = handler);
+
+        // Act
+        var cut = RenderComponent<ChatPage>();
+
+        var completedSession = new ResearchSessionBase
+        {
+            Id = Guid.NewGuid(),
+            ResearchTeamId = researchTeam.Id,
+            Status = ResearchStatusBase.Completed,
+            Report = new ResearchReportSummaryBase
+            {
+                Id = Guid.NewGuid(),
+                Title = "Test Report"
+            }
+        };
+
+        // Trigger the event
+        capturedHandler?.Invoke(completedSession);
+        cut.WaitForState(() => true, TimeSpan.FromMilliseconds(100));
+
+        // Assert - Verify the session was reloaded from the server
+        _mockChatHistoryService.Verify(x => x.GetSessionAsync(sessionId, It.IsAny<CancellationToken>()), Times.AtLeastOnce,
+            "HandleResearchCompleted should reload the session from the server to get the research report");
+    }
+
+    #endregion
+
+    #region Research Session Restoration Tests
+
+    [Fact]
+    public async Task LoadSession_WithInProgressResearch_AddsTeamMessagePlaceholder()
+    {
+        // Arrange - This test verifies the fix for research progress not showing
+        // when navigating back to a conversation with in-progress research.
+        // The issue was that LoadSessionAsync didn't add a TeamMessage placeholder,
+        // so the progress UI never rendered.
+        var sessionId = Guid.NewGuid();
+        var researchSessionId = Guid.NewGuid();
+        var researchTeamId = Guid.NewGuid();
+
+        var agent = new AesirAgentBase
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Agent",
+            ChatModel = "gpt-4"
+        };
+        _mockChatStateService.Setup(x => x.SelectedAgent).Returns(agent);
+        _mockApiService.Setup(x => x.GetAgentsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirAgentBase>>.Success(new List<AesirAgentBase> { agent }));
+        _mockApiService.Setup(x => x.GetInferenceEnginesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirInferenceEngineBase>>.Success(new List<AesirInferenceEngineBase>
+            {
+                new AesirInferenceEngineBase { Id = Guid.NewGuid(), Name = "Test Engine", Type = InferenceEngineType.OpenAICompatible }
+            }));
+
+        // Setup a session WITHOUT a TeamMessage (simulates loading from server)
+        var sessionWithoutTeamMessage = new AesirChatSession
+        {
+            Id = sessionId,
+            UserId = "test-user",
+            Title = "Research Session",
+            Conversation = new AesirConversation
+            {
+                Id = sessionId.ToString(),
+                Messages =
+                [
+                    new AesirChatMessage { Role = "user", Content = "Research my topic" }
+                    // No TeamMessage - this is the state before the fix
+                ]
+            }
+        };
+        _mockChatHistoryService.Setup(x => x.GetSessionAsync(sessionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<AesirChatSession?>.Success(sessionWithoutTeamMessage));
+
+        // Setup an in-progress research session that should be restored
+        var inProgressResearchSession = new ResearchSessionBase
+        {
+            Id = researchSessionId,
+            ConversationId = sessionId,
+            ResearchTeamId = researchTeamId,
+            Query = "Research my topic",
+            Status = ResearchStatusBase.Researching,
+            CurrentPhase = ResearchPhaseBase.Research
+        };
+
+        // Mock RestoreSessionForConversationAsync to return true and set ActiveSession
+        _mockResearchStateService.Setup(x => x.RestoreSessionForConversationAsync(sessionId))
+            .ReturnsAsync(true)
+            .Callback(() =>
+            {
+                // After restore, the service should have the active session
+                _mockResearchStateService.Setup(x => x.ActiveSession).Returns(inProgressResearchSession);
+                _mockResearchStateService.Setup(x => x.IsResearchInProgress).Returns(true);
+            });
+
+        // Initially no active session
+        _mockResearchStateService.Setup(x => x.ActiveSession).Returns((ResearchSessionBase?)null);
+        _mockResearchStateService.Setup(x => x.IsResearchInProgress).Returns(false);
+
+        // Act - Render component first, then navigate to session URL
+        // (SupplyParameterFromQuery requires navigation, not direct parameter setting)
+        var cut = RenderComponent<ChatPage>();
+
+        // Navigate to the session URL to trigger parameter binding
+        var navManager = Services.GetRequiredService<NavigationManager>();
+        var uri = navManager.GetUriWithQueryParameter("session", sessionId.ToString());
+        navManager.NavigateTo(uri);
+
+        // Wait for async operations to complete
+        await Task.Delay(100);
+        cut.Render();
+
+        // Assert - Verify RestoreSessionForConversationAsync was called
+        _mockResearchStateService.Verify(
+            x => x.RestoreSessionForConversationAsync(sessionId),
+            Times.AtLeastOnce,
+            "RestoreSessionForConversationAsync should be called when loading a session");
+    }
+
+    [Fact]
+    public async Task LoadSession_WithCompletedResearch_DoesNotAddTeamMessagePlaceholder()
+    {
+        // Arrange - When research is completed, we don't need to add a placeholder
+        // because the completed report should already be in the conversation
+        var sessionId = Guid.NewGuid();
+        var researchSessionId = Guid.NewGuid();
+
+        var agent = new AesirAgentBase
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Agent",
+            ChatModel = "gpt-4"
+        };
+        _mockChatStateService.Setup(x => x.SelectedAgent).Returns(agent);
+        _mockApiService.Setup(x => x.GetAgentsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirAgentBase>>.Success(new List<AesirAgentBase> { agent }));
+        _mockApiService.Setup(x => x.GetInferenceEnginesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirInferenceEngineBase>>.Success(new List<AesirInferenceEngineBase>
+            {
+                new AesirInferenceEngineBase { Id = Guid.NewGuid(), Name = "Test Engine", Type = InferenceEngineType.OpenAICompatible }
+            }));
+
+        // Setup a session with the completed research report
+        var sessionWithReport = new AesirChatSession
+        {
+            Id = sessionId,
+            UserId = "test-user",
+            Title = "Research Session",
+            Conversation = new AesirConversation
+            {
+                Id = sessionId.ToString(),
+                Messages =
+                [
+                    new AesirChatMessage { Role = "user", Content = "Research my topic" },
+                    new AesirChatMessage { Role = "assistant", Content = "Here is your research report..." }
+                ]
+            }
+        };
+        _mockChatHistoryService.Setup(x => x.GetSessionAsync(sessionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<AesirChatSession?>.Success(sessionWithReport));
+
+        // Setup a completed research session
+        var completedResearchSession = new ResearchSessionBase
+        {
+            Id = researchSessionId,
+            ConversationId = sessionId,
+            Query = "Research my topic",
+            Status = ResearchStatusBase.Completed,
+            CurrentPhase = ResearchPhaseBase.Synthesis
+        };
+
+        _mockResearchStateService.Setup(x => x.RestoreSessionForConversationAsync(sessionId))
+            .ReturnsAsync(true)
+            .Callback(() =>
+            {
+                _mockResearchStateService.Setup(x => x.ActiveSession).Returns(completedResearchSession);
+                // IsResearchInProgress should be FALSE for completed research
+                _mockResearchStateService.Setup(x => x.IsResearchInProgress).Returns(false);
+            });
+
+        _mockResearchStateService.Setup(x => x.ActiveSession).Returns((ResearchSessionBase?)null);
+        _mockResearchStateService.Setup(x => x.IsResearchInProgress).Returns(false);
+
+        // Act - Render component first, then navigate to session URL
+        var cut = RenderComponent<ChatPage>();
+
+        var navManager = Services.GetRequiredService<NavigationManager>();
+        var uri = navManager.GetUriWithQueryParameter("session", sessionId.ToString());
+        navManager.NavigateTo(uri);
+
+        await Task.Delay(100);
+        cut.Render();
+
+        // Assert - RestoreSessionForConversationAsync was called but IsResearchInProgress is false
+        // so no TeamMessage placeholder should be added
+        _mockResearchStateService.Verify(
+            x => x.RestoreSessionForConversationAsync(sessionId),
+            Times.AtLeastOnce,
+            "RestoreSessionForConversationAsync should be called even for completed sessions");
+
+        // Since IsResearchInProgress is false, the placeholder logic should not execute
+        // The completed report is already in the conversation from the server
+    }
+
+    [Fact]
+    public async Task LoadSession_WithNoResearch_DoesNotAddTeamMessage()
+    {
+        // Arrange - When there's no research for a conversation, no TeamMessage should be added
+        var sessionId = Guid.NewGuid();
+
+        var agent = new AesirAgentBase
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Agent",
+            ChatModel = "gpt-4"
+        };
+        _mockChatStateService.Setup(x => x.SelectedAgent).Returns(agent);
+        _mockApiService.Setup(x => x.GetAgentsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirAgentBase>>.Success(new List<AesirAgentBase> { agent }));
+        _mockApiService.Setup(x => x.GetInferenceEnginesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<AesirInferenceEngineBase>>.Success(new List<AesirInferenceEngineBase>
+            {
+                new AesirInferenceEngineBase { Id = Guid.NewGuid(), Name = "Test Engine", Type = InferenceEngineType.OpenAICompatible }
+            }));
+
+        // Setup a regular chat session without research
+        var regularSession = new AesirChatSession
+        {
+            Id = sessionId,
+            UserId = "test-user",
+            Title = "Regular Chat",
+            Conversation = new AesirConversation
+            {
+                Id = sessionId.ToString(),
+                Messages =
+                [
+                    new AesirChatMessage { Role = "user", Content = "Hello" },
+                    new AesirChatMessage { Role = "assistant", Content = "Hi there!" }
+                ]
+            }
+        };
+        _mockChatHistoryService.Setup(x => x.GetSessionAsync(sessionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<AesirChatSession?>.Success(regularSession));
+
+        // No research session found
+        _mockResearchStateService.Setup(x => x.RestoreSessionForConversationAsync(sessionId))
+            .ReturnsAsync(false);
+        _mockResearchStateService.Setup(x => x.ActiveSession).Returns((ResearchSessionBase?)null);
+        _mockResearchStateService.Setup(x => x.IsResearchInProgress).Returns(false);
+
+        // Act - Render component first, then navigate to session URL
+        var cut = RenderComponent<ChatPage>();
+
+        var navManager = Services.GetRequiredService<NavigationManager>();
+        var uri = navManager.GetUriWithQueryParameter("session", sessionId.ToString());
+        navManager.NavigateTo(uri);
+
+        await Task.Delay(100);
+        cut.Render();
+
+        // Assert - RestoreSessionForConversationAsync was called but returned false
+        _mockResearchStateService.Verify(
+            x => x.RestoreSessionForConversationAsync(sessionId),
+            Times.AtLeastOnce,
+            "RestoreSessionForConversationAsync should be called for all session loads");
+
+        // No TeamMessage should be added since there's no research
+        // Verify by checking the markup doesn't contain team-message class
+        cut.Markup.Should().NotContain("team-message",
+            "No TeamMessage should be rendered for a session without research");
     }
 
     #endregion

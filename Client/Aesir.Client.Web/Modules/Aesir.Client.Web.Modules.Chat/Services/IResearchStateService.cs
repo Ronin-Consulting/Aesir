@@ -152,4 +152,12 @@ public interface IResearchStateService : IDisposable
     /// </summary>
     /// <returns>True if an active session was restored.</returns>
     Task<bool> RestoreActiveSessionAsync();
+
+    /// <summary>
+    /// Restores a research session for a specific conversation if one exists.
+    /// Called when navigating to a conversation to resume viewing in-progress or completed research.
+    /// </summary>
+    /// <param name="conversationId">The conversation ID to restore session for.</param>
+    /// <returns>True if a session was restored.</returns>
+    Task<bool> RestoreSessionForConversationAsync(Guid conversationId);
 }

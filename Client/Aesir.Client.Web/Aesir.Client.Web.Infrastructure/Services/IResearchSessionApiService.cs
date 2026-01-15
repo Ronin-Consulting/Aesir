@@ -25,6 +25,13 @@ public interface IResearchSessionApiService
     Task<ApiResult<ResearchSessionBase>> GetSessionAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
+    /// Gets all research sessions for a specific conversation.
+    /// </summary>
+    /// <param name="conversationId">The conversation ID to filter by.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<ApiResult<ResearchSessionListBase>> GetSessionsByConversationAsync(Guid conversationId, CancellationToken ct = default);
+
+    /// <summary>
     /// Gets the full report for a session.
     /// </summary>
     /// <param name="sessionId">The session ID.</param>

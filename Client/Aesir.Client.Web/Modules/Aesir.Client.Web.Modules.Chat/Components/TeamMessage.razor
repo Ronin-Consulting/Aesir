@@ -72,6 +72,7 @@
                                           Variant="Variant.Outlined"
                                           Lines="2"
                                           FullWidth="true"
+                                          Disabled="_isSubmittingClarification"
                                           Class="question-input" />
                         </div>
                     }
@@ -80,8 +81,16 @@
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
                                OnClick="SubmitClarification"
-                               Disabled="@(!HasAllAnswers)">
-                        Submit Answers
+                               Disabled="@(!HasAllAnswers || _isSubmittingClarification)">
+                        @if (_isSubmittingClarification)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Submitting...</span>
+                        }
+                        else
+                        {
+                            <span>Submit Answers</span>
+                        }
                     </MudButton>
                 </div>
             </div>
@@ -417,6 +426,7 @@
 @code {
     private bool _detailsExpanded = false;
     private Dictionary<string, string> _clarificationAnswers = new();
+    private bool _isSubmittingClarification = false;
 
     [Parameter]
     public required AesirChatMessage Message { get; set; }
@@ -528,10 +538,18 @@
 
     private async Task SubmitClarification()
     {
-        if (!HasAllAnswers) return;
+        if (!HasAllAnswers || _isSubmittingClarification) return;
 
-        await ResearchState.SubmitClarificationAsync(_clarificationAnswers);
-        // Don't clear answers here - let OnParametersSet clear them when status changes
+        _isSubmittingClarification = true;
+        try
+        {
+            await ResearchState.SubmitClarificationAsync(_clarificationAnswers);
+            // Don't clear answers here - let OnParametersSet clear them when status changes
+        }
+        finally
+        {
+            _isSubmittingClarification = false;
+        }
     }
 
     private void ToggleDetails()

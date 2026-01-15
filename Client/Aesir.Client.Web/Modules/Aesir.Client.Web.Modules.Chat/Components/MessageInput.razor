@@ -528,6 +528,7 @@
     private bool CanSend => !string.IsNullOrWhiteSpace(_message) &&
                             !IsDisabled &&
                             !IsLoading &&
+                            !ResearchState.IsResearchInProgress &&
                             (ChatState.SelectedAgent != null || ResearchState.IsTeamSelected) &&
                             !_pendingFiles.Any(f => f.Status == UploadStatus.Uploading);
 

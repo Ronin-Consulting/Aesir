@@ -116,8 +116,17 @@ public class ResearchSessionRepository(
             WHERE conversation_id = @ConversationId
             ORDER BY created_at DESC";
 
-        return await dbContext.UnitOfWorkAsync(async connection =>
+        var sessions = await dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryAsync<ResearchSession>(sql, new { ConversationId = conversationId }).ConfigureAwait(false)).ConfigureAwait(false);
+
+        // Load reports for completed sessions
+        var sessionList = sessions.ToList();
+        foreach (var session in sessionList.Where(s => s.Status == ResearchStatus.Completed))
+        {
+            session.Report = await GetReportBySessionIdAsync(session.Id).ConfigureAwait(false);
+        }
+
+        return sessionList;
     }
 
     /// <inheritdoc />

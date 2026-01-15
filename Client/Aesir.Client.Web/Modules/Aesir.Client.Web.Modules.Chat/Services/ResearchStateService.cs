@@ -626,6 +626,86 @@ public class ResearchStateService : IResearchStateService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<bool> RestoreSessionForConversationAsync(Guid conversationId)
+    {
+        _logger?.LogDebug("[RESEARCH-UI] RestoreSessionForConversationAsync called for conversation: {ConversationId}", conversationId);
+
+        try
+        {
+            // Query for research sessions linked to this conversation
+            var result = await _sessionApi.GetSessionsByConversationAsync(conversationId);
+
+            if (!result.IsSuccess || result.Value?.Sessions == null || result.Value.Sessions.Count == 0)
+            {
+                _logger?.LogDebug("[RESEARCH-UI] No research sessions found for conversation {ConversationId}", conversationId);
+                // Clear active session if navigating to a conversation without research
+                ClearSession();
+                return false;
+            }
+
+            // Prioritize in-progress sessions over completed ones
+            var inProgressSession = result.Value.Sessions.FirstOrDefault(s =>
+                s.Status != ResearchStatusBase.Completed &&
+                s.Status != ResearchStatusBase.Failed &&
+                s.Status != ResearchStatusBase.Cancelled);
+
+            // Fall back to most recent completed session if no in-progress
+            var sessionToRestore = inProgressSession ?? result.Value.Sessions.FirstOrDefault(s =>
+                s.Status == ResearchStatusBase.Completed);
+
+            if (sessionToRestore == null)
+            {
+                _logger?.LogDebug("[RESEARCH-UI] No active or completed research sessions for conversation");
+                ClearSession();
+                return false;
+            }
+
+            _logger?.LogInformation("[RESEARCH-UI] Found research session for conversation: {SessionId}, Status={Status}",
+                sessionToRestore.Id, sessionToRestore.Status);
+
+            // Restore the session
+            ActiveSession = sessionToRestore;
+            CurrentProgressMessage = GetStatusMessage(sessionToRestore.Status);
+            CurrentProgressPercent = sessionToRestore.Status == ResearchStatusBase.Completed
+                ? 100
+                : EstimateProgressFromPhase(sessionToRestore.CurrentPhase ?? ResearchPhaseBase.Planning);
+            _activeAgents.Clear(); // Will be populated by SignalR events if in-progress
+
+            // Only reconnect to SignalR for in-progress sessions
+            var isInProgress = sessionToRestore.Status != ResearchStatusBase.Completed &&
+                               sessionToRestore.Status != ResearchStatusBase.Failed &&
+                               sessionToRestore.Status != ResearchStatusBase.Cancelled;
+
+            if (isInProgress)
+            {
+                if (!_signalRService.IsConnected)
+                {
+                    _logger?.LogDebug("[RESEARCH-UI] Connecting to SignalR for session updates...");
+                    await _signalRService.ConnectAsync();
+                }
+
+                if (_signalRService.IsConnected)
+                {
+                    _logger?.LogDebug("[RESEARCH-UI] Subscribing to SignalR session: {SessionId}", sessionToRestore.Id);
+                    await _signalRService.SubscribeToSessionAsync(sessionToRestore.Id);
+                }
+            }
+
+            OnSessionChanged?.Invoke();
+
+            _logger?.LogInformation("[RESEARCH-UI] Successfully restored research session for conversation: {SessionId}",
+                sessionToRestore.Id);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[RESEARCH-UI] Error restoring session for conversation {ConversationId}", conversationId);
+            return false;
+        }
+    }
+
     /// <summary>
     /// Estimates progress percentage based on current phase.
     /// Uses the shared helper from Aesir.Common for consistent progress estimation.

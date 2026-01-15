@@ -71,6 +71,32 @@ public class ResearchController(
     }
 
     /// <summary>
+    /// Gets all research sessions for a specific conversation.
+    /// </summary>
+    /// <param name="conversationId">The conversation ID to filter by.</param>
+    /// <returns>A list of research sessions for the conversation.</returns>
+    [HttpGet("conversation/{conversationId:guid}")]
+    public async Task<IActionResult> GetSessionsByConversation(Guid conversationId)
+    {
+        try
+        {
+            var sessions = await sessionRepository.GetByConversationIdAsync(conversationId);
+            var sessionList = sessions.ToList();
+            var response = new ResearchSessionListResponse
+            {
+                Sessions = sessionList.Select(ResearchSessionResponse.FromSession).ToList(),
+                TotalCount = sessionList.Count
+            };
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving research sessions for conversation {ConversationId}", conversationId);
+            return StatusCode(500, "An error occurred while retrieving research sessions");
+        }
+    }
+
+    /// <summary>
     /// Gets the full report for a completed research session.
     /// </summary>
     /// <param name="id">The session ID.</param>
