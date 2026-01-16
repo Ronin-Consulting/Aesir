@@ -37,5 +37,11 @@ public class AesirChatSessionItem
     [JsonPropertyName("is_starred")]
     public bool IsStarred { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether the chat session has research in progress.
+    /// </summary>
+    [JsonPropertyName("has_research_in_progress")]
+    public bool HasResearchInProgress { get; set; }
+
     public string UpdatedAtDisplay=> UpdatedAt.ToString("g");
 }

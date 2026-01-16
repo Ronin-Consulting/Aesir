@@ -1625,11 +1625,24 @@
                 // Reload the session from the server to get the persisted research report
                 var result = await HistoryService.GetSessionAsync(sessionId.Value);
 
-                if (result.IsSuccess && result.Value?.Conversation != null)
+                if (result.IsSuccess && result.Value != null)
                 {
-                    _conversation = result.Value.Conversation;
-                    _hasMessages = _conversation.Messages.Any(m => m.Role != "system");
+                    if (result.Value.Conversation != null)
+                    {
+                        _conversation = result.Value.Conversation;
+                        _hasMessages = _conversation.Messages.Any(m => m.Role != "system");
+                    }
+
+                    // Update the header title if the server returned a new title
+                    if (!string.IsNullOrEmpty(result.Value.Title))
+                    {
+                        _sessionTitle = result.Value.Title;
+                        ChatState.SetCurrentSessionTitle(result.Value.Title);
+                    }
                 }
+
+                // Notify history service to refresh the sidebar with updated title
+                await HistoryService.NotifySessionUpdatedAsync(sessionId.Value);
             }
 
             StateHasChanged();

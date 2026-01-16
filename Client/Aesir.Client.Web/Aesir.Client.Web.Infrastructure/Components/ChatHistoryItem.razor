@@ -5,9 +5,15 @@
      @onmouseleave="() => _isHovered = false"
      @onclick="HandleClick">
     <div class="item-content">
-        <MudIcon Icon="@Icons.Material.Filled.ChatBubbleOutline"
-                 Size="Size.Small"
-                 Class="item-icon" />
+        <div class="item-icon-wrapper">
+            <MudIcon Icon="@Icons.Material.Filled.ChatBubbleOutline"
+                     Size="Size.Small"
+                     Class="item-icon" />
+            @if (Session.HasResearchInProgress)
+            {
+                <div class="research-badge" title="Research in progress"></div>
+            }
+        </div>
         <div class="item-text">
             @if (_isRenaming)
             {
@@ -109,9 +115,37 @@
         min-width: 0;
     }
 
-    .item-icon {
+    .item-icon-wrapper {
+        position: relative;
         flex-shrink: 0;
+    }
+
+    .item-icon {
         color: var(--mud-palette-text-secondary);
+    }
+
+    .research-badge {
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        width: 8px;
+        height: 8px;
+        background-color: var(--mud-palette-secondary);
+        border-radius: 50%;
+        border: 2px solid var(--mud-palette-background);
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+        animation: research-pulse 2s ease-in-out infinite;
+    }
+
+    @@keyframes research-pulse {
+        0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.6;
+            transform: scale(1.1);
+        }
     }
 
     .item-text {

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Aesir.Common.Models;
 
 namespace Aesir.Modules.Chat.Models;
@@ -14,4 +15,11 @@ public class AesirChatSession : AesirChatSessionBase
     {
         Title = "Chat Session (Server)";
     }
+
+    /// <summary>
+    /// Gets or sets whether the chat session has research in progress.
+    /// This is computed from the research_session table.
+    /// </summary>
+    [JsonPropertyName("has_research_in_progress")]
+    public bool HasResearchInProgress { get; set; }
 }

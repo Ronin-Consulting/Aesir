@@ -88,10 +88,24 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
     public async Task<IEnumerable<AesirChatSessionBase>> GetChatSessionsAsync(string userId)
     {
         const string sql = @"
-            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title, is_starred as IsStarred
-            FROM aesir.aesir_chat_session
-            WHERE user_id = @UserId
-            ORDER BY is_starred DESC, updated_at DESC
+            SELECT
+                cs.id,
+                cs.user_id as UserId,
+                cs.updated_at as UpdatedAt,
+                cs.conversation::jsonb as Conversation,
+                cs.title as Title,
+                cs.is_starred as IsStarred,
+                COALESCE(
+                    EXISTS(
+                        SELECT 1 FROM aesir.aesir_research_session rs
+                        WHERE rs.conversation_id = cs.id
+                        AND rs.status NOT IN (7, 8, 9)
+                    ),
+                    false
+                ) as HasResearchInProgress
+            FROM aesir.aesir_chat_session cs
+            WHERE cs.user_id = @UserId
+            ORDER BY cs.is_starred DESC, cs.updated_at DESC
         ";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
@@ -116,15 +130,29 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
 
         if (chatIds.Any())
         {
-            var list = string.Join("','", chatIds);
+            const string sql2 = @"
+                SELECT
+                    cs.id,
+                    cs.user_id as UserId,
+                    cs.updated_at as UpdatedAt,
+                    cs.conversation::jsonb as Conversation,
+                    cs.title as Title,
+                    cs.is_starred as IsStarred,
+                    COALESCE(
+                        EXISTS(
+                            SELECT 1 FROM aesir.aesir_research_session rs
+                            WHERE rs.conversation_id = cs.id
+                            AND rs.status NOT IN (7, 8, 9)
+                        ),
+                        false
+                    ) as HasResearchInProgress
+                FROM aesir.aesir_chat_session cs
+                WHERE cs.id = ANY(@ChatIds)
+                ORDER BY cs.is_starred DESC, cs.updated_at DESC";
 
-            string sql2 = "SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title, is_starred as IsStarred "+
-                "FROM aesir.aesir_chat_session "+
-                "WHERE conversation->>'id' in ('"+list+"') "+
-                "ORDER BY is_starred DESC, updated_at DESC ";
-
+            var chatIdGuids = chatIds.Select(id => Guid.Parse(id)).ToArray();
             return await dbContext.UnitOfWorkAsync(async connection =>
-                await connection.QueryAsync<AesirChatSession>(sql2, new { }));
+                await connection.QueryAsync<AesirChatSession>(sql2, new { ChatIds = chatIdGuids }));
         }
 
         return [];
@@ -142,12 +170,26 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
     public async Task<IEnumerable<AesirChatSessionBase>> GetChatSessionsAsync(string userId, DateTimeOffset from, DateTimeOffset to)
     {
         const string sql = @"
-            SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title, is_starred as IsStarred
-            FROM aesir.aesir_chat_session
-            WHERE user_id = @UserId
-            AND updated_at >= @From
-            AND updated_at <= @To
-            ORDER BY is_starred DESC, updated_at DESC
+            SELECT
+                cs.id,
+                cs.user_id as UserId,
+                cs.updated_at as UpdatedAt,
+                cs.conversation::jsonb as Conversation,
+                cs.title as Title,
+                cs.is_starred as IsStarred,
+                COALESCE(
+                    EXISTS(
+                        SELECT 1 FROM aesir.aesir_research_session rs
+                        WHERE rs.conversation_id = cs.id
+                        AND rs.status NOT IN (7, 8, 9)
+                    ),
+                    false
+                ) as HasResearchInProgress
+            FROM aesir.aesir_chat_session cs
+            WHERE cs.user_id = @UserId
+            AND cs.updated_at >= @From
+            AND cs.updated_at <= @To
+            ORDER BY cs.is_starred DESC, cs.updated_at DESC
         ";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
@@ -185,22 +227,36 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
         var normalizedSearchTerm = searchTerm.Trim();
 
         const string sql = @"
-        SELECT id, user_id as UserId, updated_at as UpdatedAt, conversation::jsonb as Conversation, title as Title, is_starred as IsStarred
-        FROM aesir.aesir_chat_session
-        WHERE user_id = @userId AND (
+        SELECT
+            cs.id,
+            cs.user_id as UserId,
+            cs.updated_at as UpdatedAt,
+            cs.conversation::jsonb as Conversation,
+            cs.title as Title,
+            cs.is_starred as IsStarred,
+            COALESCE(
+                EXISTS(
+                    SELECT 1 FROM aesir.aesir_research_session rs
+                    WHERE rs.conversation_id = cs.id
+                    AND rs.status NOT IN (7, 8, 9)
+                ),
+                false
+            ) as HasResearchInProgress
+        FROM aesir.aesir_chat_session cs
+        WHERE cs.user_id = @userId AND (
             -- Full-text search in title with proper stemming
-            to_tsvector('english', COALESCE(title, '')) @@ websearch_to_tsquery('english', @searchTerm)
+            to_tsvector('english', COALESCE(cs.title, '')) @@ websearch_to_tsquery('english', @searchTerm)
             OR
             -- Full-text search in conversation messages content (excluding system messages)
-            to_tsvector('english', COALESCE(jsonb_path_query_array(conversation, '$.messages[*] ? (@.role <> ""system"").content')::text, '')) @@ websearch_to_tsquery('english', @searchTerm)
+            to_tsvector('english', COALESCE(jsonb_path_query_array(cs.conversation, '$.messages[*] ? (@.role <> ""system"").content')::text, '')) @@ websearch_to_tsquery('english', @searchTerm)
             OR
             -- ILIKE fallback for exact substring matches (case-insensitive)
-            title ILIKE '%' || @searchTerm || '%'
+            cs.title ILIKE '%' || @searchTerm || '%'
             OR
             -- ILIKE fallback for message content search
-            jsonb_path_query_array(conversation, '$.messages[*] ? (@.role <> ""system"").content')::text ILIKE '%' || @searchTerm || '%'
+            jsonb_path_query_array(cs.conversation, '$.messages[*] ? (@.role <> ""system"").content')::text ILIKE '%' || @searchTerm || '%'
         )
-        ORDER BY is_starred DESC, updated_at DESC";
+        ORDER BY cs.is_starred DESC, cs.updated_at DESC";
 
         return await dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryAsync<AesirChatSession>(sql, new { userId, searchTerm = normalizedSearchTerm }));
