@@ -75,6 +75,12 @@
                                  OnEdit="@HandleEditMessage"
                                  OnRerun="@HandleRerunMessage" />
                 }
+                else if (message.IsResearchTeamMessage)
+                {
+                    @* Check IsResearchTeamMessage before Role == "assistant" since research team messages use assistant role *@
+                    <TeamMessage Message="message"
+                                 Session="@GetResearchSessionForMessage(message)" />
+                }
                 else if (message.Role == "assistant")
                 {
                     <AssistantMessage Message="message"
@@ -82,11 +88,6 @@
                                       ShowThinking="@(ChatState.SelectedAgent?.IsThinkingAvailable ?? false)"
                                       IsLatestMessage="@(message == lastAssistantMessage && !isCurrentlyStreaming)"
                                       ToolCalls="@message.ToolCalls" />
-                }
-                else if (message.IsResearchTeamMessage)
-                {
-                    <TeamMessage Message="message"
-                                 Session="@GetResearchSessionForMessage(message)" />
                 }
             }
             @if (_isWaitingForResponse || _isThinking || _isStreaming)
