@@ -159,6 +159,9 @@ public class ResearchOrchestrator : IResearchOrchestrator
         }
 
         // Create the session
+        // NOTE: ChatSessionId is initially set to null because the FK constraint requires
+        // the chat session to exist before we can reference it. We create the chat session
+        // first, then update the research session with the chat_session_id.
         _logger.LogDebug("[RESEARCH] Creating research session...");
         var session = new ResearchSession
         {
@@ -170,11 +173,10 @@ public class ResearchOrchestrator : IResearchOrchestrator
             Status = ResearchStatus.Created,
             CurrentPhase = ResearchPhase.Clarification,
             DocumentCollectionIds = documentCollectionIds?.ToList() ?? [],
-            ChatSessionId = chatSessionId, // Link to ChatSession for persistence and title generation
+            ChatSessionId = null, // Set after chat session is created (FK constraint)
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        _logger.LogDebug("[RESEARCH] Session ChatSessionId set to: {ChatSessionId}", chatSessionId);
 
         await _sessionRepository.AddAsync(session).ConfigureAwait(false);
         _logger.LogDebug("[RESEARCH] Session created with ID: {SessionId}", session.Id);
@@ -182,14 +184,12 @@ public class ResearchOrchestrator : IResearchOrchestrator
         // Note: Session ID is now passed explicitly to each broadcast call (stateless broadcaster)
 
         // Initialize ChatSession immediately so it appears in chat history
-        // This persists the user's query and creates a placeholder title
+        // This creates the chat session BEFORE we link it to the research session
+        // (required by FK constraint on chat_session_id)
         var initializedChatSessionId = await InitializeChatSessionAsync(session, query, userId).ConfigureAwait(false);
-        if (session.ChatSessionId != initializedChatSessionId)
-        {
-            session.ChatSessionId = initializedChatSessionId;
-            await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
-            _logger.LogDebug("[RESEARCH] Session updated with ChatSessionId: {ChatSessionId}", initializedChatSessionId);
-        }
+        session.ChatSessionId = initializedChatSessionId;
+        await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
+        _logger.LogDebug("[RESEARCH] Session updated with ChatSessionId: {ChatSessionId}", initializedChatSessionId);
 
         // Generate clarification questions (if Chairman exists)
         if (chairman != null)
