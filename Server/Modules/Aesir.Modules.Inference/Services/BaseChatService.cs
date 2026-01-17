@@ -155,14 +155,19 @@ public abstract class BaseChatService : Aesir.Infrastructure.Services.IChatServi
         }
 
         var title = request.Title;
-        // Generate title on first user message exchange (1 user + 1 assistant, ignoring system messages)
-        var nonSystemMessageCount = request.Conversation.Messages.Count(m => m.Role != "system");
-        if (nonSystemMessageCount == 2)
-        {
-            title = await GetTitleForUserMessageAsync(request);
-        }
 
-        await PersistChatSessionAsync(request, response.AesirConversation, title);
+        // Only generate title and persist if persistence is enabled
+        if (request.ShouldPersistChatSession)
+        {
+            // Generate title on first user message exchange (1 user + 1 assistant, ignoring system messages)
+            var nonSystemMessageCount = request.Conversation.Messages.Count(m => m.Role != "system");
+            if (nonSystemMessageCount == 2)
+            {
+                title = await GetTitleForUserMessageAsync(request);
+            }
+
+            await PersistChatSessionAsync(request, response.AesirConversation, title);
+        }
 
         // Include the title in the response so clients can display it
         response.Title = title;
@@ -194,22 +199,27 @@ public abstract class BaseChatService : Aesir.Infrastructure.Services.IChatServi
 
         // Use the existing title from request, but treat "title-not-set" as empty
         var title = request.Title;
-        if (string.IsNullOrEmpty(title) || title == "title-not-set")
-        {
-            // Try to fetch existing title from database for existing sessions
-            if (request.ChatSessionId.HasValue)
-            {
-                var existingSession = await _chatHistoryService.GetChatSessionAsync(request.ChatSessionId.Value);
-                title = existingSession?.Title ?? string.Empty;
-            }
-        }
-
         var titleTask = Task.FromResult(title);
-        // Generate title on first user message (1 non-system message before streaming adds assistant response)
-        var nonSystemMessageCount = request.Conversation.Messages.Count(m => m.Role != "system");
-        if (nonSystemMessageCount == 1 && string.IsNullOrEmpty(title))
+
+        // Only fetch/generate title if we're going to persist the session
+        if (request.ShouldPersistChatSession)
         {
-            titleTask = GetTitleForUserMessageAsync(request);
+            if (string.IsNullOrEmpty(title) || title == "title-not-set")
+            {
+                // Try to fetch existing title from database for existing sessions
+                if (request.ChatSessionId.HasValue)
+                {
+                    var existingSession = await _chatHistoryService.GetChatSessionAsync(request.ChatSessionId.Value);
+                    title = existingSession?.Title ?? string.Empty;
+                }
+            }
+
+            // Generate title on first user message (1 non-system message before streaming adds assistant response)
+            var nonSystemMessageCount = request.Conversation.Messages.Count(m => m.Role != "system");
+            if (nonSystemMessageCount == 1 && string.IsNullOrEmpty(title))
+            {
+                titleTask = GetTitleForUserMessageAsync(request);
+            }
         }
 
         // Handle initialization errors without try/catch around yield
@@ -255,7 +265,11 @@ public abstract class BaseChatService : Aesir.Infrastructure.Services.IChatServi
                 "The request took too long to process. Please try a simpler query.");
             request.Conversation.Messages.Add(errorMessage);
             title = await titleTask;
-            await PersistChatSessionAsync(request, request.Conversation, title);
+
+            if (request.ShouldPersistChatSession)
+            {
+                await PersistChatSessionAsync(request, request.Conversation, title);
+            }
 
             // Log failed inference due to timeout
             await PersistInferenceLogAsync(logCollector, null, "Request timed out");
@@ -267,7 +281,11 @@ public abstract class BaseChatService : Aesir.Infrastructure.Services.IChatServi
             initializationError = true;
             request.Conversation.Messages.Add(errorMessage);
             title = await titleTask;
-            await PersistChatSessionAsync(request, request.Conversation, title);
+
+            if (request.ShouldPersistChatSession)
+            {
+                await PersistChatSessionAsync(request, request.Conversation, title);
+            }
 
             // Log failed inference
             await PersistInferenceLogAsync(logCollector, null, ex.Message);
@@ -297,11 +315,15 @@ public abstract class BaseChatService : Aesir.Infrastructure.Services.IChatServi
 
             request.Conversation.Messages.Add(messageToSave);
 
-            // Ensure title generation completes before persisting
-            // This prevents race condition where streaming finishes before title is ready
-            title = await titleTask;
+            // Only persist if enabled
+            if (request.ShouldPersistChatSession)
+            {
+                // Ensure title generation completes before persisting
+                // This prevents race condition where streaming finishes before title is ready
+                title = await titleTask;
 
-            await PersistChatSessionAsync(request, request.Conversation, title);
+                await PersistChatSessionAsync(request, request.Conversation, title);
+            }
 
             // Log successful inference with assistant response
             await PersistInferenceLogAsync(logCollector, messageToSave.Content, null);

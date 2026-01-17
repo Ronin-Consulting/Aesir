@@ -90,6 +90,7 @@ public class ChatRequestBuilder : IChatRequestBuilder
         }
 
         // Build the request
+        // Research agent requests should not create chat history entries
         var request = new AesirChatRequestBase
         {
             Model = agent.Model ?? DefaultModel,
@@ -100,7 +101,8 @@ public class ChatRequestBuilder : IChatRequestBuilder
             Title = options.Title,
             Tools = tools,
             EnableThinking = enableThinking,
-            ThinkValue = thinkValue
+            ThinkValue = thinkValue,
+            ShouldPersistChatSession = false
         };
 
         // Apply custom persona if requested

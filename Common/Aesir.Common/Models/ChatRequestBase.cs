@@ -10,6 +10,14 @@ public class ChatRequestBase
     /// </summary>
     [JsonPropertyName("chat_session_id")]
     public Guid? ChatSessionId { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the chat session should be persisted to the database.
+    /// Defaults to true. Set to false for internal operations like research agent calls
+    /// that should not create chat history entries.
+    /// </summary>
+    [JsonPropertyName("should_persist_chat_session")]
+    public bool ShouldPersistChatSession { get; set; } = true;
     
     /// <summary>
     /// Gets or sets the title of the chat session.
