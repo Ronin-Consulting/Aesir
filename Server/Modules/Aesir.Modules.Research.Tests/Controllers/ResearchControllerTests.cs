@@ -33,19 +33,19 @@ public class ResearchControllerTests
             _reportExporter.Object);
     }
 
-    #region GetSessionsByConversation Tests
+    #region GetSessionsByChatSession Tests
 
     [Fact]
-    public async Task GetSessionsByConversation_WithSessions_ReturnsOkWithList()
+    public async Task GetSessionsByChatSession_WithSessions_ReturnsOkWithList()
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         var sessions = new List<ResearchSession>
         {
             new()
             {
                 Id = Guid.NewGuid(),
-                ConversationId = conversationId,
+                ChatSessionId = chatSessionId,
                 UserId = "test@example.com",
                 Query = "Test query 1",
                 Status = ResearchStatus.Completed,
@@ -54,7 +54,7 @@ public class ResearchControllerTests
             new()
             {
                 Id = Guid.NewGuid(),
-                ConversationId = conversationId,
+                ChatSessionId = chatSessionId,
                 UserId = "test@example.com",
                 Query = "Test query 2",
                 Status = ResearchStatus.Researching,
@@ -63,11 +63,11 @@ public class ResearchControllerTests
         };
 
         _sessionRepository
-            .Setup(x => x.GetByConversationIdAsync(conversationId))
+            .Setup(x => x.GetByChatSessionIdAsync(chatSessionId))
             .ReturnsAsync(sessions);
 
         // Act
-        var result = await _controller.GetSessionsByConversation(conversationId);
+        var result = await _controller.GetSessionsByChatSession(chatSessionId);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -77,16 +77,16 @@ public class ResearchControllerTests
     }
 
     [Fact]
-    public async Task GetSessionsByConversation_NoSessions_ReturnsOkWithEmptyList()
+    public async Task GetSessionsByChatSession_NoSessions_ReturnsOkWithEmptyList()
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         _sessionRepository
-            .Setup(x => x.GetByConversationIdAsync(conversationId))
+            .Setup(x => x.GetByChatSessionIdAsync(chatSessionId))
             .ReturnsAsync(new List<ResearchSession>());
 
         // Act
-        var result = await _controller.GetSessionsByConversation(conversationId);
+        var result = await _controller.GetSessionsByChatSession(chatSessionId);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -96,16 +96,16 @@ public class ResearchControllerTests
     }
 
     [Fact]
-    public async Task GetSessionsByConversation_RepositoryThrows_Returns500()
+    public async Task GetSessionsByChatSession_RepositoryThrows_Returns500()
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         _sessionRepository
-            .Setup(x => x.GetByConversationIdAsync(conversationId))
+            .Setup(x => x.GetByChatSessionIdAsync(chatSessionId))
             .ThrowsAsync(new Exception("Database error"));
 
         // Act
-        var result = await _controller.GetSessionsByConversation(conversationId);
+        var result = await _controller.GetSessionsByChatSession(chatSessionId);
 
         // Assert
         var statusResult = result.Should().BeOfType<ObjectResult>().Subject;
@@ -113,16 +113,16 @@ public class ResearchControllerTests
     }
 
     [Fact]
-    public async Task GetSessionsByConversation_MapsSessionsCorrectly()
+    public async Task GetSessionsByChatSession_MapsSessionsCorrectly()
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
         var session = new ResearchSession
         {
             Id = sessionId,
-            ConversationId = conversationId,
+            ChatSessionId = chatSessionId,
             ResearchTeamId = teamId,
             UserId = "test@example.com",
             Query = "Test query",
@@ -136,11 +136,11 @@ public class ResearchControllerTests
         };
 
         _sessionRepository
-            .Setup(x => x.GetByConversationIdAsync(conversationId))
+            .Setup(x => x.GetByChatSessionIdAsync(chatSessionId))
             .ReturnsAsync(new List<ResearchSession> { session });
 
         // Act
-        var result = await _controller.GetSessionsByConversation(conversationId);
+        var result = await _controller.GetSessionsByChatSession(chatSessionId);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
@@ -149,7 +149,7 @@ public class ResearchControllerTests
 
         var mappedSession = response.Sessions[0];
         mappedSession.Id.Should().Be(sessionId);
-        mappedSession.ConversationId.Should().Be(conversationId);
+        mappedSession.ChatSessionId.Should().Be(chatSessionId);
         mappedSession.ResearchTeamId.Should().Be(teamId);
         mappedSession.Query.Should().Be("Test query");
         mappedSession.RefinedQuery.Should().Be("Refined query");
@@ -158,10 +158,10 @@ public class ResearchControllerTests
     }
 
     [Fact]
-    public async Task GetSessionsByConversation_CompletedSession_IncludesReport()
+    public async Task GetSessionsByChatSession_CompletedSession_IncludesReport()
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var reportId = Guid.NewGuid();
         var report = new ResearchReport
@@ -184,7 +184,7 @@ public class ResearchControllerTests
         var session = new ResearchSession
         {
             Id = sessionId,
-            ConversationId = conversationId,
+            ChatSessionId = chatSessionId,
             UserId = "test@example.com",
             Query = "Test query",
             Status = ResearchStatus.Completed,
@@ -193,11 +193,11 @@ public class ResearchControllerTests
         };
 
         _sessionRepository
-            .Setup(x => x.GetByConversationIdAsync(conversationId))
+            .Setup(x => x.GetByChatSessionIdAsync(chatSessionId))
             .ReturnsAsync(new List<ResearchSession> { session });
 
         // Act
-        var result = await _controller.GetSessionsByConversation(conversationId);
+        var result = await _controller.GetSessionsByChatSession(chatSessionId);
 
         // Assert
         var okResult = result.Should().BeOfType<OkObjectResult>().Subject;

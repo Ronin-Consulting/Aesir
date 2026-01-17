@@ -157,35 +157,6 @@ public class ResearchEnumsTests
 
     #endregion
 
-    #region ResearchTrailEventType Tests
-
-    [Fact]
-    public void ResearchTrailEventType_HasExpectedValues()
-    {
-        // Assert
-        var events = Enum.GetNames<ResearchTrailEventType>();
-        events.Should().Contain("SessionCreated");
-        events.Should().Contain("PhaseChanged");
-        events.Should().Contain("AgentStarted");
-        events.Should().Contain("AgentCompleted");
-        events.Should().Contain("ToolCall");
-        events.Should().Contain("RagQuery");
-        events.Should().Contain("WebSearch");
-        events.Should().Contain("PeerReviewSubmitted");
-        events.Should().Contain("ReportGenerated");
-        events.Should().Contain("SessionCompleted");
-        events.Should().Contain("Error");
-    }
-
-    [Fact]
-    public void ResearchTrailEventType_HasCorrectCount()
-    {
-        // Assert
-        Enum.GetValues<ResearchTrailEventType>().Should().HaveCount(11);
-    }
-
-    #endregion
-
     #region ConfidenceLevel Tests
 
     [Fact]

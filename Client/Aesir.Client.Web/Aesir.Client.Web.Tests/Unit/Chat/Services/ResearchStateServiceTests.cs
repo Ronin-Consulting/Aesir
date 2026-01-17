@@ -28,19 +28,19 @@ public class ResearchStateServiceTests
             null);
     }
 
-    #region RestoreSessionForConversationAsync Tests
+    #region RestoreSessionForChatSessionAsync Tests
 
     [Fact]
-    public async Task RestoreSessionForConversationAsync_NoSessions_ReturnsFalse()
+    public async Task RestoreSessionForChatSessionAsync_NoSessions_ReturnsFalse()
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         _sessionApi
-            .Setup(x => x.GetSessionsByConversationAsync(conversationId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetSessionsByChatSessionAsync(chatSessionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ResearchSessionListBase>.Success(new ResearchSessionListBase { Sessions = [] }));
 
         // Act
-        var result = await _service.RestoreSessionForConversationAsync(conversationId);
+        var result = await _service.RestoreSessionForChatSessionAsync(chatSessionId);
 
         // Assert
         result.Should().BeFalse();
@@ -48,22 +48,22 @@ public class ResearchStateServiceTests
     }
 
     [Fact]
-    public async Task RestoreSessionForConversationAsync_InProgressSession_RestoresAndSubscribes()
+    public async Task RestoreSessionForChatSessionAsync_InProgressSession_RestoresAndSubscribes()
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var session = new ResearchSessionBase
         {
             Id = sessionId,
-            ConversationId = conversationId,
+            ChatSessionId = chatSessionId,
             Status = ResearchStatusBase.Researching,
             CurrentPhase = ResearchPhaseBase.Research,
             Query = "Test query"
         };
 
         _sessionApi
-            .Setup(x => x.GetSessionsByConversationAsync(conversationId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetSessionsByChatSessionAsync(chatSessionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ResearchSessionListBase>.Success(new ResearchSessionListBase
             {
                 Sessions = [session]
@@ -75,7 +75,7 @@ public class ResearchStateServiceTests
         _service.OnSessionChanged += () => sessionChangedRaised = true;
 
         // Act
-        var result = await _service.RestoreSessionForConversationAsync(conversationId);
+        var result = await _service.RestoreSessionForChatSessionAsync(chatSessionId);
 
         // Assert
         result.Should().BeTrue();
@@ -87,29 +87,29 @@ public class ResearchStateServiceTests
     }
 
     [Fact]
-    public async Task RestoreSessionForConversationAsync_CompletedSession_RestoresWithoutSubscription()
+    public async Task RestoreSessionForChatSessionAsync_CompletedSession_RestoresWithoutSubscription()
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var session = new ResearchSessionBase
         {
             Id = sessionId,
-            ConversationId = conversationId,
+            ChatSessionId = chatSessionId,
             Status = ResearchStatusBase.Completed,
             CurrentPhase = ResearchPhaseBase.Synthesis,
             Query = "Completed research"
         };
 
         _sessionApi
-            .Setup(x => x.GetSessionsByConversationAsync(conversationId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetSessionsByChatSessionAsync(chatSessionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ResearchSessionListBase>.Success(new ResearchSessionListBase
             {
                 Sessions = [session]
             }));
 
         // Act
-        var result = await _service.RestoreSessionForConversationAsync(conversationId);
+        var result = await _service.RestoreSessionForChatSessionAsync(chatSessionId);
 
         // Assert
         result.Should().BeTrue();
@@ -121,17 +121,17 @@ public class ResearchStateServiceTests
     }
 
     [Fact]
-    public async Task RestoreSessionForConversationAsync_PrioritizesInProgressOverCompleted()
+    public async Task RestoreSessionForChatSessionAsync_PrioritizesInProgressOverCompleted()
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         var completedSessionId = Guid.NewGuid();
         var inProgressSessionId = Guid.NewGuid();
 
         var completedSession = new ResearchSessionBase
         {
             Id = completedSessionId,
-            ConversationId = conversationId,
+            ChatSessionId = chatSessionId,
             Status = ResearchStatusBase.Completed,
             Query = "Completed"
         };
@@ -139,13 +139,13 @@ public class ResearchStateServiceTests
         var inProgressSession = new ResearchSessionBase
         {
             Id = inProgressSessionId,
-            ConversationId = conversationId,
+            ChatSessionId = chatSessionId,
             Status = ResearchStatusBase.Researching,
             Query = "In progress"
         };
 
         _sessionApi
-            .Setup(x => x.GetSessionsByConversationAsync(conversationId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetSessionsByChatSessionAsync(chatSessionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ResearchSessionListBase>.Success(new ResearchSessionListBase
             {
                 // Completed first in list, but in-progress should be prioritized
@@ -155,7 +155,7 @@ public class ResearchStateServiceTests
         _signalRService.SetupGet(s => s.IsConnected).Returns(true);
 
         // Act
-        var result = await _service.RestoreSessionForConversationAsync(conversationId);
+        var result = await _service.RestoreSessionForChatSessionAsync(chatSessionId);
 
         // Assert
         result.Should().BeTrue();
@@ -164,16 +164,16 @@ public class ResearchStateServiceTests
     }
 
     [Fact]
-    public async Task RestoreSessionForConversationAsync_ApiError_ReturnsFalse()
+    public async Task RestoreSessionForChatSessionAsync_ApiError_ReturnsFalse()
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         _sessionApi
-            .Setup(x => x.GetSessionsByConversationAsync(conversationId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetSessionsByChatSessionAsync(chatSessionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ResearchSessionListBase>.Failure("API error"));
 
         // Act
-        var result = await _service.RestoreSessionForConversationAsync(conversationId);
+        var result = await _service.RestoreSessionForChatSessionAsync(chatSessionId);
 
         // Assert
         result.Should().BeFalse();
@@ -181,7 +181,7 @@ public class ResearchStateServiceTests
     }
 
     [Fact]
-    public async Task RestoreSessionForConversationAsync_ClearsSessionWhenNoResearch()
+    public async Task RestoreSessionForChatSessionAsync_ClearsSessionWhenNoResearch()
     {
         // Arrange - First set an active session
         var originalSessionId = Guid.NewGuid();
@@ -196,16 +196,16 @@ public class ResearchStateServiceTests
         // Need to set ActiveSession directly for test - using reflection or alternative approach
         // Instead, we'll verify the behavior through the ClearSession call pattern
 
-        var newConversationId = Guid.NewGuid();
+        var newChatSessionId = Guid.NewGuid();
         _sessionApi
-            .Setup(x => x.GetSessionsByConversationAsync(newConversationId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetSessionsByChatSessionAsync(newChatSessionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ResearchSessionListBase>.Success(new ResearchSessionListBase
             {
                 Sessions = []
             }));
 
         // Act
-        var result = await _service.RestoreSessionForConversationAsync(newConversationId);
+        var result = await _service.RestoreSessionForChatSessionAsync(newChatSessionId);
 
         // Assert
         result.Should().BeFalse();
@@ -215,21 +215,21 @@ public class ResearchStateServiceTests
     }
 
     [Fact]
-    public async Task RestoreSessionForConversationAsync_ConnectsSignalRIfNotConnected()
+    public async Task RestoreSessionForChatSessionAsync_ConnectsSignalRIfNotConnected()
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var session = new ResearchSessionBase
         {
             Id = sessionId,
-            ConversationId = conversationId,
+            ChatSessionId = chatSessionId,
             Status = ResearchStatusBase.Planning,
             Query = "Test"
         };
 
         _sessionApi
-            .Setup(x => x.GetSessionsByConversationAsync(conversationId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetSessionsByChatSessionAsync(chatSessionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ResearchSessionListBase>.Success(new ResearchSessionListBase
             {
                 Sessions = [session]
@@ -242,7 +242,7 @@ public class ResearchStateServiceTests
         _signalRService.Setup(s => s.ConnectAsync()).ReturnsAsync(true);
 
         // Act
-        var result = await _service.RestoreSessionForConversationAsync(conversationId);
+        var result = await _service.RestoreSessionForChatSessionAsync(chatSessionId);
 
         // Assert
         result.Should().BeTrue();
@@ -270,17 +270,17 @@ public class ResearchStateServiceTests
     public async Task IsResearchInProgress_ActiveStatuses_ReturnsTrue(ResearchStatusBase status)
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         var session = new ResearchSessionBase
         {
             Id = Guid.NewGuid(),
-            ConversationId = conversationId,
+            ChatSessionId = chatSessionId,
             Status = status,
             Query = "Test"
         };
 
         _sessionApi
-            .Setup(x => x.GetSessionsByConversationAsync(conversationId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetSessionsByChatSessionAsync(chatSessionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ResearchSessionListBase>.Success(new ResearchSessionListBase
             {
                 Sessions = [session]
@@ -289,7 +289,7 @@ public class ResearchStateServiceTests
         _signalRService.SetupGet(s => s.IsConnected).Returns(true);
 
         // Act
-        await _service.RestoreSessionForConversationAsync(conversationId);
+        await _service.RestoreSessionForChatSessionAsync(chatSessionId);
 
         // Assert
         _service.IsResearchInProgress.Should().BeTrue();
@@ -302,24 +302,24 @@ public class ResearchStateServiceTests
     public async Task IsResearchInProgress_TerminalStatuses_ReturnsFalse(ResearchStatusBase status)
     {
         // Arrange
-        var conversationId = Guid.NewGuid();
+        var chatSessionId = Guid.NewGuid();
         var session = new ResearchSessionBase
         {
             Id = Guid.NewGuid(),
-            ConversationId = conversationId,
+            ChatSessionId = chatSessionId,
             Status = status,
             Query = "Test"
         };
 
         _sessionApi
-            .Setup(x => x.GetSessionsByConversationAsync(conversationId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetSessionsByChatSessionAsync(chatSessionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ResearchSessionListBase>.Success(new ResearchSessionListBase
             {
                 Sessions = [session]
             }));
 
         // Act
-        await _service.RestoreSessionForConversationAsync(conversationId);
+        await _service.RestoreSessionForChatSessionAsync(chatSessionId);
 
         // Assert
         _service.IsResearchInProgress.Should().BeFalse();

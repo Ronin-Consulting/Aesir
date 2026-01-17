@@ -22,11 +22,11 @@ public interface IResearchSessionRepository
     Task<IEnumerable<ResearchSession>> GetByUserIdAsync(string userId);
 
     /// <summary>
-    /// Gets research sessions by conversation ID.
+    /// Gets research sessions by chat session ID.
     /// </summary>
-    /// <param name="conversationId">The conversation identifier.</param>
-    /// <returns>A collection of research sessions for the conversation.</returns>
-    Task<IEnumerable<ResearchSession>> GetByConversationIdAsync(Guid conversationId);
+    /// <param name="chatSessionId">The chat session identifier (aesir_chat_session.id).</param>
+    /// <returns>A collection of research sessions linked to the chat session.</returns>
+    Task<IEnumerable<ResearchSession>> GetByChatSessionIdAsync(Guid chatSessionId);
 
     /// <summary>
     /// Creates a new research session.
@@ -106,18 +106,4 @@ public interface IResearchSessionRepository
     /// <param name="sessionId">The session identifier.</param>
     /// <returns>The research report if found, null otherwise.</returns>
     Task<ResearchReport?> GetReportBySessionIdAsync(Guid sessionId);
-
-    /// <summary>
-    /// Adds a trail entry to the audit log.
-    /// </summary>
-    /// <param name="entry">The trail entry to add.</param>
-    /// <returns>The created trail entry with its generated ID.</returns>
-    Task<ResearchTrailEntry> AddTrailEntryAsync(ResearchTrailEntry entry);
-
-    /// <summary>
-    /// Gets all trail entries for a session.
-    /// </summary>
-    /// <param name="sessionId">The session identifier.</param>
-    /// <returns>A collection of trail entries for the session, ordered by timestamp.</returns>
-    Task<IEnumerable<ResearchTrailEntry>> GetTrailEntriesBySessionIdAsync(Guid sessionId);
 }

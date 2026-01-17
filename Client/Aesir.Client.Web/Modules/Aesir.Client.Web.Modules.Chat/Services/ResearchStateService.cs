@@ -288,12 +288,12 @@ public class ResearchStateService : IResearchStateService
         Guid teamId,
         ResearchModeBase mode = ResearchModeBase.Standard,
         List<Guid>? documentCollectionIds = null,
-        Guid? conversationId = null)
+        Guid? chatSessionId = null)
     {
         var startTime = DateTime.UtcNow;
         _logger?.LogInformation("[RESEARCH-UI] StartResearchAsync called at {Time}", startTime);
-        _logger?.LogInformation("[RESEARCH-UI] Query='{Query}', TeamId={TeamId}, UserId={UserId}, ConversationId={ConversationId}",
-            query, teamId, UserIdValue, conversationId);
+        _logger?.LogInformation("[RESEARCH-UI] Query='{Query}', TeamId={TeamId}, UserId={UserId}, ChatSessionId={ChatSessionId}",
+            query, teamId, UserIdValue, chatSessionId);
 
         try
         {
@@ -322,7 +322,7 @@ public class ResearchStateService : IResearchStateService
                 TeamId = teamId,
                 Mode = mode,
                 DocumentCollectionIds = documentCollectionIds,
-                ConversationId = conversationId,
+                ChatSessionId = chatSessionId,
                 UserId = UserIdValue  // Must match ChatHistoryService.UserIdValue
             };
 
@@ -353,6 +353,28 @@ public class ResearchStateService : IResearchStateService
                         var subElapsed = (DateTime.UtcNow - subStart).TotalMilliseconds;
                         _logger?.LogInformation("[RESEARCH-UI] Subscribed to SignalR session in {Elapsed}ms: {SessionId}",
                             subElapsed, result.Value.Id);
+
+                        // Poll current session state to catch any broadcasts missed during the race window
+                        // between HTTP response and SignalR subscription
+                        _logger?.LogDebug("[RESEARCH-UI] Polling session state to catch missed broadcasts...");
+                        var pollResult = await _sessionApi.GetSessionAsync(result.Value.Id);
+                        if (pollResult.IsSuccess && pollResult.Value != null)
+                        {
+                            var polledSession = pollResult.Value;
+                            // Only update if the polled state is more advanced than our current state
+                            if (polledSession.CurrentPhase != ActiveSession?.CurrentPhase ||
+                                polledSession.Status != ActiveSession?.Status)
+                            {
+                                _logger?.LogInformation(
+                                    "[RESEARCH-UI] Caught missed progress: Phase={Phase}, Status={Status}",
+                                    polledSession.CurrentPhase, polledSession.Status);
+                                ActiveSession = polledSession;
+                                CurrentProgressMessage = GetStatusMessage(polledSession.Status);
+                                CurrentProgressPercent = EstimateProgressFromPhase(
+                                    polledSession.CurrentPhase ?? ResearchPhaseBase.Planning);
+                                OnSessionChanged?.Invoke();
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -627,19 +649,19 @@ public class ResearchStateService : IResearchStateService
     }
 
     /// <inheritdoc />
-    public async Task<bool> RestoreSessionForConversationAsync(Guid conversationId)
+    public async Task<bool> RestoreSessionForChatSessionAsync(Guid chatSessionId)
     {
-        _logger?.LogDebug("[RESEARCH-UI] RestoreSessionForConversationAsync called for conversation: {ConversationId}", conversationId);
+        _logger?.LogDebug("[RESEARCH-UI] RestoreSessionForChatSessionAsync called for chat session: {ChatSessionId}", chatSessionId);
 
         try
         {
-            // Query for research sessions linked to this conversation
-            var result = await _sessionApi.GetSessionsByConversationAsync(conversationId);
+            // Query for research sessions linked to this chat session
+            var result = await _sessionApi.GetSessionsByChatSessionAsync(chatSessionId);
 
             if (!result.IsSuccess || result.Value?.Sessions == null || result.Value.Sessions.Count == 0)
             {
-                _logger?.LogDebug("[RESEARCH-UI] No research sessions found for conversation {ConversationId}", conversationId);
-                // Clear active session if navigating to a conversation without research
+                _logger?.LogDebug("[RESEARCH-UI] No research sessions found for chat session {ChatSessionId}", chatSessionId);
+                // Clear active session if navigating to a chat session without research
                 ClearSession();
                 return false;
             }
@@ -656,12 +678,12 @@ public class ResearchStateService : IResearchStateService
 
             if (sessionToRestore == null)
             {
-                _logger?.LogDebug("[RESEARCH-UI] No active or completed research sessions for conversation");
+                _logger?.LogDebug("[RESEARCH-UI] No active or completed research sessions for chat session");
                 ClearSession();
                 return false;
             }
 
-            _logger?.LogInformation("[RESEARCH-UI] Found research session for conversation: {SessionId}, Status={Status}",
+            _logger?.LogInformation("[RESEARCH-UI] Found research session for chat session: {SessionId}, Status={Status}",
                 sessionToRestore.Id, sessionToRestore.Status);
 
             // Restore the session
@@ -694,14 +716,14 @@ public class ResearchStateService : IResearchStateService
 
             OnSessionChanged?.Invoke();
 
-            _logger?.LogInformation("[RESEARCH-UI] Successfully restored research session for conversation: {SessionId}",
+            _logger?.LogInformation("[RESEARCH-UI] Successfully restored research session for chat session: {SessionId}",
                 sessionToRestore.Id);
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "[RESEARCH-UI] Error restoring session for conversation {ConversationId}", conversationId);
+            _logger?.LogError(ex, "[RESEARCH-UI] Error restoring session for chat session {ChatSessionId}", chatSessionId);
             return false;
         }
     }

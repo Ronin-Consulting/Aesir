@@ -25,11 +25,11 @@ public interface IResearchSessionApiService
     Task<ApiResult<ResearchSessionBase>> GetSessionAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// Gets all research sessions for a specific conversation.
+    /// Gets all research sessions for a specific chat session.
     /// </summary>
-    /// <param name="conversationId">The conversation ID to filter by.</param>
+    /// <param name="chatSessionId">The chat session ID (aesir_chat_session.id) to filter by.</param>
     /// <param name="ct">Cancellation token.</param>
-    Task<ApiResult<ResearchSessionListBase>> GetSessionsByConversationAsync(Guid conversationId, CancellationToken ct = default);
+    Task<ApiResult<ResearchSessionListBase>> GetSessionsByChatSessionAsync(Guid chatSessionId, CancellationToken ct = default);
 
     /// <summary>
     /// Gets the full report for a session.
@@ -134,8 +134,8 @@ public class CreateResearchSessionRequestBase
     /// The ChatSession ID to link this research session to.
     /// If provided, research will be linked to an existing ChatSession.
     /// </summary>
-    [JsonPropertyName("conversation_id")]
-    public Guid? ConversationId { get; set; }
+    [JsonPropertyName("chat_session_id")]
+    public Guid? ChatSessionId { get; set; }
 }
 
 /// <summary>

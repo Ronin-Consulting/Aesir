@@ -657,15 +657,15 @@ public class ChatPageTests : TestContext
         var inProgressResearchSession = new ResearchSessionBase
         {
             Id = researchSessionId,
-            ConversationId = sessionId,
+            ChatSessionId = sessionId,
             ResearchTeamId = researchTeamId,
             Query = "Research my topic",
             Status = ResearchStatusBase.Researching,
             CurrentPhase = ResearchPhaseBase.Research
         };
 
-        // Mock RestoreSessionForConversationAsync to return true and set ActiveSession
-        _mockResearchStateService.Setup(x => x.RestoreSessionForConversationAsync(sessionId))
+        // Mock RestoreSessionForChatSessionAsync to return true and set ActiveSession
+        _mockResearchStateService.Setup(x => x.RestoreSessionForChatSessionAsync(sessionId))
             .ReturnsAsync(true)
             .Callback(() =>
             {
@@ -691,11 +691,11 @@ public class ChatPageTests : TestContext
         await Task.Delay(100);
         cut.Render();
 
-        // Assert - Verify RestoreSessionForConversationAsync was called
+        // Assert - Verify RestoreSessionForChatSessionAsync was called
         _mockResearchStateService.Verify(
-            x => x.RestoreSessionForConversationAsync(sessionId),
+            x => x.RestoreSessionForChatSessionAsync(sessionId),
             Times.AtLeastOnce,
-            "RestoreSessionForConversationAsync should be called when loading a session");
+            "RestoreSessionForChatSessionAsync should be called when loading a session");
     }
 
     [Fact]
@@ -744,13 +744,13 @@ public class ChatPageTests : TestContext
         var completedResearchSession = new ResearchSessionBase
         {
             Id = researchSessionId,
-            ConversationId = sessionId,
+            ChatSessionId = sessionId,
             Query = "Research my topic",
             Status = ResearchStatusBase.Completed,
             CurrentPhase = ResearchPhaseBase.Synthesis
         };
 
-        _mockResearchStateService.Setup(x => x.RestoreSessionForConversationAsync(sessionId))
+        _mockResearchStateService.Setup(x => x.RestoreSessionForChatSessionAsync(sessionId))
             .ReturnsAsync(true)
             .Callback(() =>
             {
@@ -772,12 +772,12 @@ public class ChatPageTests : TestContext
         await Task.Delay(100);
         cut.Render();
 
-        // Assert - RestoreSessionForConversationAsync was called but IsResearchInProgress is false
+        // Assert - RestoreSessionForChatSessionAsync was called but IsResearchInProgress is false
         // so no TeamMessage placeholder should be added
         _mockResearchStateService.Verify(
-            x => x.RestoreSessionForConversationAsync(sessionId),
+            x => x.RestoreSessionForChatSessionAsync(sessionId),
             Times.AtLeastOnce,
-            "RestoreSessionForConversationAsync should be called even for completed sessions");
+            "RestoreSessionForChatSessionAsync should be called even for completed sessions");
 
         // Since IsResearchInProgress is false, the placeholder logic should not execute
         // The completed report is already in the conversation from the server
@@ -824,7 +824,7 @@ public class ChatPageTests : TestContext
             .ReturnsAsync(ApiResult<AesirChatSession?>.Success(regularSession));
 
         // No research session found
-        _mockResearchStateService.Setup(x => x.RestoreSessionForConversationAsync(sessionId))
+        _mockResearchStateService.Setup(x => x.RestoreSessionForChatSessionAsync(sessionId))
             .ReturnsAsync(false);
         _mockResearchStateService.Setup(x => x.ActiveSession).Returns((ResearchSessionBase?)null);
         _mockResearchStateService.Setup(x => x.IsResearchInProgress).Returns(false);
@@ -839,11 +839,11 @@ public class ChatPageTests : TestContext
         await Task.Delay(100);
         cut.Render();
 
-        // Assert - RestoreSessionForConversationAsync was called but returned false
+        // Assert - RestoreSessionForChatSessionAsync was called but returned false
         _mockResearchStateService.Verify(
-            x => x.RestoreSessionForConversationAsync(sessionId),
+            x => x.RestoreSessionForChatSessionAsync(sessionId),
             Times.AtLeastOnce,
-            "RestoreSessionForConversationAsync should be called for all session loads");
+            "RestoreSessionForChatSessionAsync should be called for all session loads");
 
         // No TeamMessage should be added since there's no research
         // Verify by checking the markup doesn't contain team-message class

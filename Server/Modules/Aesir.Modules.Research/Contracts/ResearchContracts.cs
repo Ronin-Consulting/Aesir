@@ -42,8 +42,8 @@ public class CreateResearchSessionRequest
     /// The ChatSession ID to link this research session to.
     /// If provided, research will be linked to an existing ChatSession.
     /// </summary>
-    [JsonPropertyName("conversation_id")]
-    public Guid? ConversationId { get; set; }
+    [JsonPropertyName("chat_session_id")]
+    public Guid? ChatSessionId { get; set; }
 }
 
 /// <summary>
@@ -77,10 +77,10 @@ public class ResearchSessionResponse
     public Guid? ResearchTeamId { get; set; }
 
     /// <summary>
-    /// The conversation/chat session ID this research is linked to.
+    /// The chat session ID (aesir_chat_session.id) this research is linked to.
     /// </summary>
-    [JsonPropertyName("conversation_id")]
-    public Guid? ConversationId { get; set; }
+    [JsonPropertyName("chat_session_id")]
+    public Guid? ChatSessionId { get; set; }
 
     /// <summary>
     /// The user who created the session.
@@ -163,7 +163,7 @@ public class ResearchSessionResponse
         {
             Id = session.Id,
             ResearchTeamId = session.ResearchTeamId,
-            ConversationId = session.ConversationId,
+            ChatSessionId = session.ChatSessionId,
             UserId = session.UserId,
             Query = session.Query,
             RefinedQuery = session.RefinedQuery,

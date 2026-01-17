@@ -493,7 +493,7 @@
             {
                 try
                 {
-                    var restored = await ResearchState.RestoreSessionForConversationAsync(currentConversationId);
+                    var restored = await ResearchState.RestoreSessionForChatSessionAsync(currentConversationId);
                     if (restored && ResearchState.ActiveSession != null)
                     {
                         Console.WriteLine($"Restored research session for conversation: {ResearchState.ActiveSession.Id}, Status={ResearchState.ActiveSession.Status}");
@@ -612,8 +612,8 @@
                 await ChatState.RestoreToolTogglesForSessionAsync(sessionId);
                 _hasRestoredToolTogglesForSession = true;
 
-                // Restore research session for this conversation (if any)
-                var restored = await ResearchState.RestoreSessionForConversationAsync(sessionId);
+                // Restore research session for this chat session (if any)
+                var restored = await ResearchState.RestoreSessionForChatSessionAsync(sessionId);
 
                 // Add TeamMessage placeholder if research session was restored and is in-progress
                 // This ensures the progress UI renders when navigating back to an active research conversation
@@ -1209,18 +1209,18 @@
             var session = await ResearchState.StartResearchAsync(
                 message,
                 selectedTeam.Id!.Value,
-                conversationId: conversationId);
+                chatSessionId: conversationId);
 
             if (session != null)
             {
                 // Update URL and ChatState with the new session ID (similar to regular chat flow)
                 // This ensures:
                 // 1. Browser URL shows the correct session ID
-                // 2. When navigating back to this conversation, LoadSessionAsync uses the correct ID
-                // 3. RestoreSessionForConversationAsync can find the research session
-                if (session.ConversationId.HasValue && session.ConversationId.Value != Guid.Empty)
+                // 2. When navigating back to this chat session, LoadSessionAsync uses the correct ID
+                // 3. RestoreSessionForChatSessionAsync can find the research session
+                if (session.ChatSessionId.HasValue && session.ChatSessionId.Value != Guid.Empty)
                 {
-                    var chatSessionId = session.ConversationId.Value;
+                    var chatSessionId = session.ChatSessionId.Value;
 
                     // Update ChatState and local tracking
                     ChatState.SetCurrentSession(chatSessionId);

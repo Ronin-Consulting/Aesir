@@ -98,7 +98,7 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
                 COALESCE(
                     EXISTS(
                         SELECT 1 FROM aesir.aesir_research_session rs
-                        WHERE rs.conversation_id = cs.id
+                        WHERE rs.chat_session_id = cs.id
                         AND rs.status NOT IN (7, 8, 9)
                     ),
                     false
@@ -141,7 +141,7 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
                     COALESCE(
                         EXISTS(
                             SELECT 1 FROM aesir.aesir_research_session rs
-                            WHERE rs.conversation_id = cs.id
+                            WHERE rs.chat_session_id = cs.id
                             AND rs.status NOT IN (7, 8, 9)
                         ),
                         false

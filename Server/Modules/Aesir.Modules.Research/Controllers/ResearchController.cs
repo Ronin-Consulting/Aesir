@@ -71,16 +71,16 @@ public class ResearchController(
     }
 
     /// <summary>
-    /// Gets all research sessions for a specific conversation.
+    /// Gets all research sessions for a specific chat session.
     /// </summary>
-    /// <param name="conversationId">The conversation ID to filter by.</param>
-    /// <returns>A list of research sessions for the conversation.</returns>
-    [HttpGet("conversation/{conversationId:guid}")]
-    public async Task<IActionResult> GetSessionsByConversation(Guid conversationId)
+    /// <param name="chatSessionId">The chat session ID (aesir_chat_session.id) to filter by.</param>
+    /// <returns>A list of research sessions linked to the chat session.</returns>
+    [HttpGet("chat-session/{chatSessionId:guid}")]
+    public async Task<IActionResult> GetSessionsByChatSession(Guid chatSessionId)
     {
         try
         {
-            var sessions = await sessionRepository.GetByConversationIdAsync(conversationId);
+            var sessions = await sessionRepository.GetByChatSessionIdAsync(chatSessionId);
             var sessionList = sessions.ToList();
             var response = new ResearchSessionListResponse
             {
@@ -91,7 +91,7 @@ public class ResearchController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error retrieving research sessions for conversation {ConversationId}", conversationId);
+            logger.LogError(ex, "Error retrieving research sessions for chat session {ChatSessionId}", chatSessionId);
             return StatusCode(500, "An error occurred while retrieving research sessions");
         }
     }
@@ -166,8 +166,8 @@ public class ResearchController(
     public async Task<IActionResult> StartResearch([FromBody] CreateResearchSessionRequest request)
     {
         logger.LogDebug("[RESEARCH-API] POST /research/sessions called");
-        logger.LogDebug("[RESEARCH-API] Request: Query='{Query}', TeamId={TeamId}, Mode={Mode}, UserId={UserId}, ConversationId={ConversationId}",
-            request.Query, request.TeamId, request.Mode, request.UserId, request.ConversationId);
+        logger.LogDebug("[RESEARCH-API] Request: Query='{Query}', TeamId={TeamId}, Mode={Mode}, UserId={UserId}, ChatSessionId={ChatSessionId}",
+            request.Query, request.TeamId, request.Mode, request.UserId, request.ChatSessionId);
         logger.LogDebug("[RESEARCH-API] DocumentCollectionIds: {Ids}",
             request.DocumentCollectionIds != null ? string.Join(",", request.DocumentCollectionIds) : "null");
 
@@ -192,7 +192,7 @@ public class ResearchController(
                 request.Mode,
                 request.DocumentCollectionIds,
                 request.UserId,
-                request.ConversationId);  // Link research to ChatSession
+                request.ChatSessionId);  // Link research to ChatSession
 
             logger.LogDebug("[RESEARCH-API] Research session created: Id={SessionId}, Status={Status}",
                 session.Id, session.Status);

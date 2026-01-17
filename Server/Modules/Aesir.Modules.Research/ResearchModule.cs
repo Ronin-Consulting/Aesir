@@ -59,7 +59,6 @@ public class ResearchModule : ModuleBase
 
         // Register synthesis and report generation services
         services.AddScoped<IConfidenceCalculator, ConfidenceCalculator>();
-        services.AddScoped<IResearchTrailService, ResearchTrailService>();
         services.AddScoped<IReportGeneratorService, ReportGeneratorService>();
 
         // Register report exporter (depends on document export services)

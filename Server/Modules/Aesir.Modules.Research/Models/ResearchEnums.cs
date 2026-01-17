@@ -178,68 +178,6 @@ public enum SubmissionStatus
 }
 
 /// <summary>
-/// Type of event in the research trail audit log.
-/// </summary>
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum ResearchTrailEventType
-{
-    /// <summary>
-    /// Research session created.
-    /// </summary>
-    SessionCreated,
-
-    /// <summary>
-    /// Phase changed.
-    /// </summary>
-    PhaseChanged,
-
-    /// <summary>
-    /// Agent started working.
-    /// </summary>
-    AgentStarted,
-
-    /// <summary>
-    /// Agent completed work.
-    /// </summary>
-    AgentCompleted,
-
-    /// <summary>
-    /// Agent made a tool call (RAG, web search, etc.).
-    /// </summary>
-    ToolCall,
-
-    /// <summary>
-    /// RAG query executed.
-    /// </summary>
-    RagQuery,
-
-    /// <summary>
-    /// Web search executed.
-    /// </summary>
-    WebSearch,
-
-    /// <summary>
-    /// Peer review submitted.
-    /// </summary>
-    PeerReviewSubmitted,
-
-    /// <summary>
-    /// Report generated.
-    /// </summary>
-    ReportGenerated,
-
-    /// <summary>
-    /// Session completed.
-    /// </summary>
-    SessionCompleted,
-
-    /// <summary>
-    /// Error occurred.
-    /// </summary>
-    Error
-}
-
-/// <summary>
 /// Confidence level for research findings.
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]

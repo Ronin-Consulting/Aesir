@@ -20,10 +20,12 @@ public class ResearchSessionBase
     public Guid? ResearchTeamId { get; set; }
 
     /// <summary>
-    /// The conversation/chat session ID this research is linked to.
+    /// The chat session ID (aesir_chat_session.id) this research is linked to.
+    /// Enables research results to be persisted in chat history and allows
+    /// users to continue conversations after research completes.
     /// </summary>
-    [JsonPropertyName("conversation_id")]
-    public Guid? ConversationId { get; set; }
+    [JsonPropertyName("chat_session_id")]
+    public Guid? ChatSessionId { get; set; }
 
     /// <summary>
     /// The user who created the session.

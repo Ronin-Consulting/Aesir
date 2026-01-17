@@ -47,12 +47,12 @@ public class ResearchSessionApiService : IResearchSessionApiService
         return result;
     }
 
-    public async Task<ApiResult<ResearchSessionListBase>> GetSessionsByConversationAsync(Guid conversationId, CancellationToken ct = default)
+    public async Task<ApiResult<ResearchSessionListBase>> GetSessionsByChatSessionAsync(Guid chatSessionId, CancellationToken ct = default)
     {
-        _logger?.LogDebug("[RESEARCH-API] GetSessionsByConversationAsync called: {ConversationId}", conversationId);
+        _logger?.LogDebug("[RESEARCH-API] GetSessionsByChatSessionAsync called: {ChatSessionId}", chatSessionId);
         return await ExecuteAsync(async () =>
         {
-            var result = await _apiClient.GetAsync<ResearchSessionListBase>($"{BaseUrl}/conversation/{conversationId}", ct);
+            var result = await _apiClient.GetAsync<ResearchSessionListBase>($"{BaseUrl}/chat-session/{chatSessionId}", ct);
             return result ?? new ResearchSessionListBase();
         });
     }

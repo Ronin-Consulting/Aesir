@@ -31,7 +31,7 @@ public class ResearchSessionRepository(
                 id as Id,
                 user_id as UserId,
                 research_team_id as ResearchTeamId,
-                conversation_id as ConversationId,
+                chat_session_id as ChatSessionId,
                 query as Query,
                 refined_query as RefinedQuery,
                 mode as Mode,
@@ -68,7 +68,7 @@ public class ResearchSessionRepository(
                 id as Id,
                 user_id as UserId,
                 research_team_id as ResearchTeamId,
-                conversation_id as ConversationId,
+                chat_session_id as ChatSessionId,
                 query as Query,
                 refined_query as RefinedQuery,
                 mode as Mode,
@@ -91,14 +91,14 @@ public class ResearchSessionRepository(
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<ResearchSession>> GetByConversationIdAsync(Guid conversationId)
+    public async Task<IEnumerable<ResearchSession>> GetByChatSessionIdAsync(Guid chatSessionId)
     {
         const string sql = @"
             SELECT
                 id as Id,
                 user_id as UserId,
                 research_team_id as ResearchTeamId,
-                conversation_id as ConversationId,
+                chat_session_id as ChatSessionId,
                 query as Query,
                 refined_query as RefinedQuery,
                 mode as Mode,
@@ -113,11 +113,11 @@ public class ResearchSessionRepository(
                 started_at as StartedAt,
                 completed_at as CompletedAt
             FROM aesir.aesir_research_session
-            WHERE conversation_id = @ConversationId
+            WHERE chat_session_id = @ChatSessionId
             ORDER BY created_at DESC";
 
         var sessions = await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<ResearchSession>(sql, new { ConversationId = conversationId }).ConfigureAwait(false)).ConfigureAwait(false);
+            await connection.QueryAsync<ResearchSession>(sql, new { ChatSessionId = chatSessionId }).ConfigureAwait(false)).ConfigureAwait(false);
 
         // Load reports for completed sessions
         var sessionList = sessions.ToList();
@@ -141,12 +141,12 @@ public class ResearchSessionRepository(
 
         const string sql = @"
             INSERT INTO aesir.aesir_research_session
-                (id, user_id, research_team_id, conversation_id, query, refined_query,
+                (id, user_id, research_team_id, chat_session_id, query, refined_query,
                  mode, status, current_phase, document_collection_ids,
                  clarification_questions, clarification_answers, error_message,
                  created_at, updated_at, started_at, completed_at)
             VALUES
-                (@Id, @UserId, @ResearchTeamId, @ConversationId, @Query, @RefinedQuery,
+                (@Id, @UserId, @ResearchTeamId, @ChatSessionId, @Query, @RefinedQuery,
                  @Mode, @Status, @CurrentPhase, @DocumentCollectionIds::jsonb,
                  @ClarificationQuestions::jsonb, @ClarificationAnswers::jsonb, @ErrorMessage,
                  @CreatedAt, @UpdatedAt, @StartedAt, @CompletedAt)";
@@ -169,7 +169,7 @@ public class ResearchSessionRepository(
             UPDATE aesir.aesir_research_session
             SET user_id = @UserId,
                 research_team_id = @ResearchTeamId,
-                conversation_id = @ConversationId,
+                chat_session_id = @ChatSessionId,
                 query = @Query,
                 refined_query = @RefinedQuery,
                 mode = @Mode,
@@ -433,50 +433,5 @@ public class ResearchSessionRepository(
 
         return await dbContext.UnitOfWorkAsync(async connection =>
             await connection.QueryFirstOrDefaultAsync<ResearchReport>(sql, new { SessionId = sessionId }).ConfigureAwait(false)).ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
-    public async Task<ResearchTrailEntry> AddTrailEntryAsync(ResearchTrailEntry entry)
-    {
-        if (entry.Id == Guid.Empty)
-            entry.Id = Guid.NewGuid();
-
-        entry.Timestamp = DateTime.UtcNow;
-
-        const string sql = @"
-            INSERT INTO aesir.aesir_research_trail
-                (id, session_id, submission_id, event_type, agent_role,
-                 description, input_json, output_json, duration_ms, timestamp)
-            VALUES
-                (@Id, @SessionId, @SubmissionId, @EventType, @AgentRole,
-                 @Description, @InputJson::jsonb, @OutputJson::jsonb, @DurationMs, @Timestamp)";
-
-        await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.ExecuteAsync(sql, entry).ConfigureAwait(false), withTransaction: true).ConfigureAwait(false);
-
-        return entry;
-    }
-
-    /// <inheritdoc />
-    public async Task<IEnumerable<ResearchTrailEntry>> GetTrailEntriesBySessionIdAsync(Guid sessionId)
-    {
-        const string sql = @"
-            SELECT
-                id as Id,
-                session_id as SessionId,
-                submission_id as SubmissionId,
-                event_type as EventType,
-                agent_role as AgentRole,
-                description as Description,
-                input_json as InputJson,
-                output_json as OutputJson,
-                duration_ms as DurationMs,
-                timestamp as Timestamp
-            FROM aesir.aesir_research_trail
-            WHERE session_id = @SessionId
-            ORDER BY timestamp";
-
-        return await dbContext.UnitOfWorkAsync(async connection =>
-            await connection.QueryAsync<ResearchTrailEntry>(sql, new { SessionId = sessionId }).ConfigureAwait(false)).ConfigureAwait(false);
     }
 }

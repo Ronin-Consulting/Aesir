@@ -109,14 +109,14 @@ public interface IResearchStateService : IDisposable
     /// <param name="teamId">The research team ID.</param>
     /// <param name="mode">The research mode.</param>
     /// <param name="documentCollectionIds">Optional document collection IDs.</param>
-    /// <param name="conversationId">Optional ChatSession ID to link research to.</param>
+    /// <param name="chatSessionId">Optional ChatSession ID to link research to.</param>
     /// <returns>The created session.</returns>
     Task<ResearchSessionBase?> StartResearchAsync(
         string query,
         Guid teamId,
         ResearchModeBase mode = ResearchModeBase.Standard,
         List<Guid>? documentCollectionIds = null,
-        Guid? conversationId = null);
+        Guid? chatSessionId = null);
 
     /// <summary>
     /// Submits clarification answers.
@@ -154,10 +154,10 @@ public interface IResearchStateService : IDisposable
     Task<bool> RestoreActiveSessionAsync();
 
     /// <summary>
-    /// Restores a research session for a specific conversation if one exists.
-    /// Called when navigating to a conversation to resume viewing in-progress or completed research.
+    /// Restores a research session for a specific chat session if one exists.
+    /// Called when navigating to a chat session to resume viewing in-progress or completed research.
     /// </summary>
-    /// <param name="conversationId">The conversation ID to restore session for.</param>
+    /// <param name="chatSessionId">The chat session ID to restore session for.</param>
     /// <returns>True if a session was restored.</returns>
-    Task<bool> RestoreSessionForConversationAsync(Guid conversationId);
+    Task<bool> RestoreSessionForChatSessionAsync(Guid chatSessionId);
 }
