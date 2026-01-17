@@ -67,4 +67,19 @@ public interface IChatHistoryService
     /// <param name="isStarred">The new starred status.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task UpdateIsStarredAsync(Guid id, bool isStarred);
+
+    /// <summary>
+    /// Deletes a chat session and all related PostgreSQL data in a single transaction.
+    /// This includes:
+    /// - File storage records (aesir_file_storage)
+    /// - The chat session record (aesir_chat_session)
+    /// - Research sessions are automatically CASCADE deleted via FK constraint
+    ///
+    /// Note: Qdrant vector database cleanup must be handled separately before calling
+    /// this method, as Qdrant cannot participate in PostgreSQL transactions.
+    /// </summary>
+    /// <param name="chatSessionId">The unique identifier of the chat session to delete.</param>
+    /// <param name="conversationId">The conversation ID used for file storage folder pattern.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task DeleteChatSessionWithRelatedDataAsync(Guid chatSessionId, string conversationId);
 }

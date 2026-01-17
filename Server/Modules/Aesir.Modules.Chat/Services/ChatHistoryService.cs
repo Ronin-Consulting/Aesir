@@ -180,7 +180,7 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
                 COALESCE(
                     EXISTS(
                         SELECT 1 FROM aesir.aesir_research_session rs
-                        WHERE rs.conversation_id = cs.id
+                        WHERE rs.chat_session_id = cs.id
                         AND rs.status NOT IN (7, 8, 9)
                     ),
                     false
@@ -237,7 +237,7 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
             COALESCE(
                 EXISTS(
                     SELECT 1 FROM aesir.aesir_research_session rs
-                    WHERE rs.conversation_id = cs.id
+                    WHERE rs.chat_session_id = cs.id
                     AND rs.status NOT IN (7, 8, 9)
                 ),
                 false
@@ -278,5 +278,90 @@ public class ChatHistoryService(ILogger<ChatHistoryService> logger, IDbContext d
 
         await dbContext.UnitOfWorkAsync(async connection =>
             await connection.ExecuteAsync(sql, new { Id = id, IsStarred = isStarred }), withTransaction: true);
+    }
+
+    /// <summary>
+    /// Deletes a chat session and all related PostgreSQL data in a single atomic transaction.
+    /// </summary>
+    /// <remarks>
+    /// TRANSACTION SCOPE:
+    /// All operations below execute within a single PostgreSQL transaction. If any operation
+    /// fails, the entire transaction is rolled back and no data is deleted.
+    ///
+    /// CASCADE DELETE CHAIN:
+    /// When the chat session is deleted, PostgreSQL automatically cascades the delete to:
+    ///   1. aesir_research_session (via FK on chat_session_id)
+    ///   2. aesir_research_submission (via FK on session_id)
+    ///   3. aesir_research_peer_review (via FK on session_id and submission_id)
+    ///   4. aesir_research_report (via FK on session_id)
+    ///
+    /// This ensures complete cleanup of all research data associated with the chat session.
+    ///
+    /// IMPORTANT: Qdrant vector database cleanup must be handled separately BEFORE calling
+    /// this method, as Qdrant cannot participate in PostgreSQL transactions.
+    /// </remarks>
+    /// <param name="chatSessionId">The unique identifier of the chat session to delete.</param>
+    /// <param name="conversationId">The conversation ID used for file storage folder pattern.</param>
+    public async Task DeleteChatSessionWithRelatedDataAsync(Guid chatSessionId, string conversationId)
+    {
+        _logger.LogInformation(
+            "Deleting chat session {ChatSessionId} with all related data in a single transaction",
+            chatSessionId);
+
+        await dbContext.UnitOfWorkAsync(async connection =>
+        {
+            // ═══════════════════════════════════════════════════════════════════════════════
+            // TRANSACTION BOUNDARY: All operations below are atomic
+            // If any operation fails, the entire transaction is rolled back
+            // ═══════════════════════════════════════════════════════════════════════════════
+
+            // Step 1: Delete files associated with the conversation
+            // Files are stored with pattern: /{conversationId}/{filename}
+            const string deleteFilesSql = @"
+                DELETE FROM aesir.aesir_file_storage
+                WHERE file_name LIKE @FolderPattern
+            ";
+
+            var filesDeleted = await connection.ExecuteAsync(
+                deleteFilesSql,
+                new { FolderPattern = $"/{conversationId}/%" }).ConfigureAwait(false);
+
+            _logger.LogDebug(
+                "Deleted {Count} files for conversation {ConversationId}",
+                filesDeleted, conversationId);
+
+            // Step 2: Delete the chat session
+            // CASCADE DELETE: This automatically deletes all linked research sessions
+            // and their children (submissions, peer reviews, reports) via FK constraints
+            const string deleteChatSessionSql = @"
+                DELETE FROM aesir.aesir_chat_session
+                WHERE id = @Id::uuid
+            ";
+
+            var chatSessionsDeleted = await connection.ExecuteAsync(
+                deleteChatSessionSql,
+                new { Id = chatSessionId }).ConfigureAwait(false);
+
+            // Note: We treat 0 rows deleted as success (idempotent operation)
+            // This handles race conditions where another request deleted the session
+            // between the controller's existence check and this transaction.
+            // Since files were already deleted in this transaction, we consider
+            // the operation complete.
+            if (chatSessionsDeleted == 0)
+            {
+                _logger.LogWarning(
+                    "Chat session {ChatSessionId} was already deleted (possible concurrent deletion). " +
+                    "Files for conversation {ConversationId} were still cleaned up.",
+                    chatSessionId, conversationId);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "Successfully deleted chat session {ChatSessionId} with {FileCount} files " +
+                    "(research sessions cascade-deleted via FK constraint)",
+                    chatSessionId, filesDeleted);
+            }
+
+        }, withTransaction: true).ConfigureAwait(false);
     }
 }
