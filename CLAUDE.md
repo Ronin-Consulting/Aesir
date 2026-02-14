@@ -4,19 +4,34 @@ Guidelines and instructions for Claude Code when working in this project.
 
 ## Table of Contents
 
-1. [About AESIR](#about-aesir)
-2. [Project Configuration](#project-configuration)
-3. [Code Generation](#code-generation)
-4. [Data Access Guidelines](#data-access-guidelines)
-5. [API Documentation](#api-documentation)
-6. [Code Style Guidelines](#code-style-guidelines)
-7. [Error Handling](#error-handling)
-8. [Logging Guidelines](#logging-guidelines)
-9. [Docker & Kubernetes](#docker--kubernetes)
-10. [Blazor WebAssembly Client](#blazor-webassembly-client)
-11. [Testing Guidelines](#testing-guidelines)
-12. [Development Environment](#development-environment)
-13. [Planning & Workflow](#planning--workflow)
+1. [Related Documentation](#related-documentation)
+2. [About AESIR](#about-aesir)
+3. [Project Configuration](#project-configuration)
+4. [Code Generation](#code-generation)
+5. [Data Access Guidelines](#data-access-guidelines)
+6. [API Documentation](#api-documentation)
+7. [Code Style Guidelines](#code-style-guidelines)
+8. [Error Handling](#error-handling)
+9. [Logging Guidelines](#logging-guidelines)
+10. [Docker & Kubernetes](#docker--kubernetes)
+11. [Blazor WebAssembly Client](#blazor-webassembly-client)
+12. [Testing Guidelines](#testing-guidelines)
+13. [Development Environment](#development-environment)
+14. [Planning & Workflow](#planning--workflow)
+
+---
+
+## Related Documentation
+
+Detailed docs exist for specific domains — read these on-demand when working in those areas:
+
+| Document | Location | Covers |
+|----------|----------|--------|
+| Data Access | `DATA_ACCESS.md` | Full Dapper patterns, connection management, query examples |
+| Repository Pattern | `REPOSITORY_PATTERN.md` | Base repository, CRUD, custom queries, soft deletes |
+| Module System | `MODULE_SYSTEM.md` | Server module architecture, registration, DI patterns |
+| Client Architecture | `Client/Aesir.Client.Web/CLIENT_ARCHITECTURE.md` | Blazor client structure, component patterns, state management |
+| Active Issues | `ISSUES.md` | Known issues and bugs being tracked |
 
 ---
 
@@ -49,11 +64,11 @@ AESIR is an AI-powered chat orchestration platform with:
           │        https://aesir.localhost        │
           └───────────────────┬───────────────────┘
                               │
-   ┌──────────┬───────┬───────┼───────┬─────────┬──────────┐
-   │          │       │       │       │         │          │
-┌──▼──┐  ┌───▼───┐ ┌─▼──┐ ┌──▼───┐ ┌─▼───┐ ┌───▼────┐ ┌──▼──┐
-│Chat │  │Research│ │Mcp │ │Config│ │Infer│ │Storage │ │ ... │
-└─────┘  └────────┘ └────┘ └──────┘ └──┬──┘ └────────┘ └─────┘
+   ┌──────────┬───────┬───────┼───────┬─────────┬──────────┬──────┐
+   │          │       │       │       │         │          │      │
+┌──▼──┐  ┌───▼───┐ ┌─▼──┐ ┌──▼───┐ ┌─▼───┐ ┌───▼────┐ ┌──▼──┐ ┌▼────┐
+│Chat │  │Research│ │Mcp │ │Config│ │Infer│ │Storage │ │Orch │ │ ... │
+└─────┘  └────────┘ └────┘ └──────┘ └──┬──┘ └────────┘ └─────┘ └─────┘
                                        │
           ┌────────────────────────────┼────────────────────┐
           │                            │                    │
@@ -78,11 +93,15 @@ AESIR is an AI-powered chat orchestration platform with:
 - **Research** - Multi-agent research orchestration with peer review
 - **Configuration** - Agent, engine, and MCP server configuration
 - **Inference** - Multi-model inference orchestration (OpenAI, Ollama)
+- **Orchestration** - Semantic Kernel plugin management, vector search, MCP tool orchestration
 - **Mcp** - Model Context Protocol tool integration
 - **Storage** - File and document storage management
 - **Logging** - Centralized logging and kernel event tracking
 - **Documents** - Document processing and ingestion
 - **Speech** - Speech-to-text and audio processing
+
+**Tools:**
+- **LegalValidator** (`Tools/Aesir.Tools.LegalValidator/`) - License/legal compliance validation
 
 ### Quick Start
 
@@ -93,6 +112,7 @@ AESIR is an AI-powered chat orchestration platform with:
 | `./run-server.sh` | Start API server (Docker) | `--rebuild` `--prune` |
 | `./run-blazor.sh` | Start Blazor dev server | `--clean-build` |
 | `./run-tauri.sh` | Start Tauri desktop app | Requires Blazor running |
+| `./launch_ollama.sh` | Start local Ollama instance | |
 
 #### Getting Started
 
@@ -161,109 +181,29 @@ Do not generate library-specific code without first consulting Context7 document
 
 ## Data Access Guidelines
 
-### Database Naming Convention
+> **Detailed docs**: See `DATA_ACCESS.md` and `REPOSITORY_PATTERN.md` for full patterns and examples.
 
-**ALL database identifiers MUST use `aesir_` prefix with lowercase snake_case:**
+### Key Rules (Quick Reference)
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Tables | `aesir_{name}` | `aesir_user`, `aesir_chat_session` |
-| Columns | `snake_case` | `first_name`, `is_active`, `created_at` |
-| Indexes | `ix_aesir_{table}_{column}` | `ix_aesir_user_username` |
-| C# Properties | `PascalCase` | `FirstName`, `IsActive` |
-
-**Automatic Mapping**: `DapperColumnMapper` converts PascalCase properties to snake_case columns.
-
-### ORM and Database
-
-- **ORM**: Dapper 2.1.66 and Dapper.Contrib 2.0.78 (not Entity Framework)
+- **ORM**: Dapper + Dapper.Contrib (NOT Entity Framework)
 - **Database**: PostgreSQL 16 with pgvector extension
-- **Vector Database**: Qdrant for semantic search and embeddings
-- **Column Mapping**: Initialize `DapperColumnMapper.Initialize()` in `Program.cs`
+- **ALL tables**: `aesir_` prefix with snake_case (e.g., `aesir_chat_session`)
+- **ALL columns**: snake_case (e.g., `first_name`, `is_active`)
+- **C# properties**: PascalCase — `DapperColumnMapper` handles conversion
+- **Primary Keys**: ALL entities use `Guid` type
+- **Schema**: All tables in `aesir` schema, NOT `public`
+- **SQL**: Always use `aesir_` prefix — `SELECT * FROM aesir_product WHERE is_deleted = false`
+- **Connections**: Use `IDbConnectionFactory`, always wrap in `using`, use `.ConfigureAwait(false)`
+- **Soft deletes**: Filter `WHERE is_deleted = false`, override `RemoveAsync` to UPDATE
+- **Audit fields**: Set `CreatedAt`/`UpdatedAt` etc. in service layer, not repository
 
 ### Migrations
 
 - **Tool**: FluentMigrator 7.1.0
-- **Location**: `[ModuleProject]/Migrations/` (e.g., `Aesir.Modules.Chat/Migrations/`)
-- **Auto-Discovery**: Migrations discovered from `Aesir.Modules.*` assemblies
-- **Naming**: Timestamp format `[Migration(YYYYMMDDHHMMSS)]`
+- **Location**: `[ModuleProject]/Migrations/`
+- **Naming**: `[Migration(YYYYMMDDHHMMSS)]`
 - **Requirements**: Always implement both `Up()` and `Down()` methods
 - **Primary Keys**: Use `.AsGuid()` (NOT `.AsInt32().Identity()`)
-
-```csharp
-using FluentMigrator;
-
-namespace Aesir.Modules.Products.Migrations;
-
-[Migration(20250119000002)]
-public class AddProductsTable : Migration
-{
-    public override void Up()
-    {
-        Create.Table("aesir_product")
-            .WithColumn("id").AsGuid().PrimaryKey()
-            .WithColumn("name").AsString(100).NotNullable()
-            .WithColumn("is_active").AsBoolean().NotNullable();
-
-        Create.Index("ix_aesir_product_name")
-            .OnTable("aesir_product")
-            .OnColumn("name");
-    }
-
-    public override void Down()
-    {
-        Delete.Table("aesir_product");
-    }
-}
-```
-
-### Connection Management
-
-- Use `IDbConnectionFactory` with connection factory pattern
-- Always wrap connections in `using` statements
-- Use `async/await` with `.ConfigureAwait(false)`
-
-### Entity Design
-
-- **Primary Keys**: ALL entities use `Guid` type
-- **Property Naming**: PascalCase in C#
-- **No Attributes Required**: Entity classes don't need `[Table]` or `[ExplicitKey]` attributes (raw SQL handles table names)
-
-```csharp
-public class User : IEntity
-{
-    public Guid Id { get; set; }        // Maps to: id
-    public string FirstName { get; set; } // Maps to: first_name
-    public bool IsActive { get; set; }    // Maps to: is_active
-}
-```
-
-### Repository Pattern
-
-- Inherit from `Repository<TEntity>` base class
-- Use Dapper.Contrib for simple CRUD: `Get`, `GetAll`, `Insert`, `Update`, `Delete`
-- For custom queries: `QueryAsync`, `QueryFirstOrDefaultAsync`, `ExecuteAsync`
-- **SQL naming**: Always use `aesir_` prefix with snake_case
-
-```csharp
-// CORRECT
-var sql = "SELECT * FROM aesir_product WHERE name = @Name AND is_deleted = false";
-
-// WRONG - missing prefix
-var sql = "SELECT * FROM product WHERE name = @Name";
-```
-
-### Soft Deletes
-
-- Properties: `IsDeleted`, `DeletedAt`, `DeletedBy` (PascalCase in C#)
-- Columns: `is_deleted`, `deleted_at`, `deleted_by` (snake_case in DB)
-- Override `RemoveAsync` to UPDATE instead of DELETE
-- Filter: `WHERE is_deleted = false`
-
-### Audit Trails
-
-- Properties: `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`
-- Set audit fields in service layer, not repository
 
 ---
 
@@ -377,119 +317,19 @@ public enum MyStatus
 
 ## Error Handling
 
-### API Layer (Controllers)
-
-- Return appropriate HTTP status codes
-- Use `IActionResult` helpers: `Ok()`, `BadRequest()`, `NotFound()`
-- Log errors at Error level with correlation ID
-
-```csharp
-[HttpGet("{id}")]
-public async Task<IActionResult> GetById(Guid id)
-{
-    var entity = await _service.GetByIdAsync(id);
-    if (entity == null)
-        return NotFound();
-    return Ok(entity);
-}
-```
-
-### Service Layer
-
-- Catch specific exceptions, not general `Exception`
-- Throw custom exceptions for business rule violations
-- Let infrastructure exceptions bubble up
-- Log warnings for validation failures
-
-```csharp
-public async Task<User> CreateUserAsync(CreateUserRequest request)
-{
-    var existing = await _repository.GetByUsernameAsync(request.Username);
-    if (existing != null)
-    {
-        _logger.LogWarning("Username already exists: {Username}", request.Username);
-        throw new DuplicateUsernameException(request.Username);
-    }
-    // ...
-}
-```
-
-### Client Layer (Blazor)
-
-- Use try/catch around API calls
-- Display user-friendly messages via MudBlazor Snackbar
-- Log errors for debugging
-
-```csharp
-try
-{
-    await ApiClient.PostAsync<Response>("/users", request);
-    Snackbar.Add("User created successfully", Severity.Success);
-}
-catch (Exception ex)
-{
-    _logger.LogError(ex, "Failed to create user");
-    Snackbar.Add("Failed to create user. Please try again.", Severity.Error);
-}
-```
+- **Controllers**: Return `Ok()`, `BadRequest()`, `NotFound()` — log errors with correlation ID
+- **Services**: Catch specific exceptions, throw custom exceptions for business rules, let infra exceptions bubble up
+- **Blazor client**: Try/catch around API calls, show user-friendly messages via `Snackbar.Add()`, log errors for debugging
 
 ---
 
 ## Logging Guidelines
 
-### Framework
-
-- **NLog 6.x** for all logging
-- **Server**: `NLog.Web.AspNetCore`
-- **Other projects**: `NLog.Extensions.Logging`
-- **Config**: `nlog.config` at application root
-
-### Log Levels
-
-| Level | Use Case |
-|-------|----------|
-| Debug | Diagnostic info (data access operations) |
-| Info | Business events (user created, login success) |
-| Warning | Recoverable issues (validation failures) |
-| Error | Exceptions requiring attention |
-
-### Structured Logging
-
-Always use named parameters:
-
-```csharp
-// CORRECT
-_logger.LogInformation("Creating user: {Username}", request.Username);
-
-// WRONG - string interpolation
-_logger.LogInformation($"Creating user: {request.Username}");
-```
-
-### Constructor Injection
-
-```csharp
-public class UserService : IUserService
-{
-    private readonly ILogger<UserService> _logger;
-
-    public UserService(ILogger<UserService> logger)
-    {
-        _logger = logger;
-    }
-}
-```
-
-### Sensitive Data
-
-**DO NOT LOG**: Passwords, API keys, credit card numbers, SSNs
-
-**CAN LOG**: Usernames, email addresses, User IDs (Guids)
-
-### Correlation IDs
-
-- Middleware: `CorrelationIdMiddleware` in `Aesir.Infrastructure.Middleware`
-- Header: `X-Correlation-Id`
-- Register early: `app.UseCorrelationId()`
+- **Framework**: NLog 6.x (`NLog.Web.AspNetCore` for server, `NLog.Extensions.Logging` elsewhere)
+- **Config**: `nlog.config` at `Server/Aesir.Api.Server/nlog.config`
+- **ALWAYS use structured logging**: `_logger.LogInformation("Creating: {Username}", name)` — NEVER use string interpolation
+- **DO NOT LOG**: Passwords, API keys, credit card numbers, SSNs
+- **Correlation IDs**: `CorrelationIdMiddleware` in `Aesir.Infrastructure.Middleware`, header `X-Correlation-Id`
 
 ---
 
@@ -520,41 +360,19 @@ public class UserService : IUserService
 docker compose -f docker-compose-api-dev.yml up -d
 ```
 
-### Docker Resource Limits (Development)
+### Docker Resource Limits
 
-| Service | CPU Limit | Memory Limit | CPU Request | Memory Request |
-|---------|-----------|--------------|-------------|----------------|
-| API | 4 CPUs | 4 GB | 1 CPU | 2 GB |
-| PostgreSQL | 2 CPUs | 2 GB | 1 CPU | 1 GB |
-| Qdrant | 2 CPUs | 2 GB | 1 CPU | 1 GB |
-| Traefik | 1 CPU | 512 MB | 0.5 CPU | 256 MB |
+Resource limits configured in `docker-compose-api-dev.yml`. API: 4 CPU/4GB, PostgreSQL: 2 CPU/2GB, Qdrant: 2 CPU/2GB, Traefik: 1 CPU/512MB.
 
 ### Qdrant Vector Database
 
 **Purpose**: Semantic search, embeddings storage, and vector similarity search
 
-**Configuration**:
-- **API Key**: `aesir_3a087fa5640958985025b0a03d2f6b0c80253884c5bd7c05f65f2fdf2404d7ab`
+**Configuration**: API key and connection details in `.claude.local.md` (gitignored).
 - **Port**: 6333 (HTTP API), 6334 (gRPC)
-- **URLs**:
-  - Direct: http://localhost:6333
-  - Traefik: https://qdrant.localhost
 - **Storage**: Persistent volume (`qdrant_storage`)
-- **Log Level**: INFO
 
-**Usage**:
-- Embedding storage for document search
-- Semantic similarity queries
-- Vector-based retrieval for RAG systems
-
-**REST API**:
-```bash
-# Health check
-curl http://localhost:6333/
-
-# List collections
-curl http://localhost:6333/collections
-```
+**Usage**: Embedding storage for document search, semantic similarity queries, vector-based retrieval for RAG systems.
 
 ### Health Check
 
@@ -564,22 +382,7 @@ curl http://localhost:6333/collections
 
 ### Kubernetes (K3s)
 
-- **Namespace**: `aesir`
-- **ConfigMap**: Non-sensitive config
-- **Secret**: Passwords, connection strings
-- **PostgreSQL**: StatefulSet with PersistentVolume (10Gi)
-- **API**: Deployment with 2 replicas
-
-**Resource Limits (Production)**:
-- API: 2 CPU / 2Gi memory (limit), 0.5 CPU / 512Mi (request)
-- PostgreSQL: 2 CPU / 2Gi memory (limit), 0.5 CPU / 512Mi (request)
-
-### Security
-
-- Run containers as non-root user
-- Use read-only root filesystem where possible
-- Use secrets for sensitive data
-- Regularly update base images
+Namespace `aesir`. PostgreSQL as StatefulSet (10Gi PV), API as Deployment (2 replicas). Uses ConfigMap for config, Secrets for credentials. Run containers as non-root, use read-only root filesystem where possible.
 
 ---
 
@@ -608,53 +411,20 @@ Client/Aesir.Client.Web/
 
 ### Module System
 
-**Modules should NOT depend on each other.** Dependencies allowed:
-- `Aesir.Client.Web.Infrastructure`
-- `Aesir.Common`
-- External packages (MudBlazor)
+> **Detailed docs**: See `MODULE_SYSTEM.md` and `Client/Aesir.Client.Web/CLIENT_ARCHITECTURE.md`.
 
-**Cross-module communication**: Use event notifier pattern (see `IConfigurationChangedNotifier`, `IChatSessionNotifier`)
+**Modules should NOT depend on each other.** Allowed dependencies: `Aesir.Client.Web.Infrastructure`, `Aesir.Common`, external packages (MudBlazor).
 
-### Module Descriptions
+**Cross-module communication**: Use event notifier pattern (e.g., `IConfigurationChangedNotifier`, `IChatSessionNotifier`).
 
-**Chat Module**:
-- Primary conversational interface
-- Multi-model chat support (OpenAI, Ollama)
-- Message history and session management
-- Tool call visualization
-- Citation and reference display
-- Agent selection and configuration
-
-**Research Module**:
-- Multi-agent research orchestration
-- Real-time progress updates via SignalR
-- Peer review workflow
-- Research report generation
-- Team collaboration visualization
-
-**Settings Module**:
-- Agent configuration (create, edit, delete)
-- Inference engine management (OpenAI, Ollama)
-- MCP server setup and configuration
-- Dynamic settings tab registration
-
-**HandsFree Module**:
-- Voice-activated chat
-- Speech-to-text integration
-- Audio playback controls
-- Hands-free mode toggle
-
-**Observability Module**:
-- Real-time kernel log viewing
-- Log filtering and search
-- Performance monitoring
-- Debug information dashboard
-
-**Wizard Module**:
-- First-time setup flow
-- Inference engine configuration wizard
-- Agent creation walkthrough
-- Welcome and onboarding screens
+| Module | Purpose |
+|--------|---------|
+| Chat | Conversational AI interface, multi-model support, tool call visualization |
+| Research | Multi-agent research orchestration, real-time SignalR updates, peer review |
+| Settings | Agent/engine/MCP server configuration, dynamic tab registration |
+| HandsFree | Voice-activated chat, speech-to-text, audio playback |
+| Observability | Real-time kernel log viewing, filtering, debug dashboard |
+| Wizard | First-time setup, engine config wizard, onboarding |
 
 ### Creating a New Module
 
@@ -722,6 +492,20 @@ dotnet test Server/Modules/Aesir.Modules.Chat.Tests/
 dotnet test --timeout 180000
 ```
 
+### Test Projects
+
+| Project | Location |
+|---------|----------|
+| Chat.Tests | `Server/Modules/Aesir.Modules.Chat.Tests/` |
+| Configuration.Tests | `Server/Modules/Aesir.Modules.Configuration.Tests/` |
+| Inference.Tests | `Server/Modules/Aesir.Modules.Inference.Tests/` |
+| Logging.Tests | `Server/Modules/Aesir.Modules.Logging.Tests/` |
+| Storage.Tests | `Server/Modules/Aesir.Modules.Storage.Tests/` |
+| Speech.Tests | `Server/Modules/Aesir.Modules.Speech.Tests/` |
+| Research.Tests | `Server/Modules/Aesir.Modules.Research.Tests/` |
+| Infrastructure.Tests | `Server/Aesir.Infrastructure.Tests/` |
+| Client.Web.Tests | `Client/Aesir.Client.Web/Aesir.Client.Web.Tests/` |
+
 ### Test Patterns
 
 - Use xUnit for all tests
@@ -764,24 +548,9 @@ Connection strings use Docker service names (`pgdb`) which only resolve within D
 
 ### Database Access
 
-**Connection Details:**
-- **Host**: `pgdb` (Docker) / `localhost` (external)
-- **Port**: `5432`
-- **Database**: `postgres`
-- **Schema**: `aesir` (NOT public)
-- **User**: `postgres`
-- **Password**: `RaGn4r0k!!`
+**Connection details and credentials**: See `.claude.local.md` (gitignored).
 
 **IMPORTANT**: All application tables are in the `aesir` schema, not `public`. Always prefix table names with `aesir.` in SQL queries.
-
-**CLI Access:**
-```bash
-# Query agents (note the aesir. schema prefix)
-PGPASSWORD="RaGn4r0k!!" docker exec aesir-pgdb-1 psql -U postgres -d postgres -c "SELECT * FROM aesir.aesir_agent;"
-
-# List all aesir tables
-PGPASSWORD="RaGn4r0k!!" docker exec aesir-pgdb-1 psql -U postgres -d postgres -c "\dt aesir.*"
-```
 
 **Configuration Mode:**
 - `LoadFromDatabase: true` → Uses database tables (`aesir_agent`, etc.)
@@ -815,59 +584,3 @@ PGPASSWORD="RaGn4r0k!!" docker exec aesir-pgdb-1 psql -U postgres -d postgres -c
 ### Branding
 
 - Application name: "Aesir" or "AESIR" (stylized)
-
-### JSON Serialization Quick Reference
-
-**Standard**: All client-server JSON uses `snake_case` property names.
-
-**Required Attributes**:
-```csharp
-// Properties - always use explicit snake_case
-[JsonPropertyName("user_id")]
-public Guid UserId { get; set; }
-
-[JsonPropertyName("created_at")]
-public DateTime CreatedAt { get; set; }
-
-// Enums - always add converter
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum MyStatus { Pending, Active }
-
-// Navigation properties - always ignore
-[JsonIgnore]
-public ParentEntity? Parent { get; set; }
-```
-
-**SignalR Hub Broadcasting** - use snake_case in anonymous objects:
-```csharp
-await hubContext.Clients.Group(groupName).SendAsync("EventName", new
-{
-    session_id = sessionId,
-    user_id = userId,
-    created_at = DateTime.UtcNow
-});
-```
-
-**Client SignalR DTOs** - use record syntax with attributes:
-```csharp
-private record MyDto(
-    [property: JsonPropertyName("session_id")] Guid SessionId,
-    [property: JsonPropertyName("user_id")] Guid UserId);
-```
-
-**Configuration** (Program.cs):
-```csharp
-// REST API
-.AddJsonOptions(options =>
-{
-    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
-    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-});
-
-// SignalR (must match REST)
-.AddJsonProtocol(options =>
-{
-    options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
-    options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-});
-```

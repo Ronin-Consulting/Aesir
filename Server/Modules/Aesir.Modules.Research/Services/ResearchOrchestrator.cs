@@ -186,10 +186,36 @@ public class ResearchOrchestrator : IResearchOrchestrator
         // Initialize ChatSession immediately so it appears in chat history
         // This creates the chat session BEFORE we link it to the research session
         // (required by FK constraint on chat_session_id)
-        var initializedChatSessionId = await InitializeChatSessionAsync(session, query, userId).ConfigureAwait(false);
+        // Pass the existing chatSessionId so we can append to it instead of creating new
+        var initializedChatSessionId = await InitializeChatSessionAsync(session, query, userId, chatSessionId).ConfigureAwait(false);
         session.ChatSessionId = initializedChatSessionId;
         await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
         _logger.LogDebug("[RESEARCH] Session updated with ChatSessionId: {ChatSessionId}", initializedChatSessionId);
+
+        // Retrieve prior conversation history if research was initiated from an existing chat session
+        List<AesirChatMessage>? priorHistory = null;
+        if (chatSessionId.HasValue)
+        {
+            try
+            {
+                var priorSession = await _chatHistoryService.GetChatSessionAsync(chatSessionId.Value).ConfigureAwait(false);
+                if (priorSession?.Conversation?.Messages != null && priorSession.Conversation.Messages.Count > 0)
+                {
+                    priorHistory = priorSession.Conversation.Messages.ToList();
+                    _logger.LogDebug("[RESEARCH] Retrieved {Count} prior messages from chat session {ChatSessionId}",
+                        priorHistory.Count, chatSessionId);
+                }
+                else
+                {
+                    _logger.LogDebug("[RESEARCH] No prior conversation history found in chat session {ChatSessionId}", chatSessionId);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Don't fail research if we can't retrieve history - just log and continue
+                _logger.LogWarning(ex, "[RESEARCH] Failed to retrieve prior history from chat session {ChatSessionId}", chatSessionId);
+            }
+        }
 
         // Generate clarification questions (if Chairman exists)
         if (chairman != null)
@@ -252,7 +278,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
                 var phaseExecutor = scope.ServiceProvider.GetRequiredService<IResearchPhaseExecutor>();
 
                 // Note: Session ID is now passed explicitly to each broadcast call (stateless broadcaster)
-                await ExecuteResearchWorkflowAsync(session, researchAgents, phaseExecutor, sessionCts.Token).ConfigureAwait(false);
+                await ExecuteResearchWorkflowAsync(session, researchAgents, phaseExecutor, priorHistory, sessionCts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -341,6 +367,26 @@ public class ResearchOrchestrator : IResearchOrchestrator
 
         await _sessionRepository.UpdateAsync(session).ConfigureAwait(false);
 
+        // Retrieve prior conversation history if available
+        List<AesirChatMessage>? priorHistory = null;
+        if (session.ChatSessionId.HasValue)
+        {
+            try
+            {
+                var priorSession = await _chatHistoryService.GetChatSessionAsync(session.ChatSessionId.Value).ConfigureAwait(false);
+                if (priorSession?.Conversation?.Messages != null && priorSession.Conversation.Messages.Count > 0)
+                {
+                    priorHistory = priorSession.Conversation.Messages.ToList();
+                    _logger.LogDebug("[RESEARCH] Retrieved {Count} prior messages from chat session {ChatSessionId}",
+                        priorHistory.Count, session.ChatSessionId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[RESEARCH] Failed to retrieve prior history from chat session {ChatSessionId}", session.ChatSessionId);
+            }
+        }
+
         // Fire-and-forget the workflow - don't block the HTTP response
         // The workflow can take minutes; client will receive updates via SignalR
         // Create a new scope for the background task to avoid using disposed scoped services
@@ -366,7 +412,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
                 var phaseExecutor = scope.ServiceProvider.GetRequiredService<IResearchPhaseExecutor>();
 
                 // Note: Session ID is now passed explicitly to each broadcast call (stateless broadcaster)
-                await ExecuteResearchWorkflowAsync(session, researchAgents, phaseExecutor, sessionCts.Token).ConfigureAwait(false);
+                await ExecuteResearchWorkflowAsync(session, researchAgents, phaseExecutor, priorHistory, sessionCts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -431,11 +477,13 @@ public class ResearchOrchestrator : IResearchOrchestrator
         ResearchSession session,
         IReadOnlyList<ResearchAgent> researchAgents,
         IResearchPhaseExecutor phaseExecutor,
+        IReadOnlyList<AesirChatMessage>? priorHistory,
         CancellationToken cancellationToken)
     {
         _logger.LogDebug("[RESEARCH-WORKFLOW] === ExecuteResearchWorkflowAsync START ===");
         _logger.LogDebug("[RESEARCH-WORKFLOW] SessionId: {SessionId}", session.Id);
         _logger.LogDebug("[RESEARCH-WORKFLOW] Total agents: {AgentCount}", researchAgents.Count);
+        _logger.LogDebug("[RESEARCH-WORKFLOW] Prior conversation messages: {Count}", priorHistory?.Count ?? 0);
 
         try
         {
@@ -473,6 +521,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
                 chairmanAgent,
                 nonChairmanAgents,
                 session.RefinedQuery ?? session.Query,
+                priorHistory,
                 cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Planning phase completed: {PlanCount} plans", plans.Count);
 
@@ -492,6 +541,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
                 nonChairmanAgents,
                 session.RefinedQuery ?? session.Query,
                 plans,
+                priorHistory,
                 cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH-WORKFLOW] Research phase completed: {SubmissionCount} submissions", submissions.Count);
             foreach (var sub in submissions)
@@ -632,8 +682,16 @@ public class ResearchOrchestrator : IResearchOrchestrator
             // Update ChatSession with synthesized title and add the research report
             if (session.ChatSessionId.HasValue)
             {
-                // Update the placeholder title with the final synthesized title
-                await UpdateChatSessionTitleAsync(session.ChatSessionId.Value, report.Title).ConfigureAwait(false);
+                // Update title only if not preserving original (i.e., research started fresh, not from existing chat)
+                if (!session.PreserveOriginalChatTitle)
+                {
+                    await UpdateChatSessionTitleAsync(session.ChatSessionId.Value, report.Title).ConfigureAwait(false);
+                }
+                else
+                {
+                    _logger.LogDebug("[RESEARCH-CHAT] Preserving original chat title for existing session {ChatSessionId}",
+                        session.ChatSessionId.Value);
+                }
 
                 // Add the research report as a message
                 await AddReportToChatSessionAsync(session, report).ConfigureAwait(false);
@@ -725,16 +783,58 @@ public class ResearchOrchestrator : IResearchOrchestrator
     /// <summary>
     /// Initializes a ChatSession for a research session immediately.
     /// This ensures the user's query is persisted and the session appears in chat history right away.
+    ///
+    /// When an existing chat session ID is provided, the research query is appended to the
+    /// existing conversation and the original title is preserved. Otherwise, a new chat session
+    /// is created with a placeholder title.
     /// </summary>
     /// <param name="session">The research session.</param>
     /// <param name="query">The original research query.</param>
     /// <param name="userId">The user ID.</param>
+    /// <param name="existingChatSessionId">Optional: existing chat session to append to instead of creating new.</param>
     /// <returns>The ID of the created/updated ChatSession.</returns>
-    private async Task<Guid> InitializeChatSessionAsync(ResearchSession session, string query, string userId)
+    private async Task<Guid> InitializeChatSessionAsync(ResearchSession session, string query, string userId, Guid? existingChatSessionId)
     {
-        var chatSessionId = session.ChatSessionId ?? Guid.NewGuid();
+        // If an existing chat session was provided, append to it instead of creating new
+        if (existingChatSessionId.HasValue)
+        {
+            _logger.LogDebug("[RESEARCH-CHAT] Attempting to append to existing ChatSession {ChatSessionId} for research session {SessionId}",
+                existingChatSessionId.Value, session.Id);
 
-        _logger.LogDebug("[RESEARCH-CHAT] Initializing ChatSession {ChatSessionId} for research session {SessionId}",
+            var existingChatSession = await _chatHistoryService.GetChatSessionAsync(existingChatSessionId.Value).ConfigureAwait(false);
+            if (existingChatSession != null)
+            {
+                // Preserve the original title by setting flag on the session
+                session.PreserveOriginalChatTitle = true;
+
+                // Append research query as new user message to existing conversation
+                var queryMessage = AesirChatMessage.NewUserMessage(query);
+                existingChatSession.Conversation ??= new AesirConversation { Id = existingChatSessionId.Value.ToString() };
+                existingChatSession.Conversation.Messages ??= new List<AesirChatMessage>();
+                existingChatSession.Conversation.Messages.Add(queryMessage);
+                existingChatSession.UpdatedAt = DateTimeOffset.UtcNow;
+
+                // Persist updated chat session
+                await _chatHistoryService.UpsertChatSessionAsync(existingChatSession).ConfigureAwait(false);
+
+                _logger.LogInformation("[RESEARCH-CHAT] Appended research query to existing ChatSession {ChatSessionId}, preserving original title '{Title}'",
+                    existingChatSessionId.Value, existingChatSession.Title);
+
+                return existingChatSessionId.Value;
+            }
+            else
+            {
+                _logger.LogWarning("[RESEARCH-CHAT] Existing ChatSession {ChatSessionId} not found, creating new session",
+                    existingChatSessionId.Value);
+                // Fall through to create new session
+            }
+        }
+
+        // Create new chat session (original behavior for fresh research)
+        var chatSessionId = Guid.NewGuid();
+        session.PreserveOriginalChatTitle = false; // Will be updated with synthesized title
+
+        _logger.LogDebug("[RESEARCH-CHAT] Creating new ChatSession {ChatSessionId} for research session {SessionId}",
             chatSessionId, session.Id);
 
         // Generate placeholder title from query

@@ -23,6 +23,7 @@ public interface IResearchPhaseExecutor
     /// <param name="chairman">The Chairman agent.</param>
     /// <param name="agents">The research agents (excluding Chairman).</param>
     /// <param name="refinedQuery">The refined research query.</param>
+    /// <param name="priorHistory">Optional prior conversation history to provide context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Dictionary of agent plans keyed by team member ID.</returns>
     Task<Dictionary<Guid, string>> ExecutePlanningPhaseAsync(
@@ -30,6 +31,7 @@ public interface IResearchPhaseExecutor
         ResearchAgent chairman,
         IReadOnlyList<ResearchAgent> agents,
         string refinedQuery,
+        IReadOnlyList<AesirChatMessage>? priorHistory = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -39,6 +41,7 @@ public interface IResearchPhaseExecutor
     /// <param name="agents">The research agents (excluding Chairman).</param>
     /// <param name="refinedQuery">The refined research query.</param>
     /// <param name="agentPlans">The planning phase results.</param>
+    /// <param name="priorHistory">Optional prior conversation history to provide context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>List of research submissions.</returns>
     Task<List<ResearchSubmission>> ExecuteResearchPhaseAsync(
@@ -46,6 +49,7 @@ public interface IResearchPhaseExecutor
         IReadOnlyList<ResearchAgent> agents,
         string refinedQuery,
         Dictionary<Guid, string> agentPlans,
+        IReadOnlyList<AesirChatMessage>? priorHistory = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -174,6 +178,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         ResearchAgent chairman,
         IReadOnlyList<ResearchAgent> agents,
         string refinedQuery,
+        IReadOnlyList<AesirChatMessage>? priorHistory = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
@@ -182,7 +187,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
 
         // Chairman creates ONE unified plan for all agents
         var plans = await _chairmanPlanningService.CreateUnifiedPlanAsync(
-            session, chairman, agents, refinedQuery, cancellationToken).ConfigureAwait(false);
+            session, chairman, agents, refinedQuery, priorHistory, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation(
             "Planning phase complete. Chairman created {Count} agent plans",
@@ -197,6 +202,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         IReadOnlyList<ResearchAgent> agents,
         string refinedQuery,
         Dictionary<Guid, string> agentPlans,
+        IReadOnlyList<AesirChatMessage>? priorHistory = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
@@ -220,7 +226,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
             async (sess, input, ct) =>
             {
                 var submission = await ExecuteAgentResearchAsync(
-                    sess, input.Agent, refinedQuery, input.Plan, ct).ConfigureAwait(false);
+                    sess, input.Agent, refinedQuery, input.Plan, priorHistory, ct).ConfigureAwait(false);
                 return submission ?? CreateFailedSubmission(sess, input.Agent, input.Plan);
             },
             input => new Contracts.ActiveAgentInfo
@@ -255,6 +261,7 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
         ResearchAgent agent,
         string refinedQuery,
         string plan,
+        IReadOnlyList<AesirChatMessage>? priorHistory,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
@@ -294,7 +301,8 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                 {
                     IncludeTools = true,
                     User = "research-orchestrator",
-                    Title = $"Research: {agent.RoleName}"
+                    Title = $"Research: {agent.RoleName}",
+                    PriorConversationHistory = priorHistory
                 }).ConfigureAwait(false);
 
             // Execute non-streaming LLM call

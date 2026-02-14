@@ -1222,8 +1222,8 @@
                 {
                     var chatSessionId = session.ChatSessionId.Value;
 
-                    // Update ChatState and local tracking
-                    ChatState.SetCurrentSession(chatSessionId);
+                    // Update ChatState and local tracking (preserve existing title)
+                    ChatState.SetCurrentSession(chatSessionId, _sessionTitle);
                     _previousSessionId = chatSessionId;
                     _conversation.Id = chatSessionId.ToString();
 

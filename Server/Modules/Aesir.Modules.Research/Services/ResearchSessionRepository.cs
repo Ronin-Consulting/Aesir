@@ -41,6 +41,7 @@ public class ResearchSessionRepository(
                 clarification_questions as ClarificationQuestions,
                 clarification_answers as ClarificationAnswers,
                 error_message as ErrorMessage,
+                preserve_original_chat_title as PreserveOriginalChatTitle,
                 created_at as CreatedAt,
                 updated_at as UpdatedAt,
                 started_at as StartedAt,
@@ -78,6 +79,7 @@ public class ResearchSessionRepository(
                 clarification_questions as ClarificationQuestions,
                 clarification_answers as ClarificationAnswers,
                 error_message as ErrorMessage,
+                preserve_original_chat_title as PreserveOriginalChatTitle,
                 created_at as CreatedAt,
                 updated_at as UpdatedAt,
                 started_at as StartedAt,
@@ -108,6 +110,7 @@ public class ResearchSessionRepository(
                 clarification_questions as ClarificationQuestions,
                 clarification_answers as ClarificationAnswers,
                 error_message as ErrorMessage,
+                preserve_original_chat_title as PreserveOriginalChatTitle,
                 created_at as CreatedAt,
                 updated_at as UpdatedAt,
                 started_at as StartedAt,
@@ -144,11 +147,13 @@ public class ResearchSessionRepository(
                 (id, user_id, research_team_id, chat_session_id, query, refined_query,
                  mode, status, current_phase, document_collection_ids,
                  clarification_questions, clarification_answers, error_message,
+                 preserve_original_chat_title,
                  created_at, updated_at, started_at, completed_at)
             VALUES
                 (@Id, @UserId, @ResearchTeamId, @ChatSessionId, @Query, @RefinedQuery,
                  @Mode, @Status, @CurrentPhase, @DocumentCollectionIds::jsonb,
                  @ClarificationQuestions::jsonb, @ClarificationAnswers::jsonb, @ErrorMessage,
+                 @PreserveOriginalChatTitle,
                  @CreatedAt, @UpdatedAt, @StartedAt, @CompletedAt)";
 
         await dbContext.UnitOfWorkAsync(async connection =>
@@ -179,6 +184,7 @@ public class ResearchSessionRepository(
                 clarification_questions = @ClarificationQuestions::jsonb,
                 clarification_answers = @ClarificationAnswers::jsonb,
                 error_message = @ErrorMessage,
+                preserve_original_chat_title = @PreserveOriginalChatTitle,
                 updated_at = @UpdatedAt,
                 started_at = @StartedAt,
                 completed_at = @CompletedAt

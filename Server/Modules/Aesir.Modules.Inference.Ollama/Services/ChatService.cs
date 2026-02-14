@@ -273,8 +273,9 @@ public class ChatService : BaseChatService
     {
         var chatCompletionService = GetChatCompletionService(request.Model);
 
+        // Summarization reducer: target=10 (keep 10 recent), threshold=9 (trigger at 19 messages)
         var chatHistoryReducer = new ChatHistorySummarizationReducer(
-            chatCompletionService, 4,8, request.Model);
+            chatCompletionService, 10, 9, request.Model);
 
         var chatHistory = new ChatHistory();
         chatHistory.AddRange(request.Conversation.Messages.Select(ConvertToSemanticKernelMessage));

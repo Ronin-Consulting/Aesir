@@ -40,25 +40,46 @@ public class ChatRequestBuilder : IChatRequestBuilder
         string userPrompt,
         ChatRequestOptions options)
     {
-        // Build conversation with system and user messages
+        // Build conversation messages list
+        var messages = new List<AesirChatMessage>();
+
+        // 1. Add system message first (sets the agent persona/role)
         var systemMessage = new AesirChatMessage
         {
             Role = "system",
             Content = systemPrompt,
             CreatedAt = DateTimeOffset.UtcNow
         };
+        messages.Add(systemMessage);
 
+        // 2. Add prior conversation history if provided (context from previous chat)
+        // This comes AFTER system but BEFORE the research task prompt
+        // Note: The chat service's summarization reducer will handle long histories automatically
+        if (options.PriorConversationHistory?.Count > 0)
+        {
+            var historyToInclude = FilterSystemMessages(options.PriorConversationHistory);
+            if (historyToInclude.Count > 0)
+            {
+                messages.AddRange(historyToInclude);
+                _logger.LogDebug(
+                    "Including {Count} prior conversation messages for agent {Role}",
+                    historyToInclude.Count, agent.Role);
+            }
+        }
+
+        // 3. Add user message (the research prompt/task)
         var userMessage = new AesirChatMessage
         {
             Role = "user",
             Content = userPrompt,
             CreatedAt = DateTimeOffset.UtcNow
         };
+        messages.Add(userMessage);
 
         var conversation = new AesirConversation
         {
             Id = Guid.NewGuid().ToString(),
-            Messages = [systemMessage, userMessage]
+            Messages = messages
         };
 
         // Get thinking settings and optionally tools from base agent
@@ -154,5 +175,18 @@ public class ChatRequestBuilder : IChatRequestBuilder
         }
 
         return tools;
+    }
+
+    /// <summary>
+    /// Filters out system messages from the conversation history.
+    /// The chat service's summarization reducer handles length limits.
+    /// </summary>
+    /// <param name="history">The full conversation history.</param>
+    /// <returns>The filtered history without system messages.</returns>
+    private static List<AesirChatMessage> FilterSystemMessages(IReadOnlyList<AesirChatMessage> history)
+    {
+        return history
+            .Where(m => m.Role != "system")
+            .ToList();
     }
 }

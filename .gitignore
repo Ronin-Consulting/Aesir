@@ -458,3 +458,6 @@ $RECYCLE.BIN/
 
 # Legal Validator output
 Tools/Aesir.Tools.LegalValidator/validation_results/
+
+# Claude Code local overrides (may contain credentials)
+.claude.local.md

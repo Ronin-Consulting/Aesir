@@ -33,6 +33,22 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
     /// </summary>
     private const int MaxAutoInvokeIterations = 8;
 
+    /// <summary>
+    /// Iteration count at which to start injecting warning messages to the LLM.
+    /// Warning triggers at iterations 6 and 7 (2-3 calls before the hard limit).
+    /// This gives the model a chance to synthesize a response before termination.
+    /// </summary>
+    private const int WarningIterationThreshold = 6;
+
+    /// <summary>
+    /// Warning message template appended to function results when approaching the iteration limit.
+    /// Uses string.Format with {0}=current iteration, {1}=max iterations, {2}=remaining calls.
+    /// </summary>
+    private const string IterationWarningMessage =
+        "\n\n[SYSTEM WARNING: You have executed {0} of {1} allowed tool calls. " +
+        "You have {2} call(s) remaining. Please synthesize your findings and provide " +
+        "your final answer now to avoid reaching the execution limit.]";
+
     public ToolCallStreamingFilter(ILogger<ToolCallStreamingFilter> logger)
     {
         _logger = logger;
@@ -62,11 +78,19 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
         // Get the inference log collector from Kernel.Data (for observability persistence)
         var logCollector = InferenceLogCollector.GetFromKernel(context.Kernel);
 
-        // If neither scope nor collector exists, just execute
+        // If neither scope nor collector exists, just execute without UI tracking
+        // but still inject iteration warnings so research agents get soft-landed
         if (broadcasterScope == null && logCollector == null)
         {
             _logger.LogDebug("No broadcaster scope or log collector in Kernel.Data - executing without tracking");
             await next(context);
+
+            if (context.RequestSequenceIndex >= WarningIterationThreshold &&
+                context.RequestSequenceIndex < MaxAutoInvokeIterations)
+            {
+                InjectIterationWarning(context);
+            }
+
             return;
         }
 
@@ -104,6 +128,14 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
         {
             // Execute the actual function
             await next(context);
+
+            // Inject warning message if approaching iteration limit (iterations 6-7)
+            // This gives the LLM a chance to stop calling tools and synthesize a response
+            if (context.RequestSequenceIndex >= WarningIterationThreshold &&
+                context.RequestSequenceIndex < MaxAutoInvokeIterations)
+            {
+                InjectIterationWarning(context);
+            }
 
             // Update tool call info with completion data
             stopwatch.Stop();
@@ -268,5 +300,45 @@ public class ToolCallStreamingFilter : IAutoFunctionInvocationFilter
         return serialized.Length > MaxResultLength
             ? serialized[..MaxResultLength] + "..."
             : serialized;
+    }
+
+    /// <summary>
+    /// Injects a warning message into the function result when approaching the iteration limit.
+    /// The warning is appended to the original result, preserving the tool's output while
+    /// signaling to the LLM that it should synthesize a final answer.
+    /// </summary>
+    /// <param name="context">The auto function invocation context containing the result to modify.</param>
+    private void InjectIterationWarning(AutoFunctionInvocationContext context)
+    {
+        int remaining = MaxAutoInvokeIterations - context.RequestSequenceIndex;
+        string warningMessage = string.Format(
+            IterationWarningMessage,
+            context.RequestSequenceIndex,
+            MaxAutoInvokeIterations,
+            remaining);
+
+        // Get current function result value and append warning
+        var currentValue = context.Result?.GetValue<object?>();
+        string modifiedResult = currentValue?.ToString() ?? string.Empty;
+        modifiedResult += warningMessage;
+
+        // Create a new FunctionResult wrapping the original but with the modified value
+        // This preserves metadata while updating the string content
+        context.Result = CreateModifiedFunctionResult(context.Result, modifiedResult);
+
+        _logger.LogWarning(
+            "Tool call iteration warning injected ({Current}/{Max}, {Remaining} remaining) for function: {FunctionName}",
+            context.RequestSequenceIndex, MaxAutoInvokeIterations, remaining, context.Function.Name);
+    }
+
+    /// <summary>
+    /// Creates a modified FunctionResult by wrapping the original with a new value.
+    /// </summary>
+    private static FunctionResult CreateModifiedFunctionResult(FunctionResult? original, string newValue)
+    {
+        // If original is null, create a new FunctionResult with just the value using the function from context
+        // Otherwise, wrap the original to preserve metadata while updating the value
+        // Note: original should never be null at this point since we're modifying an existing result
+        return new FunctionResult(original!, newValue);
     }
 }

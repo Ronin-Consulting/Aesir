@@ -44,6 +44,13 @@ public record ChatRequestOptions
     /// Only used when UseCustomPersona is true.
     /// </summary>
     public string? CustomPersonaContent { get; init; }
+
+    /// <summary>
+    /// Prior conversation history to include as context for the research agent.
+    /// When provided, these messages are inserted after the system prompt but before the user prompt.
+    /// The chat service's summarization reducer will handle long histories automatically.
+    /// </summary>
+    public IReadOnlyList<AesirChatMessage>? PriorConversationHistory { get; init; }
 }
 
 /// <summary>

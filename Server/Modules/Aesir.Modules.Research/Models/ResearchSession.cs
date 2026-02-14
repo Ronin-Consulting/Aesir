@@ -35,6 +35,14 @@ public class ResearchSession : IEntity
     public Guid? ChatSessionId { get; set; }
 
     /// <summary>
+    /// Indicates whether the original chat session title should be preserved.
+    /// Set to true when research is started from an existing chat session.
+    /// When true, the title will NOT be updated with the synthesized report title.
+    /// </summary>
+    [JsonPropertyName("preserve_original_chat_title")]
+    public bool PreserveOriginalChatTitle { get; set; }
+
+    /// <summary>
     /// The original user query.
     /// </summary>
     [JsonPropertyName("query")]

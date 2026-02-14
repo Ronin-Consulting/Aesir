@@ -35,11 +35,17 @@ public class ChairmanPlanningService : IChairmanPlanningService
         ResearchAgent chairman,
         IReadOnlyList<ResearchAgent> teamAgents,
         string refinedQuery,
+        IReadOnlyList<AesirChatMessage>? priorHistory = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
             "Chairman creating unified research plan for {Count} agents in session {SessionId}",
             teamAgents.Count, session.Id);
+
+        if (priorHistory?.Count > 0)
+        {
+            _logger.LogDebug("Chairman has access to {Count} prior conversation messages", priorHistory.Count);
+        }
 
         await _progressBroadcaster.BroadcastProgressAsync(session.Id, new ResearchPhaseProgress
         {
@@ -54,7 +60,7 @@ public class ChairmanPlanningService : IChairmanPlanningService
 
         // Execute Chairman's planning LLM call
         var planResponse = await ExecuteChairmanPlanningAsync(
-            chairman, prompt, cancellationToken).ConfigureAwait(false);
+            chairman, prompt, priorHistory, cancellationToken).ConfigureAwait(false);
 
         // Parse the response to extract sub-plans for each agent
         var agentPlans = ParseUnifiedPlan(planResponse, teamAgents);
@@ -119,6 +125,7 @@ public class ChairmanPlanningService : IChairmanPlanningService
     private async Task<string> ExecuteChairmanPlanningAsync(
         ResearchAgent chairman,
         string prompt,
+        IReadOnlyList<AesirChatMessage>? priorHistory,
         CancellationToken cancellationToken)
     {
         var chatService = _chatServiceResolver.GetRequiredChatService(
@@ -134,7 +141,8 @@ public class ChairmanPlanningService : IChairmanPlanningService
             {
                 IncludeTools = false,
                 User = "research-chairman-planning",
-                Title = "Chairman Unified Planning"
+                Title = "Chairman Unified Planning",
+                PriorConversationHistory = priorHistory
             }).ConfigureAwait(false);
 
         var result = await chatService.ChatCompletionsAsync(request).ConfigureAwait(false);

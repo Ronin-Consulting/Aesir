@@ -164,7 +164,7 @@ public class ChatService : BaseChatService
         AesirChatRequestBase request)
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
-        var chatHistory = CreateChatHistory(request.Conversation.Messages);
+        var chatHistory = await CreateChatHistoryAsync(request);
 
         var chatCompletionService = GetChatCompletionService(request.Model);
 
@@ -209,7 +209,7 @@ public class ChatService : BaseChatService
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var settings = await CreatePromptExecutionSettingsAsync(request);
-        var chatHistory = CreateChatHistory(request.Conversation.Messages);
+        var chatHistory = await CreateChatHistoryAsync(request);
 
         var chatCompletionService = GetChatCompletionService(request.Model);
 
@@ -315,30 +315,46 @@ public class ChatService : BaseChatService
     }
 
     /// <summary>
-    /// Creates a chat history from a collection of Aesir chat messages.
+    /// Creates a chat history from an Aesir chat request for use with the Semantic Kernel.
+    /// Applies summarization reducer to handle long conversation histories.
     /// </summary>
-    /// <param name="messages">The collection of Aesir chat messages to convert into a chat history.</param>
-    /// <returns>A <see cref="ChatHistory"/> object representing the chat history derived from the provided messages.</returns>
-    private static ChatHistory CreateChatHistory(IEnumerable<AesirChatMessage> messages)
+    /// <param name="request">The chat request containing conversation messages.</param>
+    /// <returns>A chat history constructed from the conversation messages, potentially reduced via summarization.</returns>
+    private async Task<ChatHistory> CreateChatHistoryAsync(AesirChatRequestBase request)
     {
-        var chatHistory = new ChatHistory();
+        var chatCompletionService = GetChatCompletionService(request.Model);
 
-        foreach (var message in messages)
-        {
-            switch (message.Role)
-            {
-                case "system":
-                    chatHistory.AddSystemMessage(message.Content);
-                    break;
-                case "assistant":
-                    chatHistory.AddAssistantMessage(message.Content);
-                    break;
-                default:
-                    chatHistory.AddUserMessage(message.Content);
-                    break;
-            }
-        }
+        // Summarization reducer: target=10 (keep 10 recent), threshold=9 (trigger at 19 messages)
+        var chatHistoryReducer = new ChatHistorySummarizationReducer(
+            chatCompletionService, 10, 9, request.Model);
+
+        var chatHistory = new ChatHistory();
+        chatHistory.AddRange(request.Conversation.Messages.Select(ConvertToSemanticKernelMessage));
+
+        var reduced = await chatHistoryReducer.ReduceAsync(chatHistory);
+
+        if (reduced == null) return chatHistory;
+
+        chatHistory = [];
+        chatHistory.AddRange(reduced);
 
         return chatHistory;
+    }
+
+    /// <summary>
+    /// Converts an <see cref="AesirChatMessage"/> to a Semantic Kernel compatible message format.
+    /// </summary>
+    /// <param name="message">The Aesir chat message to be converted.</param>
+    /// <returns>A Semantic Kernel compatible chat message content.</returns>
+    private static Microsoft.SemanticKernel.ChatMessageContent ConvertToSemanticKernelMessage(AesirChatMessage message)
+    {
+        var role = message.Role switch
+        {
+            "system" => AuthorRole.System,
+            "assistant" => AuthorRole.Assistant,
+            _ => AuthorRole.User
+        };
+
+        return new Microsoft.SemanticKernel.ChatMessageContent(role, message.GetContentWithFileName());
     }
 }
