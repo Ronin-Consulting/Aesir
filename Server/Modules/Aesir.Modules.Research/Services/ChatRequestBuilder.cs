@@ -123,7 +123,8 @@ public class ChatRequestBuilder : IChatRequestBuilder
             Tools = tools,
             EnableThinking = enableThinking,
             ThinkValue = thinkValue,
-            ShouldPersistChatSession = false
+            ShouldPersistChatSession = false,
+            ChatSessionId = options.ChatSessionId
         };
 
         // Apply custom persona if requested

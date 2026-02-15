@@ -302,7 +302,8 @@ public class ResearchPhaseExecutor : IResearchPhaseExecutor
                     IncludeTools = true,
                     User = "research-orchestrator",
                     Title = $"Research: {agent.RoleName}",
-                    PriorConversationHistory = priorHistory
+                    PriorConversationHistory = priorHistory,
+                    ChatSessionId = session.ChatSessionId
                 }).ConfigureAwait(false);
 
             // Execute non-streaming LLM call

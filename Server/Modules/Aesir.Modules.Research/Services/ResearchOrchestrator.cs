@@ -225,6 +225,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
                 session.Id,
                 query,
                 chairman,
+                session.ChatSessionId,
                 cancellationToken).ConfigureAwait(false);
             _logger.LogDebug("[RESEARCH] Generated {QuestionCount} clarification questions", questions.Count);
 
@@ -358,6 +359,7 @@ public class ResearchOrchestrator : IResearchOrchestrator
                 session.ClarificationQuestions,
                 answers,
                 chairman,
+                session.ChatSessionId,
                 cancellationToken).ConfigureAwait(false);
         }
         else

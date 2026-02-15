@@ -60,7 +60,7 @@ public class ChairmanPlanningService : IChairmanPlanningService
 
         // Execute Chairman's planning LLM call
         var planResponse = await ExecuteChairmanPlanningAsync(
-            chairman, prompt, priorHistory, cancellationToken).ConfigureAwait(false);
+            session, chairman, prompt, priorHistory, cancellationToken).ConfigureAwait(false);
 
         // Parse the response to extract sub-plans for each agent
         var agentPlans = ParseUnifiedPlan(planResponse, teamAgents);
@@ -123,6 +123,7 @@ public class ChairmanPlanningService : IChairmanPlanningService
     }
 
     private async Task<string> ExecuteChairmanPlanningAsync(
+        ResearchSession session,
         ResearchAgent chairman,
         string prompt,
         IReadOnlyList<AesirChatMessage>? priorHistory,
@@ -142,7 +143,8 @@ public class ChairmanPlanningService : IChairmanPlanningService
                 IncludeTools = false,
                 User = "research-chairman-planning",
                 Title = "Chairman Unified Planning",
-                PriorConversationHistory = priorHistory
+                PriorConversationHistory = priorHistory,
+                ChatSessionId = session.ChatSessionId
             }).ConfigureAwait(false);
 
         var result = await chatService.ChatCompletionsAsync(request).ConfigureAwait(false);

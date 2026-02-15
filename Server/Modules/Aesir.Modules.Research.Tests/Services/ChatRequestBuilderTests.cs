@@ -217,6 +217,77 @@ public class ChatRequestBuilderTests
 
     #endregion
 
+    #region ChatSessionId Propagation Tests
+
+    [Fact]
+    public async Task BuildAsync_PropagatesChatSessionId_FromOptions()
+    {
+        // Arrange
+        var agent = CreateTestAgent();
+        var chatSessionId = Guid.NewGuid();
+        var options = CreateTestOptions() with { ChatSessionId = chatSessionId };
+
+        SetupConfigurationService(agent.BaseAgentId);
+
+        // Act
+        var result = await _builder.BuildAsync(
+            agent,
+            "System prompt",
+            "User prompt",
+            options);
+
+        // Assert
+        result.ChatSessionId.Should().Be(chatSessionId,
+            "ChatSessionId should be propagated from options to the request for observability");
+    }
+
+    [Fact]
+    public async Task BuildAsync_ChatSessionId_IsNull_WhenNotProvided()
+    {
+        // Arrange
+        var agent = CreateTestAgent();
+        var options = CreateTestOptions();
+
+        SetupConfigurationService(agent.BaseAgentId);
+
+        // Act
+        var result = await _builder.BuildAsync(
+            agent,
+            "System prompt",
+            "User prompt",
+            options);
+
+        // Assert
+        result.ChatSessionId.Should().BeNull(
+            "ChatSessionId should be null when not provided in options");
+    }
+
+    [Fact]
+    public async Task BuildAsync_ChatSessionId_NotOverriddenByShouldPersistFalse()
+    {
+        // Arrange
+        var agent = CreateTestAgent();
+        var chatSessionId = Guid.NewGuid();
+        var options = CreateTestOptions() with { ChatSessionId = chatSessionId };
+
+        SetupConfigurationService(agent.BaseAgentId);
+
+        // Act
+        var result = await _builder.BuildAsync(
+            agent,
+            "System prompt",
+            "User prompt",
+            options);
+
+        // Assert
+        result.ShouldPersistChatSession.Should().BeFalse(
+            "Research requests should not persist chat sessions");
+        result.ChatSessionId.Should().Be(chatSessionId,
+            "ChatSessionId for observability should be set independently of ShouldPersistChatSession");
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static ResearchAgent CreateTestAgent()

@@ -51,6 +51,12 @@ public record ChatRequestOptions
     /// The chat service's summarization reducer will handle long histories automatically.
     /// </summary>
     public IReadOnlyList<AesirChatMessage>? PriorConversationHistory { get; init; }
+
+    /// <summary>
+    /// Optional chat session ID to link inference logs to.
+    /// Used for observability — logs will appear under this chat session in the dashboard.
+    /// </summary>
+    public Guid? ChatSessionId { get; init; }
 }
 
 /// <summary>

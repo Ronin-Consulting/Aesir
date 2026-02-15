@@ -323,7 +323,8 @@ public class PeerReviewService : IPeerReviewService
                 IncludeTools = false,
                 MaxTokensOverride = 4096,
                 User = "research-peer-review",
-                Title = $"Peer Review: {reviewer.RoleName}"
+                Title = $"Peer Review: {reviewer.RoleName}",
+                ChatSessionId = session.ChatSessionId
             }).ConfigureAwait(false);
 
         _logger.LogDebug("Sending non-streaming peer review request to LLM for reviewer {Role} on submission {SubmissionId}",

@@ -137,6 +137,19 @@ public abstract class BaseChatService : Aesir.Infrastructure.Services.IChatServi
 
         var messageToSave = AesirChatMessage.NewAssistantMessage("");
 
+        // Create inference log collector for observability and store in Kernel.Data
+        // This collects all tool calls and timing data for the inference log
+        IInferenceLogCollector? logCollector = null;
+        if (_inferenceLogService != null)
+        {
+            logCollector = new InferenceLogCollector();
+            var userQuery = request.Conversation.Messages
+                .LastOrDefault(m => m.Role == "user")?.Content ?? string.Empty;
+            Guid? conversationId = Guid.TryParse(request.Conversation.Id, out var parsedId) ? parsedId : null;
+            logCollector.Start(request.ChatSessionId, conversationId, userQuery);
+            InferenceLogCollector.StoreInKernel(_kernel, logCollector);
+        }
+
         try
         {
             var (content, promptTokens, completionTokens) = await ExecuteChatCompletionAsync(request);
@@ -146,12 +159,20 @@ public abstract class BaseChatService : Aesir.Infrastructure.Services.IChatServi
             response.CompletionTokens = completionTokens;
             response.PromptTokens = promptTokens;
             response.TotalTokens = promptTokens + completionTokens;
+
+            await PersistInferenceLogAsync(logCollector, content, null).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting chat completion");
             messageToSave.Content = "I apologize, but I encountered an error processing your request.";
             response.AesirConversation.Messages.Add(messageToSave);
+
+            await PersistInferenceLogAsync(logCollector, null, ex.Message).ConfigureAwait(false);
+        }
+        finally
+        {
+            InferenceLogCollector.RemoveFromKernel(_kernel);
         }
 
         var title = request.Title;

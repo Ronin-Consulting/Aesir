@@ -223,7 +223,8 @@ public class ReportGeneratorService : IReportGeneratorService
             {
                 IncludeTools = true,
                 User = "research-synthesis",
-                Title = "Research Report Synthesis"
+                Title = "Research Report Synthesis",
+                ChatSessionId = session.ChatSessionId
             }).ConfigureAwait(false);
 
         _logger.LogDebug("Sending synthesis request to LLM for Chairman (non-streaming)");

@@ -20,12 +20,14 @@ public interface IClarificationService
     /// <param name="sessionId">The research session ID for SignalR updates.</param>
     /// <param name="query">The original research query.</param>
     /// <param name="chairmanAgent">The Chairman agent to use for generation.</param>
+    /// <param name="chatSessionId">Optional chat session ID for inference log observability.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>List of clarifying questions, or empty if query is clear enough.</returns>
     Task<IReadOnlyList<string>> GenerateClarificationQuestionsAsync(
         Guid sessionId,
         string query,
         ResearchAgent chairmanAgent,
+        Guid? chatSessionId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -36,6 +38,7 @@ public interface IClarificationService
     /// <param name="questions">The clarification questions that were asked.</param>
     /// <param name="answers">The user's answers to the questions.</param>
     /// <param name="chairmanAgent">The Chairman agent to use for refinement.</param>
+    /// <param name="chatSessionId">Optional chat session ID for inference log observability.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The refined research query.</returns>
     Task<string> RefineQueryAsync(
@@ -44,6 +47,7 @@ public interface IClarificationService
         IReadOnlyList<string> questions,
         IReadOnlyDictionary<string, string> answers,
         ResearchAgent chairmanAgent,
+        Guid? chatSessionId = null,
         CancellationToken cancellationToken = default);
 }
 
@@ -75,6 +79,7 @@ public class ClarificationService : IClarificationService
         Guid sessionId,
         string query,
         ResearchAgent chairmanAgent,
+        Guid? chatSessionId = null,
         CancellationToken cancellationToken = default)
     {
         if (!chairmanAgent.IsChairman)
@@ -120,7 +125,7 @@ public class ClarificationService : IClarificationService
         try
         {
             var response = await GenerateClarificationWithLlmAsync(
-                sessionId, query, chairmanAgent, chatService, cancellationToken).ConfigureAwait(false);
+                sessionId, query, chairmanAgent, chatService, chatSessionId, cancellationToken).ConfigureAwait(false);
 
             // Parse questions from the response
             var questions = ParseQuestionsFromResponse(response);
@@ -142,6 +147,7 @@ public class ClarificationService : IClarificationService
         IReadOnlyList<string> questions,
         IReadOnlyDictionary<string, string> answers,
         ResearchAgent chairmanAgent,
+        Guid? chatSessionId = null,
         CancellationToken cancellationToken = default)
     {
         if (!chairmanAgent.IsChairman)
@@ -186,7 +192,7 @@ public class ClarificationService : IClarificationService
         try
         {
             return await RefineQueryWithLlmAsync(
-                sessionId, originalQuery, questions, answers, chairmanAgent, chatService, cancellationToken).ConfigureAwait(false);
+                sessionId, originalQuery, questions, answers, chairmanAgent, chatService, chatSessionId, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -203,6 +209,7 @@ public class ClarificationService : IClarificationService
         string query,
         ResearchAgent chairmanAgent,
         IChatService chatService,
+        Guid? chatSessionId,
         CancellationToken cancellationToken)
     {
         // Build the clarification prompt
@@ -233,7 +240,8 @@ public class ClarificationService : IClarificationService
                 MaxTokensOverride = 1024,
                 User = "research-clarification",
                 Title = "Research Clarification",
-                UseCustomPersona = true
+                UseCustomPersona = true,
+                ChatSessionId = chatSessionId
             }).ConfigureAwait(false);
 
         _logger.LogDebug("Sending clarification request to LLM (non-streaming)");
@@ -258,6 +266,7 @@ public class ClarificationService : IClarificationService
         IReadOnlyDictionary<string, string> answers,
         ResearchAgent chairmanAgent,
         IChatService chatService,
+        Guid? chatSessionId,
         CancellationToken cancellationToken)
     {
         // Build the refinement prompt
@@ -282,7 +291,8 @@ public class ClarificationService : IClarificationService
                 MaxTokensOverride = 2048,
                 User = "research-refinement",
                 Title = "Query Refinement",
-                UseCustomPersona = true
+                UseCustomPersona = true,
+                ChatSessionId = chatSessionId
             }).ConfigureAwait(false);
 
         _logger.LogDebug("Sending query refinement request to LLM (non-streaming)");
